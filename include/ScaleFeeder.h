@@ -1,82 +1,63 @@
 String cumuStr = "";
 boolean sCumu = false;
-uint8_t cumuLen = 0;
 int  netW_int, netW_dec, netW;
 
 void ConfigScale(){
 
 }
 
-//Hàm xoá khoảng trắng
-void delBlank(char s[], int len){
-    for(int i=0;i<len;i++){
-        if(s[i]==' '){
-            for(int j=i;j<len;j++){
-                s[j] = s[j+1];
-            }
-            i--;
-        }
-    }
-}
-
-
-//Sample: ST,GS,    -5.3,kg
+// ============================================================
+// readScale()
+// Đọc dữ liệu cân từ SerialBluetooth, parse chuỗi dạng:
+//   GS,    61.7,kg<CR><LF>
+//   GS,   -12.3,kg<CR><LF>
+//   GS,     0.0,kg<CR><LF>
+//
+// FIX: Bỏ hard-code index (cumuChar[11]==',') — dễ sai khi
+//      số chữ số thay đổi. Thay bằng:
+//   1. Kiểm tra prefix "GS," và suffix ",kg" động (indexOf)
+//   2. Dùng String.toFloat() để parse, tránh logic riêng
+//      cho số âm/dương
+//   3. Kết quả nhân x10 để giữ 1 chữ số thập phân dạng int
+// ============================================================
 void readScale(){
-    // timeLoaderMillis = millis();
-    // SerialComputer.println("run scale");
     while(SerialBluetooth.available()){
-        char inChar = (char)SerialBluetooth.read(); //Đọc từng Char
-        // SerialComputer.print(inChar); //Debug
-        // if(inChar=='\r')    SerialComputer.print(""); //Debug
+        char inChar = (char)SerialBluetooth.read();
 
-        //Kiểm tra chữ cái đầu
-        if(inChar=='G'){
+        // Bắt đầu tích lũy khi gặp 'G'
+        if(inChar == 'G'){
             sCumu = true;
-            // SerialComputer.println("4");
+            cumuStr = "";
         }
-        //Cộng String
+
         if(sCumu){
             cumuStr += inChar;
-            // SerialComputer.println("5");
         }
-        //Kiểm tra kí tự cuối, in chuỗi
-        if((inChar=='\r')&&(sCumu==true)){
-            // SerialComputer.println(cumuStr); 
-            // SerialComputer.println("6");
-            cumuLen = cumuStr.length(); //Đếm số lượng kí tự
-            char cumuChar[cumuLen];     //Tạo array
-            cumuStr.toCharArray(cumuChar, cumuLen); //Đổi từ Str sang Array
-            //GS,    61.7,kg
-            if(cumuLen<=16 && cumuChar[0]=='G' && cumuChar[1]=='S' && cumuChar[11]==',' && cumuChar[12]=='k' && cumuChar[13]=='g'){
-                //Xoá khoảng trắng
-                for(int i=0;i<cumuLen;i++){
-                    if(cumuChar[i]==' '){
-                        for(int j=i;j<cumuLen;j++){
-                            cumuChar[j] = cumuChar[j+1];
-                        }
-                        i--;
-                    }
-                }
-                // SerialComputer.println("7");
-                // SerialComputer.printf("%s %d\n", cumuChar,strlen(cumuChar)); //Debug
 
-                //GS,-123.9,kg
-                //GS,     0.0,kg<CR><LF>
-                //GS,    -2.0,kg
-                //%[^\t\n]
-                // //%[^\t\n]
-                //GS,-3.8,kg
-
-                //Tách số
-                sscanf(cumuChar,"GS,%d.%d,kg", &netW_int, &netW_dec); //Debug
-                if(netW_int>=0)  netW = netW_int*10+netW_dec;
-                if(netW_int<0)  netW = netW_int*10-netW_dec;
-                // SerialComputer.printf("%d\n", netW); //Debug
-            }
-            cumuLen = 0;
+        // Kết thúc frame khi gặp CR hoặc LF
+        if((inChar == '\r' || inChar == '\n') && sCumu){
             sCumu = false;
-            cumuStr = "";  
+
+            // Kiểm tra prefix "GS," (tối thiểu 9 ký tự: "GS,0.0,kg")
+            if(cumuStr.length() >= 9 &&
+               cumuStr.charAt(0) == 'G' &&
+               cumuStr.charAt(1) == 'S' &&
+               cumuStr.charAt(2) == ',')
+            {
+                // Tìm ",kg" động — không hard-code index
+                int kgIdx = cumuStr.indexOf(",kg");
+                if(kgIdx > 3){
+                    // Cắt phần số: từ sau "GS," đến trước ",kg"
+                    String numStr = cumuStr.substring(3, kgIdx);
+                    numStr.trim(); // Xóa khoảng trắng hai đầu
+
+                    // Parse float rồi nhân x10 → int (giữ 1 chữ số thập phân)
+                    float val = numStr.toFloat();
+                    netW = (int)(val * 10.0f);
+                }
+            }
+
+            cumuStr = "";
         }
     }
-    // loaderCalTime = millis() - timeLoaderMillis;
 }

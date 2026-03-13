@@ -11,6 +11,10 @@ void reset_update(){
         nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
         nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
         nodeHMI.writeSingleRegister(GENERAL_CONTROL_W-1, 0);  //Tắt chuông
+        nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 0);  //Clear trend graph
+        //Tắt tuning
+        nodeHMI.writeSingleRegister(AUTO_PID_AIR_TU_W-1, 0); //Turn off auto tuning
+         if(enDebug) SerialComputer.println("RESET HMI TURN OFF SUCCESS");
     }else{
         errorCount++;
         if(enDebug) SerialComputer.println("ERRO HMI TURN OFF BUTTON");
@@ -20,6 +24,7 @@ void reset_update(){
     buzzerTimerEn = 0; //Turn off buzzer
     rorBTSamp_1 = 0;
     rorBTSamp_2 = 0;
+    SerialComputer.println("=> RESET DATA");
 }
 
 void upgradeGraphData(){
@@ -260,11 +265,11 @@ void rwMemHMI(){
 
         if(vacuumSetFlag_R != vacuumSetFlag_R_CP){
             vacuumSetFlag_R = vacuumSetFlag_R_CP;  
-            nodeAir.writeSingleRegister(2048, vacuumSetFlag_R);  delay(1);  
         }
 
-        if(vacuumSetpoint_R != vacuumSetpoint_R_CP){
-            vacuumSetpoint_R = vacuumSetpoint_R_CP;  
+        if (vacuumSetpoint_R != vacuumSetpoint_R_CP) {
+            vacuumSetpoint_R = vacuumSetpoint_R_CP;
+            pidAirflowReset(); // Reset PID khi setpoint thay đổi
         }
 
         //Nhận khai báo min pressure transmitter từ HMI
@@ -276,7 +281,6 @@ void rwMemHMI(){
         if(maxPT_R != maxPT_R_CP){
             maxPT_R = maxPT_R_CP;  
         }
-
 
     }else{
         errorCount++;
@@ -317,7 +321,7 @@ void rwHMICoil()
             // SerialComputer.print(" ");
         }
 
-        SerialComputer.println();
+        // SerialComputer.println();
     }
     else
     {
@@ -338,7 +342,7 @@ void rwHMICoil()
 void rwHMI_1(){
     uint8_t result = 0;
     uint16_t fst_address = 0;
-    uint8_t Numaddress = 32;
+    uint8_t Numaddress = 33;
     result = nodeHMI.readHoldingRegisters(fst_address, Numaddress); //160ms
     if(result == nodeHMI.ku8MBSuccess) 
     {
@@ -463,7 +467,11 @@ void rwHMI_1(){
         nodeHMI.writeSingleRegister(BT_HMI_W-1, Temperature_BT); //BT
         nodeHMI.writeSingleRegister(ET_HMI_W-1, Temperature_ET); //ET
 
-        
+        if (AUTO_PID_AIR_TU_R != AUTO_PID_AIR_TU_R_CP) {
+            AUTO_PID_AIR_TU_R = AUTO_PID_AIR_TU_R_CP;
+            if (AUTO_PID_AIR_TU_R == 1) pidFactoryTuneStart();  // bấm BẬT → bắt đầu quét
+            else                         pidFactoryTuneStop();   // bấm TẮT → dừng khẩn cấp
+        }
         
         // //Air Flow Freq
         // if(Airflow_Freq != Airflow_Freq_CP){//Kiểm tra thay đổi của biến HMI
@@ -638,6 +646,9 @@ void rwHMI_2(){
             nodeHMI.writeSingleRegister(PID_0800_W-1, vacuumSetFlag_R);
         }
 
+        
+
+
         //---------------------------WRITE HMI
         //---------------------------Damper feedback
         //Damper A Feedback
@@ -769,32 +780,67 @@ void readUnder(){
 
     if (result == nodeAir.ku8MBSuccess){
 
-        // Hệ số làm mượt EMA (0~1)
-        // al = 0.5: lấy trung bình 50% giá trị mới + 50% giá trị cũ
-        // al gần 1.0 → bám sát giá trị mới (ít lọc)
-        // al gần 0.0 → giữ giá trị cũ (lọc mạnh, phản hồi chậm)
-        const float al = 0.8;
-
-        // Bước 1: Lấy giá trị thô từ buffer Modbus (0~10000)
+        // ── Bước 1: Lấy giá trị thô từ buffer Modbus (0~10000) ──────────────
         raw_Diff_Air = nodeAir.getResponseBuffer(0);
 
-        // Bước 2: Làm mượt bằng EMA (Exponential Moving Average)
-        // Mục đích: giảm nhiễu nhanh, giữ lại xu hướng tín hiệu
-        // Công thức: giá_trị_mới = al * đo_được + (1 - al) * giá_trị_cũ
-        smoothedDiff_Air = (al * raw_Diff_Air) + (1 - al) * smoothedDiff_Air;
+        // ── Bước 2: Lọc Kalman trực tiếp trên raw ───────────────────────────
+        //
+        // Phiên bản cũ dùng 2 tầng lọc chồng nhau:
+        //   raw → EMA (al=0.8) → Kalman (e_mea=200, e_est=5, q=0.1) → Diff_Air
+        //
+        // Vấn đề của phiên bản cũ:
+        //   - EMA và Kalman đều tạo ra độ trễ riêng → cộng dồn thành độ trễ kép
+        //   - Kalman cũ có q=0.1 rất nhỏ: sau vài chu kỳ, Kalman gain hội tụ về
+        //     gần 0, tức bộ lọc gần như BỎ QUA phép đo mới, chỉ giữ ước lượng cũ
+        //     → đây là nguyên nhân chính khiến Diff_Air phản hồi rất chậm
+        //
+        // Phiên bản mới chỉ dùng 1 tầng Kalman với tham số điều chỉnh lại:
+        //   raw → Kalman (e_mea=50, e_est=50, q=1.0) → Diff_Air
+        //
+        // Ý nghĩa từng tham số SimpleKalmanFilter(e_mea, e_est, q):
+        //
+        //   e_mea = 50  (sai số đo lường - measurement error)
+        //     Cũ = 200: tin tưởng phép đo ÍT → bộ lọc kéo ngược về model → chậm
+        //     Mới = 50 : tin tưởng phép đo NHIỀU HƠN → bám theo giá trị đo nhanh hơn
+        //     Giảm e_mea → Kalman gain tăng → phản hồi NHANH hơn
+        //
+        //   e_est = 50  (sai số ước lượng ban đầu - estimation error)
+        //     Cũ = 5  : model ban đầu rất "chắc chắn" → không chịu cập nhật nhanh
+        //     Mới = 50: cân bằng với e_mea → Kalman không bị lệch về phía model cũ
+        //
+        //   q = 1.0  (process noise - nhiễu quá trình)
+        //     Đây là tham số quan trọng nhất để điều chỉnh tốc độ phản hồi:
+        //     Cũ = 0.1: q nhỏ → Kalman tin rằng hệ thống ít thay đổi → gain giảm
+        //               dần về 0 sau vài chu kỳ → gần như không cập nhật nữa → CHẬM
+        //     Mới = 1.0: q lớn → Kalman tin hệ thống thay đổi nhanh → duy trì gain
+        //               ở mức cao → liên tục bám theo phép đo → NHANH gấp đôi
+        //
+        // Công thức Kalman gain (K) mỗi chu kỳ:
+        //   e_est_new = e_est_old + q          ← q lớn → e_est tăng nhanh
+        //   K = e_est_new / (e_est_new + e_mea) ← e_est lớn → K lớn → bám đo nhiều
+        //   estimate = estimate + K * (raw - estimate)
+        //   e_est = (1 - K) * e_est_new        ← K lớn → e_est giảm ít → chu kỳ sau vẫn nhanh
+        //
+        // Điều chỉnh nhanh/chậm chỉ cần thay q trong Define.h:
+        //   q = 0.5 → mượt hơn, chậm hơn một chút  (nếu nhiễu quá nhiều)
+        //   q = 1.0 → cân bằng nhanh/mượt           (khuyến nghị)
+        //   q = 2.0 → nhanh hơn nữa, nhiễu hơn      (nếu cần phản hồi tức thì)
+        //
+        float filtered = diff_KalmanFilter.updateEstimate(raw_Diff_Air);
 
-        // Bước 3: Lọc thêm bằng Kalman Filter
-        // Mục đích: loại bỏ nhiễu còn sót sau EMA, cho tín hiệu mượt và chính xác hơn
-        // Pipeline: raw → EMA → Kalman → Diff_Air (kết quả cuối)
-        float filtered = diff_KalmanFilter.updateEstimate(smoothedDiff_Air);
-
-        // Bước 4: Quy đổi tín hiệu ACI (0~10000) sang đơn vị áp suất thực tế
-        // minPT_R: giá trị thấp nhất cảm biến đo được (VD: -500 Pa)
-        // maxPT_R: giá trị cao nhất cảm biến đo được (VD: +500 Pa)
-        // Công thức: Diff_Air = minPT_R + (filtered / 10000) * (maxPT_R - minPT_R)
-        // VD: filtered=0     → Diff_Air = minPT_R
-        //     filtered=5000  → Diff_Air = (minPT_R + maxPT_R) / 2
-        //     filtered=10000 → Diff_Air = maxPT_R
+        // ── Bước 3: Quy đổi tín hiệu ACI (0~10000) sang đơn vị áp suất thực tế
+        //
+        // minPT_R: giá trị áp suất thấp nhất cảm biến đo được (VD: -500 Pa)
+        // maxPT_R: giá trị áp suất cao nhất cảm biến đo được  (VD: +500 Pa)
+        //
+        // Công thức nội suy tuyến tính:
+        //   Diff_Air = minPT_R + (filtered / 10000) * (maxPT_R - minPT_R)
+        //
+        // Ví dụ với minPT_R=-500, maxPT_R=500:
+        //   filtered =     0 → Diff_Air = -500  (áp suất thấp nhất)
+        //   filtered =  5000 → Diff_Air =    0  (giữa dải)
+        //   filtered = 10000 → Diff_Air = +500  (áp suất cao nhất)
+        //
         Diff_Air = minPT_R + (filtered / 10000.0) * (maxPT_R - minPT_R);
 
     }
@@ -879,7 +925,7 @@ void checkError() {
             buzzN(1, 500);
             delay(buzzer_delay);
         }
-        SerialComputer.println(" => SD OK");
+        SerialComputer.println("=> SD OK");
     }
 
     // Tất cả thiết bị OK => buzz báo hiệu

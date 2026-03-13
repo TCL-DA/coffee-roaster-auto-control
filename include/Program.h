@@ -10,6 +10,8 @@ void timerPoll_1000ms(){
         }
     };
 
+    selfTuneTickEn = true;   // ← chỉ set flag
+
     // Xử lý các bộ đếm thời gian
     handleTimer(chargeTimerEn, chargeTimer, timerLimit);       // Đếm thời gian charge
     handleTimer(dropTimerEn, dropTimer, timerLimit);           // Đếm thời gian drop
@@ -116,83 +118,74 @@ void timerPoll_1000ms(){
 }
 
 void sdLogWrite(){
-    //Tên file
     strProfileName = String(SELECT_FILE_R) + ".txt";
+
+    // Xoá file cũ và mở file mới một lần duy nhất khi bắt đầu rang
     if(sdLogStartEn){
-        SD.remove(strProfileName); //xoá profile
-        strLog = ""; //Reset string
-        SDLogSTEP = "REMOVE FILE";
+        if(sdLogFile) sdLogFile.close();
+        SD.remove(strProfileName);
+        sdLogFile = SD.open(strProfileName, FILE_WRITE);
+        SDLogSTEP = sdLogFile ? "OPEN OK" : "OPEN FAIL";
         sdLogStartEn = 0;
     }
 
     if(sdRemoveAll){
+        if(sdLogFile) sdLogFile.close();
         for(int i=0;i<16;i++){
-            String strReAll = String(i) + ".txt"; 
-            SD.remove(strReAll); //xoá profile 
+            String strReAll = String(i) + ".txt";
+            SD.remove(strReAll);
         }
         sdRemoveAll = 0;
     }
-    
+
+    // Ghi dòng R — không open/close, chỉ write+flush vào file đang mở
+    // Phải ghi trước P để không bị mất khi cả hai flag cùng bật
     if(sdLogDataEn){
-        //Cấu hình String
-        strLog = ""; //Reset string
-        strLog = 
-        "R" +
-        String(timeRoast)+","+//time roast
-        String(Temperature_BT)+","+//BT
-        String(Temperature_ET)+","+//ET
-        String(airflowPercent)+","+//Air
-        String(gasPercent)+","+//Burner
-        String(drumPercent)+","+//Drum
-        String(rorBT)+"E";      //ROR BT
-    }
-
-    if(sdLogEndEn){
-        sdLogDataEn = 0; //Tắt data log
-        //Cấu hình String
-        strLog = ""; //Reset string
-        strLog = 
-        "P"+
-        String(BT_CHARGE_SAVE)+","+//Charge temp
-
-        String(BT_TP_SAVE)+","+//TP temp
-        String(TIME_TP_SAVE)+","+//TP time
-
-        String(BT_YELLOW_SAVE)+","+//Yellow temp
-        String(TIME_YELLOW_SAVE)+","+//Yellow time
-
-        String(BT_FCS_SAVE)+","+//Fcs temp
-        String(TIME_FCS_SAVE)+","+//Fcs time
-
-        String(PER_DEV_SAVE)+","+//Fcs temp
-        String(TIME_DEV_SAVE)+","+//Fcs temp
-
-        String(BT_DROP_SAVE)+","+//Fcs temp
-        String(TIME_DROP_SAVE)+"E";      //ROR BT
-    }
-
-    //Lưu file khi có lệnh
-    if(sdLogDataEn==1||sdLogEndEn==1){
-        tempFile = SD.open(strProfileName, FILE_WRITE);//Mở file
-        if(tempFile) {
-            tempFile.println(strLog);   //ghi đè
-            // close the file:
-            tempFile.close();
+        if(sdLogFile){
+            sdLogFile.print('R');
+            sdLogFile.print(timeRoast);     sdLogFile.print(',');
+            sdLogFile.print(Temperature_BT);  sdLogFile.print(',');
+            sdLogFile.print(Temperature_ET);  sdLogFile.print(',');
+            sdLogFile.print(airflowPercent);  sdLogFile.print(',');
+            sdLogFile.print(gasPercent);      sdLogFile.print(',');
+            sdLogFile.print(drumPercent);     sdLogFile.print(',');
+            sdLogFile.print(rorBT);           sdLogFile.print(',');
+            sdLogFile.print(vacuumSetFlag_R); sdLogFile.print(',');
+            sdLogFile.print(vacuumSetpoint_R);
+            sdLogFile.println('E');
+            sdLogFile.flush(); // đảm bảo dữ liệu ghi xuống thẻ, tránh mất khi mất điện
             SDLogSTEP = "SUCCESS";
         } else {
-            // if the file didn't open, print an error:
             SDLogSTEP = "FAIL";
         }
-
-        if(sdLogEndEn==1){
-            nodeHMI.writeSingleRegister(DATE_PROFILE_W-1, 1); //Lưu ngày rang, auto tắt trên HMI
-        }
-
-        //Tắt lệnh lưu file
-        sdLogStartEn = 0;
         sdLogDataEn = 0;
+    }
+
+    // Ghi dòng P (phase summary) rồi đóng file
+    if(sdLogEndEn){
+        if(sdLogFile){
+            sdLogFile.print('P');
+            sdLogFile.print(BT_CHARGE_SAVE);   sdLogFile.print(',');
+            sdLogFile.print(BT_TP_SAVE);       sdLogFile.print(',');
+            sdLogFile.print(TIME_TP_SAVE);     sdLogFile.print(',');
+            sdLogFile.print(BT_YELLOW_SAVE);   sdLogFile.print(',');
+            sdLogFile.print(TIME_YELLOW_SAVE); sdLogFile.print(',');
+            sdLogFile.print(BT_FCS_SAVE);      sdLogFile.print(',');
+            sdLogFile.print(TIME_FCS_SAVE);    sdLogFile.print(',');
+            sdLogFile.print(PER_DEV_SAVE);     sdLogFile.print(',');
+            sdLogFile.print(TIME_DEV_SAVE);    sdLogFile.print(',');
+            sdLogFile.print(BT_DROP_SAVE);     sdLogFile.print(',');
+            sdLogFile.print(TIME_DROP_SAVE);
+            sdLogFile.println('E');
+            sdLogFile.close();
+            SDLogSTEP = "SUCCESS";
+            nodeHMI.writeSingleRegister(DATE_PROFILE_W-1, 1); //Lưu ngày rang, auto tắt trên HMI
+        } else {
+            SDLogSTEP = "FAIL";
+        }
+        sdLogStartEn = 0;
         sdLogEndEn = 0;
-    }  
+    }
 }
 
 void sdRead(){
@@ -222,18 +215,26 @@ void sdRead(){
                                 char inDataCharArray[lenDataStr];
                                 inDataStr.toCharArray(inDataCharArray, lenDataStr); 
                                 if(lenDataStr>8){
+                                    // Reset các field mới về 0 trước khi parse
+                                    // (tương thích ngược với file cũ không có 2 field này)
+                                    sdTempVacFlag = 0;
+                                    sdTempVacSP   = 0;
+
                                     //Lọc data vào biến tạm
-                                    sscanf(inDataCharArray,"R%d,%d,%d,%d,%d,%d,%dE", 
-                                    &sdTempTi, &sdTempBT, &sdTempET, &sdTempAir, 
-                                    &sdTempGas, &sdTempDrum, &sdTempRorBT);
-                                    
+                                    sscanf(inDataCharArray,"R%d,%d,%d,%d,%d,%d,%d,%d,%dE",
+                                    &sdTempTi, &sdTempBT, &sdTempET, &sdTempAir,
+                                    &sdTempGas, &sdTempDrum, &sdTempRorBT,
+                                    &sdTempVacFlag, &sdTempVacSP);
+
                                     //Gán vào chuỗi
-                                    sdBT[sdTempTi] = sdTempBT;
-                                    sdET[sdTempTi] = sdTempET;
-                                    sdAirflow[sdTempTi] = sdTempAir;
-                                    sdGas[sdTempTi] = sdTempGas;
-                                    sdDrum[sdTempTi] = sdTempDrum;
-                                    sdRorBT[sdTempTi] = sdTempRorBT;
+                                    sdBT[sdTempTi]            = sdTempBT;
+                                    sdET[sdTempTi]            = sdTempET;
+                                    sdAirflow[sdTempTi]       = sdTempAir;
+                                    sdGas[sdTempTi]           = sdTempGas;
+                                    sdDrum[sdTempTi]          = sdTempDrum;
+                                    sdRorBT[sdTempTi]         = sdTempRorBT;
+                                    sdVacuumSetFlag[sdTempTi] = sdTempVacFlag;
+                                    sdVacuumSetpoint[sdTempTi]= sdTempVacSP;
 
                                     //Debug
                                     // SerialComputer.print("R");
@@ -361,9 +362,28 @@ void calibProgram(){
     if(timeRoast<=sdTempTi){
         lastTimeSD = timeRoast;
     }
-    airflowPercent = sdAirflow[lastTimeSD]; //Gió 
-    gasPercent = sdGas[lastTimeSD]; //Gas
+    // Airflow: tùy theo vacuumSetFlag đã lưu trong profile
+    // Dùng biến nội bộ autoVacPIDEn/autoVacSP thay vì vacuumSetFlag_R/vacuumSetpoint_R
+    // để tránh xung đột với rwMemHMI() đọc HMI và ghi đè iMemHMI[] mỗi loop
+    if (sdVacuumSetFlag[lastTimeSD] == 1) {
+        autoVacPIDEn = true;
+        autoVacSP    = sdVacuumSetpoint[lastTimeSD];
+        // airflowPercent sẽ do pidAirflowUpdate() cập nhật trong analogIn()
+    } else {
+        autoVacPIDEn = false;
+        airflowPercent = sdAirflow[lastTimeSD];
+    }
+
+    gasPercent  = sdGas[lastTimeSD];  //Gas
     drumPercent = sdDrum[lastTimeSD]; //Trống
+
+    // Show vacuumSetFlag và vacuumSetpoint hiện tại khi đang rang AUTO
+    if ((int16_t)autoVacPIDEn != vacuumSetFlag_R_CP) {
+        nodeHMI.writeSingleRegister(vacuumSetFlag_W+2000, (int16_t)autoVacPIDEn);
+    }
+    if (autoVacSP != vacuumSetpoint_R_CP) {
+        nodeHMI.writeSingleRegister(vacuumSetpoint_W+2000, autoVacSP);
+    }
 
 
     //Hiệu chỉnh gas theo phase
@@ -482,7 +502,7 @@ void programScan(){
 
                 nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 1);  //Clear trend graph
                 nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 1);    //Lock các button trên HMI khi rang
-                  
+                nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 0);  //Clear trend graph
                 //Debug
                 STEP_STRING = "RESET DATA";
 
@@ -788,9 +808,6 @@ void programScan(){
             naviSourceGAS = SOURCE_AI_VR; //Đổi source sang VR
             naviSourceDRUM = SOURCE_AI_VR;
             naviSourceAIR = SOURCE_AI_VR;
-
-            //Trả quyền kiểm soát gas
-            naviSourceGAS = SOURCE_AI_VR; //Đổi source gas sang auto
             
             nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
             nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
