@@ -1,3 +1,5 @@
+void loadAllProfileDates(); // forward declaration
+
 void timerPoll_1000ms(){
     countTimer++;
     if(countTimer>=10) countTimer = 0;
@@ -43,15 +45,18 @@ void timerPoll_1000ms(){
     //Xử lí dữ liệu thời gian rang mỗi giây
     if(timeRoastEn) {
         timeRoast++; //Đếm thời gian
-        
-        if(progStatus == STT_PROGRAM_SAVE){
-            //Lưu dữ liệu và ghi vào SD
-            sdLogDataEn = 1;
-        }
 
         //Xử lí dữ liệu khi rang auto
         if(progStatus == STT_PROGRAM_AUTO){
             calibGasProgramEn = 1;
+        }
+    }
+
+    // Đếm thời gian tuyệt đối từ Start — kích hoạt ghi SD (cả trước và sau CHARGE)
+    if(timeAbsoluteEn) {
+        timeAbsolute++;
+        if(progStatus == STT_PROGRAM_SAVE){
+            sdLogDataEn = 1;
         }
     }
     minRoast = timeRoast/60;
@@ -118,42 +123,115 @@ void timerPoll_1000ms(){
 }
 
 void sdLogWrite(){
-    strProfileName = String(SELECT_FILE_R) + ".txt";
+    strProfileName = String(SELECT_FILE_R) + ".csv";
 
-    // Xoá file cũ và mở file mới một lần duy nhất khi bắt đầu rang
+    // --- HANDLE DEDICATED DELETE REQUEST (from HMI)
+    if(sdDeleteProfileEn){
+        if(sdLogFile) sdLogFile.close();
+        if(sdDeleteProfileIndex > 0 && sdDeleteProfileIndex <= 31){
+            String delNameCsv = String(sdDeleteProfileIndex) + ".csv";
+            String delNameTxt = String(sdDeleteProfileIndex) + ".txt";
+            SD.remove(delNameCsv);
+            SD.remove(delNameTxt); // optional: remove .txt too
+            SDLogSTEP = "DEL OK";
+        } else {
+            SDLogSTEP = "DEL IDX ERR";
+        }
+        // clear request
+        sdDeleteProfileEn = 0;
+        sdDeleteProfileIndex = -1;
+        loadAllProfileDates();  // Cập nhật lại danh sách date trên HMI sau khi xóa
+    }
+
+    // Xoá file cũ, mở file mới, ghi header Artisan CSV cố định 110 bytes
     if(sdLogStartEn){
         if(sdLogFile) sdLogFile.close();
         SD.remove(strProfileName);
         sdLogFile = SD.open(strProfileName, FILE_WRITE);
-        SDLogSTEP = sdLogFile ? "OPEN OK" : "OPEN FAIL";
+        if(sdLogFile) {
+            // Lưu date lúc START trước khi ghi placeholder
+            sdStartDD   = (uint8_t)DAY_R;
+            sdStartMM   = (uint8_t)MONTH_R;
+            sdStartYYYY = (uint16_t)YEAR_R;
+            // Placeholder header — độ dài cố định 110 bytes (MM:SS / HH:MM luôn 5 ký tự)
+            // Sẽ được overwrite bằng seek(0) khi DROP với milestone thực
+            { char datetime[20]; sprintf(datetime, "%02d.%02d.%04d %02d:%02d:%02d",
+                (int)sdStartDD, (int)sdStartMM, (int)sdStartYYYY, 0, 0, 0);
+            sdLogFile.print("Date:"); sdLogFile.print(datetime);
+            sdLogFile.print("\tUnit:C\tCHARGE:00:00\tTP:00:00\tDRYe:00:00\tFCs:00:00\tFCe:\tSCs:\tSCe:\tDROP:00:00\tCOOL:\tTime:00:00\r\n"); }
+            // Header cột — Artisan format chuẩn
+            sdLogFile.print("Time1\tTime2\tET\tBT\tEvent\tAir(%)\tBurner(%)\tDrum(%)\tVacFlag\tVacSP(Pa)\r\n");
+            sdLogFile.flush();
+            SDLogSTEP = "OPEN OK";
+            // Reset bộ đếm wall time
+            timeAbsolute = 0;
+            timeChargeAbsolute = 0;
+            sdChargeHappened = false;
+            sdChargeHH = 0;
+            sdChargeMM = 0;
+            sdCsvPendingEvent[0] = '\0';
+        } else {
+            SDLogSTEP = "OPEN FAIL";
+        }
         sdLogStartEn = 0;
     }
 
     if(sdRemoveAll){
         if(sdLogFile) sdLogFile.close();
-        for(int i=0;i<16;i++){
-            String strReAll = String(i) + ".txt";
-            SD.remove(strReAll);
+        for(int i=0;i<31;i++){
+            SD.remove(String(i) + ".csv");
+            SD.remove(String(i) + ".txt"); // xoá cả file cũ định dạng TXT
         }
         sdRemoveAll = 0;
+        loadAllProfileDates();  // Cập nhật lại danh sách date trên HMI sau khi xóa tất cả
     }
 
-    // Ghi dòng R — không open/close, chỉ write+flush vào file đang mở
-    // Phải ghi trước P để không bị mất khi cả hai flag cùng bật
+    // Ghi dòng dữ liệu CSV — tab-separated, flush sau mỗi giây
     if(sdLogDataEn){
         if(sdLogFile){
-            sdLogFile.print('R');
-            sdLogFile.print(timeRoast);     sdLogFile.print(',');
-            sdLogFile.print(Temperature_BT);  sdLogFile.print(',');
-            sdLogFile.print(Temperature_ET);  sdLogFile.print(',');
-            sdLogFile.print(airflowPercent);  sdLogFile.print(',');
-            sdLogFile.print(gasPercent);      sdLogFile.print(',');
-            sdLogFile.print(drumPercent);     sdLogFile.print(',');
-            sdLogFile.print(rorBT);           sdLogFile.print(',');
-            sdLogFile.print(vacuumSetFlag_R); sdLogFile.print(',');
-            sdLogFile.print(vacuumSetpoint_R);
-            sdLogFile.println('E');
-            sdLogFile.flush(); // đảm bảo dữ liệu ghi xuống thẻ, tránh mất khi mất điện
+            // Sự kiện được set bởi programScan() vào sdCsvPendingEvent, tiêu thụ ở đây
+            // Phải copy sang buffer cục bộ — KHÔNG dùng pointer vì clear gốc sẽ xóa luôn
+            char evStr[8];
+            strncpy(evStr, sdCsvPendingEvent, 7);
+            evStr[7] = '\0';
+            sdCsvPendingEvent[0] = '\0';
+
+            // Timer ISR tăng timeAbsolute TRƯỚC khi set sdLogDataEn → trừ 1 để row đầu = 00:00
+            // Guard chống uint16_t underflow khi timeAbsolute=0 (row rác trước Start button)
+            uint16_t t1val = (timeAbsolute > 0) ? (timeAbsolute - 1) : 0;
+
+            // Lưu milestone timestamp tại thời điểm GHI → header khớp với Time1 của row
+            if(evStr[0] != '\0') {
+                if     (strcmp(evStr, "CHARGE") == 0) timeChargeAbsolute = t1val;
+                else if(strcmp(evStr, "TP")     == 0) timeTPAbsolute     = t1val;
+                else if(strcmp(evStr, "DRY End") == 0) timeDRYeAbsolute  = t1val;
+                else if(strcmp(evStr, "FCs")    == 0) timeFCsAbsolute    = t1val;
+                else if(strcmp(evStr, "DROP")   == 0) timeDROPAbsolute   = t1val;
+            }
+
+            char t1[6], btbuf[8], etbuf[10];
+            sprintf(t1, "%02d:%02d", (int)(t1val/60), (int)(t1val%60));
+            dtostrf(Temperature_BT / 10.0f, 1, 1, btbuf);
+            dtostrf((float)Airflow_Freq, 1, 1, etbuf);
+
+            sdLogFile.print(t1);                     sdLogFile.print('\t'); // Time1 (wall time)
+            if(sdChargeHappened) {
+                // CHARGE row: Time2=00:00. Các row sau: tăng dần
+                uint16_t t2val = (timeRoast > 0) ? (timeRoast - 1) : 0;
+                char t2[6];
+                sprintf(t2, "%02d:%02d", (int)(t2val/60), (int)(t2val%60));
+                sdLogFile.print(t2);
+            }
+            sdLogFile.print('\t');                                                    // Time2
+            sdLogFile.print(etbuf);                        sdLogFile.print('\t');    // ET
+            sdLogFile.print(btbuf);                        sdLogFile.print('\t');    // BT
+            sdLogFile.print(evStr);                        sdLogFile.print('\t');    // Event
+            sdLogFile.print((float)airflowPercent,   1);   sdLogFile.print('\t');    // Air(%)
+            sdLogFile.print((float)gasPercent,       1);   sdLogFile.print('\t');    // Burner(%)
+            sdLogFile.print((float)drumPercent,      1);   sdLogFile.print('\t');    // Drum(%)
+            sdLogFile.print((int)vacuumSetFlag_R);         sdLogFile.print('\t');    // VacFlag
+            sdLogFile.print((int)vacuumSetpoint_R);        sdLogFile.print("\r\n");  // VacSP(Pa)
+            sdLogFile.flush();
             SDLogSTEP = "SUCCESS";
         } else {
             SDLogSTEP = "FAIL";
@@ -161,25 +239,61 @@ void sdLogWrite(){
         sdLogDataEn = 0;
     }
 
-    // Ghi dòng P (phase summary) rồi đóng file
+    // Overwrite header với milestone thực rồi đóng file
     if(sdLogEndEn){
+        // FILE_WRITE dùng O_AT_END (append) — seek(0) không ghi đúng vị trí
+        // Phải close rồi mở lại bằng O_READ|O_WRITE (random access, không AT_END)
+        if(sdLogFile) sdLogFile.close();
+
+        // If there is a pending event that hasn't been flushed to the arrays yet,
+        // record its wall-time into the corresponding absolute time variable so
+        // the header will be updated correctly when we overwrite it below.
+        if(sdCsvPendingEvent[0] != '\0'){
+            uint16_t pendingT = (timeAbsolute > 0) ? (timeAbsolute - 1) : 0;
+            if(strcmp(sdCsvPendingEvent, "CHARGE") == 0) timeChargeAbsolute = pendingT;
+            else if(strcmp(sdCsvPendingEvent, "TP") == 0)     timeTPAbsolute     = pendingT;
+            else if(strcmp(sdCsvPendingEvent, "DRY End") == 0) timeDRYeAbsolute  = pendingT;
+            else if(strcmp(sdCsvPendingEvent, "FCs") == 0)    timeFCsAbsolute    = pendingT;
+            else if(strcmp(sdCsvPendingEvent, "DROP") == 0)   timeDROPAbsolute   = pendingT;
+            sdCsvPendingEvent[0] = '\0';
+        }
+
+        sdLogFile = SD.open(strProfileName, O_READ | O_WRITE);
         if(sdLogFile){
-            sdLogFile.print('P');
-            sdLogFile.print(BT_CHARGE_SAVE);   sdLogFile.print(',');
-            sdLogFile.print(BT_TP_SAVE);       sdLogFile.print(',');
-            sdLogFile.print(TIME_TP_SAVE);     sdLogFile.print(',');
-            sdLogFile.print(BT_YELLOW_SAVE);   sdLogFile.print(',');
-            sdLogFile.print(TIME_YELLOW_SAVE); sdLogFile.print(',');
-            sdLogFile.print(BT_FCS_SAVE);      sdLogFile.print(',');
-            sdLogFile.print(TIME_FCS_SAVE);    sdLogFile.print(',');
-            sdLogFile.print(PER_DEV_SAVE);     sdLogFile.print(',');
-            sdLogFile.print(TIME_DEV_SAVE);    sdLogFile.print(',');
-            sdLogFile.print(BT_DROP_SAVE);     sdLogFile.print(',');
-            sdLogFile.print(TIME_DROP_SAVE);
-            sdLogFile.println('E');
+            sdLogFile.seek(0);
+            char h[6];
+            // Ghi date lúc START rang (không phải lúc DROP), giờ lúc CHARGE
+            { char datetime[20]; sprintf(datetime, "%02d.%02d.%04d %02d:%02d:%02d",
+                (int)sdStartDD, (int)sdStartMM, (int)sdStartYYYY,
+                (int)sdChargeHH, (int)sdChargeMM, 0);
+            sdLogFile.print("Date:"); sdLogFile.print(datetime); }
+            // CHARGE = wall time từ Start; TP/DRYe/FCs/DROP = tính từ CHARGE (= Time2)
+            sdLogFile.print("\tUnit:C\tCHARGE:");                         // +15 → 30
+            sprintf(h, "%02d:%02d", (int)(timeChargeAbsolute/60), (int)(timeChargeAbsolute%60));
+            sdLogFile.print(h);                                            // +5 → 35
+            sdLogFile.print("\tTP:");                                      // +4 → 39
+            { uint16_t s = (timeTPAbsolute > timeChargeAbsolute) ? timeTPAbsolute - timeChargeAbsolute : 0;
+            sprintf(h, "%02d:%02d", (int)(s/60), (int)(s%60)); }
+            sdLogFile.print(h);                                            // +5 → 44
+            sdLogFile.print("\tDRYe:");                                    // +6 → 50
+            { uint16_t s = (timeDRYeAbsolute > timeChargeAbsolute) ? timeDRYeAbsolute - timeChargeAbsolute : 0;
+            sprintf(h, "%02d:%02d", (int)(s/60), (int)(s%60)); }
+            sdLogFile.print(h);                                            // +5 → 55
+            sdLogFile.print("\tFCs:");                                     // +5 → 60
+            { uint16_t s = (timeFCsAbsolute > timeChargeAbsolute) ? timeFCsAbsolute - timeChargeAbsolute : 0;
+            sprintf(h, "%02d:%02d", (int)(s/60), (int)(s%60)); }
+            sdLogFile.print(h);                                            // +5 → 65
+            sdLogFile.print("\tFCe:\tSCs:\tSCe:\tDROP:");                 // +21 → 86
+            { uint16_t roastSec = (timeDROPAbsolute > timeChargeAbsolute) ? timeDROPAbsolute - timeChargeAbsolute : 0;
+            sprintf(h, "%02d:%02d", (int)(roastSec/60), (int)(roastSec%60)); }
+            sdLogFile.print(h);                                            // +5 → 91
+            sdLogFile.print("\tCOOL:\tTime:");                            // +12 → 103
+            { char rtc[6]; sprintf(rtc, "%02d:%02d", (int)sdChargeHH, (int)sdChargeMM);
+            sdLogFile.print(rtc); }                                        // +5 → 108
+            sdLogFile.print("\r\n");                                       // +2 → 110 ✓
             sdLogFile.close();
             SDLogSTEP = "SUCCESS";
-            nodeHMI.writeSingleRegister(DATE_PROFILE_W-1, 1); //Lưu ngày rang, auto tắt trên HMI
+            nodeHMI.writeSingleRegister(DATE_PROFILE_W-1, 1); delay(5);
         } else {
             SDLogSTEP = "FAIL";
         }
@@ -188,118 +302,277 @@ void sdLogWrite(){
     }
 }
 
+// strtok bỏ qua trường rỗng (2 tab liền) → dùng hàm này thay thế
+static char* _tsvNext(char** p) {
+    if (!*p) return nullptr;
+    char* start = *p;
+    char* tab   = strchr(*p, '\t');
+    if (tab) { *tab = '\0'; *p = tab + 1; }
+    else       { *p = nullptr; }
+    return start;
+}
+
 void sdRead(){
+    //Lọc 
     //Lọc data từ profile
-    if(SCRNUM_R==6 && SELECT_FILE_R>0){
+    sdReadStt = true;
+    if (SELECT_FILE_R < 1 || SELECT_FILE_R > 30) {
+        nodeHMI.writeSingleRegister(LOADING_SHOW_W-1, 0); delay(5);
+        nodeHMI.writeSingleRegister(FA_SUC_W-1, 0); delay(5);
+        return;
+    }
+    if((SCRNUM_R==6||SCRNUM_R==12||SCRNUM_R==13) && SELECT_FILE_R>0){
         switch(sdReadStep){
             case SD_1:
                 sdMillis = millis();
-                nodeHMI.writeSingleRegister(LOADING_W-1, 1); //Hiển thị load
-                strProfileName ="";
-                strProfileName = String(SELECT_FILE_R) + ".txt";
+                strProfileName = "";
+                // Thử mở .csv trước (format mới), nếu không có thì dùng .txt cũ
+                strProfileName = String(SELECT_FILE_R) + ".csv";
                 tempFile = SD.open(strProfileName);
+                if(!tempFile){
+                    strProfileName = String(SELECT_FILE_R) + ".txt";
+                    tempFile = SD.open(strProfileName);
+                }
                 if(tempFile) {
-                    SDLogSTEP = "REOK"; 
-                    // read from the file until there's nothing else in it:
-                    while (tempFile.available()){
-                        // handle_Modbus_Slave();  //Duy trì artisan
-                        char inChar  = (char)tempFile.read();
+                    SDLogSTEP = "REOK";
+                    bool isCsv = strProfileName.endsWith(".csv");
 
-                        //Tách lọc data
-                        if(inChar == 'R')   sDataStr = true;
-                        if(sDataStr)    inDataStr += inChar;
-                        if(inChar=='E'&&sDataStr){
-                            sDataStr = false;
-                            if(inDataStr.charAt(0) == 'R'){
-                                int lenDataStr = inDataStr.length();
-                                char inDataCharArray[lenDataStr];
-                                inDataStr.toCharArray(inDataCharArray, lenDataStr); 
-                                if(lenDataStr>8){
-                                    // Reset các field mới về 0 trước khi parse
-                                    // (tương thích ngược với file cũ không có 2 field này)
-                                    sdTempVacFlag = 0;
-                                    sdTempVacSP   = 0;
+                    if(isCsv) {
+                        // ── CSV parser (Artisan format) ──────────────────────────
+                        char lineBuf[200];
+                        uint16_t csvCHARGE = 0, csvTP = 0, csvDRYe = 0, csvFCs = 0, csvDROP = 0;
+                        uint16_t csvDropIdx = 0; // Time2 thực tế của row DROP (index trong sdBT[])
 
-                                    //Lọc data vào biến tạm
-                                    sscanf(inDataCharArray,"R%d,%d,%d,%d,%d,%d,%d,%d,%dE",
-                                    &sdTempTi, &sdTempBT, &sdTempET, &sdTempAir,
-                                    &sdTempGas, &sdTempDrum, &sdTempRorBT,
-                                    &sdTempVacFlag, &sdTempVacSP);
+                        percentLoadProfile = 0;
+                        nodeHMI.writeSingleRegister(LOADING_SHOW_W-1, percentLoadProfile); delay(5); // % tải profile (100=hợp lệ, 0=lỗi)
+                        uint32_t fileSize = tempFile.size();
+                        uint8_t lastReportedPct = 255; // giá trị sentinel để in lần đầu
+                        uint32_t lastHmiUpdate = millis(); // thời điểm cập nhật HMI lần cuối
 
-                                    //Gán vào chuỗi
-                                    sdBT[sdTempTi]            = sdTempBT;
-                                    sdET[sdTempTi]            = sdTempET;
-                                    sdAirflow[sdTempTi]       = sdTempAir;
-                                    sdGas[sdTempTi]           = sdTempGas;
-                                    sdDrum[sdTempTi]          = sdTempDrum;
-                                    sdRorBT[sdTempTi]         = sdTempRorBT;
-                                    sdVacuumSetFlag[sdTempTi] = sdTempVacFlag;
-                                    sdVacuumSetpoint[sdTempTi]= sdTempVacSP;
+                        while(tempFile.available()) {
+                            // Đọc từng dòng vào char array (không dùng String để tiết kiệm heap)
+                            uint8_t li = 0;
+                            while(tempFile.available() && li < 198) {
+                                char c = (char)tempFile.read();
+                                if(c == '\n') break;
+                                if(c == '\r') continue;
+                                lineBuf[li++] = c;
+                            }
+                            lineBuf[li] = '\0';
+                            if(li == 0) continue;
 
-                                    //Debug
-                                    // SerialComputer.print("R");
-                                    // SerialComputer.print(sdTempTi); SerialComputer.print(",");
-                                    // SerialComputer.print(sdTempBT); SerialComputer.print(",");
-                                    // SerialComputer.print(sdTempET); SerialComputer.print(",");
-                                    // SerialComputer.print(sdTempAir); SerialComputer.print(",");
-                                    // SerialComputer.print(sdTempGas); SerialComputer.print(",");
-                                    // SerialComputer.print(sdTempDrum); SerialComputer.print(",");
-                                    // SerialComputer.print(sdTempRorBT); SerialComputer.println("E");
+                            // Cập nhật tiến độ đọc file (0-99%, 100% dành cho kết quả validate)
+                            if(fileSize > 0)
+                                percentLoadProfile = (uint8_t)((uint32_t)tempFile.position() * 99UL / fileSize);
+
+                            // Gửi HMI mỗi 100ms
+                            if(millis() - lastHmiUpdate >= 50) {
+                                lastHmiUpdate = millis();
+                                nodeHMI.writeSingleRegister(LOADING_SHOW_W-1, percentLoadProfile); delay(5);
+                            }
+
+                            if(strncmp(lineBuf, "Date:", 5) == 0) {
+                                // Try to parse full date + time: "Date:DD.MM.YYYY HH:MM:SS\t..."
+                                int dd=0, mmth=0, yyyy=0, hh=0, minu=0, sec=0;
+                                if (sscanf(lineBuf, "Date:%d.%d.%d %d:%d:%d", &dd, &mmth, &yyyy, &hh, &minu, &sec) >= 5) {
+                                    // Store into dAddress[] so macros HOUR_R etc. reflect the values
+                                    dAddress[HOUR_W]   = (uint16_t)hh;
+                                    dAddress[MINUTE_W] = (uint16_t)minu;
+                                    dAddress[SECOND_W] = (uint16_t)sec;
+                                    dAddress[DAY_W]    = (uint16_t)dd;
+                                    dAddress[MONTH_W]  = (uint16_t)mmth;
+                                    dAddress[YEAR_W]   = (uint16_t)yyyy;
+                                    // Write back to HMI so it displays the profile datetime immediately
                                 }
-                                 SDLogSTEP = "DATA"; 
-                            } 
-                            inDataStr = "";
+                                // Parse milestone times từ header
+                                char* p; int mm, ss;
+                                p = strstr(lineBuf, "CHARGE:"); if(p){ sscanf(p+7, "%d:%d", &mm, &ss); csvCHARGE = mm*60+ss; }
+                                p = strstr(lineBuf, "TP:"); if(p){ sscanf(p+3, "%d:%d", &mm, &ss); csvTP   = mm*60+ss; }
+                                p = strstr(lineBuf, "DRYe:"); if(p){ sscanf(p+5, "%d:%d", &mm, &ss); csvDRYe = mm*60+ss; }
+                                p = strstr(lineBuf, "FCs:"); if(p){ sscanf(p+4, "%d:%d", &mm, &ss); csvFCs  = mm*60+ss; }
+                                p = strstr(lineBuf, "DROP:"); if(p){ sscanf(p+5, "%d:%d", &mm, &ss); csvDROP = mm*60+ss; }
+                            }
+                            else if(strncmp(lineBuf, "Time1", 5) == 0) {
+                                // Skip header cột
+                            }
+                            else if(li > 4 && isdigit((unsigned char)lineBuf[0])) {
+                                // Data row — dùng _tsvNext (xử lý đúng trường rỗng, strtok thì không)
+                                // Columns: Time1\tTime2\tET\tBT\tEvent\tAir(%)\tBurner(%)\tDrum(%)\tVacFlag\tVacSP(Pa)
+                                sdTempVacFlag = 0; sdTempVacSP = 0; sdTempRorBT = 0;
+                                char* p = lineBuf;
+                                _tsvNext(&p);                               // Time1 (bỏ qua)
+                                char* f = _tsvNext(&p);                     // Time2 (roast time — index)
+                                if(!f || f[0] == '\0') continue;            // Bỏ qua hàng trước CHARGE (Time2 rỗng)
+                                int mm=0, ss=0; sscanf(f, "%d:%d", &mm, &ss);
+                                sdTempTi = (uint16_t)(mm*60 + ss);
+                                if(sdTempTi >= 1800) continue;
+
+                                f = _tsvNext(&p);                           // ET
+                                sdTempET = f ? atoi(f) : 0;
+                                f = _tsvNext(&p);                           // BT
+                                sdTempBT = f ? (int)(atof(f)*10+0.5f) : 0;
+                                char* ev = _tsvNext(&p);                    // Event
+                                // Trim leading whitespace in event field to handle variants like '\tDROP' or ' DROP'
+                                char* evTrim = ev;
+                                if(evTrim){ while(*evTrim==' '||*evTrim=='\t') evTrim++; }
+                                // Case-insensitive substring match for "DROP"
+                                if(evTrim){
+                                    char* q = evTrim;
+                                    while(*q){
+                                        char c0 = *q;
+                                        char c1 = q[1] ? q[1] : '\0';
+                                        char c2 = q[2] ? q[2] : '\0';
+                                        char c3 = q[3] ? q[3] : '\0';
+                                        if( (c0=='D'||c0=='d') && (c1=='R'||c1=='r') && (c2=='O'||c2=='o') && (c3=='P'||c3=='p') ){
+                                            csvDropIdx = sdTempTi;
+                                            break;
+                                        }
+                                        q++;
+                                    }
+                                }
+                                f = _tsvNext(&p);                           // Air(%)
+                                sdTempAir  = f ? atoi(f) : 0;
+                                f = _tsvNext(&p);                           // Burner(%)
+                                sdTempGas  = f ? atoi(f) : 0;
+                                f = _tsvNext(&p);                           // Drum(%)
+                                sdTempDrum = f ? atoi(f) : 0;
+                                f = _tsvNext(&p);                           // VacFlag
+                                sdTempVacFlag = f ? atoi(f) : 0;
+                                f = _tsvNext(&p);                           // VacSP(Pa)
+                                sdTempVacSP   = f ? atoi(f) : 0;
+
+                                // Only write into arrays if index within safe bounds
+                                if(sdTempTi < 1800) {
+                                    sdBT[sdTempTi]             = sdTempBT;
+                                    sdET[sdTempTi]             = sdTempET;
+                                    sdAirflow[sdTempTi]        = sdTempAir;
+                                    sdGas[sdTempTi]            = sdTempGas;
+                                    sdDrum[sdTempTi]           = sdTempDrum;
+                                    // NOTE: ROR isn't present in the TSV/CSV format used here, keep 0 as placeholder
+                                    sdRorBT[sdTempTi]          = sdTempRorBT;
+                                    sdVacuumSetFlag[sdTempTi]  = sdTempVacFlag;
+                                    sdVacuumSetpoint[sdTempTi] = sdTempVacSP;
+                                }
+                                SDLogSTEP = "DATA";
+
+                                // DEBUG: in từng row theo cột
+                            }
                         }
 
-                        //Tách lọc properties
-                        if(inChar == 'P')   sStr = true;
-                        if(sStr)    inStr += inChar;
-                        if(inChar=='E'&&sStr){
-                            sStr = false;
-                            if(inStr.charAt(0) == 'P'){
-                                int lenStr = inStr.length();
-                                char inCharArray[lenStr];
-                                inStr.toCharArray(inCharArray, lenStr); 
-                                if(lenStr>8){
-                                    sscanf(inCharArray,"P%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%dE", 
-                                    &CHARGE_PRO_R, &TP_PRO_R, &TP_PRO_S_R, &DE_PRO_R, &DE_PRO_S_R,
-                                    &FCS_PRO_R, &FCS_PRO_S_R, &DEV_PRO_R, &DEV_PRO_S_R, 
-                                    &DROP_PRO_R, &DROP_PRO_S_R);
-                                    //Lọc lấy m và s
-                                    //TP
-                                    TP_PRO_M_R = TP_PRO_S_R/60;
-                                    TP_PRO_S_R = TP_PRO_S_R%60;
-                                    //DE
-                                    DE_PRO_M_R = DE_PRO_S_R/60;
-                                    DE_PRO_S_R = DE_PRO_S_R%60;
-                                    //FCS
-                                    FCS_PRO_M_R = FCS_PRO_S_R/60;
-                                    FCS_PRO_S_R = FCS_PRO_S_R%60;
-                                    //DEV
-                                    DEV_PRO_M_R = DEV_PRO_S_R/60;
-                                    DEV_PRO_S_R = DEV_PRO_S_R%60;
-                                    //DROP
-                                    DROP_PRO_M_R = DROP_PRO_S_R/60;
-                                    DROP_PRO_S_R = DROP_PRO_S_R%60;
+                        // Gán giá trị milestone từ header và array đã nạp
+                        // Các thời gian trong header là Time1 (wall time), cần trừ csvCHARGE để ra roast time (Time2)
+                        CHARGE_PRO_R  = sdBT[0];
+                        uint16_t rtTP   = (csvTP   > csvCHARGE) ? csvTP   - csvCHARGE : 0;
+                        uint16_t rtDRYe = (csvDRYe > csvCHARGE) ? csvDRYe - csvCHARGE : 0;
+                        uint16_t rtFCs  = (csvFCs  > csvCHARGE) ? csvFCs  - csvCHARGE : 0;
+                        uint16_t rtDROP = (csvDropIdx > 0) ? csvDropIdx :
+                                          (csvDROP > csvCHARGE) ? csvDROP - csvCHARGE : 0;
+                        TP_PRO_S_R   = rtTP;
+                        DE_PRO_S_R   = rtDRYe;
+                        FCS_PRO_S_R  = rtFCs;
+                        DROP_PRO_S_R = rtDROP;
+                        TP_PRO_R   = (rtTP   > 0 && rtTP   < 1800) ? sdBT[rtTP]   : 0;
+                        DE_PRO_R   = (rtDRYe > 0 && rtDRYe < 1800) ? sdBT[rtDRYe] : 0;
+                        FCS_PRO_R  = (rtFCs  > 0 && rtFCs  < 1800) ? sdBT[rtFCs]  : 0;
+                        DROP_PRO_R = (rtDROP > 0 && rtDROP < 1800) ? sdBT[rtDROP] : 0;
+                        // Tính DEV: thời gian = DROP - FCs; %DEV = devTime/dropTime*1000 (per mille)
+                        { uint16_t devTime = (rtDROP > rtFCs) ? rtDROP - rtFCs : 0;
+                          DEV_PRO_M_R = devTime / 60;
+                          DEV_PRO_S_R = devTime % 60;
+                          DEV_PRO_R   = (rtDROP > 0) ? (uint16_t)((uint32_t)devTime * 1000 / rtDROP) : 0; }
+                        // Tách M/S
+                        TP_PRO_M_R   = TP_PRO_S_R / 60;  TP_PRO_S_R  %= 60;
+                        DE_PRO_M_R   = DE_PRO_S_R / 60;  DE_PRO_S_R  %= 60;
+                        FCS_PRO_M_R  = FCS_PRO_S_R / 60; FCS_PRO_S_R %= 60;
+                        DROP_PRO_M_R = DROP_PRO_S_R / 60; DROP_PRO_S_R %= 60;
+                        SDLogSTEP = "PROPERTIES";
+
+                        // ── Validate profile — kiểm tra đủ điều kiện rang auto ──
+                        bool profileOK =
+                            (CHARGE_PRO_R > 0)  &&  // BT tại CHARGE hợp lệ (> 0)
+                            (rtTP   > 0)        &&  // Có Turning Point
+                            (rtDROP >= 60)      &&  // Thời gian rang >= 1 phút
+                            (DROP_PRO_R > 0);       // BT tại DROP hợp lệ
+                        percentLoadProfile = profileOK ? 100 : 0;
+                        nodeHMI.writeSingleRegister(LOADING_SHOW_W-1, percentLoadProfile); delay(5);
+                        nodeHMI.writeSingleRegister(FA_SUC_W-1, profileOK ? 1 : 0); delay(5);
+
+                        //Show dữ liệu lên serial monitor để debug
+
+
+                    } else {
+                        // ── TXT parser (format cũ R/P) ───────────────────────────
+                        while (tempFile.available()){
+                            char inChar  = (char)tempFile.read();
+
+                            if(inChar == 'R')   sDataStr = true;
+                            if(sDataStr)    inDataStr += inChar;
+                            if(inChar=='E'&&sDataStr){
+                                sDataStr = false;
+                                if(inDataStr.charAt(0) == 'R'){
+                                    int lenDataStr = inDataStr.length();
+                                    char inDataCharArray[lenDataStr];
+                                    inDataStr.toCharArray(inDataCharArray, lenDataStr);
+                                    if(lenDataStr>8){
+                                        sdTempVacFlag = 0; sdTempVacSP = 0;
+                                        sscanf(inDataCharArray,"R%d,%d,%d,%d,%d,%d,%d,%d,%dE",
+                                        &sdTempTi, &sdTempBT, &sdTempET, &sdTempAir,
+                                        &sdTempGas, &sdTempDrum, &sdTempRorBT,
+                                        &sdTempVacFlag, &sdTempVacSP);
+                                        if(sdTempTi < 1800) {
+                                            sdBT[sdTempTi]             = sdTempBT;
+                                            sdET[sdTempTi]             = sdTempET;
+                                            sdAirflow[sdTempTi]        = sdTempAir;
+                                            sdGas[sdTempTi]            = sdTempGas;
+                                            sdDrum[sdTempTi]           = sdTempDrum;
+                                            sdRorBT[sdTempTi]          = sdTempRorBT;
+                                            sdVacuumSetFlag[sdTempTi]  = sdTempVacFlag;
+                                            sdVacuumSetpoint[sdTempTi] = sdTempVacSP;
+                                        }
+                                    }
+                                    SDLogSTEP = "DATA";
                                 }
-                                SDLogSTEP = "PROPERTIES"; 
-                            } 
-                            
-                            inStr = "";
+                                inDataStr = "";
+                            }
+
+                            if(inChar == 'P')   sStr = true;
+                            if(sStr)    inStr += inChar;
+                            if(inChar=='E'&&sStr){
+                                sStr = false;
+                                if(inStr.charAt(0) == 'P'){
+                                    int lenStr = inStr.length();
+                                    char inCharArray[lenStr];
+                                    inStr.toCharArray(inCharArray, lenStr);
+                                    if(lenStr>8){
+                                        sscanf(inCharArray,"P%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%dE",
+                                        &CHARGE_PRO_R, &TP_PRO_R, &TP_PRO_S_R, &DE_PRO_R, &DE_PRO_S_R,
+                                        &FCS_PRO_R, &FCS_PRO_S_R, &DEV_PRO_R, &DEV_PRO_S_R,
+                                        &DROP_PRO_R, &DROP_PRO_S_R);
+                                        TP_PRO_M_R   = TP_PRO_S_R/60;   TP_PRO_S_R   %= 60;
+                                        DE_PRO_M_R   = DE_PRO_S_R/60;   DE_PRO_S_R   %= 60;
+                                        FCS_PRO_M_R  = FCS_PRO_S_R/60;  FCS_PRO_S_R  %= 60;
+                                        DEV_PRO_M_R  = DEV_PRO_S_R/60;  DEV_PRO_S_R  %= 60;
+                                        DROP_PRO_M_R = DROP_PRO_S_R/60; DROP_PRO_S_R %= 60;
+                                    }
+                                    SDLogSTEP = "PROPERTIES";
+                                }
+                                inStr = "";
+                            }
                         }
                     }
-                    //Đóng file
+
                     tempFile.close();
-                    sdReadStep = SD_3;  //chuyển sang stt ghi HMI
-                    
-                    
+                    sdReadStep = SD_3;
                 }else{
-                    sdReadStep = SD_2;  //chuyển sang stt fail
-                }    
+                    sdReadStep = SD_2;
+                }
             break;
 
             case SD_2:
                 SDLogSTEP = "READFAIL";
+                percentLoadProfile = 0;
+                nodeHMI.writeSingleRegister(LOADING_SHOW_W-1, percentLoadProfile); delay(5);
+                nodeHMI.writeSingleRegister(FA_SUC_W-1, 0); delay(5);
                 CHARGE_PRO_R = 0;
                 TP_PRO_R = 0; TP_PRO_M_R = 0; TP_PRO_S_R = 0;
                 DE_PRO_R = 0; DE_PRO_M_R = 0; DE_PRO_S_R = 0;
@@ -307,42 +580,37 @@ void sdRead(){
                 DEV_PRO_R = 0; DEV_PRO_M_R = 0; DEV_PRO_S_R = 0;
                 DROP_PRO_R = 0; DROP_PRO_M_R = 0; DROP_PRO_S_R = 0;
                 sdReadStep = SD_3; //Chuyển trạng thái show màn hình
-            break;
-
-            
+            break;            
 
             case SD_3:
-                
-                nodeHMI.writeSingleRegister(CHARGE_PRO_W-1, CHARGE_PRO_R);
-                nodeHMI.writeSingleRegister(TP_PRO_W-1, TP_PRO_R);
-                nodeHMI.writeSingleRegister(TP_PRO_M_W-1, TP_PRO_M_R);
-                nodeHMI.writeSingleRegister(TP_PRO_S_W-1, TP_PRO_S_R);
+                nodeHMI.setTransmitBuffer(0,  CHARGE_PRO_R);
+                nodeHMI.setTransmitBuffer(1,  TP_PRO_R);
+                nodeHMI.setTransmitBuffer(2,  TP_PRO_M_R);
+                nodeHMI.setTransmitBuffer(3,  TP_PRO_S_R);
+                nodeHMI.setTransmitBuffer(4,  DE_PRO_R);
+                nodeHMI.setTransmitBuffer(5,  DE_PRO_M_R);
+                nodeHMI.setTransmitBuffer(6,  DE_PRO_S_R);
+                nodeHMI.setTransmitBuffer(7,  FCS_PRO_R);
+                nodeHMI.setTransmitBuffer(8,  FCS_PRO_M_R);
+                nodeHMI.setTransmitBuffer(9,  FCS_PRO_S_R);
+                nodeHMI.setTransmitBuffer(10, DEV_PRO_R);
+                nodeHMI.setTransmitBuffer(11, DEV_PRO_M_R);
+                nodeHMI.setTransmitBuffer(12, DEV_PRO_S_R);
+                nodeHMI.setTransmitBuffer(13, DROP_PRO_R);
+                nodeHMI.setTransmitBuffer(14, DROP_PRO_M_R);
+                nodeHMI.setTransmitBuffer(15, DROP_PRO_S_R);
+                nodeHMI.writeMultipleRegisters(CHARGE_PRO_W-1, 16); // reg 103-118, FC10
+                delay(20); // Đảm bảo dữ liệu đã được gửi đi trước khi tiếp tục
+                nodeHMI.writeSingleRegister(chargeTemp_W+2000,  CHARGE_PRO_R); delay(5); //
+                nodeHMI.writeSingleRegister(LOADING_SHOW_W-1,   percentLoadProfile); delay(5);
 
-                nodeHMI.writeSingleRegister(DE_PRO_W-1, DE_PRO_R);
-                nodeHMI.writeSingleRegister(DE_PRO_M_W-1, DE_PRO_M_R);
-                nodeHMI.writeSingleRegister(DE_PRO_S_W-1, DE_PRO_S_R);
-
-                nodeHMI.writeSingleRegister(FCS_PRO_W-1, FCS_PRO_R);
-                nodeHMI.writeSingleRegister(FCS_PRO_M_W-1, FCS_PRO_M_R);
-                nodeHMI.writeSingleRegister(FCS_PRO_S_W-1, FCS_PRO_S_R);
-
-                nodeHMI.writeSingleRegister(DEV_PRO_W-1, DEV_PRO_R);
-                nodeHMI.writeSingleRegister(DEV_PRO_M_W-1, DEV_PRO_M_R);
-                nodeHMI.writeSingleRegister(DEV_PRO_S_W-1, DEV_PRO_S_R);
-
-                nodeHMI.writeSingleRegister(DROP_PRO_W-1, DROP_PRO_R);
-                nodeHMI.writeSingleRegister(DROP_PRO_M_W-1, DROP_PRO_M_R);
-                nodeHMI.writeSingleRegister(DROP_PRO_S_W-1, DROP_PRO_S_R);
-
-                nodeHMI.writeSingleRegister(chargeTemp_W+2000, CHARGE_PRO_R);
-                // delay(200);
-                nodeHMI.writeSingleRegister(LOADING_W-1, 0); //Tắt Load   
                 sdReadStep = SD_4;
                 calSdMillis = millis() - sdMillis;
             break;
 
             case SD_4:
                 //Chờ
+                sdReadStt = false; // Tắt flag đọc file để hiển thị tiến độ trong modbusMaster
                 sdMillis = 0;
             break;
         }
@@ -362,28 +630,22 @@ void calibProgram(){
     if(timeRoast<=sdTempTi){
         lastTimeSD = timeRoast;
     }
-    // Airflow: tùy theo vacuumSetFlag đã lưu trong profile
-    // Dùng biến nội bộ autoVacPIDEn/autoVacSP thay vì vacuumSetFlag_R/vacuumSetpoint_R
-    // để tránh xung đột với rwMemHMI() đọc HMI và ghi đè iMemHMI[] mỗi loop
     if (sdVacuumSetFlag[lastTimeSD] == 1) {
-        autoVacPIDEn = true;
-        autoVacSP    = sdVacuumSetpoint[lastTimeSD];
-        // airflowPercent sẽ do pidAirflowUpdate() cập nhật trong analogIn()
+        int16_t newSP = (int16_t)sdVacuumSetpoint[lastTimeSD];
+        bool changed = (newSP != vacuumSetpoint_R) || (vacuumSetFlag_R != 1);
+        vacuumSetFlag_R  = 1;
+        vacuumSetpoint_R = newSP;
+        if (changed) pidAirflowReset();
     } else {
-        autoVacPIDEn = false;
-        airflowPercent = sdAirflow[lastTimeSD];
+        vacuumSetFlag_R  = 0;
+        airflowPercent   = sdAirflow[lastTimeSD];
     }
+    gasPercent  = sdGas[lastTimeSD];   //Gas
+    drumPercent = sdDrum[lastTimeSD];  //Trống
 
-    gasPercent  = sdGas[lastTimeSD];  //Gas
-    drumPercent = sdDrum[lastTimeSD]; //Trống
-
-    // Show vacuumSetFlag và vacuumSetpoint hiện tại khi đang rang AUTO
-    if ((int16_t)autoVacPIDEn != vacuumSetFlag_R_CP) {
-        nodeHMI.writeSingleRegister(vacuumSetFlag_W+2000, (int16_t)autoVacPIDEn);
-    }
-    if (autoVacSP != vacuumSetpoint_R_CP) {
-        nodeHMI.writeSingleRegister(vacuumSetpoint_W+2000, autoVacSP);
-    }
+    // Cập nhật HMI hiển thị vacuum flag và setpoint trong AUTO mode
+    nodeHMI.writeSingleRegister(vacuumSetFlag_W+2000,  vacuumSetFlag_R);
+    nodeHMI.writeSingleRegister(vacuumSetpoint_W+2000, vacuumSetpoint_R);
 
 
     //Hiệu chỉnh gas theo phase
@@ -446,6 +708,152 @@ void calibProgram(){
     }
 }
 
+// ============================================================
+// loadAllProfileDates()
+// Đọc header dòng 1 của từng file CSV (slot 1–30),
+// parse Date, ChargeTime, và DROP time.
+// Ghi 7 registers/slot lên HMI địa chỉ 600–809.
+//
+// Layout HMI (1-based):
+//   base+0 = DD   (ngày)
+//   base+1 = MM   (tháng)
+//   base+2 = YY   (năm 2 chữ số, 2024→24)
+//   base+3 = HH   (giờ lúc charge, từ "Time:HH:MM" cuối header)
+//   base+4 = MIN_CHARGE (phút lúc charge)
+//   base+5 = roastTimeMin  (phút tổng rang CHARGE→DROP)
+//   base+6 = roastTimeSec  (giây tổng rang CHARGE→DROP)
+// ============================================================
+void loadAllProfileDates() {
+    for (int slot = 1; slot <= MAX_PROFILE_SLOTS; slot++) {
+        uint16_t base = PROFILE_DATE_BASE_W + (slot - 1) * PROFILE_REGS_PER_SLOT;
+
+        char fname[8];
+        sprintf(fname, "%d.csv", slot);
+
+        File f = SD.open(fname);
+        if (!f) {
+            for (uint8_t r = 0; r < PROFILE_REGS_PER_SLOT; r++) {
+                nodeHMI.writeSingleRegister(base + r, 0);
+                delay(1);
+            }
+            continue;
+        }
+
+        // Đọc dòng 1 (header milestones), tối đa 120 bytes cố định
+        char line[120];
+        uint8_t len = 0;
+        while (f.available() && len < sizeof(line) - 1) {
+            char c = f.read();
+            if (c == '\n') break;
+            if (c != '\r') line[len++] = c;
+        }
+        line[len] = '\0';
+        f.close();
+
+        // --- Parse Date: "Date:DD.MM.YYYY HH:MM:SS\t..."
+        uint8_t dd = 0, mm = 0, yy = 0;
+        char* datePtr = strstr(line, "Date:");
+        if (datePtr) {
+            int d, mo, y;
+            if (sscanf(datePtr + 5, "%d.%d.%d", &d, &mo, &y) == 3) {
+                dd = (uint8_t)d;
+                mm = (uint8_t)mo;
+                yy = (uint8_t)(y % 100);
+            }
+        }
+
+        // --- Parse charge wall-clock time: "Time:HH:MM" at end of header
+        uint8_t chHH = 0, chMM = 0;
+        char* timePtr = strstr(line, "Time:");
+        if (timePtr) {
+            int h, mn;
+            if (sscanf(timePtr + 5, "%d:%d", &h, &mn) == 2) {
+                chHH = (uint8_t)h;
+                chMM = (uint8_t)mn;
+            }
+        }
+
+        // --- Parse CHARGE wall time từ Start: "CHARGE:MM:SS"
+        uint16_t chargeSec = 0;
+        char* chargePtr = strstr(line, "CHARGE:");
+        if (chargePtr) {
+            int cm, cs;
+            if (sscanf(chargePtr + 7, "%d:%d", &cm, &cs) == 2)
+                chargeSec = (uint16_t)(cm * 60 + cs);
+        }
+
+        // --- Parse DROP time: "DROP:MM:SS" — lưu trực tiếp, không trừ CHARGE
+        uint8_t roastTimeMin = 0, roastTimeSec = 0;
+        char* dropPtr = strstr(line, "DROP:");
+        if (dropPtr) {
+            int dm, ds;
+            if (sscanf(dropPtr + 5, "%d:%d", &dm, &ds) == 2) {
+                roastTimeMin = (uint8_t)dm;
+                roastTimeSec = (uint8_t)ds;
+            }
+        }
+
+        // --- Ghi 7 registers lên HMI
+        nodeHMI.writeSingleRegister(base + 0, dd);           delay(1);
+        nodeHMI.writeSingleRegister(base + 1, mm);           delay(1);
+        nodeHMI.writeSingleRegister(base + 2, yy);           delay(1);
+        nodeHMI.writeSingleRegister(base + 3, chHH);         delay(1);
+        nodeHMI.writeSingleRegister(base + 4, chMM);         delay(1);
+        nodeHMI.writeSingleRegister(base + 5, roastTimeMin); delay(1);
+        nodeHMI.writeSingleRegister(base + 6, roastTimeSec); delay(1);
+    }
+
+    // if (enDebug) 
+    // SerialComputer.println("=> Profile dates loaded to HMI");
+}
+
+// In trạng thái rang auto ra SerialComputer — gọi mỗi giây từ loop()
+void debugRoastStatus() {
+    if (!enDebug) return;
+
+    // Tên bước
+    const char* stepName = "?";
+    switch (progStep) {
+        case STP_DATA:      stepName = "DATA";     break;
+        case STP_COOL_DOWN: stepName = "COOLDOWN"; break;
+        case STP_GAS:       stepName = "GAS";      break;
+        case STP_CHECK:     stepName = "CHECK";    break;
+        case STP_CHARGE:    stepName = "CHARGE";   break;
+        case STP_TP:        stepName = "TP";       break;
+        case STP_YELLOW:    stepName = "YELLOW";   break;
+        case STP_FCS:       stepName = "FCS";      break;
+        case STP_DEV:       stepName = "DEV";      break;
+        case STP_DROP:      stepName = "DROP";     break;
+        case 11:   stepName = "COOLING";  break;
+        case STP_ESCAPE:    stepName = "ESCAPE";   break;
+    }
+
+    uint16_t tMin = timeRoast / 60;
+    uint16_t tSec = timeRoast % 60;
+
+    SerialComputer.print("["); SerialComputer.print(stepName); SerialComputer.print("] ");
+    SerialComputer.print("T="); SerialComputer.print(tMin); SerialComputer.print(":");
+    if (tSec < 10) SerialComputer.print("0");
+    SerialComputer.print(tSec);
+    SerialComputer.print(" | BT="); SerialComputer.print(BT_HMI_R / 10.0f, 1);
+    SerialComputer.print(" | Gas="); SerialComputer.print(gasPercent); SerialComputer.print("%");
+    SerialComputer.print(" | Air="); SerialComputer.print(airflowPercent); SerialComputer.print("%");
+    SerialComputer.print(" | Vac="); SerialComputer.print(Diff_Air); SerialComputer.print("Pa");
+    SerialComputer.print(" | SP="); SerialComputer.print(vacuumSetpoint_R); SerialComputer.print("Pa");
+
+    // Calib gas info (chỉ sau TP, khi đang chạy auto)
+    if (progStep > STP_TP && calibGasProgramEn) {
+        int16_t btTarget = sdBT[lastTimeSD];
+        int16_t btDiff   = Temperature_BT - btTarget;
+        SerialComputer.print(" | CAL BT="); SerialComputer.print(Temperature_BT / 10.0f, 1);
+        SerialComputer.print(" TGT=");      SerialComputer.print(btTarget / 10.0f, 1);
+        SerialComputer.print(" diff=");     SerialComputer.print(btDiff / 10.0f, 1);
+        SerialComputer.print(" step=");     SerialComputer.print(numIncGas);
+    }
+
+    SerialComputer.println();
+}
+
 void programScan(){
     if(calibGasProgramEn){
         calibProgram();
@@ -471,7 +879,14 @@ void programScan(){
                 //Xoá profile đã chọn trên SD, nếu chương trình rang là manual save
                 if(progStatus == STT_PROGRAM_SAVE){
                     sdLogStartEn = 1;
-                }                
+                    timeAbsolute = 0;
+                    timeAbsoluteEn = 1;
+                    sdChargeHappened = false;
+                    sdCsvPendingEvent[0] = '\0';
+                }
+
+                //Đọc ngày giờ hiện tại từ HMI và ghi vào SD
+                updateDateTimeEn = 1;
 
                 //Reset data
                 BT_CHARGE_SAVE = 0;
@@ -485,24 +900,27 @@ void programScan(){
                 TIME_TP_SEC_SAVE = 0;
 
                 TIME_YELLOW_SAVE = 0;
-                TIME_YELLOW_MIN_SAVE = 0;
-                TIME_YELLOW_SEC_SAVE = 0;
+                TIME_YELLOW_MIN_SAVE = TIME_YELLOW_SAVE/60;
+                TIME_YELLOW_SEC_SAVE = TIME_YELLOW_SAVE%60;
 
                 TIME_FCS_SAVE = 0;
-                TIME_FCS_MIN_SAVE = 0;
-                TIME_FCS_SEC_SAVE = 0;
+                TIME_FCS_MIN_SAVE = TIME_FCS_SAVE/60;
+                TIME_FCS_SEC_SAVE = TIME_FCS_SAVE%60;
 
                 PER_DEV_SAVE = 0;
                 TIME_DEV_MIN_SAVE = 0;
                 TIME_DEV_SEC_SAVE = 0;
                 
                 TIME_DROP_SAVE = 0;
-            
+                timeTPAbsolute   = 0;
+                timeDRYeAbsolute = 0;
+                timeFCsAbsolute  = 0;
+                timeDROPAbsolute = 0;
+
                 timeRoast = 0;
 
                 nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 1);  //Clear trend graph
                 nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 1);    //Lock các button trên HMI khi rang
-                nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 0);  //Clear trend graph
                 //Debug
                 STEP_STRING = "RESET DATA";
 
@@ -606,6 +1024,10 @@ void programScan(){
 
                     nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 1);  //Turn on trend graph sample
                     timeRoastEn = 1; //Start roaster time
+                    sdChargeHappened = true;           // Bắt đầu ghi Time2 (timestamp lưu khi ghi)
+                    sdChargeHH = (uint8_t)HOUR_R;      // Lưu giờ RTC lúc CHARGE
+                    sdChargeMM = (uint8_t)MINUTE_R;    // Lưu phút RTC lúc CHARGE
+                    strcpy(sdCsvPendingEvent, "CHARGE");
                     buzzerTimerEn = 1; //Call buzzer
                     progStep = STP_TP; //Chuyển trạng thái check TP
 
@@ -625,6 +1047,7 @@ void programScan(){
                         TIME_TP_SAVE = timeRoast;
                         TIME_TP_MIN_SAVE = TIME_TP_SAVE/60;
                         TIME_TP_SEC_SAVE = TIME_TP_SAVE%60;
+                        strcpy(sdCsvPendingEvent, "TP");
                         progStep = STP_YELLOW; // Next to check yellow
                     }
                 }
@@ -639,6 +1062,7 @@ void programScan(){
                     TIME_YELLOW_SAVE = timeRoast;
                     TIME_YELLOW_MIN_SAVE = TIME_YELLOW_SAVE/60;
                     TIME_YELLOW_SEC_SAVE = TIME_YELLOW_SAVE%60;
+                    strcpy(sdCsvPendingEvent, "DRY End");
                     progStep = STP_FCS;       
                 }
                 break;
@@ -651,6 +1075,7 @@ void programScan(){
                     TIME_FCS_SAVE = timeRoast;
                     TIME_FCS_MIN_SAVE = TIME_FCS_SAVE/60;
                     TIME_FCS_SEC_SAVE = TIME_FCS_SAVE%60;
+                    strcpy(sdCsvPendingEvent, "FCs");
                     progStep = STP_DEV;       
                 }
                 break; 
@@ -668,6 +1093,7 @@ void programScan(){
                 //Nếu báo lỗi feeder thì huỷ rang
                 if(autoLoader_R == 1 && aLoaderStep == STP_FAIL_LOADER){
                     nodeHMI.writeSingleRegister(START_BTN_W-1, 0);  //Turn off start
+                    nodeHMI.writeSingleRegister(warnDeleteProfile-1, 0);  //Turn off start
                     nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
                     aLoaderStep = STP_NONE_LOADER; //Trạng thái auto loader về 0
                     progStep = STP_DATA;   //Reset manual save step 
@@ -677,6 +1103,7 @@ void programScan(){
                 //Kiểm tra xem có cần rang tiếp hay không
                 if(loop_R <= 1){
                     nodeHMI.writeSingleRegister(START_BTN_W-1, 0);  //Turn off start
+                    nodeHMI.writeSingleRegister(warnDeleteProfile-1, 0);  //Turn off start
                     nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
                     progStep = STP_DATA;   //Reset manual save step 
                     STEP_STRING = "NONE";
@@ -755,6 +1182,7 @@ void programScan(){
                 //Nếu rang manual save thì tắt start luôn
                 if(progStatus == STT_PROGRAM_SAVE){
                     nodeHMI.writeSingleRegister(START_BTN_W-1, 0);  //Turn off start
+                    nodeHMI.writeSingleRegister(warnDeleteProfile-1, 0);  //Turn off start
                     nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
                     sdLogEndEn = 1;//Hoàn tất lưu data phase
                     progStep = 0;   //Reset manual save step
@@ -764,6 +1192,10 @@ void programScan(){
                     nodeHMI.writeSingleRegister(START_GAS_BTN_W-1, 0);  //Turn off gas
                 BT_DROP_SAVE = Temperature_BT;
                 TIME_DROP_SAVE = timeRoast;
+                strcpy(sdCsvPendingEvent, "DROP");
+                // Ensure the pending DROP event is flushed to file immediately
+                // before we stop wall-time/counting so the row will include Time2
+                sdLogDataEn = 1;
 
                 //Trả gió gas trống về biến trở
                 naviSourceGAS = SOURCE_AI_VR; //Đổi source sang VR
@@ -776,7 +1208,8 @@ void programScan(){
                 timeRoastEn = 0;
 
                 nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
-                
+                timeAbsoluteEn = 0; // Dừng đếm wall time
+
                 buzzerTimerEn = 1; //Call buzzer
                 dropTimerEn = 1; //Enable drop timer auto close
                 nodeHMI.writeSingleRegister(DROP_BTN_W-1, 1); //Turn on drop
@@ -797,6 +1230,7 @@ void programScan(){
         if(START_BTN_R == 0){
             //Disable all timer
             timeRoastEn = 0;    //Time roast off
+            timeAbsoluteEn = 0; //Dừng đếm wall time
 
             //Các bước rang về 0
             progStep = 0;       //Program step off
@@ -956,6 +1390,10 @@ void programScan(){
         buzzerTimerEn = 1; //Call buzzer
         STEP_STRING = "NONE";
         delay(1);
+
+        if(progStatus == STT_PROGRAM_SAVE){
+            loadAllProfileDates(); //Tải lại ngày giờ để chuẩn bị cho mẻ rang tiếp theo
+        }
     }
     //Huỷ auto close drop
     if(dropTimerEn==1 && DROP_BTN_R==0 && dropTimer>=1){

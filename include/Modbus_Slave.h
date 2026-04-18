@@ -18,7 +18,8 @@
 #define AIR_artisan_W               10
 #define GAS_artisan_W               11
 #define DRUM_artisan_W              20
-#define UNDER_artisan_W             21
+#define vacuumC_show_artisan        21
+#define vacuumC_artisan_W           22
 
 //HMI Button control
 #define IGNITION_artisan_W          12
@@ -37,8 +38,13 @@
 ModbusRTU mbs;   
 
 void ModbusSlaveConfig(){
-    SerialComputer.begin(modbusBaud_R); 
-    mbs.begin(&SerialComputer);
+    if(swSignal==0){
+        SerialBluetooth.begin(modbusBaud_R); 
+        mbs.begin(&SerialBluetooth);
+    }else{
+        SerialComputer.begin(modbusBaud_R);
+        mbs.begin(&SerialComputer);
+    }
     mbs.slave(modbusID_R);
 
     for(int i=0; i<MaxReg; i++){
@@ -64,10 +70,27 @@ void handle_Modbus_Slave() {
 
     // ── Khởi tạo lại Modbus Slave khi baudrate/ID thay đổi ──────
     if (idBaudSetEn) {
-        SerialComputer.begin(modbusBaud_R);
-        mbs.begin(&SerialComputer);
+        if(swSignal==0){
+            SerialBluetooth.begin(modbusBaud_R);
+            mbs.begin(&SerialBluetooth);
+        }else{
+            SerialComputer.begin(modbusBaud_R);
+            mbs.begin(&SerialComputer);
+        }
         mbs.slave(modbusID_R);
         idBaudSetEn = 0;
+    }
+
+    if(swSignalFallingEdge()){
+        SerialBluetooth.begin(modbusBaud_R);
+        mbs.begin(&SerialBluetooth);
+        SerialComputer.println("Switched to Serial Bluetooth for Modbus");
+    }
+
+    if(swSignalRisingEdge()){
+        SerialComputer.begin(modbusBaud_R);
+        mbs.begin(&SerialComputer);
+        SerialComputer.println("Switched to Serial Computer for Modbus");
     }
 
     // ── Ghi dữ liệu máy rang lên Artisan (Artisan chỉ đọc) ──────
@@ -79,8 +102,7 @@ void handle_Modbus_Slave() {
     mbs.Hreg(SV_show_artisan,  SV_BT);
     mbs.Hreg(START_artisan_W,  START_BTN_R);
     mbs.Hreg(UNDER_show_artisan, Diff_Air);   // Áp suất âm (underpressure)
-    mbs.Hreg(UNDER_artisan_W, vacuumSetpoint_R);   // Áp suất âm (underpressure)
-
+    
     // ── Đồng bộ setpoint từ máy rang lên Artisan ────────────────
     // Chỉ cập nhật khi KHÔNG dùng nguồn điều khiển từ PC (AI_PC)
     if (naviSourceGAS != SOURCE_AI_PC) {
@@ -88,6 +110,7 @@ void handle_Modbus_Slave() {
         mbs.Hreg(GAS_artisan_W,  gasPercent);
         mbs.Hreg(DRUM_artisan_W, drumPercent);
         mbs.Hreg(SV_artisan_W,   SV_BT);
+        mbs.Hreg(vacuumC_artisan_W,   vacuumSetpoint_R);
     }
 
     // ── Đọc setpoint từ Artisan ──────────────────────────────────
@@ -95,11 +118,19 @@ void handle_Modbus_Slave() {
     gasPC     = mbs.Hreg(GAS_artisan_W);
     drumPC    = mbs.Hreg(DRUM_artisan_W);
     svPC_CP   = mbs.Hreg(SV_artisan_W);
+    underSV_CP = mbs.Hreg(vacuumC_artisan_W);
 
     // Cập nhật SV, giới hạn tối đa 300°C (đơn vị ×10 = 3000)
     if (svPC != svPC_CP) {
         svPC = svPC_CP;
         if (svPC > 300 * 10) svPC = 300 * 10;
+    }
+
+    // Cập nhật SV
+    if (underSV_PC != underSV_CP) {
+        underSV_PC = underSV_CP;
+        if(underSV_PC > 250) underSV_PC = 250;   // Giới hạn áp suất âm tối đa -250 Pa
+        if(underSV_PC < 90) underSV_PC = 90;   // Giới hạn áp suất âm tối thiểu -80 Pa
     }
 
     // ── Chế độ PC_CONTROL: Artisan điều khiển HMI ───────────────
@@ -116,6 +147,12 @@ void handle_Modbus_Slave() {
         // Đồng bộ SV từ Artisan sang HMI
         if (svPC != btSV_R)
             nodeHMI.writeSingleRegister(btSV_W + 2000, svPC / 10);
+
+
+
+        // Đồng bộ underSV từ Artisan sang HMI
+        if (underSV_PC != vacuumSetpoint_R)
+            nodeHMI.writeSingleRegister(vacuumSetpoint_W + 2000, underSV_PC);
 
         // Macro đồng bộ nút nhấn: chỉ ghi HMI khi trạng thái thay đổi
         #define SYNC_BTN(cur, cp, reg) \
