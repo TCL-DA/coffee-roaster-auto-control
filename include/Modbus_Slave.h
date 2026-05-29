@@ -1,4 +1,3 @@
-#define SLAVE_ID 1  //Slave id
 #define MaxReg 27
 
 //Register
@@ -37,15 +36,24 @@
 
 ModbusRTU mbs;   
 
+uint32_t artisanModbusBaud(){
+    return (modbusBaud_R > 0) ? (uint32_t)modbusBaud_R : ARTISAN_MODBUS_BAUD_DEFAULT;
+}
+
+uint8_t artisanModbusID(){
+    return (modbusID_R > 0) ? (uint8_t)modbusID_R : ARTISAN_MODBUS_SLAVE_ID_DEFAULT;
+}
+
 void ModbusSlaveConfig(){
+    uint32_t baud = artisanModbusBaud();
     if(swSignal==0){
-        SerialBluetooth.begin(modbusBaud_R); 
+        SerialBluetooth.begin(baud);
         mbs.begin(&SerialBluetooth);
     }else{
-        SerialComputer.begin(modbusBaud_R);
+        SerialComputer.begin(baud);
         mbs.begin(&SerialComputer);
     }
-    mbs.slave(modbusID_R);
+    mbs.slave(artisanModbusID());
 
     for(int i=0; i<MaxReg; i++){
         mbs.addHreg(i);
@@ -67,28 +75,43 @@ void ModbusSlaveConfig(){
 //   PC_CONTROL  = 0: HMI điều khiển, Artisan chỉ hiển thị dữ liệu
 // ============================================================
 void handle_Modbus_Slave() {
+    bool autoSourceActive =
+        (naviSourceGAS  == SOURCE_AI_AUTO) ||
+        (naviSourceAIR  == SOURCE_AI_AUTO) ||
+        (naviSourceDRUM == SOURCE_AI_AUTO);
+#ifdef SOURCE_AI_VR_FROM_HMI
+    bool manualSetpointTwoWay =
+        !autoSourceActive;
+#else
+    bool manualSetpointTwoWay = false;
+#endif
 
     // ── Khởi tạo lại Modbus Slave khi baudrate/ID thay đổi ──────
     if (idBaudSetEn) {
+        uint32_t baud = artisanModbusBaud();
         if(swSignal==0){
-            SerialBluetooth.begin(modbusBaud_R);
+            SerialBluetooth.begin(baud);
             mbs.begin(&SerialBluetooth);
+            SerialComputer.println("Switched to Serial Bluetooth for Modbus");
         }else{
-            SerialComputer.begin(modbusBaud_R);
+            SerialComputer.begin(baud);
+            SerialBluetooth.begin(SCALE_SERIAL_BAUD);
             mbs.begin(&SerialComputer);
+            SerialComputer.println("Switched to Serial Computer for Modbus");
         }
-        mbs.slave(modbusID_R);
+        mbs.slave(artisanModbusID());
         idBaudSetEn = 0;
     }
 
     if(swSignalFallingEdge()){
-        SerialBluetooth.begin(modbusBaud_R);
+        SerialBluetooth.begin(artisanModbusBaud());
         mbs.begin(&SerialBluetooth);
         SerialComputer.println("Switched to Serial Bluetooth for Modbus");
     }
 
     if(swSignalRisingEdge()){
-        SerialComputer.begin(modbusBaud_R);
+        SerialComputer.begin(artisanModbusBaud());
+        SerialBluetooth.begin(SCALE_SERIAL_BAUD);
         mbs.begin(&SerialComputer);
         SerialComputer.println("Switched to Serial Computer for Modbus");
     }
@@ -105,7 +128,7 @@ void handle_Modbus_Slave() {
     
     // ── Đồng bộ setpoint từ máy rang lên Artisan ────────────────
     // Chỉ cập nhật khi KHÔNG dùng nguồn điều khiển từ PC (AI_PC)
-    if (naviSourceGAS != SOURCE_AI_PC) {
+    if (naviSourceGAS != SOURCE_AI_PC && !manualSetpointTwoWay) {
         mbs.Hreg(AIR_artisan_W,  airflowPercent);
         mbs.Hreg(GAS_artisan_W,  gasPercent);
         mbs.Hreg(DRUM_artisan_W, drumPercent);
@@ -133,6 +156,98 @@ void handle_Modbus_Slave() {
         if(underSV_PC < 90) underSV_PC = 90;   // Giới hạn áp suất âm tối thiểu -80 Pa
     }
 
+#ifdef SOURCE_AI_VR_FROM_HMI
+    // ── SOURCE_AI_VR_FROM_HMI, không AUTO: sync setpoint hai chiều HMI ↔ Artisan
+    // Nếu hai bên cùng đổi trong một vòng lặp, PC_CONTROL quyết định bên ưu tiên.
+    static bool setpointSyncInit = false;
+    static int16_t lastHmiAir = 0, lastHmiGas = 0, lastHmiDrum = 0, lastHmiVac = 0;
+    static int16_t lastPcAir  = 0, lastPcGas  = 0, lastPcDrum  = 0, lastPcVac  = 0;
+
+    if (!setpointSyncInit) {
+        lastHmiAir  = airSpeed_R;
+        lastHmiGas  = burnerValue_R;
+        lastHmiDrum = drumSpeed_R;
+        lastHmiVac  = vacuumSetpoint_R;
+        lastPcAir   = airflowPC;
+        lastPcGas   = gasPC;
+        lastPcDrum  = drumPC;
+        lastPcVac   = underSV_PC;
+        setpointSyncInit = true;
+    }
+
+    if (manualSetpointTwoWay) {
+        bool hmiAirChanged  = (airSpeed_R != lastHmiAir);
+        bool hmiGasChanged  = (burnerValue_R != lastHmiGas);
+        bool hmiDrumChanged = (drumSpeed_R != lastHmiDrum);
+        bool hmiVacChanged  = (vacuumSetpoint_R != lastHmiVac);
+
+        bool pcAirChanged   = (airflowPC != lastPcAir);
+        bool pcGasChanged   = (gasPC != lastPcGas);
+        bool pcDrumChanged  = (drumPC != lastPcDrum);
+        bool pcVacChanged   = (underSV_PC != lastPcVac);
+
+        if (hmiAirChanged && (!pcAirChanged || PC_CONTROL_BTN_R == 0)) {
+            airflowPC = constrain(airSpeed_R, 0, 100);
+            mbs.Hreg(AIR_artisan_W, airflowPC);
+        } else if (pcAirChanged) {
+            airflowPC = constrain(airflowPC, 0, 100);
+            airSpeed_R = airflowPC;
+            airSpeed_R_CP = airflowPC;
+            airflowPercent = airflowPC;
+            nodeHMI.writeSingleRegister(airSpeed_W + 2000, airflowPC);
+        }
+
+        if (MACHINE_HAS_GAS_CONTROL) {
+            if (hmiGasChanged && (!pcGasChanged || PC_CONTROL_BTN_R == 0)) {
+                gasPC = constrain(burnerValue_R, 0, 100);
+                mbs.Hreg(GAS_artisan_W, gasPC);
+            } else if (pcGasChanged) {
+                gasPC = constrain(gasPC, 0, 100);
+                burnerValue_R = gasPC;
+                burnerValue_R_CP = gasPC;
+                gasPercent = gasPC;
+                nodeHMI.writeSingleRegister(burnerValue_W + 2000, gasPC);
+            }
+        }
+
+        if (MACHINE_HAS_DRUM_SPEED_CONTROL) {
+            if (hmiDrumChanged && (!pcDrumChanged || PC_CONTROL_BTN_R == 0)) {
+                drumPC = constrain(drumSpeed_R, 0, 100);
+                mbs.Hreg(DRUM_artisan_W, drumPC);
+            } else if (pcDrumChanged) {
+                drumPC = constrain(drumPC, 0, 100);
+                drumSpeed_R = drumPC;
+                drumSpeed_R_CP = drumPC;
+                drumPercent = drumPC;
+                nodeHMI.writeSingleRegister(drumSpeed_W + 2000, drumPC);
+            }
+        }
+
+        if (MACHINE_HAS_VACUUM_SENSOR) {
+            if (hmiVacChanged && (!pcVacChanged || PC_CONTROL_BTN_R == 0)) {
+                underSV_PC = vacuumSetpoint_R;
+                if (underSV_PC > 250) underSV_PC = 250;
+                if (underSV_PC < 90)  underSV_PC = 90;
+                mbs.Hreg(vacuumC_artisan_W, underSV_PC);
+            } else if (pcVacChanged) {
+                vacuumSetpoint_R = underSV_PC;
+                vacuumSetpoint_R_CP = underSV_PC;
+                nodeHMI.writeSingleRegister(vacuumSetpoint_W + 2000, underSV_PC);
+                pidAirflowReset();
+            }
+        }
+    }
+
+    lastHmiAir  = airSpeed_R;
+    lastHmiGas  = burnerValue_R;
+    lastHmiDrum = drumSpeed_R;
+    lastHmiVac  = vacuumSetpoint_R;
+    lastPcAir   = airflowPC;
+    lastPcGas   = gasPC;
+    lastPcDrum  = drumPC;
+    lastPcVac   = underSV_PC;
+#endif
+
     // ── Chế độ PC_CONTROL: Artisan điều khiển HMI ───────────────
     if (PC_CONTROL_BTN_R == 1) {
 
@@ -144,6 +259,24 @@ void handle_Modbus_Slave() {
         MiCool_btn_PC_CP   = mbs.Hreg(MI_COOL_artisan_W);
         Start_btn_PC_CP    = mbs.Hreg(START_artisan_W);
 
+        if (!manualSetpointTwoWay && !autoSourceActive) {
+            // Sync Air/Gas/Drum setpoints from Artisan to HMI $M34-$M36
+            if (MACHINE_HAS_DRUM_SPEED_CONTROL && drumPC != drumSpeed_R_CP) {
+                drumPercent = drumPC;
+                nodeHMI.writeSingleRegister(drumSpeed_W + 2000, drumPercent);
+            }
+
+            if (airflowPC != airSpeed_R_CP) {
+                airflowPercent = airflowPC;
+                nodeHMI.writeSingleRegister(airSpeed_W + 2000, airflowPercent);
+            }
+
+            if (MACHINE_HAS_GAS_CONTROL && gasPC != burnerValue_R_CP) {
+                gasPercent = gasPC;
+                nodeHMI.writeSingleRegister(burnerValue_W + 2000, gasPercent);
+            }
+        }
+
         // Đồng bộ SV từ Artisan sang HMI
         if (svPC != btSV_R)
             nodeHMI.writeSingleRegister(btSV_W + 2000, svPC / 10);
@@ -151,7 +284,7 @@ void handle_Modbus_Slave() {
 
 
         // Đồng bộ underSV từ Artisan sang HMI
-        if (underSV_PC != vacuumSetpoint_R)
+        if (!manualSetpointTwoWay && !autoSourceActive && MACHINE_HAS_VACUUM_SENSOR && underSV_PC != vacuumSetpoint_R)
             nodeHMI.writeSingleRegister(vacuumSetpoint_W + 2000, underSV_PC);
 
         // Macro đồng bộ nút nhấn: chỉ ghi HMI khi trạng thái thay đổi

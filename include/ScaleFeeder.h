@@ -1,63 +1,92 @@
-String cumuStr = "";
-boolean sCumu = false;
-int  netW_int, netW_dec, netW;
+char scaleFrame[24];
+uint8_t scaleFramePos = 0;
+bool scaleFrameActive = false;
+bool scaleDataValid = false;
+int netW_int, netW_dec, netW;
 
 void ConfigScale(){
 
 }
 
-// ============================================================
-// readScale()
-// Đọc dữ liệu cân từ SerialBluetooth, parse chuỗi dạng:
-//   GS,    61.7,kg<CR><LF>
-//   GS,   -12.3,kg<CR><LF>
-//   GS,     0.0,kg<CR><LF>
-//
-// FIX: Bỏ hard-code index (cumuChar[11]==',') — dễ sai khi
-//      số chữ số thay đổi. Thay bằng:
-//   1. Kiểm tra prefix "GS," và suffix ",kg" động (indexOf)
-//   2. Dùng String.toFloat() để parse, tránh logic riêng
-//      cho số âm/dương
-//   3. Kết quả nhân x10 để giữ 1 chữ số thập phân dạng int
-// ============================================================
+// Đọc phần số của frame cân và đổi sang đơn vị x10 kg.
+static bool parseScaleWeight10(const char *start, const char *end, int *outValue){
+    while(start < end && *start == ' ') start++;
+
+    int sign = 1;
+    if(start < end && *start == '-'){
+        sign = -1;
+        start++;
+    }
+
+    int whole = 0;
+    bool hasDigit = false;
+    while(start < end && *start >= '0' && *start <= '9'){
+        hasDigit = true;
+        whole = (whole * 10) + (*start - '0');
+        start++;
+    }
+
+    int dec = 0;
+    if(start < end && *start == '.'){
+        start++;
+        if(start < end && *start >= '0' && *start <= '9'){
+            dec = *start - '0';
+            start++;
+        }
+    }
+
+    while(start < end && *start == ' ') start++;
+    if(!hasDigit || start != end) return false;
+
+    *outValue = sign * ((whole * 10) + dec);
+    return true;
+}
+
+// Đọc dữ liệu cân Bluetooth dạng "GS,    61.7,kg" và lưu netW theo x10 kg.
 void readScale(){
     while(SerialBluetooth.available()){
         char inChar = (char)SerialBluetooth.read();
 
-        // Bắt đầu tích lũy khi gặp 'G'
         if(inChar == 'G'){
-            sCumu = true;
-            cumuStr = "";
+            scaleFrameActive = true;
+            scaleFramePos = 0;
         }
 
-        if(sCumu){
-            cumuStr += inChar;
+        if(scaleFrameActive){
+            if(scaleFramePos < (sizeof(scaleFrame) - 1)){
+                scaleFrame[scaleFramePos++] = inChar;
+            }else{
+                scaleFrameActive = false;
+                scaleFramePos = 0;
+                scaleDataValid = false;
+            }
         }
 
-        // Kết thúc frame khi gặp CR hoặc LF
-        if((inChar == '\r' || inChar == '\n') && sCumu){
-            sCumu = false;
+        if((inChar == '\r' || inChar == '\n') && scaleFrameActive){
+            scaleFrameActive = false;
+            scaleFrame[scaleFramePos] = '\0';
 
-            // Kiểm tra prefix "GS," (tối thiểu 9 ký tự: "GS,0.0,kg")
-            if(cumuStr.length() >= 9 &&
-               cumuStr.charAt(0) == 'G' &&
-               cumuStr.charAt(1) == 'S' &&
-               cumuStr.charAt(2) == ',')
+            char *kgPtr = strstr(scaleFrame, ",kg");
+            if(scaleFramePos >= 9 &&
+               scaleFrame[0] == 'G' &&
+               scaleFrame[1] == 'S' &&
+               scaleFrame[2] == ',' &&
+               kgPtr != NULL &&
+               kgPtr > (scaleFrame + 3))
             {
-                // Tìm ",kg" động — không hard-code index
-                int kgIdx = cumuStr.indexOf(",kg");
-                if(kgIdx > 3){
-                    // Cắt phần số: từ sau "GS," đến trước ",kg"
-                    String numStr = cumuStr.substring(3, kgIdx);
-                    numStr.trim(); // Xóa khoảng trắng hai đầu
-
-                    // Parse float rồi nhân x10 → int (giữ 1 chữ số thập phân)
-                    float val = numStr.toFloat();
-                    netW = (int)(val * 10.0f);
+                int parsedNetW = 0;
+                if(parseScaleWeight10(scaleFrame + 3, kgPtr, &parsedNetW)){
+                    netW = parsedNetW;
+                    updateNetWTi = 0;
+                    scaleDataValid = true;
+                }else{
+                    scaleDataValid = false;
                 }
+            }else{
+                scaleDataValid = false;
             }
 
-            cumuStr = "";
+            scaleFramePos = 0;
         }
     }
 }
