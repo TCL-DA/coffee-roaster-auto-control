@@ -144,7 +144,7 @@ void timerPoll_1000ms(){
     // Preheat timer -- count up every second (no Modbus here, ISR context)
     if (wuState == WU_IGNITE) {
         wuIgniteTimer++;
-    } else if (wuState == WU_HEATING || wuState == WU_HOLDING) {
+    } else if (wuState == WU_HEATING || wuState == WU_HOLDING || wuState == WU_PRECISION) {
         wuElapsed++;
     }
 

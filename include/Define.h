@@ -119,7 +119,7 @@ boolean memBuzzerEn = false;
 boolean idBaudSetEn = false;        //Báº­t cáº­p nháº­p id vÃ  baudrate modbus
 
 //Debug
-boolean enDebug = 0; //Bật tắt debug qua Serial Computer
+boolean enDebug = 1; //Bật tắt debug qua Serial Computer
 volatile bool fireCutFlag = false;  // ISR sets this when BT > 250C, loop() handles Modbus
 volatile bool forceDrumFanOnFlag = false;  // ISR sets this when BT/ET > 80C, loop() handles Modbus
 

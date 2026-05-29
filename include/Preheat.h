@@ -95,6 +95,7 @@ static uint16_t  phCoolDbgTimer        = 0;
 static WuStartMode phStartMode         = START_COLD;
 static uint32_t  phPreIgniteStartMs    = 0;
 static uint8_t   phRecoveryExitCount   = 0;  // đếm giây BT đã về vùng an toàn sau RECOVERY
+static uint8_t   phDbgTick             = 0;  // đếm giây để throttle debug 3s/lần
 static uint16_t  phCsvLastElapsed      = 65535;
 static File      phCsvFile;
 static uint8_t   phCsvReason           = 0;  // reason enum cho dòng CSV hiện tại
@@ -231,11 +232,18 @@ static uint16_t phSlewLastSec = 65535;
 static int16_t  phSlewLastGas = 0;
 static int16_t  phSlewLastAir = 0;
 inline void phApplySlewLimit(bool inRecoveryNow) {
-    if (phSlewLastSec == wuElapsed) return;  // chỉ apply mỗi giây
+    if (phSlewLastSec == wuElapsed) return;
     phSlewLastSec = wuElapsed;
 
-    int16_t gasRate = inRecoveryNow ? 30 : 5;  // RECOVERY cho phép cut 30%/s
-    int16_t airRate = 3;                        // air luôn 3%/s
+    // PRE_IGNITE/COOLING/COAST cần set air nhanh — không áp slew
+    if (wuState == WU_PRE_IGNITE || wuState == WU_COOLING || wuState == WU_COAST) {
+        phSlewLastGas = gasPercent;
+        phSlewLastAir = airflowPercent;
+        return;
+    }
+
+    int16_t gasRate = inRecoveryNow ? 30 : 5;
+    int16_t airRate = inRecoveryNow ? 10 : 5;  // air 5%/s bình thường, 10%/s recovery
 
     int16_t newGas = phSlewLimit(phSlewLastGas, gasPercent, gasRate);
     int16_t newAir = phSlewLimit(phSlewLastAir, airflowPercent, airRate);
@@ -313,7 +321,7 @@ void phCsvClose() {
 void phAdaptLoad() {
     phAdaptGasBoost  = 0;
     phAdaptHeatAir   = PH_ADAPT_AIR_DEF;
-    phAdaptCoastMul  = 10;
+    phAdaptCoastMul  = burnerPremix_R ? 15 : 10;  // premix: coast dài hơn, bắt đầu từ 15
     phAdaptLossRate10 = 12;
     phAdaptGasGain10  = 30;
     phAdaptRuns      = 0;
@@ -412,6 +420,12 @@ void phRunStart(int16_t targetBT10) {
     phRunTargetBT10        = targetBT10;
     phRunStartBT10         = (uint16_t)Temperature_BT;
     phRunMaxBT10           = (uint16_t)Temperature_BT;
+    // Init sensor history với nhiệt độ thực để tránh false alarm lúc khởi động
+    for (uint8_t i = 0; i < 5; i++) {
+        phBtHistory[i] = (int16_t)Temperature_BT;
+        phEtHistory[i] = (int16_t)Temperature_ET;
+    }
+    phFaultFlags &= ~PH_FAULT_SENSOR_DROP;  // clear false alarm từ run trước
     phRunSampleCount       = 0;
     phRunGasSum            = 0;
     phRunAirSum            = 0;
@@ -672,6 +686,8 @@ void phThermalMonitor() {
     // ET đang giảm (dRorET < -10) → nhiệt vào đang yếu dần → base ~8s
     // ET còn cao và ổn định       → nhiệt vào vẫn mạnh    → base ~15s
     int16_t coastBase = (dRorET < -10) ? 2 : 4;
+    // Premix burner: buồng trộn thêm lag nhiệt → coast dài hơn 1.5×
+    if (burnerPremix_R) coastBase = coastBase * 3 / 2;
     int16_t coastSec  = (int16_t)(coastBase * phAdaptCoastMul / 10);  // scale ×0.1
 
     // BT coast = rorBT × coastSec / 60 (đổi từ °C/min sang °C trong coastSec giây)
@@ -727,16 +743,43 @@ int8_t preheatBurnerControl(uint8_t mode, int16_t targetBT10, uint16_t heatDeadl
     bool    fcastWillDrop = (rorFcast < rorNow - 50);
     bool    stalling      = (rorNow < 20 && dRorBT <= 0 && btError > 100);
 
-    if (enDebug) {
-        SerialComputer.print("MON BT=");    SerialComputer.print(btNow/10);
-        SerialComputer.print(" coast=");    SerialComputer.print(phBtCoast/10);
-        SerialComputer.print("C->if0=");    SerialComputer.print(btIfCutNow/10);
-        SerialComputer.print(" RoR=");      SerialComputer.print(rorNow);
-        SerialComputer.print(" dRoR=");     SerialComputer.print(dRorBT);
-        SerialComputer.print(" ETload=");   SerialComputer.print(phEtHeatLoad);
-        SerialComputer.print(" ov=");       SerialComputer.print(willOvershoot);
-        SerialComputer.print(" ETcfm=");    SerialComputer.print(phEtConfirm);
-        SerialComputer.print(" ETbase=");   SerialComputer.println(phEtAtStep);
+    if (enDebug && (++phDbgTick >= 3)) {
+        phDbgTick = 0;
+        // Timestamp mm:ss
+        uint16_t tMin = wuElapsed / 60, tSec = wuElapsed % 60;
+        SerialComputer.print("[");
+        SerialComputer.print(tMin); SerialComputer.print(":");
+        if (tSec < 10) SerialComputer.print("0");
+        SerialComputer.print(tSec); SerialComputer.print("] ");
+        // State
+        const char* stateStr = "?";
+        switch (wuState) {
+            case WU_HEATING:   stateStr = "HEAT"; break;
+            case WU_HOLDING:   stateStr = "HOLD"; break;
+            case WU_PRECISION: stateStr = "PREC"; break;
+            default: break;
+        }
+        SerialComputer.print(stateStr);
+        // Target (có thể thay đổi mid-preheat)
+        SerialComputer.print(" tgt="); SerialComputer.print((int16_t)wuTemp_R);
+        SerialComputer.print("C/");    SerialComputer.print((int16_t)wuTime_R); SerialComputer.print("m");
+        // Nhiệt độ
+        SerialComputer.print(" BT=");  SerialComputer.print(btNow/10);
+        SerialComputer.print(" ET=");  SerialComputer.print((int16_t)Temperature_ET/10);
+        // Gas / Air
+        SerialComputer.print(" gas="); SerialComputer.print(wuGasPercent);
+        SerialComputer.print(" air="); SerialComputer.print(wuAirPercent);
+        // RoR
+        SerialComputer.print(" RoR="); SerialComputer.print(rorNow/10);  // °C/min thực
+        SerialComputer.print(" sm=");  SerialComputer.print(rorBT_smooth/10);
+        // Predict / overshoot
+        SerialComputer.print(" pred="); SerialComputer.print(btIfCutNow/10);
+        SerialComputer.print(" ov=");   SerialComputer.print(willOvershoot ? "Y" : "N");
+        // Coast
+        SerialComputer.print(" coast="); SerialComputer.print(phBtCoast/10);
+        // Fault
+        if (phFaultFlags) { SerialComputer.print(" FLT=0x"); SerialComputer.print(phFaultFlags, HEX); }
+        SerialComputer.println();
     }
 
     auto recordStep = [&]() {
@@ -759,12 +802,16 @@ int8_t preheatBurnerControl(uint8_t mode, int16_t targetBT10, uint16_t heatDeadl
         bool approachTarget = (btError <= PH_APPROACH_BAND);
 
         // Tính gas nền cần đạt khi còn xa target
+        // rampCap học từ ADAPT: mỗi lần overshoot → boost giảm → rampCap giảm → ramp thấp hơn
+        int16_t rampCap80 = constrain(80 + phAdaptGasBoost, 40, 80);
+        int16_t rampCap70 = constrain(70 + phAdaptGasBoost, 35, 70);
+        int16_t rampCap90 = constrain(90 + phAdaptGasBoost, 45, 90);
         int16_t rampTarget = phStartGasTarget;
         if (farFromTarget) {
-            if (wuElapsed < WU_HEAT_TIME_SEC && btError > 600) rampTarget = max(rampTarget, (int16_t)80);
-            if (heatDeadlineSec < 120 && btError > 600)        rampTarget = max(rampTarget, (int16_t)70);
-            if (heatDeadlineSec <  90 && btError > 450)        rampTarget = max(rampTarget, (int16_t)80);
-            if (heatDeadlineSec <  60 && btError > 300)        rampTarget = max(rampTarget, (int16_t)90);
+            if (wuElapsed < WU_HEAT_TIME_SEC && btError > 600) rampTarget = max(rampTarget, rampCap80);
+            if (heatDeadlineSec < 120 && btError > 600)        rampTarget = max(rampTarget, rampCap70);
+            if (heatDeadlineSec <  90 && btError > 450)        rampTarget = max(rampTarget, rampCap80);
+            if (heatDeadlineSec <  60 && btError > 300)        rampTarget = max(rampTarget, rampCap90);
         }
 
         // ET-aware brake: nếu tắt gas ngay sẽ vọt lố → phanh ngay bất kể dead time
@@ -899,6 +946,7 @@ void wuReset(bool normalEnd = false) {
     phSlewLastAir = 0;
     phPreIgniteStartMs = 0;
     phRecoveryExitCount = 0;
+    phDbgTick = 0;
     wuIgniteTimer         = 0;
     phRorAtStep = phRorPrev = 0;
     gasPercent = airflowPercent = 0;
@@ -945,6 +993,19 @@ void preheat() {
     if (WU_R == 0) return;
 
     int16_t targetBT10 = (int16_t)wuTemp_R * 10;
+
+    // Log khi target hoặc thời gian được thay đổi giữa chừng
+    static int16_t  phLastLogTarget = 0;
+    static uint16_t phLastLogTime   = 0;
+    if (enDebug && wuState >= WU_HEATING) {
+        if (targetBT10 != phLastLogTarget || (uint16_t)wuTime_R != phLastLogTime) {
+            SerialComputer.print("[CHANGE] tgt="); SerialComputer.print(wuTemp_R);
+            SerialComputer.print("C time=");       SerialComputer.print(wuTime_R);
+            SerialComputer.println("m");
+            phLastLogTarget = targetBT10;
+            phLastLogTime   = (uint16_t)wuTime_R;
+        }
+    }
 
     switch (wuState) {
 
@@ -1047,11 +1108,20 @@ void preheat() {
         else if ((int16_t)Temperature_ET >= targetBT10 && (int16_t)Temperature_BT >= targetBT10 - 150)
                                                                wuGasPercent = min(wuGasPercent, (int16_t)20);
         phStartGasTarget = constrain(wuGasPercent, 5, 100);
-        if ((targetBT10 - (int16_t)Temperature_BT) > PH_NEAR_TARGET_BAND) {
-            // Gas nền tỉ lệ với gap: gap 80°C→50%, gap 120°C→65% — tránh gas quá cao khi target thấp
+        {
             int16_t gap = targetBT10 - (int16_t)Temperature_BT;
-            int16_t dynFloor = constrain(gap / 20 + 35, 45, PH_FAR_GAS_FLOOR);
-            phStartGasTarget = max(phStartGasTarget, dynFloor);
+            int16_t holdMinCalc = constrain(targetBT10 / 100 + 4, 15, 35);
+            if (gap > 0 && gap <= 800) {
+                // Gap nhỏ (≤80°C): không ramp, dùng holdMin + nhỏ thêm theo gap
+                // Tránh tích nhiệt khi target thấp — BT tự tăng nhẹ
+                int16_t softGas = constrain(holdMinCalc + gap / 80, holdMinCalc, holdMinCalc + 10);
+                wuGasPercent    = softGas;
+                phStartGasTarget = softGas;
+            } else if (gap > PH_NEAR_TARGET_BAND) {
+                // Gap lớn: gas nền tỉ lệ với gap
+                int16_t dynFloor = constrain(gap / 20 + 35, 45, PH_FAR_GAS_FLOOR);
+                phStartGasTarget = max(phStartGasTarget, dynFloor);
+            }
         }
         wuAirPercent = constrain(phAdaptHeatAir, 0, 40);
         if (enDebug) {
@@ -1111,6 +1181,7 @@ void preheat() {
     break;
 
     case WU_IGNITE: {
+        gasPercent = 30;  // mở 30% gas tối thiểu để mồi lửa — relay đã mở, DAC cần đủ áp
         if (gasSignal == 1) {
             setMachineStatus(STT_PREHEAT_IGNITE_OK);
             wuState = WU_HEATING; wuElapsed = 0; wuDeadTimer = 5; wuIgniteTimer = 0;
@@ -1143,12 +1214,6 @@ void preheat() {
         phThermalMonitor();
         if (enDebug && wuElapsed >= 10 && wuElapsed <= 12 && rorET <= 0)
             SerialComputer.println("PREHEAT WARN: rorET not rising at 10s");
-        if (enDebug && wuElapsed % 5 == 0) {
-            SerialComputer.print("HEAT rorET="); SerialComputer.print(rorET);
-            SerialComputer.print(" ET-BT=");     SerialComputer.print(((int16_t)Temperature_ET-(int16_t)Temperature_BT)/10);
-            SerialComputer.print("C gas=");      SerialComputer.println(wuGasPercent);
-        }
-
         tunePercent = phCalcProgress(targetBT10);
         nodeHMI.writeSingleRegister(MIN_HMI_W - 1, wuElapsed / 60);
         nodeHMI.writeSingleRegister(SEC_HMI_W - 1, wuElapsed % 60);
@@ -1183,20 +1248,28 @@ void preheat() {
                 if (wuAirPercent < 30) wuAirPercent = 30;
                 airflowPercent = constrain(wuAirPercent, 0, 80);
             }
-            if (enDebug) { SerialComputer.print("PREHEAT: -> HOLDING gas="); SerialComputer.println(wuGasPercent); }
+            if (enDebug) {
+                uint16_t tM = wuElapsed/60, tS = wuElapsed%60;
+                SerialComputer.print("PREHEAT: -> HOLDING [");
+                SerialComputer.print(tM); SerialComputer.print(":");
+                if (tS < 10) SerialComputer.print("0");
+                SerialComputer.print(tS); SerialComputer.print("] gas=");
+                SerialComputer.print(wuGasPercent);
+                SerialComputer.print(" BT="); SerialComputer.print((int16_t)Temperature_BT/10);
+                SerialComputer.println("C");
+            }
             break;
         }
 
-        // ET đã vượt target → hãm lửa sớm tránh quán tính
-        if (((int16_t)Temperature_ET >= targetBT10 - 50 && btError <= 150) || (btError <= 150 && rorBT > 30)) {
-            if (phCtrlDeadTimer > 0) {
-                if (phCtrlLastDeadElapsed != wuElapsed) { phCtrlLastDeadElapsed = wuElapsed; phCtrlDeadTimer--; }
-            } else if (wuGasPercent > 0) {
-                wuGasPercent = constrain(wuGasPercent - 5, 0, 100);
-                phCtrlDeadTimer = PH_CTRL_DEAD_SEC;
-            }
+        // ET đã vượt target → hãm lửa sớm, không dùng dead time (quá chậm)
+        if (((int16_t)Temperature_ET >= targetBT10 - 50 && btError <= 150) || (btError <= 150 && rorBT_smooth > 30)) {
+            int16_t holdMin  = constrain(targetBT10 / 100 + 4, 15, 35);
+            int16_t targetGas = holdMin + 5;
+            // Cắt gas nhanh về gần holdMin — không dead time
+            if      (wuGasPercent > targetGas + 3) wuGasPercent = constrain(wuGasPercent - 8, holdMin, 100);
+            else if (wuGasPercent > targetGas)      wuGasPercent = targetGas;
             gasPercent = wuGasPercent;
-            if (wuAirPercent < 30) wuAirPercent = 30;
+            if (wuAirPercent < 35) wuAirPercent = 35;
             airflowPercent = constrain(wuAirPercent, 0, PH_HEAT_AIR_MAX);
             phRunSample();
             if (enDebug) SerialComputer.println("PREHEAT: hot approach");
@@ -1216,41 +1289,57 @@ void preheat() {
             }
         }
 
-        // ── APPROACH: btError trong [50, 300] (5-30°C) — targetGas + slew rate, KHÔNG dead time ──
-        // Tính gas đích từ predict, slew rate đến đó để tránh dao động
-        if (btError > 50 && btError <= PH_APPROACH_BAND) {
-            int16_t btPredict = (int16_t)Temperature_BT + rorBT_smooth / 2;  // dùng smooth để tránh jitter
-            int16_t overrun   = btPredict - targetBT10;
-            int16_t holdMin   = constrain(targetBT10 / 100 + 4, 15, 35);
-            int16_t baseGas   = holdMin + 10;  // baseline APPROACH
-            int16_t targetGas;
-            if (overrun > 0) {
-                int16_t reduction = constrain(overrun / 50 * 5, 0, 30);
-                targetGas = constrain(baseGas - reduction, holdMin, baseGas);
-            } else {
-                targetGas = baseGas;
-            }
-            // Slew rate gas: ±3%/s với deadband ±2
-            if      (wuGasPercent > targetGas + 2) wuGasPercent = constrain(wuGasPercent - 3, 0, 100);
-            else if (wuGasPercent < targetGas - 2) wuGasPercent = constrain(wuGasPercent + 3, 0, 100);
-            else                                    wuGasPercent = targetGas;
-            phCtrlDeadTimer = 0;
+        // ── APPROACH: phanh chỉ khi RoR đang DƯ so với cần để đạt target đúng hạn ──
+        // Nếu đang chậm hơn cần thiết → không phanh, để preheatBurnerControl tăng tốc
+        if (btError > 50 && btError <= 600) {
+            uint16_t timeLeft = (wuElapsed < WU_HEAT_TIME_SEC) ? WU_HEAT_TIME_SEC - wuElapsed : 1;
+            // RoR cần thiết để đạt target trong thời gian còn lại (×10 unit)
+            int16_t rorNeeded = (int16_t)constrain((int32_t)btError * 60 / timeLeft, 10, 3000);
 
-            // Air tăng dần lên 40% với slew rate ±2%/s
-            int16_t airTarget = 40;
-            if      (wuAirPercent < airTarget - 1) wuAirPercent = constrain(wuAirPercent + 2, 0, 40);
-            else if (wuAirPercent > airTarget + 1) wuAirPercent = constrain(wuAirPercent - 2, 0, 40);
+            // Nếu RoR hiện tại chậm hơn cần thiết → không vào APPROACH
+            // preheatBurnerControl sẽ xử lý và tăng gas nếu cần
+            if (rorBT_smooth < rorNeeded - 100) goto skip_approach;
 
-            if (enDebug) {
-                SerialComputer.print("APPR tgtGas="); SerialComputer.print(targetGas);
-                SerialComputer.print(" gas=");        SerialComputer.print(wuGasPercent);
-                SerialComputer.print(" pred=");       SerialComputer.print(btPredict / 10);
-                SerialComputer.print(" over=");       SerialComputer.println(overrun);
+            {
+                // Premix: lag dài hơn → predict 45s thay vì 30s
+                int16_t btPredict = (int16_t)Temperature_BT + (burnerPremix_R ? rorBT_smooth * 3 / 4 : rorBT_smooth / 2);
+                int16_t overrun   = btPredict - targetBT10;
+                int16_t holdMin   = constrain(targetBT10 / 100 + 4, 15, 35);
+                int16_t targetGas;
+                int16_t slewRate;
+
+                if (overrun <= 0) goto skip_approach;  // không vọt → không phanh
+
+                // Phanh tỉ lệ với mức RoR dư
+                int16_t excess = rorBT_smooth - rorNeeded;
+                if (excess > 1000) { targetGas = holdMin;     slewRate = 20; }
+                else if (excess > 500) { targetGas = holdMin + 5;  slewRate = 10; }
+                else               { targetGas = holdMin + 10; slewRate = 5; }
+
+                if      (wuGasPercent > targetGas + 2) wuGasPercent = constrain(wuGasPercent - slewRate, holdMin, 100);
+                else if (wuGasPercent < targetGas - 2) wuGasPercent = constrain(wuGasPercent + 3, 0, 100);
+                else                                    wuGasPercent = targetGas;
+                phCtrlDeadTimer = 0;
+
+                int16_t airTarget = (excess > 500) ? 45 : 35;
+                if      (wuAirPercent < airTarget - 1) wuAirPercent = constrain(wuAirPercent + 3, 0, 50);
+                else if (wuAirPercent > airTarget + 1) wuAirPercent = constrain(wuAirPercent - 2, 0, 50);
+
+                if (enDebug && ++phDbgTick >= 3) {
+                    phDbgTick = 0;
+                    SerialComputer.print("APPR BT=");    SerialComputer.print((int16_t)Temperature_BT/10);
+                    SerialComputer.print(" need=");       SerialComputer.print(rorNeeded/10);
+                    SerialComputer.print(" cur=");        SerialComputer.print(rorBT_smooth/10);
+                    SerialComputer.print(" over=");       SerialComputer.print(overrun/10);
+                    SerialComputer.print("C gas=");       SerialComputer.print(wuGasPercent);
+                    SerialComputer.print(" air=");        SerialComputer.println(wuAirPercent);
+                }
+                gasPercent     = constrain(wuGasPercent, 0, 100);
+                airflowPercent = constrain(wuAirPercent, 0, PH_HEAT_AIR_MAX);
+                phRunSample();
+                break;
             }
-            gasPercent     = constrain(wuGasPercent, 0, 100);
-            airflowPercent = constrain(wuAirPercent, 0, PH_HEAT_AIR_MAX);
-            phRunSample();
-            break;
+            skip_approach:;
         }
 
         int8_t step = preheatBurnerControl(0, targetBT10, (wuElapsed < WU_HEAT_TIME_SEC) ? WU_HEAT_TIME_SEC - wuElapsed : 1);
@@ -1291,25 +1380,59 @@ void preheat() {
         int16_t btHoldErr = targetBT10 - (int16_t)Temperature_BT;
 
         // ── RECOVERY: BT vọt lố hoặc đang tăng nhanh → gas về sàn ngay, air theo rorBT ──
-        // Hysteresis: inRecovery chỉ tắt sau khi BT < target+5°C VÀ rorBT_smooth < 10 trong 5s liên tục
-        bool rawRecovery = ((int16_t)Temperature_BT > targetBT10 + 100 || rorBT_smooth > 30);
-        if (!rawRecovery && (int16_t)Temperature_BT < targetBT10 + 50 && rorBT_smooth < 100) {
+        // Entry: BT > target+15°C hoặc rorBT_smooth > 40 (nâng ngưỡng tránh kẹt)
+        // Exit hysteresis: BT < target+10°C VÀ rorBT_smooth < 80 trong 5s liên tục
+        // RoR guard chỉ kích hoạt khi BT đã ở target trở lên — tránh chặn PI khi BT còn thấp
+        bool rawRecovery = ((int16_t)Temperature_BT > targetBT10 + 150)
+                        || ((int16_t)Temperature_BT >= targetBT10 && rorBT_smooth > 40);
+        // BT dưới target → thoát RECOVERY ngay, không check RoR (muốn BT tăng lên target)
+        if ((int16_t)Temperature_BT < targetBT10) {
+            phRecoveryExitCount = 5;
+            rawRecovery = false;
+        } else if (!rawRecovery && (int16_t)Temperature_BT < targetBT10 + 100 && rorBT_smooth < 80) {
             if (phRecoveryExitCount < 5) phRecoveryExitCount++;
         } else if (rawRecovery) {
             phRecoveryExitCount = 0;
         }
         bool inRecovery = rawRecovery || (phRecoveryExitCount < 5);
         if (inRecovery) {
-            if (wuGasPercent > holdGasMin) {
-                wuGasPercent = holdGasMin;
+            // Gas floor theo mức overshoot (không về 0 để lửa không tắt):
+            // BT > target+20°C → 8% (minimum để giữ lửa)
+            // BT > target+10°C → 12% (giảm nhiệt, BT tự rơi)
+            // BT < target+10°C → holdGasMin (ổn định lại)
+            int16_t overBT = (int16_t)Temperature_BT - targetBT10;
+            int16_t recFloor = (overBT > 200)       ? 8
+                             : (overBT > 100)       ? 12
+                             : (rorBT_smooth > 800) ? 8    // RoR >80°C/min gần target → cắt mạnh
+                             : (rorBT_smooth > 400) ? 12   // RoR >40°C/min gần target → cắt vừa
+                             : holdGasMin;
+            if (wuGasPercent > recFloor) {
+                wuGasPercent = recFloor;
                 phStableCount = 0;
-                if (enDebug) { SerialComputer.print("HOLD REC gas->"); SerialComputer.println(wuGasPercent); }
             }
-            // Air loop: chạy sau khi gas đã về sàn — theo rorBT
-            if      (rorBT >  0)  wuAirPercent = constrain(wuAirPercent + 10, 0, holdAirMax); // BT vẫn tăng → air mạnh
-            else if (rorBT > -20) wuAirPercent = constrain(wuAirPercent +  5, 0, holdAirMax); // BT giảm chậm → air vừa
-            else                  wuAirPercent = constrain(wuAirPercent - 10, holdAirLow, holdAirMax); // BT giảm nhanh → hạ air
-            if (enDebug) { SerialComputer.print("HOLD REC air="); SerialComputer.println(wuAirPercent); }
+            // Air càng cao càng tốt khi BT còn trên target — scale theo mức vượt
+            int16_t airMaxRec = (overBT > 300) ? 100
+                              : (overBT > 200) ? 80
+                              : (overBT > 100) ? 60
+                              : 50;
+            if      (rorBT_smooth >  0)  wuAirPercent = constrain(wuAirPercent + 10, 0, airMaxRec);
+            else if (rorBT_smooth > -20) wuAirPercent = constrain(wuAirPercent +  5, 0, airMaxRec);
+            else                         wuAirPercent = constrain(wuAirPercent - 10, holdAirLow, airMaxRec);
+            // 1 dòng mỗi 3s, có đầy đủ BT/ET/gas/air/RoR
+            if (enDebug && ++phDbgTick >= 3) {
+                phDbgTick = 0;
+                uint16_t tMin = wuElapsed / 60, tSec = wuElapsed % 60;
+                SerialComputer.print("["); SerialComputer.print(tMin); SerialComputer.print(":");
+                if (tSec < 10) SerialComputer.print("0");
+                SerialComputer.print(tSec); SerialComputer.print("] ");
+                SerialComputer.print("HOLD_REC BT="); SerialComputer.print((int16_t)Temperature_BT/10);
+                SerialComputer.print(" ET=");         SerialComputer.print((int16_t)Temperature_ET/10);
+                SerialComputer.print(" tgt=");        SerialComputer.print(targetBT10/10);
+                SerialComputer.print(" over=");       SerialComputer.print(overBT/10);
+                SerialComputer.print("C gas=");       SerialComputer.print(wuGasPercent);
+                SerialComputer.print(" air=");        SerialComputer.print(wuAirPercent);
+                SerialComputer.print(" RoR=");        SerialComputer.println(rorBT_smooth/10);
+            }
         } else {
         // ── STABLE: BT gần target, RoR nhỏ → step ±5% mỗi 20s ──────────────────
             int8_t step = preheatBurnerControl(1, targetBT10, 0);
@@ -1381,19 +1504,45 @@ void preheat() {
         int16_t error    = targetBT10 - (int16_t)Temperature_BT;  // °C × 10
         int16_t holdMin  = constrain(targetBT10 / 100 + 4, 15, 35);
         int16_t baseGas  = holdMin + 5;
-        // Dùng rorBT_smooth cho RECOVERY trigger để tránh false trigger do jitter
-        bool    inRecovery = ((int16_t)Temperature_BT > targetBT10 + 100 || rorBT_smooth > 30);
+        // BT dưới target → không bao giờ RECOVERY (muốn BT tăng lên target)
+        // Threshold RoR cao hơn HOLDING: PI xử lý được khi RoR < 30°C/min
+        bool    inRecovery = ((int16_t)Temperature_BT >= targetBT10)
+                          && (((int16_t)Temperature_BT > targetBT10 + 150)
+                           || (rorBT_smooth > 300));
 
         if (inRecovery) {
-            // RECOVERY override: bỏ PI, gas về sàn ngay, reset I (state cũ không còn đúng)
-            phPiIAccum = 0;
-            wuGasPercent = holdMin;
-            if      (rorBT >  0)  wuAirPercent = constrain(wuAirPercent + 10, 0, 40);
-            else if (rorBT > -20) wuAirPercent = constrain(wuAirPercent +  5, 0, 40);
-            else                  wuAirPercent = constrain(wuAirPercent - 10, 20, 40);
+            // Không reset I=0 — để I tích lũy qua các chu kỳ, hội tụ về steady-state
+            // Chỉ clamp I về 0 nếu đang dương (overshoot → không để I dương góp thêm nhiệt)
+            if (phPiIAccum > 0) phPiIAccum = 0;
+            int16_t overBT = (int16_t)Temperature_BT - targetBT10;
+            int16_t recFloor = (overBT > 200)       ? 8
+                             : (overBT > 100)       ? 12
+                             : (rorBT_smooth > 800) ? 8    // RoR >80°C/min gần target → cắt mạnh
+                             : (rorBT_smooth > 400) ? 12   // RoR >40°C/min gần target → cắt vừa
+                             : holdMin;
+            wuGasPercent = recFloor;
+            int16_t airMaxRec = (overBT > 300) ? 100
+                              : (overBT > 200) ? 80
+                              : (overBT > 100) ? 60
+                              : 50;
+            if      (rorBT_smooth >  0)  wuAirPercent = constrain(wuAirPercent + 10, 0, airMaxRec);
+            else if (rorBT_smooth > -20) wuAirPercent = constrain(wuAirPercent +  5, 0, airMaxRec);
+            else                         wuAirPercent = constrain(wuAirPercent - 10, 20, airMaxRec);
             phStableCount = 0;
-            if (enDebug) { SerialComputer.print("PREC REC gas="); SerialComputer.print(wuGasPercent);
-                           SerialComputer.print(" air=");           SerialComputer.println(wuAirPercent); }
+            if (enDebug && ++phDbgTick >= 3) {
+                phDbgTick = 0;
+                uint16_t tMin = wuElapsed / 60, tSec = wuElapsed % 60;
+                SerialComputer.print("["); SerialComputer.print(tMin); SerialComputer.print(":");
+                if (tSec < 10) SerialComputer.print("0");
+                SerialComputer.print(tSec); SerialComputer.print("] ");
+                SerialComputer.print("PREC_REC BT="); SerialComputer.print((int16_t)Temperature_BT/10);
+                SerialComputer.print(" ET=");          SerialComputer.print((int16_t)Temperature_ET/10);
+                SerialComputer.print(" tgt=");         SerialComputer.print(targetBT10/10);
+                SerialComputer.print(" over=");        SerialComputer.print(overBT/10);
+                SerialComputer.print("C gas=");        SerialComputer.print(wuGasPercent);
+                SerialComputer.print(" air=");         SerialComputer.print(wuAirPercent);
+                SerialComputer.print(" RoR=");         SerialComputer.println(rorBT_smooth/10);
+            }
         } else {
             // PI controller — scaling đúng đơn vị (%/°C trực tiếp)
             // P term: ~0.5% gas trên 1°C error, cap ±5%
@@ -1406,7 +1555,9 @@ void preheat() {
             phPiIAccum  = constrain(phPiIAccum, (int32_t)-2000, (int32_t)2000);
             int16_t iTerm = (int16_t)(phPiIAccum / 400);
 
-            wuGasPercent = constrain(baseGas + pTerm + iTerm, holdMin, 45);
+            // Khi BT >= target: cap gas ở holdMin — không thêm nhiệt khi đã vượt target
+            int16_t gasMax = ((int16_t)Temperature_BT >= targetBT10) ? holdMin : 45;
+            wuGasPercent = constrain(baseGas + pTerm + iTerm, holdMin, gasMax);
 
             // Air linh hoạt với guard ET/rorBT, slew rate ±2%/s
             int16_t airTarget = 25;
