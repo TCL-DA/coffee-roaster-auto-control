@@ -1,0 +1,39 @@
+# Tài liệu dự án OTL-06ALS
+
+Tài liệu được phân loại theo tiền tố (xem quy luật đặt tên trong [CLAUDE.md](../CLAUDE.md)).
+Các file chức năng (`CLAUDE.md`, `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `FEATURES.md`)
+vẫn nằm ở thư mục gốc vì công cụ cần đọc chúng ở đó.
+
+## ref/ — Tài liệu tham chiếu (sơ đồ, bảng tra)
+- [ref-hmi-profile-date-map.md](ref/ref-hmi-profile-date-map.md)
+- [ref-sim-interface.md](ref/ref-sim-interface.md)
+- [ref-loader-autolearn.md](ref/ref-loader-autolearn.md)
+- [ref-hmi-delta-dop.md](ref/ref-hmi-delta-dop.md)
+- [ref-hmi-lua-macro.md](ref/ref-hmi-lua-macro.md)
+- [ref-thermocouple-sensor.md](ref/ref-thermocouple-sensor.md)
+
+## analysis/ — Phân tích / nghiên cứu kỹ thuật
+- [analysis-roaster-thermal.md](analysis/analysis-roaster-thermal.md)
+- [analysis-artisan-pid.md](analysis/analysis-artisan-pid.md)
+- [analysis-autotuning-theory.md](analysis/analysis-autotuning-theory.md)
+
+## plan/ — Kế hoạch, roadmap, redesign
+- [plan-roadmap-quocte-ai.md](plan/plan-roadmap-quocte-ai.md)
+- [plan-preheat-redesign.md](plan/plan-preheat-redesign.md)
+- [plan-auto-profile-replay.md](plan/plan-auto-profile-replay.md)
+
+## guide/ — Hướng dẫn vận hành / lắp đặt
+- [guide-waveshare-modbus-relay.md](guide/guide-waveshare-modbus-relay.md)
+- [guide-power-meter-7kt0311-setup.md](guide/guide-power-meter-7kt0311-setup.md)
+
+## config/ — Cấu hình preset cho từng máy (chép đè lên include/Config.h)
+- [config-hieu-30kg-bienhoa.md](config/config-hieu-30kg-bienhoa.md)
+- [config-duc-daklak-12kg.md](config/config-duc-daklak-12kg.md)
+- [config-danh-30kg-cacao.md](config/config-danh-30kg-cacao.md)
+- [config-danh-6kg.md](config/config-danh-6kg.md)
+- [config-6kg-auto-philipines.md](config/config-6kg-auto-philipines.md)
+- [config-30kg-cacao-dailoan.md](config/config-30kg-cacao-dailoan.md)
+- [config-3kg-auto-io.md](config/config-3kg-auto-io.md)
+
+## notes/ — Ghi chú phiên làm việc theo ngày
+- [notes-2026-05-25.md](notes/notes-2026-05-25.md)
