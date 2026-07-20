@@ -1,0 +1,223 @@
+{
+  "_doc": [
+    "NGUỒN SỰ THẬT DUY NHẤT của giao thức PC_Link (máy rang ↔ app OTL Roast Lab).",
+    "Sửa file này rồi chạy:  python protocol/gen_pc_link.py",
+    "Nó sinh ra 3 phía, KHÔNG sửa tay các file sinh ra:",
+    "  • include/PC_Link_Map.h   (firmware C++)",
+    "  • tools/pc_link_map.py    (tool Python)",
+    "  • khối PC_LINK MAP trong 'OTL Roast Lab.html' (giao diện JS)",
+    "Kiểm tra đồng bộ (dùng trước khi commit):  python protocol/gen_pc_link.py --check",
+    "",
+    "scale = số máy gửi ÷ scale → đơn vị kỹ thuật (BT 2153 ÷10 = 215.3°C).",
+    "signed = register 16-bit đọc theo số có dấu (RoR, áp hút có thể âm)."
+  ],
+  "version": 1,
+
+  "read": {
+    "base": 100,
+    "comment": "Máy → app. Cập nhật mỗi vòng loop, app đọc trọn khối trong 1 frame 0x03.",
+    "fields": [
+      {"key": "bt",      "c": "BT",     "scale": 10,  "signed": false, "unit": "°C",     "desc": "nhiệt hạt"},
+      {"key": "et",      "c": "ET",     "scale": 10,  "signed": false, "unit": "°C",     "desc": "nhiệt khí"},
+      {"key": "ror_bt",  "c": "RORBT",  "scale": 100, "signed": true,  "unit": "°C/phút","desc": "RoR hạt"},
+      {"key": "ror_et",  "c": "RORET",  "scale": 100, "signed": true,  "unit": "°C/phút","desc": "RoR khí"},
+      {"key": "ror_pro", "c": "RORPRO", "scale": 100, "signed": true,  "unit": "°C/phút","desc": "RoR hồ sơ mẫu tại giây hiện tại"},
+      {"key": "gas",     "c": "GAS",    "scale": 1,   "signed": false, "unit": "%",      "desc": "mức gas"},
+      {"key": "air",     "c": "AIR",    "scale": 1,   "signed": false, "unit": "%",      "desc": "mức gió"},
+      {"key": "drum",    "c": "DRUM",   "scale": 1,   "signed": false, "unit": "%",      "desc": "tốc độ trống"},
+      {"key": "sv",      "c": "SV",     "scale": 10,  "signed": false, "unit": "°C",     "desc": "SV nhiệt hạt"},
+      {"key": "vac",     "c": "VAC",    "scale": 1,   "signed": true,  "unit": "Pa",     "desc": "áp hút (âm = hút)"},
+      {"key": "step",    "c": "STEP",   "scale": 1,   "signed": false, "unit": "",       "desc": "progStep — bước quy trình rang"},
+      {"key": "t_roast", "c": "TROAST", "scale": 1,   "signed": false, "unit": "s",      "desc": "thời gian rang"},
+      {"key": "phase",   "c": "PHASE",  "bits": "phase",                                 "desc": "bitmask pha rang"},
+      {"key": "flags",   "c": "FLAGS",  "bits": "flags",                                 "desc": "bitmask trạng thái nút/chế độ"},
+      {"key": "hb",      "c": "HB",     "scale": 1,   "signed": false, "unit": "",       "desc": "heartbeat — tăng mỗi vòng loop, app dò treo"}
+    ]
+  },
+
+  "read_artisan": {
+    "base": 0,
+    "count": 20,
+    "comment": [
+      "KHỐI TƯƠNG THÍCH — có sẵn trên MỌI máy đã bán (Modbus_Slave.h, MaxReg 27),",
+      "kể cả máy chưa nạp PC_Link. App đọc khối này rồi TỰ TÍNH RoR / thời gian /",
+      "mốc rang (tools/roast_derive.py) theo đúng công thức firmware.",
+      "Địa chỉ phải khớp #define ...artisan trong Modbus_Slave.h — PC_Link_Map.h có",
+      "static_assert đối chiếu, lệch là không build được.",
+      "CẢNH BÁO: charge/drop/escape/cool chỉ phản chiếu nút HMI khi PC control TẮT;",
+      "bật PC control thì các ô đó thành ô LỆNH của app. Riêng auto (reg 17) luôn phản chiếu."
+    ],
+    "fields": [
+      {"key": "bt",     "reg": 0,  "c_check": "BT_show_artisan",    "scale": 10, "signed": false, "desc": "nhiệt hạt"},
+      {"key": "et",     "reg": 1,  "c_check": "ET_show_artisan",    "scale": 10, "signed": false, "desc": "nhiệt khí"},
+      {"key": "air",    "reg": 2,  "c_check": "AIRshow_artisan",    "scale": 1,  "signed": false, "desc": "mức gió %"},
+      {"key": "gas",    "reg": 3,  "c_check": "GAS_show_artisan",   "scale": 1,  "signed": false, "desc": "mức gas %"},
+      {"key": "drum",   "reg": 4,  "c_check": "DRUM_show_artisan",  "scale": 1,  "signed": false, "desc": "tốc độ trống %"},
+      {"key": "vac",    "reg": 9,  "c_check": "UNDER_show_artisan", "scale": 1,  "signed": true,  "desc": "áp hút Diff_Air, Pa"},
+      {"key": "cool",   "reg": 13, "c_check": "MI_COOL_artisan_W",  "scale": 1,  "signed": false, "desc": "nút làm nguội (chỉ khi PC control TẮT)"},
+      {"key": "charge", "reg": 14, "c_check": "CHARGE_artisan_W",   "scale": 1,  "signed": false, "desc": "nút nạp hạt (chỉ khi PC control TẮT)"},
+      {"key": "drop",   "reg": 15, "c_check": "DROP_artisan_W",     "scale": 1,  "signed": false, "desc": "nút xả mẻ (chỉ khi PC control TẮT)"},
+      {"key": "escape", "reg": 16, "c_check": "ESCAPE_artisan_W",   "scale": 1,  "signed": false, "desc": "nút thoát (chỉ khi PC control TẮT)"},
+      {"key": "auto",   "reg": 17, "c_check": "START_artisan_W",    "scale": 1,  "signed": false, "desc": "đang chạy AUTO (START_BTN_R) — LUÔN phản chiếu"},
+      {"key": "sv",     "reg": 19, "c_check": "SV_show_artisan",    "scale": 10, "signed": false, "desc": "SV nhiệt hạt"}
+    ]
+  },
+
+  "write_artisan": {
+    "comment": [
+      "Ô LỆNH của khối tương thích (Modbus_Slave.h) — điều khiển được máy CHƯA nạp",
+      "PC_Link. Firmware chỉ đọc mấy ô nút khi PC_CONTROL_BTN_R == 1; PC control TẮT",
+      "thì nó ghi đè lại bằng trạng thái nút HMI mỗi vòng → lệnh của app bị nuốt.",
+      "",
+      "TẤT CẢ ĐỀU LÀ 'MỨC', KHÔNG PHẢI XUNG — đừng ghi 1 rồi ghi 0 ngay:",
+      "  • Xi lanh chạy theo MỨC: `if(CHARGE_BTN_R==1) CH3_RL_ON;` (IOConfig.h:53).",
+      "  • Firmware TỰ đóng sau chargeDuration_R/dropDuration_R giây (Program.h:2078).",
+      "  • Ghi 0 sớm còn HỦY luôn timer tự đóng (Program.h:2087) → xi lanh chỉ hé rồi",
+      "    đóng sập, cà phê không kịp vào trống.",
+      "Nạp/xả/thoát: app ghi 1 rồi THÔI, firmware lo phần đóng và trả ô về 0.",
+      "Đánh lửa & làm nguội: mức bật/tắt, app tự giữ — 1 là bật, 0 là tắt."
+    ],
+    "fields": [
+      {"key": "gas",    "reg": 11, "c_check": "GAS_artisan_W",      "kind": "level",  "desc": "gas %"},
+      {"key": "air",    "reg": 10, "c_check": "AIR_artisan_W",      "kind": "level",  "desc": "gió %"},
+      {"key": "drum",   "reg": 20, "c_check": "DRUM_artisan_W",     "kind": "level",  "desc": "trống %"},
+      {"key": "sv",     "reg": 18, "c_check": "SV_artisan_W",       "kind": "level",  "desc": "SV nhiệt hạt"},
+      {"key": "vac",    "reg": 22, "c_check": "vacuumC_artisan_W",  "kind": "level",  "desc": "áp hút đặt"},
+      {"key": "ignite", "reg": 12, "c_check": "IGNITION_artisan_W", "kind": "toggle", "desc": "đánh lửa (bật/tắt gas)"},
+      {"key": "cool",   "reg": 13, "c_check": "MI_COOL_artisan_W",  "kind": "toggle", "desc": "làm nguội (bật/tắt)"},
+      {"key": "charge", "reg": 14, "c_check": "CHARGE_artisan_W",   "kind": "latch",  "desc": "nạp hạt — firmware tự đóng"},
+      {"key": "drop",   "reg": 15, "c_check": "DROP_artisan_W",     "kind": "latch",  "desc": "xả mẻ — firmware tự đóng"},
+      {"key": "escape", "reg": 16, "c_check": "ESCAPE_artisan_W",   "kind": "latch",  "desc": "xả liệu — firmware tự đóng"},
+      {"key": "auto",   "reg": 17, "c_check": "START_artisan_W",    "kind": "level",  "desc": "bật/tắt AUTO"}
+    ]
+  },
+
+  "derive": {
+    "_doc": "Tham số để app tái tạo đúng phép tính của firmware khi chạy khối tương thích.",
+    "ror_window_s": 3,
+    "ror_gain": 20,
+    "ror_bt_clamp": 95.0,
+    "ror_et_clamp": 20.0,
+    "kalman_bt": [1.0, 1.0, 0.005],
+    "kalman_et": [1.0, 1.0, 0.01],
+    "tp_min_time_s": 20,
+    "tp_max_temp": 150.0,
+    "de_temp_default": 150.0,
+    "fcs_temp_default": 196.0,
+    "charge_drop_bt": 8.0,
+    "_note": [
+      "ror: (BT − BT cách đây ror_window_s) × ror_gain = °C/phút — đúng Program.h:110,",
+      "  rồi lọc Kalman (e_mea, e_est, q) đúng tham số Define.h:257-258, rồi mới kẹp.",
+      "tp: sau tp_min_time_s và BT < tp_max_temp, BT chạm đáy rồi tăng lại — đúng Program.h:1608.",
+      "de/fcs: BT ≥ ngưỡng. Ngưỡng THẬT nằm ở HMI (yellowPhase_R_CV/fcsPhase_R_CV,",
+      "  Define.h:803) mà khối Artisan không đẩy ra → app dùng cài đặt riêng, mặc định ở đây.",
+      "charge_drop_bt: BT tụt hơn ngần này trong 1 giây = đoán CHARGE (dự phòng khi",
+      "  không đọc được nút, ví dụ máy đang bật PC control)."
+    ]
+  },
+
+  "write": {
+    "base": 120,
+    "comment": "App → máy. CHỈ áp dụng khi PC_CONTROL_BTN_R == 1 (cờ pc_control).",
+    "fields": [
+      {"key": "gas",    "c": "GAS",    "min": 0,  "max": 100,  "scale": 1,  "desc": "gas %"},
+      {"key": "air",    "c": "AIR",    "min": 0,  "max": 100,  "scale": 1,  "desc": "gió %"},
+      {"key": "drum",   "c": "DRUM",   "min": 0,  "max": 100,  "scale": 1,  "desc": "trống %"},
+      {"key": "sv",     "c": "SV",     "min": 0,  "max": 3000, "scale": 10, "desc": "SV nhiệt hạt"},
+      {"key": "vac",    "c": "VAC",    "min": 90, "max": 250,  "scale": 1,  "desc": "áp hút đặt"},
+      {"key": "ignite", "c": "IGNITE", "min": 0,  "max": 1,    "scale": 1,  "desc": "bật/tắt gas (START_GAS)"},
+      {"key": "charge", "c": "CHARGE", "min": 0,  "max": 1,    "scale": 1,  "desc": "nạp hạt"},
+      {"key": "drop",   "c": "DROP",   "min": 0,  "max": 1,    "scale": 1,  "desc": "xả mẻ"},
+      {"key": "escape", "c": "ESCAPE", "min": 0,  "max": 1,    "scale": 1,  "desc": "thoát"},
+      {"key": "cool",   "c": "COOL",   "min": 0,  "max": 1,    "scale": 1,  "desc": "làm nguội"},
+      {"key": "auto",   "c": "AUTO",   "min": 0,  "max": 1,    "scale": 1,  "desc": "bật/tắt AUTO (START)"},
+      {"key": "hb",     "c": "HB",     "min": 0,  "max": 32767,"scale": 1,  "desc": "heartbeat app: app tăng mỗi giây; firmware không thấy đổi quá PCL_APP_TMO_S thì nhả quyền"}
+    ]
+  },
+
+  "failsafe": {
+    "_doc": [
+      "Bắt buộc khi APP LÀ BỘ ĐIỀU KHIỂN (app tự mồi lửa, tự charge, tự chỉnh gas).",
+      "Không có mấy chốt này thì app treo giữa mẻ = máy giữ nguyên gas vô thời hạn."
+    ],
+    "app_timeout_s": 3,
+    "on_app_lost": "release_to_hmi",
+    "_on_app_lost_note": "nhả PC control về HMI + kêu còi, GIỮ NGUYÊN gas/gió để mẻ không hỏng (lựa chọn của chủ máy)",
+    "flame_timeout_s": 75,
+    "_flame_note": [
+      "Chốt cứng chống xả gas sống: app bật ignition mà quá ngần này giây vẫn không có",
+      "gasSignal → firmware tự đóng gas + báo cờ flame_fail. Bếp premix mồi chậm ~40s",
+      "(PH_IGNITE_TMO_PREMIX 65s) nên để rộng hơn một nhịp."
+    ]
+  },
+
+  "bitmaps": {
+    "phase": {
+      "c_prefix": "PCLP",
+      "_doc": "Cờ thô 'đã qua mốc' của firmware. App KHÔNG dùng để chia pha — dùng step (đủ 5 mốc).",
+      "bits": [
+        {"key": "dry", "bit": 0, "desc": "đã qua TP  (progStep >= STP_TP)"},
+        {"key": "mai", "bit": 1, "desc": "đã qua FCs (progStep >= STP_FCS)"},
+        {"key": "dev", "bit": 2, "desc": "đã qua DEV (progStep >= STP_DEV)"}
+      ]
+    },
+    "flags": {
+      "c_prefix": "PCLF",
+      "bits": [
+        {"key": "auto",       "bit": 0, "c": "AUTO",   "desc": "START_BTN_R — đang chạy AUTO"},
+        {"key": "gas",        "bit": 1, "c": "GAS",    "desc": "START_GAS_BTN_R — gas đang bật"},
+        {"key": "charge",     "bit": 2, "c": "CHARGE", "desc": "CHARGE_BTN_R"},
+        {"key": "drop",       "bit": 3, "c": "DROP",   "desc": "DROP_BTN_R"},
+        {"key": "escape",     "bit": 4, "c": "ESCAPE", "desc": "ESCAPE_BTN_R"},
+        {"key": "cool",       "bit": 5, "c": "COOL",   "desc": "COOLING_BTN_R"},
+        {"key": "pc_control", "bit": 6, "c": "PCCTRL", "desc": "PC_CONTROL_BTN_R — app được phép điều khiển"},
+        {"key": "flame",      "bit": 7, "c": "FLAME",  "desc": "CÓ LỬA THẬT (gasSignal, chân CH1) — khác hẳn 'đã bấm bật gas'"},
+        {"key": "pc_lost",    "bit": 8, "c": "PCLOST", "desc": "firmware đã tự nhả quyền vì mất app (watchdog)"},
+        {"key": "flame_fail", "bit": 9, "c": "FLMFAIL","desc": "firmware đã tự đóng gas vì mồi hoài không có lửa"}
+      ]
+    }
+  },
+
+  "mile_step": {
+    "_doc": [
+      "MỐC ĐÃ ĐẠT ⟺ progStep ≥ giá trị dưới đây. LỆCH MỘT BƯỚC so với `steps` —",
+      "vì progStep mang nghĩa 'ĐANG CHỜ mốc đó', không phải 'đã qua'.",
+      "Sau CHARGE firmware đặt progStep = STP_TP nghĩa là đang chờ TP; khi bắt được",
+      "TP mới lưu TIME_TP_SAVE rồi chuyển STP_YELLOW (Program.h:1608-1624).",
+      "Dùng bảng này để chấm mốc; đừng dùng `steps`."
+    ],
+    "TP": 7,
+    "DE": 8,
+    "FCs": 9,
+    "DEV": 9,
+    "DROP": 10
+  },
+
+  "steps": {
+    "_doc": "progStep — PHẢI khớp #define STP_* trong include/Define.h (gen kiểm tra tự động).",
+    "CHARGE": 5,
+    "TP": 6,
+    "DE": 7,
+    "FCs": 8,
+    "DEV": 9,
+    "DROP": 10,
+    "COOLING": 11,
+    "ESCAPE": 12
+  },
+  "step_define": {
+    "CHARGE": "STP_CHARGE",
+    "TP": "STP_TP",
+    "DE": "STP_YELLOW",
+    "FCs": "STP_FCS",
+    "DEV": "STP_DEV",
+    "DROP": "STP_DROP",
+    "COOLING": "STP_COOLING",
+    "ESCAPE": "STP_ESCAPE"
+  },
+
+  "link": {
+    "baud_default": 9600,
+    "slave_default": 1,
+    "comment": "Đổi được qua HMI: modbusBaud_R / modbusID_R (Modbus_Slave.h)."
+  }
+}
