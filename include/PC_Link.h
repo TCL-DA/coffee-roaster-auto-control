@@ -145,6 +145,12 @@ void handle_PC_Link(){
     mbs.Hreg(PCL_R_STEP,   progStep);
     mbs.Hreg(PCL_R_TROAST, timeRoast);
     mbs.Hreg(PCL_R_DRUMHZ, (uint16_t)Drum_Freq_CP);   // tần số thật biến tần trống (0.01Hz)
+    mbs.Hreg(PCL_R_PROFPCT, percentLoadProfile);      // tiến độ nạp profile SD (0-99 đang đọc, 100 xong)
+    mbs.Hreg(PCL_R_PROFOK,  pclProfOk);               // 0=chưa/đang, 1=OK rang auto được, 2=LỖI
+    mbs.Hreg(PCL_R_PROFSEL, SELECT_FILE_R);           // slot đang chọn
+    mbs.Hreg(PCL_R_SCALE,   (uint16_t)netW100);       // cân phễu ×100 (61.35kg = 6135)
+    mbs.Hreg(PCL_R_RORKG,   (uint16_t)rorKG);         // tốc độ cân ×100 (hút = âm)
+    mbs.Hreg(PCL_R_SCALETG, (uint16_t)netWTG_R);      // cân đích ×10 (Setup kg trên HMI)
 
     uint16_t ph = 0;
     if (START_BTN_R == 1) {
@@ -170,6 +176,7 @@ void handle_PC_Link(){
     if (AB_BTN_R == 1)          fl |= PCLF_AB;
     if (FEEDER_BTN_R == 1)      fl |= PCLF_LOADER;
     if (DESTONER_BTN_R == 1)    fl |= PCLF_DESTONER;
+    if (autoLoader_R == 1)      fl |= PCLF_AUTOLOADER;
     mbs.Hreg(PCL_R_FLAGS, fl);
     mbs.Hreg(PCL_R_HB, ++hb);
 
@@ -185,7 +192,11 @@ void handle_PC_Link(){
             START_GAS_BTN_R, CHARGE_BTN_R, DROP_BTN_R, ESCAPE_BTN_R, COOLING_BTN_R,
             START_BTN_R,
             0,                     // PCL_W_HB — heartbeat app, không phải setpoint
-            DRUM_FAN_BTN_R, MIXER_BTN_R, AB_BTN_R, FEEDER_BTN_R, DESTONER_BTN_R
+            DRUM_FAN_BTN_R, MIXER_BTN_R, AB_BTN_R, FEEDER_BTN_R, DESTONER_BTN_R,
+            (int16_t)SELECT_FILE_R,                 // PCL_W_PROFILE — phản chiếu slot đang chọn
+            (int16_t)progStatus,                    // PCL_W_MODE — 1=SAVE, 2=AUTO
+            (int16_t)netWTG_R,                      // PCL_W_SCALETG — cân đích ×10
+            (int16_t)autoLoader_R                   // PCL_W_AUTOLOADER
         };
         for (int i = 0; i < PCL_W_COUNT; i++) {
             mbs.Hreg(PCL_W_BASE + i, (uint16_t)sp[i]);
@@ -201,7 +212,11 @@ void handle_PC_Link(){
             START_GAS_BTN_R, CHARGE_BTN_R, DROP_BTN_R, ESCAPE_BTN_R, COOLING_BTN_R,
             START_BTN_R,
             0,                     // PCL_W_HB — heartbeat app, không phải setpoint
-            DRUM_FAN_BTN_R, MIXER_BTN_R, AB_BTN_R, FEEDER_BTN_R, DESTONER_BTN_R
+            DRUM_FAN_BTN_R, MIXER_BTN_R, AB_BTN_R, FEEDER_BTN_R, DESTONER_BTN_R,
+            (int16_t)SELECT_FILE_R,                 // PCL_W_PROFILE — phản chiếu slot đang chọn
+            (int16_t)progStatus,                    // PCL_W_MODE — 1=SAVE, 2=AUTO
+            (int16_t)netWTG_R,                      // PCL_W_SCALETG — cân đích ×10
+            (int16_t)autoLoader_R                   // PCL_W_AUTOLOADER
         };
         for (int i = 0; i < PCL_W_COUNT; i++) {
             mbs.Hreg(PCL_W_BASE + i, (uint16_t)sp[i]);
@@ -303,6 +318,40 @@ void handle_PC_Link(){
         nodeHMI.writeSingleRegister(FEEDER_BTN_W - 1, v);
     if (pclChanged(16, v))
         nodeHMI.writeSingleRegister(DESTONER_BTN_W - 1, v);
+
+    // — RANG AUTO TỪ APP —
+    // Chọn profile SD (slot 1-30): làm đúng việc handler HMI làm (Modbus_Master.h:564)
+    // + bật cờ bypass để sdRead chạy dù HMI không đứng ở màn hình chọn file.
+    // App theo dõi prof_pct/prof_ok rồi mới được ghi mode/auto.
+    if (pclChanged(17, v)) {
+        if (v >= 1 && v <= 30) {
+            SELECT_FILE_R = v;                                    // dAddress — sdRead đọc biến này
+            nodeHMI.writeSingleRegister(SELECT_FILE_W - 1, v);    // HMI hiển thị đúng slot
+            pclProfOk    = 0;
+            pclSdReadReq = true;
+            sdReadStep   = SD_1;                                  // kích trình đọc SD
+            SerialComputer.print("=> PC_Link: nap profile slot "); SerialComputer.println(v);
+        }
+    }
+    // Chế độ rang: 1=SAVE (rang lưu), 2=AUTO (phát lại profile) — như bấm MANUAL_AUTO trên HMI
+    if (pclChanged(18, v)) {
+        if (v == 1 || v == 2) {
+            progStatus = (v == 2) ? STT_PROGRAM_AUTO : STT_PROGRAM_SAVE;
+            MANUAL_AUTO_R = (v == 2) ? 1 : 0;
+            nodeHMI.writeSingleRegister(MANUAL_AUTO_W - 1, MANUAL_AUTO_R); // HMI khớp chế độ
+            SerialComputer.print("=> PC_Link: mode "); SerialComputer.println(v == 2 ? "AUTO" : "SAVE");
+        }
+    }
+    // Cân đích (Setup kg, ×10) — cập nhật cả iMemHMI/_CP để handler HMI không kéo ngược
+    if (pclChanged(19, v)) {
+        netWTG_R = v; netWTG_R_CP = v;
+        nodeHMI.writeSingleRegister(netWTG_W + 2000, v);
+    }
+    // Auto loader bật/tắt — như gạt nút trên HMI
+    if (pclChanged(20, v)) {
+        autoLoader_R = v; autoLoader_R_CP = v;
+        nodeHMI.writeSingleRegister(autoLoader_W + 2000, v);
+    }
 }
 
 #else   // PC_LINK_EN == 0 — vô hiệu, không tốn gì

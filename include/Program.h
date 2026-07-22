@@ -402,12 +402,14 @@ void sdRead(){
         nodeHMI.writeSingleRegister(FA_SUC_W-1, 0); delay(5);
         return;
     }
-    if((SCRNUM_R==6||SCRNUM_R==12||SCRNUM_R==13) && SELECT_FILE_R>0){
+    //pclSdReadReq: app chọn profile qua PC_Link — không bắt HMI phải đứng màn 6/12/13
+    if((SCRNUM_R==6||SCRNUM_R==12||SCRNUM_R==13||pclSdReadReq) && SELECT_FILE_R>0){
         bool isCsv = true;
         switch(sdReadStep){
             case SD_1:
                 sdMillis = millis();
                 sdProfileLoadOK = false;
+                pclProfOk = 0;   //PC_Link: đang nạp, app chờ prof_ok
                 sdProfileLoadFailStatus = STT_SD_LOAD_FAIL;
                 sdMaxGasLoaded = -1;   // reset: profile không có MaxGas thì giữ -1, không áp giá trị cũ
                 strProfileName[0] = '\0';
@@ -757,6 +759,7 @@ void sdRead(){
 
                 sdReadStep = SD_4;
                 setMachineStatus(sdProfileLoadOK ? STT_SD_LOAD_OK : sdProfileLoadFailStatus);
+                pclProfOk = sdProfileLoadOK ? 1 : 2;   //PC_Link: báo kết quả cho app
                 calSdMillis = millis() - sdMillis;
             break;
 
@@ -764,6 +767,7 @@ void sdRead(){
                 //Chờ
                 sdReadStt = false; // Tắt flag đọc file để hiển thị tiến độ trong modbusMaster
                 sdMillis = 0;
+                pclSdReadReq = false;   //PC_Link: nạp xong, nhả cờ bypass SCRNUM
             break;
         }
     }

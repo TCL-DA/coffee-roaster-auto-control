@@ -165,6 +165,7 @@ class RoasterLink:
         self._app_hb = 0                    # heartbeat CỦA APP gửi xuống máy (watchdog PC_Link)
         self._app_hb_ts = 0.0
         self._mode = None                   # dò lúc kết nối: MODE_PCLINK / MODE_COMPAT
+        self._r_count = R_COUNT             # firmware CŨ có ít ô đọc hơn → tự lùi (xem _read_pclink)
         self._deriver = RoastDeriver()      # chỉ dùng ở chế độ tương thích
         self._last_charge = 0               # cạnh lên nút charge/drop của HMI
 
@@ -337,8 +338,32 @@ class RoasterLink:
         """Quy đổi do bản đồ dùng chung lo (pc_link_map.decode)."""
         return decode(r)
 
+    def _read_pclink(self) -> dict:
+        """Đọc khối PC_Link, TỰ LÙI số ô khi máy chạy firmware cũ (ít register hơn).
+
+        Firmware cũ chỉ có 16 ô (100-115); bản mới thêm prof_pct/prof_ok/prof_sel/
+        scale. Đọc quá số ô máy có → exception Modbus mỗi vòng, app tưởng đứt cáp.
+        Gặp lỗi 1 lần thì rút về 16 ô; các trường thiếu trả None để app biết
+        'máy chưa có tính năng này' (khác hẳn số 0)."""
+        try:
+            regs = self.read_regs(R_BASE, self._r_count)
+        except ModbusError:
+            if self._r_count <= 16:
+                raise
+            self._r_count = 16              # firmware cũ — dùng khối gốc
+            regs = self.read_regs(R_BASE, 16)
+        if len(regs) < R_COUNT:
+            snap = decode(regs + [0] * (R_COUNT - len(regs)))
+            for k in ("prof_pct", "prof_ok", "prof_sel", "scale", "ror_kg", "scale_tg"):
+                if k in snap:
+                    snap[k] = None          # máy chưa có ô này
+        else:
+            snap = decode(regs)
+        return snap
+
     # ── Dò khả năng máy: có PC_Link hay chỉ có khối tương thích ─────────────
     def _probe(self) -> str:
+        self._r_count = R_COUNT             # máy mới cắm vào — thử full trước, lùi sau
         try:
             self.read_regs(R_BASE, 1)
             return MODE_PCLINK
@@ -400,7 +425,7 @@ class RoasterLink:
                     self.write_regs(W_BASE + W_INDEX["hb"], [self._app_hb])
 
                 if self._mode == MODE_PCLINK:
-                    snap = self._decode(self.read_regs(R_BASE, R_COUNT))
+                    snap = self._read_pclink()
                 else:
                     snap = self._poll_compat()
 

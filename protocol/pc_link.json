@@ -32,7 +32,13 @@
       {"key": "phase",   "c": "PHASE",  "bits": "phase",                                 "desc": "bitmask pha rang"},
       {"key": "flags",   "c": "FLAGS",  "bits": "flags",                                 "desc": "bitmask trạng thái nút/chế độ"},
       {"key": "hb",      "c": "HB",     "scale": 1,   "signed": false, "unit": "",       "desc": "heartbeat — tăng mỗi vòng loop, app dò treo"},
-      {"key": "drum_hz", "c": "DRUMHZ", "scale": 100, "signed": false, "unit": "Hz",     "desc": "tần số THẬT đọc từ biến tần trống (Drum_Freq_CP, 0.01Hz)"}
+      {"key": "drum_hz", "c": "DRUMHZ", "scale": 100, "signed": false, "unit": "Hz",     "desc": "tần số THẬT đọc từ biến tần trống (Drum_Freq_CP, 0.01Hz)"},
+      {"key": "prof_pct","c": "PROFPCT","scale": 1,   "signed": false, "unit": "%",      "desc": "tiến độ nạp profile SD (percentLoadProfile, 0-99 đang đọc, 100 xong)"},
+      {"key": "prof_ok", "c": "PROFOK", "scale": 1,   "signed": false, "unit": "",       "desc": "kết quả nạp profile: 0=chưa/đang nạp, 1=OK đủ điều kiện rang auto, 2=LỖI"},
+      {"key": "prof_sel","c": "PROFSEL","scale": 1,   "signed": false, "unit": "",       "desc": "slot profile SD đang chọn (SELECT_FILE_R, 0=chưa chọn)"},
+      {"key": "scale",   "c": "SCALE",  "scale": 100, "signed": true,  "unit": "kg",     "desc": "cân phễu netW100 (61.35kg = 6135; âm khi trôi zero)"},
+      {"key": "ror_kg",  "c": "RORKG",  "scale": 100, "signed": true,  "unit": "kg/phút","desc": "tốc độ cân rorKG (hút ra = âm, 1kg/phút = 100)"},
+      {"key": "scale_tg","c": "SCALETG","scale": 10,  "signed": false, "unit": "kg",     "desc": "cân đích netWTG_R — hút tới còn ngần này thì tự cắt (Setup kg trên HMI)"}
     ]
   },
 
@@ -137,7 +143,11 @@
       {"key": "mixer",     "c": "MIXER",    "min": 0, "max": 1, "scale": 1, "desc": "cánh khuấy (MIXER_BTN)"},
       {"key": "afterburner","c": "AB",      "min": 0, "max": 1, "scale": 1, "desc": "buồng đốt khói (AB_BTN)"},
       {"key": "loader",    "c": "LOADER",   "min": 0, "max": 1, "scale": 1, "desc": "nạp liệu phễu (FEEDER_BTN)"},
-      {"key": "destoner",  "c": "DESTONER", "min": 0, "max": 1, "scale": 1, "desc": "tách đá (DESTONER_BTN)"}
+      {"key": "destoner",  "c": "DESTONER", "min": 0, "max": 1, "scale": 1, "desc": "tách đá (DESTONER_BTN)"},
+      {"key": "profile",   "c": "PROFILE",  "min": 0, "max": 30, "scale": 1, "desc": "chọn slot profile SD (1-30) → firmware nạp file, theo dõi prof_pct/prof_ok"},
+      {"key": "mode",      "c": "MODE",     "min": 0, "max": 2,  "scale": 1, "desc": "chế độ rang: 1=SAVE (rang lưu), 2=AUTO (phát lại profile) — đặt TRƯỚC khi bật auto"},
+      {"key": "scale_tg",  "c": "SCALETG",  "min": 0, "max": 990, "scale": 10, "desc": "cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R)"},
+      {"key": "autoloader","c": "AUTOLOADER","min": 0, "max": 1,  "scale": 1, "desc": "bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)"}
     ]
   },
 
@@ -184,7 +194,8 @@
         {"key": "mixer",      "bit": 11, "c": "MIXER",    "desc": "MIXER_BTN_R — cánh khuấy đang bật"},
         {"key": "afterburner","bit": 12, "c": "AB",       "desc": "AB_BTN_R — buồng đốt khói đang bật"},
         {"key": "loader",     "bit": 13, "c": "LOADER",   "desc": "FEEDER_BTN_R — nạp liệu đang bật"},
-        {"key": "destoner",   "bit": 14, "c": "DESTONER", "desc": "DESTONER_BTN_R — tách đá đang bật"}
+        {"key": "destoner",   "bit": 14, "c": "DESTONER", "desc": "DESTONER_BTN_R — tách đá đang bật"},
+        {"key": "autoloader", "bit": 15, "c": "AUTOLOADER","desc": "autoLoader_R — chế độ tự cân đang bật"}
       ]
     }
   },

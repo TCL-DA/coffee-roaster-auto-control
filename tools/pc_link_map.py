@@ -9,8 +9,8 @@ VERSION = 1
 BAUD_DEFAULT = 9600
 SLAVE_DEFAULT = 1
 
-R_BASE, R_COUNT = 100, 16
-W_BASE, W_COUNT = 120, 17
+R_BASE, R_COUNT = 100, 22
+W_BASE, W_COUNT = 120, 21
 
 # tên → chỉ số trong khối GHI (offset từ W_BASE)
 W_INDEX = {
@@ -31,6 +31,10 @@ W_INDEX = {
     "afterburner": 14,
     "loader": 15,
     "destoner": 16,
+    "profile": 17,
+    "mode": 18,
+    "scale_tg": 19,
+    "autoloader": 20,
 }
 
 # giới hạn kẹp phía PC (firmware kẹp lần nữa — clamp 2 tầng)
@@ -52,10 +56,14 @@ W_RANGE = {
     "afterburner": (0, 1),   # buồng đốt khói (AB_BTN)
     "loader": (0, 1),   # nạp liệu phễu (FEEDER_BTN)
     "destoner": (0, 1),   # tách đá (DESTONER_BTN)
+    "profile": (0, 30),   # chọn slot profile SD (1-30) → firmware nạp file, theo dõi prof_pct/prof_ok
+    "mode": (0, 2),   # chế độ rang: 1=SAVE (rang lưu), 2=AUTO (phát lại profile) — đặt TRƯỚC khi bật auto
+    "scale_tg": (0, 990),   # cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R)
+    "autoloader": (0, 1),   # bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)
 }
 
 # hệ số ghi: giá trị kỹ thuật × scale = số gửi xuống máy
-W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1, "drumfan": 1, "mixer": 1, "afterburner": 1, "loader": 1, "destoner": 1}
+W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1, "drumfan": 1, "mixer": 1, "afterburner": 1, "loader": 1, "destoner": 1, "profile": 1, "mode": 1, "scale_tg": 10, "autoloader": 1}
 
 PHASE_BITS = {
     "dry": 0x01,   # đã qua TP  (progStep >= STP_TP)
@@ -79,6 +87,7 @@ FLAGS_BITS = {
     "afterburner": 0x1000,   # AB_BTN_R — buồng đốt khói đang bật
     "loader": 0x2000,   # FEEDER_BTN_R — nạp liệu đang bật
     "destoner": 0x4000,   # DESTONER_BTN_R — tách đá đang bật
+    "autoloader": 0x8000,   # autoLoader_R — chế độ tự cân đang bật
 }
 
 # progStep của firmware (Define.h)
@@ -199,4 +208,10 @@ def decode(regs):
         "flags": {k: bool(regs[13] & m) for k, m in FLAGS_BITS.items()},
         "hb": regs[14],   # heartbeat — tăng mỗi vòng loop, app dò treo
         "drum_hz": regs[15] / 100.0,   # tần số THẬT đọc từ biến tần trống (Drum_Freq_CP, 0.01Hz)
+        "prof_pct": regs[16],   # tiến độ nạp profile SD (percentLoadProfile, 0-99 đang đọc, 100 xong)
+        "prof_ok": regs[17],   # kết quả nạp profile: 0=chưa/đang nạp, 1=OK đủ điều kiện rang auto, 2=LỖI
+        "prof_sel": regs[18],   # slot profile SD đang chọn (SELECT_FILE_R, 0=chưa chọn)
+        "scale": to_signed(regs[19]) / 100.0,   # cân phễu netW100 (61.35kg = 6135; âm khi trôi zero)
+        "ror_kg": to_signed(regs[20]) / 100.0,   # tốc độ cân rorKG (hút ra = âm, 1kg/phút = 100)
+        "scale_tg": regs[21] / 10.0,   # cân đích netWTG_R — hút tới còn ngần này thì tự cắt (Setup kg trên HMI)
     }
