@@ -15,6 +15,7 @@ import http.server
 import json
 import os
 import secrets
+import shutil
 import sys
 import threading
 import time
@@ -426,6 +427,12 @@ def main():
     # phải TẮT ẩn danh + trỏ thư mục dữ liệu bền trong %LOCALAPPDATA%.
     storage = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
                            "OTL Roast Lab HMI")
+    # WebView2 (private_mode=False) hay giữ CACHE trang cũ → sửa HTML xong mở app
+    # vẫn thấy giao diện cũ. Dọn cache render mỗi lần mở; GIỮ Local Storage
+    # (PIN/tài khoản/config nằm ở "Local Storage"/"IndexedDB", không đụng).
+    for sub in ("Cache", "Code Cache", "GPUCache", "Service Worker"):
+        shutil.rmtree(os.path.join(storage, "EBWebView", "Default", sub),
+                      ignore_errors=True)
     webview.start(private_mode=False, storage_path=storage)
 
 
