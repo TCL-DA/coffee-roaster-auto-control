@@ -162,6 +162,8 @@ class RoasterLink:
         self._err = ""
         self._hb = -1
         self._hb_ts = 0.0
+        self._app_hb = 0                    # heartbeat CỦA APP gửi xuống máy (watchdog PC_Link)
+        self._app_hb_ts = 0.0
         self._mode = None                   # dò lúc kết nối: MODE_PCLINK / MODE_COMPAT
         self._deriver = RoastDeriver()      # chỉ dùng ở chế độ tương thích
         self._last_charge = 0               # cạnh lên nút charge/drop của HMI
@@ -389,6 +391,13 @@ class RoasterLink:
 
                 if self._mode is None:
                     self._mode = self._probe()
+
+                # Heartbeat app → máy (chỉ khối PC_Link có ô này): nhấp MỖI CHU KỲ
+                # poll để watchdog firmware biết app còn sống — thưa hơn là dễ rớt
+                # oan khi trúng vài khung nhiễu liên tiếp (mỗi timeout 0.6s).
+                if self._mode == MODE_PCLINK:
+                    self._app_hb = (self._app_hb + 1) & 0x7FFF
+                    self.write_regs(W_BASE + W_INDEX["hb"], [self._app_hb])
 
                 if self._mode == MODE_PCLINK:
                     snap = self._decode(self.read_regs(R_BASE, R_COUNT))

@@ -43,12 +43,12 @@ html[data-accent="azure"]  {--accent:#2f6fe0; --accent-2:#2f6fe0; --accent-ink:#
 html[data-accent="teal"]   {--accent:#149e9e; --accent-2:#149e9e; --accent-ink:#ffffff}
 html[data-accent="violet"] {--accent:#7c4de0; --accent-2:#7c4de0; --accent-ink:#ffffff}
 html[data-accent="amber"]  {--accent:#c9871a; --accent-2:#c9871a; --accent-ink:#ffffff}
-/* Nút CTA chính của theme OTL: phối gradient đỏ→xanh (chất riêng thương hiệu) */
+/* CẤM gradient xanh→đỏ trên nút (yêu cầu chủ máy 2026-07-22) — CTA dùng MÀU ĐẶC accent */
 html[data-accent="otl"] .bigbtn.primary,
 html[data-accent="otl"] .tbtn.go,
 html[data-accent="otl"] .padkey.act,
 html[data-accent="otl"] .btn.primary{
-  background:linear-gradient(135deg,var(--accent-2),var(--accent));border-color:transparent;color:#fff}
+  background:var(--accent);border-color:var(--accent);color:#fff}
 
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
@@ -133,7 +133,12 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .milestrip{height:110px;flex:none;display:flex;align-items:center;gap:14px;padding:0 28px}
 .mchip{flex:1;height:82px;background:var(--card);border:1px solid var(--hair);border-radius:16px;
   display:flex;flex-direction:column;justify-content:center;padding:0 22px;position:relative;overflow:hidden}
-.mchip.done{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+/* Mốc ĐÃ ĐẠT: nền nhuộm accent + tên mốc đổi màu — liếc là thấy đã qua đâu */
+.mchip.done{background:color-mix(in srgb,var(--accent) 12%,var(--card));
+  border-color:color-mix(in srgb,var(--accent) 60%,transparent)}
+.mchip.done .mn{color:var(--accent)}
+/* Hiệu ứng NHẤN khi chạm chip (chấm mốc / sửa ngưỡng) */
+.mchip:active{transform:scale(.95);background:var(--btn-h)}
 .mchip.now{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:var(--accent)}
 .mchip .mn{font-size:17px;font-weight:800;letter-spacing:2px;color:var(--dim)}
 .mchip.now .mn{color:var(--accent)}
@@ -169,16 +174,12 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 /* NOSEL + IDLE: ẩn/mờ nội dung live, hiện overlay tương ứng */
 #pane-rang[data-phase="NOSEL"] .roast-nosel{display:flex}
 #pane-rang[data-phase="IDLE"] .roast-idle{display:flex}
-#pane-rang[data-phase="NOSEL"] .milestrip,
-#pane-rang[data-phase="NOSEL"] .rangbody,
+/* Chỉ mờ CHART — dải mốc (chip tự về "—" khi chưa mẻ), nút chế độ, cột phải,
+   thanh pha, dải thiết bị đều sáng & dùng được khi chưa vào mẻ */
+#pane-rang[data-phase="NOSEL"] .rangbody .chartcol,
 #pane-rang[data-phase="NOSEL"] .simplewrap,
-#pane-rang[data-phase="NOSEL"] .phasetl,
-#pane-rang[data-phase="NOSEL"] .devstrip,
-#pane-rang[data-phase="IDLE"] .milestrip,
-#pane-rang[data-phase="IDLE"] .rangbody,
-#pane-rang[data-phase="IDLE"] .simplewrap,
-#pane-rang[data-phase="IDLE"] .phasetl,
-#pane-rang[data-phase="IDLE"] .devstrip{opacity:.28;filter:grayscale(.4);pointer-events:none}
+#pane-rang[data-phase="IDLE"] .rangbody .chartcol,
+#pane-rang[data-phase="IDLE"] .simplewrap{opacity:.28;filter:grayscale(.4);pointer-events:none}
 #pane-rang[data-phase="DONE"] .roast-done{display:flex}
 /* Overlay che phần XEM (curve, số live), KHÔNG che thanh công cụ dưới cùng:
    thợ vẫn phải đánh lửa / nạp hạt / xả liệu / xả mẻ được khi chưa chọn hồ sơ.
@@ -186,6 +187,12 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .roast-idle,.roast-nosel{position:absolute;left:0;right:0;top:0;bottom:130px;z-index:20;
   flex-direction:column;align-items:center;justify-content:center;
   background:color-mix(in srgb,var(--bg) 62%,transparent);backdrop-filter:blur(3px)}
+/* View CHI TIẾT: overlay chỉ che đúng vùng CHART —
+   top 110 = chừa dải mốc; right 590 = chừa cột phải (540 + gap 22 + padding 28);
+   bottom 298 = chừa thanh pha 70 + dải thiết bị 98 + toolbar 130.
+   Mọi thứ quanh chart đều xem & điều khiển được khi chưa vào mẻ. */
+#pane-rang:not(.simple) .roast-idle,
+#pane-rang:not(.simple) .roast-nosel{top:110px;right:590px;bottom:298px}
 /* Thanh công cụ luôn nổi trên overlay và luôn bấm được */
 #pane-rang .toolbar{position:relative;z-index:30}
 .ri-inner{display:flex;flex-direction:column;align-items:center;gap:34px}
@@ -195,13 +202,14 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .ns-ic{width:120px;height:120px;color:var(--mute)}
 .ns-title{font-size:40px;font-weight:800;color:var(--txt)}
 .ns-pick{padding:22px 64px;border:none;border-radius:18px;cursor:pointer;color:#fff;
-  font-size:30px;font-weight:800;background:var(--accent);
+  font-family:var(--f-num);font-size:30px;font-weight:800;background:var(--accent);
   box-shadow:0 18px 44px -10px color-mix(in srgb,var(--accent) 70%,transparent);transition:transform .12s}
 .ns-pick:active{transform:scale(.97)}
 .ri-change{padding:14px 40px;border:1px solid var(--hair);border-radius:14px;cursor:pointer;
   font-size:22px;font-weight:700;color:var(--dim);background:var(--btn)}
 .ri-change:active{transform:scale(.97)}
 .startcirc{width:340px;height:340px;border-radius:50%;border:none;cursor:pointer;color:#fff;
+  font-family:var(--f-num);   /* button KHÔNG kế thừa font trang — thiếu dòng này là dấu tiếng Việt vẽ bằng font hệ thống, nhìn lệch */
   background:radial-gradient(120% 120% at 30% 25%,var(--accent),color-mix(in srgb,var(--accent) 60%,#000));
   box-shadow:0 24px 60px -12px color-mix(in srgb,var(--accent) 70%,transparent),inset 0 2px 8px rgba(255,255,255,.25);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:transform .12s,box-shadow .2s}
@@ -257,15 +265,20 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .duo .col.et .v{color:var(--c-et)} .duo .col.abt .v{color:var(--c-abt)}
 .duo .col .sub{font-size:16px;color:var(--dim);font-family:var(--f-mono)}
 /* output ± */
-.outcard{display:flex;flex-direction:column;gap:12px}
-.outrow{display:flex;align-items:center;gap:16px}
-.outrow .oinfo{flex:1}
+.outcard{display:flex;flex-direction:column;gap:10px}
+/* Mỗi hàng = 1 thẻ inset riêng, số căn GIỮA hai nút ± cho cân mắt */
+.outrow{display:flex;align-items:center;gap:12px;background:var(--inset);
+  border:1px solid var(--hair);border-radius:16px;padding:4px 8px}
+.outrow .oinfo{flex:1;text-align:center}
 .outrow .oinfo .cap{margin-bottom:2px}
-.outrow .oinfo .ov{font-family:var(--f-num);font-weight:700;font-size:60px;line-height:.9}
-.outrow.burner .ov{color:var(--c-burner)} .outrow.air .ov{color:var(--accent)}
+.outrow .oinfo .ov{font-family:var(--f-num);font-weight:700;font-size:56px;line-height:.9}
+/* Màu theo nghĩa: Burner = NHIỆT (đỏ lửa), Airflow = GIÓ NÓNG (cam), Drum = tốc độ trống (xanh) */
+.outrow.burner .ov{color:var(--c-warn)} .outrow.air .ov{color:var(--c-gas)}
 .outrow .oinfo .ov small{font-size:26px;color:var(--mute)}
-.pm{width:96px;height:88px;border-radius:18px;border:1px solid var(--hair-2);background:var(--btn);
-  color:var(--txt);font-family:var(--f-num);font-weight:700;font-size:52px;cursor:pointer;transition:transform .07s,background .12s;
+/* Cỡ nút ± theo chuẩn chạm công nghiệp: 140×104 ở khung 2560 → ~8.5mm trên màn 7"
+   (96×88 cũ chỉ ~5.8mm — thợ đeo găng bấm trượt) */
+.pm{width:140px;height:100px;border-radius:18px;border:1px solid var(--hair-2);background:var(--btn);
+  color:var(--txt);font-family:var(--f-num);font-weight:700;font-size:56px;cursor:pointer;transition:transform .07s,background .12s;
   display:flex;align-items:center;justify-content:center}
 .pm:active{transform:scale(.92);background:var(--btn-h)}
 .pm.dis{opacity:.28;pointer-events:none}
@@ -279,7 +292,13 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .tbtn:active{transform:scale(.95);background:var(--btn-h)}
 .tbtn .ti{font-size:30px}
 .tbtn.on{background:color-mix(in srgb,var(--accent) 26%,var(--btn));border-color:var(--accent);color:var(--accent)}
-.tbtn.warn{border-color:color-mix(in srgb,var(--c-warn) 55%,transparent);color:var(--c-warn)}
+/* Chớp đỏ khi CHẠM nút lệnh một-phát (Nạp hạt/Xả liệu…) — phản hồi xúc giác cho thợ.
+   CÙNG TÔNG với .on (26%): lúc 'hit' rút đi nhường 'on' (máy xác nhận) không thấy chớp */
+.tbtn.hit{background:color-mix(in srgb,var(--accent) 26%,var(--btn));border-color:var(--accent);color:var(--accent)}
+/* Nút HỆ TRỌNG (Kết thúc mẻ): hổ phách — tách khỏi màu đỏ vốn dành cho lỗi/mất kết nối */
+.tbtn.warn{border-color:color-mix(in srgb,var(--c-try) 55%,transparent);color:var(--c-try)}
+.tbtn.warn.hit,
+.tbtn.warn.on{background:color-mix(in srgb,var(--c-try) 26%,var(--btn));border-color:var(--c-try);color:var(--c-try)}
 .tbtn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .tbtn .pfn{font-family:var(--f-mono);color:var(--accent)}
 
@@ -381,8 +400,10 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .audit .empty{padding:50px;text-align:center;color:var(--mute)}
 
 /* ══════════ OVERLAY: LOGIN / NUMPAD / KEYBOARD / PICKER ══════════ */
+/* Nền overlay = KÍNH MỜ: phải có độ TRONG (transparent) thì blur mới thấy nội dung
+   sau lưng — pha màu đặc là thành tấm đen, blur vô nghĩa */
 .overlay{position:absolute;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
-  background:color-mix(in srgb,var(--bg) 80%,#000);backdrop-filter:blur(4px)}
+  background:color-mix(in srgb,var(--bg) 55%,transparent);backdrop-filter:blur(12px)}
 .overlay.on{display:flex}
 #login{z-index:120;background:var(--bg)}   /* login che toàn bộ */
 .loginbox{width:1000px;max-width:92%;text-align:center}
@@ -417,11 +438,30 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .npbox{width:560px;background:var(--panel);border:1px solid var(--hair-2);border-radius:24px;padding:28px;text-align:center}
 /* ══ CHỌN CỔNG COM — hiện sau đăng nhập khi chưa nối được máy ══ */
 #portpick{z-index:118}
-.ppbox{width:1080px;max-width:94%;max-height:88vh;display:flex;flex-direction:column;
+/* Bàn phím/numpad/picker phải NỔI TRÊN các hộp thoại gọi chúng (Sửa hồ sơ…) —
+   cùng z-index mà đứng trước trong DOM là bị hộp thoại đè, gõ không được */
+#keyboard,#numpad,#picker{z-index:130}
+/* Ô nhập chữ THẬT (thay bàn phím tự vẽ): phải mở lại user-select vì #stage chặn toàn cục */
+.kbinput{width:100%;height:92px;border-radius:16px;border:1px solid var(--hair-2);background:var(--inset);
+  color:var(--txt);font-size:32px;padding:0 24px;font-family:var(--f-ui);outline:none;
+  user-select:text;-webkit-user-select:text}
+.kbinput:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.ppbox{width:1260px;max-width:94%;max-height:88vh;display:flex;flex-direction:column;
   background:var(--panel);border:1px solid var(--hair-2);border-radius:26px;padding:34px 38px}
 .ppbox h2{font-family:var(--f-num);font-weight:700;font-size:40px}
 .ppsub{font-size:21px;color:var(--dim);margin:10px 0 22px;line-height:1.45}
+.ppmain{flex:1;display:flex;gap:18px;min-height:0}
 .pplist{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin:-6px -6px 0;padding:6px}
+/* Panel cấu hình Modbus bên phải hộp chọn cổng */
+.ppside{width:310px;flex:none;display:flex;flex-direction:column;gap:16px;
+  border:1px solid var(--hair);border-radius:16px;background:var(--inset);padding:20px}
+.ppside .pps-t{font-size:15px;letter-spacing:2px;font-weight:800;color:var(--dim)}
+.ppside label{font-size:18px;color:var(--dim);font-weight:600;display:block;margin-bottom:8px}
+.ppseg{display:flex;flex-wrap:wrap;gap:8px}
+.ppopt{height:52px;min-width:62px;padding:0 14px;border-radius:12px;border:1px solid var(--hair-2);
+  background:var(--btn);color:var(--txt);font-family:var(--f-mono);font-size:20px;cursor:pointer}
+.ppopt.on{background:color-mix(in srgb,var(--accent) 22%,var(--btn));border-color:var(--accent);color:var(--accent)}
+.pps-note{font-size:16px;color:var(--mute);line-height:1.45;margin-top:auto}
 .pprow{display:flex;align-items:center;gap:20px;padding:20px 24px;border-radius:18px;cursor:pointer;
   background:var(--card);border:1px solid var(--hair-2);text-align:left;width:100%;color:var(--txt)}
 .pprow:active{transform:scale(.99)}
@@ -558,7 +598,7 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 .strow.et .r{color:var(--c-et)} .strow.bt .r{color:var(--c-bt)} .strow.gas .r{color:#c9871a}
 .statuspanel .startbtn{margin-top:auto;height:92px;border:0;border-radius:20px;color:#fff;cursor:pointer;
   font-family:var(--f-num);font-weight:700;font-size:32px;
-  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  background:var(--accent);   /* CẤM gradient xanh→đỏ (lệnh chủ máy) — màu đặc */
   box-shadow:0 14px 34px color-mix(in srgb,var(--accent) 32%,transparent)}
 .statuspanel .startbtn:active{transform:scale(.98)}
 /* ── Panel PREHEAT (làm nóng máy) ── */
@@ -689,6 +729,14 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 .peval{flex:1;min-height:70px;padding:14px 20px;background:var(--inset);border:1px solid var(--hair);border-radius:14px;
   color:var(--txt);font-size:26px;text-align:left;cursor:pointer}
 .peval:active{border-color:var(--accent)}
+/* Bản input: gõ trực tiếp trong form — mở lại user-select (bị #stage chặn toàn cục) */
+input.peval{user-select:text;-webkit-user-select:text;outline:none;cursor:text;font-family:var(--f-ui)}
+input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+/* Gõ số Burner/Airflow/Drum tại chỗ: kế thừa nguyên font/màu của số, chỉ thêm gạch chân accent */
+.ovedit{width:130px;background:transparent;border:none;outline:none;
+  border-bottom:4px solid var(--accent);color:inherit;font:inherit;text-align:center;
+  user-select:text;-webkit-user-select:text}
+.ovedit.mile{width:92px;border-bottom-width:3px}
 .perow{display:flex;gap:14px;margin-top:26px}
 .perow .bigbtn{flex:1;display:flex;align-items:center;justify-content:center}
 
@@ -719,7 +767,7 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
   display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -6px 14px rgba(0,0,0,.08)}
 .loginbox h1{font-family:var(--f-num);font-weight:700;font-size:40px;letter-spacing:6px;text-transform:uppercase;margin:0 0 28px}
 .login-tap{width:100%;height:90px;border:0;border-radius:18px;color:#fff;font-family:var(--f-ui);font-weight:700;font-size:28px;cursor:pointer;
-  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 14px 34px color-mix(in srgb,var(--accent) 32%,transparent)}
+  background:var(--accent);box-shadow:0 14px 34px color-mix(in srgb,var(--accent) 32%,transparent)}   /* CẤM gradient xanh→đỏ */
 .login-tap:active{transform:scale(.98)}
 .pfoot{font-family:var(--f-mono);font-size:19px;color:var(--mute);margin:4px 0 20px}
 .roastlist{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
@@ -812,29 +860,12 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
     <path class="ignite-1" d="M24.99,6.39c2.26,3.16,2.9,6.62,1.81,10.4-.09.31-.21.6-.29.91-.35,1.32.32,2.23,1.7,2.22,2.24-.02,4.23-.76,5.92-2.23.29-.26.58-.52.87-.78,3.49,4.17,1.56,12.86-3.49,15.48,0-.48-.01-.9,0-1.32.06-1.65-.54-3.06-1.64-4.24-1.55-1.65-3.2-3.22-4.83-4.79-1.78,1.66-3.55,3.38-5.16,5.21-1.25,1.42-1.54,3.19-1.32,5.25-2.29-1.47-3.74-3.38-4.54-5.72-1.53-4.5-.77-8.62,2.57-12.09,2.72-2.82,5.56-5.5,8.41-8.3Z"/>
   </g>
   <rect class="ignite-2" x="5" y="0" width="40" height="40"/>
-</symbol><symbol id="i-charge" viewBox="0 0 90 73">
-  <defs>
-    <style>
-      .charge-1 {
-        stroke-width: 0px;
-      }
-
-      .charge-1, .charge-2 {
-        fill: none;
-      }
-
-      .charge-2 {
-        stroke: currentColor;
-        stroke-miterlimit: 10;
-        stroke-width: 6px;
-      }
-    </style>
-  </defs>
-  <g>
-    <path class="charge-2" d="M55.8,40.45h-21.59c-.25,0-.49-.09-.68-.24L5.39,17.22c-.78-.63-.33-1.89.67-1.89h77.87c1,0,1.45,1.25.67,1.89l-28.14,22.98c-.19.16-.43.24-.68.24Z"/>
-    <rect class="charge-2" x="34.54" y="48.25" width="20.93" height="9.42" rx=".5" ry=".5"/>
+</symbol><symbol id="i-charge" viewBox="0 0 65 48">
+  <!-- Icon CHARGE gốc (icon OTL/charge on.svg) — phễu nạp hạt -->
+  <g fill="none" stroke="currentColor" stroke-width="3.77" stroke-miterlimit="10">
+    <path d="M39.25,26.5h-13.5c-.15,0-.3-.05-.42-.15L7.75,11.8c-.48-.4-.2-1.2.42-1.2h48.67c.62,0,.9.79.42,1.19l-17.58,14.54c-.12.1-.27.15-.42.15Z"/>
+    <rect x="25.96" y="31.43" width="13.08" height="5.96" rx=".31" ry=".31"/>
   </g>
-  <rect class="charge-1" x="0" y="0" width="90" height="73"/>
 </symbol><symbol id="i-escape" viewBox="0 0 90 73">
   <defs>
     <style>
@@ -1204,28 +1235,31 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
     </g>
   </g>
   <rect class="destoner-1" x="0" y="0" width="90" height="73"/>
-</symbol><symbol id="i-loader" viewBox="0 0 60 60">
-  <defs>
-    <style>
-      .loader-1 {
-        stroke: currentColor;
-        stroke-miterlimit: 10;
-        stroke-width: 1.5px;
-      }
-    </style>
-  </defs>
-  <path class="loader-1" d="M7.5,16.57c.06-.16.11-.33.17-.49.42-1.35,1.51-2.23,2.77-2.25.45,0,.89,0,1.34,0,.73,0,1.23-.4,1.47-1.18.27-.86.54-1.72,1.15-2.38.73-.79,1.6-1.23,2.6-1.25,1.63-.03,3.26-.04,4.89,0,1.63.03,2.92.84,3.93,2.29.43.62.86,1.26,1.36,1.8.48.52,1.11.72,1.79.71,4.46,0,8.91,0,13.37,0,2.04,0,3.25,1.37,3.25,3.68,0,1.47,0,2.94,0,4.47.18,0,.33,0,.48,0,1.11,0,2.22,0,3.33,0,2.38.01,3.65,2.01,2.87,4.55-.87,2.86-1.75,5.73-2.64,8.58-1.29,4.11-2.6,8.2-3.89,12.31-.65,2.09-2.5,3.5-4.36,3.55-1.43.04-2.86.02-4.28.02-8.7,0-17.39,0-26.09,0-.44,0-.9-.01-1.33-.12-1.17-.29-1.94-1.31-2.09-2.66,0-.09-.05-.18-.08-.26,0-10.46,0-20.91,0-31.37ZM25.95,48.25c5.06,0,10.12,0,15.19,0,.55,0,1-.22,1.44-.56.59-.46.86-1.18,1.08-1.88,2.1-6.63,4.17-13.27,6.25-19.91.33-1.06.26-1.18-.74-1.18-9.68,0-19.35,0-29.03,0-.42,0-.84-.02-1.25,0-.99.07-1.74.6-2.13,1.64-.42,1.12-.79,2.26-1.14,3.4-1.73,5.56-3.45,11.13-5.17,16.69-.05.16-.16.31-.2.47-.09.37-.14.74-.22,1.11.27.07.54.19.81.19,5.03.01,10.07,0,15.1,0ZM9.92,39.28l.06.03c.16-.4.35-.8.48-1.21,1.26-4.05,2.59-8.09,3.75-12.18.68-2.4,2.99-3.97,4.94-3.96,7.79.04,15.58.02,23.37.02.18,0,.36,0,.57,0,0-1.54,0-3.01,0-4.48,0-.76-.17-.94-.85-.94-4.41,0-8.83,0-13.24,0-1.87,0-3.38-.8-4.46-2.57-.22-.36-.45-.72-.69-1.07-.52-.75-1.2-1.16-2.04-1.17-1.38,0-2.77.04-4.15-.02-.84-.04-1.46.26-1.85,1.1-.12.27-.21.57-.3.85-.47,1.42-1.37,2.35-2.64,2.71-.64.18-1.34.13-2.02.15-.77.02-.91.16-.91,1.02,0,6.86,0,13.72,0,20.58,0,.38,0,.75,0,1.13Z"/>
-</symbol><symbol id="i-afterburner" viewBox="0 0 50 40">
-  <defs>
-    <style>
-      .afterburner-1 {
-        fill: currentColor;
-        stroke: currentColor;
-        stroke-miterlimit: 10;
-      }
-    </style>
-  </defs>
-  <path class="afterburner-1" d="M24.85,2.42c1.1.27,1.67,1.11,2.27,1.89,2.24,2.92,3.26,6.24,3.1,9.91-.04.82-.19,1.64-.29,2.49.86-.25,1.64-.67,2.26-1.31,1.05-1.07,1.93-2.36,2.54-3.66,3.36,3.17,5.04,6.96,4.98,11.35-.1,6.89-5.06,12.85-11.78,14.19-9.83,1.96-19.47-6.22-17.36-17.55.49-2.63,1.8-5.06,3.67-6.98,3.19-3.27,6.44-6.47,9.68-9.69.26-.26.65-.41.93-.66ZM18.96,33.21c-.01-.11,0-.13-.02-.17-.68-1.89-.49-3.96.87-5.43,1.67-1.79,3.44-3.47,5.16-5.21,1.48,1.47,2.97,2.94,4.44,4.43,1.25,1.27,1.89,2.8,1.84,4.58-.02.59-.14,1.18-.21,1.75,6.49-3.75,7.34-12.05,4.02-16.71-.45.43-.88.88-1.37,1.28-1.66,1.37-3.59,2.02-5.73,2.02-.46,0-.84-.18-1.12-.55-.35-.47-.31-.96-.12-1.49,1.43-4.15.88-8.01-1.68-11.58-.04-.05-.08-.1-.14-.16-.06.05-.1.08-.14.12-2.92,2.92-5.87,5.82-8.75,8.77-1.26,1.29-2.19,2.89-2.61,4.65-.92,3.85-.31,7.33,1.84,10.34.98,1.37,2.2,2.48,3.7,3.34ZM24.97,26.25c-1.18,1.22-2.44,2.31-3.37,3.68-.29.42-.36.96-.26,1.47.57,2.84,2.55,4.01,5.29,3.15.32-.1.61-.3.81-.56,1.46-1.86,1.44-3.61.15-5.08-.37-.42-.78-.8-1.17-1.19-.47-.47-.94-.95-1.45-1.45Z"/>
+</symbol><symbol id="i-loader" viewBox="0 0 90 73">
+  <!-- Icon FEEDER gốc (icon OTL/LOADER ON.svg) — phễu nạp liệu -->
+  <g fill="none" stroke="currentColor" stroke-width="6" stroke-miterlimit="10">
+    <rect x="37.33" y="48.26" width="6.6" height="5.47" rx=".5" ry=".5" transform="translate(-10.37 91.62) rotate(-90)"/>
+    <path d="M50.24,47.7h-19.23c-.22,0-25.47-11.04-25.64-11.18l-.02-9.5c-.69-.56-.29-1.68.6-1.68h69.35c.89,0,1.29,1.12.6,1.68l.02,9.5c-.17.14-25.46,11.18-25.68,11.18Z"/>
+    <path d="M33.08,55.62h34.71s11.47-.13,15.12-8.98c2.1-5.1,1.89-10.93,1.89-10.93l.21-24.68"/>
+    <line x1="10.52" y1="39.34" x2="10.52" y2="61.96"/>
+    <line x1="70.72" y1="39.34" x2="70.72" y2="61.96"/>
+  </g>
+</symbol><symbol id="i-afterburner" viewBox="0 0 90 73">
+  <!-- Icon AB gốc (icon OTL/AFTERBURNER_ON.svg) — buồng đốt khói -->
+  <g fill="none" stroke="currentColor" stroke-width="3" stroke-miterlimit="10">
+    <line x1="51.33" y1="39.89" x2="51.33" y2="48.43"/>
+    <line x1="40.33" y1="32.14" x2="40.33" y2="41.33"/>
+    <line x1="62.33" y1="32.14" x2="62.33" y2="41.33"/>
+    <polyline points="25.42 24.55 25.42 20.61 74.18 20.61 74.18 52.22 25.42 52.22 25.42 48.29"/>
+    <polyline points="34.16 27.41 27.63 24.55 25.42 24.55 15.82 24.55 15.82 48.29 25.42 48.29 27.52 48.29 34.16 46.45"/>
+  </g>
+  <g fill="currentColor">
+    <polygon points="46.85 41.2 51.33 33.43 55.82 41.2 46.85 41.2"/>
+    <polygon points="35.85 33.45 40.33 25.68 44.82 33.45 35.85 33.45"/>
+    <polygon points="57.85 33.45 62.33 25.68 66.82 33.45 57.85 33.45"/>
+    <polygon stroke="currentColor" points="60.23 4 40.4 4 28.39 20.18 71.22 20.18 60.23 4"/>
+    <polygon stroke="currentColor" points="71.22 52.82 28.39 52.82 39.33 69 59.15 69 71.22 52.82"/>
+  </g>
 </symbol><symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2" fill="currentColor"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></symbol><symbol id="i-loop" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 22l-4-4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol><symbol id="i-view" viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol></svg>
 
     <!-- ══════════ TOPBAR ══════════ -->
@@ -1389,10 +1423,10 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
         <!-- View CHI TIẾT -->
         <div class="milestrip detail-only">
           <div class="mchip done"><div class="mn">TP</div><div class="mv"><span class="tm num">01:34</span><span class="dg num">91°</span></div></div>
-          <div class="mchip done"><div class="mn">DE</div><div class="mv"><span class="tm num">06:12</span><span class="dg num">150°</span></div></div>
-          <div class="mchip now"><div class="mn">FCs</div><div class="mv"><span class="tm num">09:40</span><span class="dg num">196°</span></div></div>
+          <div class="mchip done" onclick="mileSetEdit('DE')"><div class="mn">DE</div><div class="mv"><span class="tm num">06:12</span><span class="dg num">150°</span></div></div>
+          <div class="mchip now" onclick="mileSetEdit('FCs')"><div class="mn">FCs</div><div class="mv"><span class="tm num">09:40</span><span class="dg num">196°</span></div></div>
           <div class="mchip todo"><div class="mn">DEV</div><div class="mv"><span class="tm num">—</span><span class="dg num">—</span></div></div>
-          <div class="mchip todo"><div class="mn">DROP</div><div class="mv"><span class="tm num">—</span><span class="dg num">—</span></div></div>
+          <div class="mchip todo" onclick="mileSetEdit('DROP')"><div class="mn">DROP</div><div class="mv"><span class="tm num">—</span><span class="dg num">—</span></div></div>
           <button class="modebtn manual" id="modeBtn" onclick="toggleMode()">
             <span class="ml" data-i18n="rang.mode">Chế độ</span><span class="mmode" id="modeVal">MANUAL</span></button>
         </div>
@@ -1419,7 +1453,7 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
             <div class="rcard"><div class="duo">
               <div class="col et"><div class="cap">Exhaust · ET</div><div class="v num" id="liveET">214.0</div><div class="sub">RoR <span id="liveETror">+9.1</span></div></div>
               <div class="vl"></div>
-              <div class="col abt"><div class="cap">ABT / RPM</div><div class="v num" id="liveABT">205.7</div><div class="sub">Drum <span id="liveDrumRpm">55</span> rpm</div></div>
+              <div class="col abt"><div class="cap">Drum · RPM</div><div class="v num"><span id="liveDrumRpm">55</span><small style="font-size:24px;color:var(--mute)"> rpm</small></div><div class="sub"><span id="liveDrumHz">—</span> Hz · <span id="liveDrumPct">—</span>%</div></div>
             </div></div>
             <div class="rcard"><div class="duo">
               <div class="col"><div class="cap">Vacuum</div><div class="v num"><span id="liveVac">−80</span><small style="font-size:24px;color:var(--mute)"> Pa</small></div></div>
@@ -1429,17 +1463,17 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
             <div class="rcard outcard">
               <div class="outrow burner">
                 <button class="pm" data-out="burner" data-d="-1" onclick="stepOut(this)">−</button>
-                <div class="oinfo"><div class="cap">Burner</div><div class="ov num"><span id="ovBurner">40.0</span><small>%</small></div></div>
+                <div class="oinfo" onclick="outEdit('burner')"><div class="cap">Burner</div><div class="ov num"><span id="ovBurner">40</span><small>%</small></div></div>
                 <button class="pm" data-out="burner" data-d="1" onclick="stepOut(this)">+</button>
               </div>
               <div class="outrow air">
                 <button class="pm" data-out="air" data-d="-1" onclick="stepOut(this)">−</button>
-                <div class="oinfo"><div class="cap">Airflow</div><div class="ov num"><span id="ovAir">80.0</span><small>%</small></div></div>
+                <div class="oinfo" onclick="outEdit('air')"><div class="cap">Airflow</div><div class="ov num"><span id="ovAir">80</span><small>%</small></div></div>
                 <button class="pm" data-out="air" data-d="1" onclick="stepOut(this)">+</button>
               </div>
               <div class="outrow drum">
                 <button class="pm" data-out="drum" data-d="-1" onclick="stepOut(this)">−</button>
-                <div class="oinfo"><div class="cap">Drum</div><div class="ov num"><span id="ovDrum">55.0</span><small>rpm</small></div></div>
+                <div class="oinfo" onclick="outEdit('drum')"><div class="cap">Drum</div><div class="ov num"><span id="ovDrum">55</span><small>%</small></div></div>
                 <button class="pm" data-out="drum" data-d="1" onclick="stepOut(this)">+</button>
               </div>
             </div>
@@ -1467,21 +1501,21 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 
         <!-- Dải thiết bị phụ (bật/tắt) -->
         <div class="devstrip detail-only">
-          <button class="devbtn" data-dev="drumfan" onclick="toggleDev(this)"><svg class="devico ot"><use href="#i-drumfan"/></svg><span>Drum-Fan</span></button>
-          <button class="devbtn" data-dev="mixer" onclick="toggleDev(this)"><svg class="devico ot"><use href="#i-mixer"/></svg><span>Mixer</span></button>
-          <button class="devbtn" data-dev="cooling" onclick="cmdCool(event)"><svg class="devico ot"><use href="#i-cool"/></svg><span>Cooling</span></button>
-          <button class="devbtn" data-dev="afterburner" onclick="toggleDev(this)"><svg class="devico ot"><use href="#i-afterburner"/></svg><span>Afterburner</span></button>
-          <button class="devbtn" data-dev="loader" onclick="toggleDev(this)"><svg class="devico ot"><use href="#i-loader"/></svg><span>Loader</span></button>
-          <button class="devbtn" data-dev="destoner" onclick="toggleDev(this)"><svg class="devico ot"><use href="#i-destoner"/></svg><span>Destoner</span></button>
+          <button class="devbtn" id="btnDrumFan" data-dev="drumfan" onclick="cmdDev('drumfan',this)"><svg class="devico ot"><use href="#i-drumfan"/></svg><span>Drum-Fan</span></button>
+          <button class="devbtn" id="btnMixer" data-dev="mixer" onclick="cmdDev('mixer',this)"><svg class="devico ot"><use href="#i-mixer"/></svg><span>Mixer</span></button>
+          <button class="devbtn" id="btnCool" data-dev="cooling" onclick="cmdCool(event)"><svg class="devico ot"><use href="#i-cool"/></svg><span>Cooling</span></button>
+          <button class="devbtn" id="btnAB" data-dev="afterburner" onclick="cmdDev('afterburner',this)"><svg class="devico ot"><use href="#i-afterburner"/></svg><span>Afterburner</span></button>
+          <button class="devbtn" id="btnLoader" data-dev="loader" onclick="cmdDev('loader',this)"><svg class="devico ot"><use href="#i-loader"/></svg><span>Loader</span></button>
+          <button class="devbtn" id="btnDestoner" data-dev="destoner" onclick="cmdDev('destoner',this)"><svg class="devico ot"><use href="#i-destoner"/></svg><span>Destoner</span></button>
         </div>
 
         <!-- Toolbar dưới -->
         <div class="toolbar">
-          <button class="tbtn" onclick="cmdIgnite(event)"><svg class="ti ot" aria-hidden="true"><use href="#i-ignite"/></svg><span data-i18n="tb.ignite">Đánh lửa</span></button>
-          <button class="tbtn" onclick="cmdCharge()"><svg class="ti ot" aria-hidden="true"><use href="#i-charge"/></svg><span data-i18n="tb.charge">Nạp hạt</span></button>
-          <button class="tbtn" onclick="cmdEscape()"><svg class="ti ot" aria-hidden="true"><use href="#i-escape"/></svg><span data-i18n="tb.eject">Xả liệu</span></button>
+          <button class="tbtn" id="btnIgnite" onclick="cmdIgnite(event)"><svg class="ti ot" aria-hidden="true"><use href="#i-ignite"/></svg><span data-i18n="tb.ignite">Đánh lửa</span></button>
+          <button class="tbtn" id="btnCharge" onclick="cmdCharge()"><svg class="ti ot" aria-hidden="true"><use href="#i-charge"/></svg><span data-i18n="tb.charge">Nạp hạt</span></button>
+          <button class="tbtn" id="btnEscape" onclick="cmdEscape()"><svg class="ti ot" aria-hidden="true"><use href="#i-escape"/></svg><span data-i18n="tb.eject">Xả liệu</span></button>
           <button class="tbtn" id="pauseBtn" onclick="togglePause()"><svg class="ti ot" aria-hidden="true"><use href="#i-pause"/></svg><span data-i18n="tb.pause">Tạm dừng</span></button>
-          <button class="tbtn warn" onclick="cmdDrop()"><svg class="ti ot" aria-hidden="true"><use href="#i-drop"/></svg><span data-i18n="tb.drop">Xả mẻ</span></button>
+          <button class="tbtn warn" id="btnDrop" onclick="cmdDrop()"><svg class="ti ot" aria-hidden="true"><use href="#i-drop"/></svg><span data-i18n="tb.drop">Kết thúc mẻ</span></button>
           <button class="tbtn dis" id="loopBtn" title="Chỉ dùng ở chế độ AUTO"><svg class="ti ot" aria-hidden="true"><use href="#i-loop"/></svg>Loop</button>
           <button class="tbtn"><span class="ti pfn num" id="tbPfn">2</span><span data-i18n="tb.prof">Prof No.</span></button>
           <button class="tbtn" onclick="gotoTab('hoso')"><svg class="ti ot" aria-hidden="true"><use href="#i-trend"/></svg><span data-i18n="tb.profile">Hồ sơ</span></button>
@@ -1567,16 +1601,17 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
                 <h3 data-i18n="sub.ketnoi">Kết nối</h3>
                 <div class="lead" data-i18n="ketnoi.lead">Cổng RS485 tới Artisan / module cảm biến. Trạng thái kết nối thời gian thực.</div>
                 <div class="connrow">
-                  <div class="connst ok"><span class="d"></span><span class="txt"><b>Artisan</b> <span>· COM3 · 38400</span></span></div>
-                  <div class="connst try"><span class="d"></span><span class="txt"><b>ET module</b> <span>· COM5 · đang thử</span></span></div>
+                  <div class="connst ok" id="cnStMach"><span class="d"></span><span class="txt"><b data-i18n="ketnoi.mach">Máy rang</b> <span id="cnStMachTxt">· —</span></span></div>
                 </div>
                 <div class="grid2">
-                  <div class="frow"><label data-i18n="ketnoi.artisan">Cổng Modbus (Artisan)</label>
-                    <div class="pick" data-cfg="cn_artisan" data-label="Cổng Artisan" onclick="openPick(this,['COM3','COM5','COM15'])"><span class="pv">COM3</span><span class="car">▾</span></div></div>
+                  <div class="frow"><label data-i18n="ketnoi.artisan">Cổng Modbus (máy rang)</label>
+                    <div class="pick" data-cfg="cn_artisan" data-label="Cổng máy rang" onclick="openPickPorts(this)"><span class="pv">—</span><span class="car">▾</span></div></div>
                   <div class="frow"><label data-i18n="ketnoi.bt">Module BT (CP210x)</label>
-                    <div class="pick" data-cfg="cn_bt" data-label="Cổng BT" onclick="openPick(this,['COM5','COM3','COM15'])"><span class="pv">COM5</span><span class="car">▾</span></div></div>
+                    <div class="pick" data-cfg="cn_bt" data-label="Cổng BT" onclick="openPickPorts(this)"><span class="pv">COM5</span><span class="car">▾</span></div></div>
                   <div class="frow"><label>Baud</label>
-                    <div class="pick" data-cfg="cn_baud" data-label="Baud" onclick="openPick(this,['9600','19200','38400','115200'])"><span class="pv">38400</span><span class="car">▾</span></div></div>
+                    <div class="pick" data-cfg="cn_baud" data-label="Baud" onclick="openPick(this,['9600','19200','38400','57600','115200'])"><span class="pv">38400</span><span class="car">▾</span></div></div>
+                  <div class="frow"><label>Drum RPM @ 50Hz <span class="q" title="Tốc độ trống thực tế (vòng/phút) khi biến tần chạy đúng 50Hz — dùng quy đổi Hz → RPM hiển thị.">?</span></label>
+                    <div class="field" data-num="cn_rpm50" data-label="Drum RPM @ 50Hz" data-unit="rpm" data-min="10" data-max="300" data-step="1" data-dec="0"></div></div>
                   <div class="warnbar" id="comWarn"><span>⚠</span><span data-i18n="ketnoi.dup">Hai cổng đang trùng nhau — Artisan và ET không thể dùng chung một COM.</span></div>
                 </div>
               </div>
@@ -1610,6 +1645,15 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
                     <div class="field" data-num="mn_sens" data-label="Độ nhạy gas" data-unit="°C/min/%" data-min="0.1" data-max="5" data-step="0.1" data-dec="1"></div></div>
                   <div class="frow"><label data-i18n="model.loss">Hệ số mất nhiệt <span class="q">?</span></label>
                     <div class="field" data-num="mn_loss" data-label="Hệ số mất nhiệt" data-unit="" data-min="0" data-max="2" data-step="0.05" data-dec="2"></div></div>
+                  <div class="section-t">Thiết bị máy có (bỏ tích = ẩn nút trên màn Rang)</div>
+                  <div class="permrow" id="devEnRow" style="grid-column:1/-1">
+                    <div class="permchk" data-dev-en="drumfan"><span class="bx">✓</span>Drum-Fan</div>
+                    <div class="permchk" data-dev-en="mixer"><span class="bx">✓</span>Mixer</div>
+                    <div class="permchk" data-dev-en="cooling"><span class="bx">✓</span>Cooling</div>
+                    <div class="permchk" data-dev-en="afterburner"><span class="bx">✓</span>Afterburner</div>
+                    <div class="permchk" data-dev-en="loader"><span class="bx">✓</span>Loader</div>
+                    <div class="permchk" data-dev-en="destoner"><span class="bx">✓</span>Destoner</div>
+                  </div>
                   <div class="section-t">Trục biểu đồ</div>
                   <div class="frow"><label>Chế độ trục <span class="q" title="Tự động: khớp theo mẻ rang. Cố định: dùng min/max bên dưới.">?</span></label>
                     <div class="pick" data-cfg="ch_auto" data-label="Chế độ trục" onclick="openPick(this,['Tự động','Cố định'])"><span class="pv">Tự động</span><span class="car">▾</span></div></div>
@@ -1707,7 +1751,15 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
     <div class="overlay" id="portpick"><div class="ppbox">
       <h2 id="ppTitle">Chọn cổng nối máy rang</h2>
       <div class="ppsub" id="ppSub">Cắm cáp từ máy rang vào máy tính, rồi chọn cổng tương ứng bên dưới.</div>
-      <div class="pplist" id="ppList"></div>
+      <div class="ppmain">
+        <div class="pplist" id="ppList"></div>
+        <div class="ppside">
+          <div class="pps-t">CẤU HÌNH MODBUS</div>
+          <div><label>Baud</label><div class="ppseg" id="ppBaud"></div></div>
+          <div><label>Slave ID</label><div class="ppseg" id="ppSlave"></div></div>
+          <div class="pps-note">Phải khớp cài đặt Modbus trên HMI máy rang. Chỉnh xong chạm vào cổng để thử nối.</div>
+        </div>
+      </div>
       <div class="ppfoot">
         <div class="ppstat" id="ppStat"></div>
         <button class="ppbtn" onclick="ppRefresh()" id="ppRefreshBtn">Quét lại</button>
@@ -1724,11 +1776,11 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
         <button class="bigbtn primary" style="flex:1" onclick="okNumpad()" data-i18n="btn.ok">OK</button></div>
     </div></div>
 
-    <!-- ══════════ KEYBOARD (tên) ══════════ -->
+    <!-- ══════════ NHẬP CHỮ: input THẬT — phím cứng gõ thẳng, máy cảm ứng Windows
+         tự bung bàn phím HỆ ĐIỀU HÀNH (đủ tiếng Việt), không vẽ phím riêng ══════════ -->
     <div class="overlay" id="keyboard"><div class="kbbox">
-      <div class="kbval" id="kbVal"></div>
-      <div id="kbRows"></div>
-      <div class="nprow" style="margin-top:14px"><button class="bigbtn ghost" style="flex:1" onclick="closeKb()" data-i18n="btn.cancel">Hủy</button>
+      <input class="kbinput" id="kbInput" type="text" autocomplete="off" spellcheck="false">
+      <div class="nprow" style="margin-top:18px"><button class="bigbtn ghost" style="flex:1" onclick="closeKb()" data-i18n="btn.cancel">Hủy</button>
         <button class="bigbtn primary" style="flex:1" onclick="okKb()" data-i18n="btn.ok">OK</button></div>
     </div></div>
 
@@ -1738,13 +1790,15 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
     <!-- ══════════ SỬA HỒ SƠ ══════════ -->
     <div class="overlay" id="profedit"><div class="pebox">
       <div class="petitle">Sửa hồ sơ</div>
-      <div class="pefield"><span class="pel">Tên</span><button class="peval" id="pe_name" onclick="peEdit('name')"></button></div>
-      <div class="pefield"><span class="pel">Ghi chú</span><button class="peval" id="pe_notes" onclick="peEdit('notes')"></button></div>
+      <!-- Input THẬT ngay trong form: bấm là con trỏ nháy tại ô, gõ phím cứng/bàn phím
+           Windows trực tiếp — không bung hộp nhập riêng che mất form -->
+      <div class="pefield"><span class="pel">Tên</span><input class="peval" id="pe_name" type="text" spellcheck="false" autocomplete="off" oninput="peTmp.name=this.value"></div>
+      <div class="pefield"><span class="pel">Ghi chú</span><input class="peval" id="pe_notes" type="text" spellcheck="false" autocomplete="off" oninput="peTmp.notes=this.value"></div>
       <div class="pefield"><span class="pel">Mức rang</span><button class="peval" id="pe_roast" onclick="peRoast()"></button></div>
-      <div class="pefield"><span class="pel">Nhiệt xả</span><button class="peval" id="pe_temp" onclick="peNum('temp')"></button></div>
-      <div class="pefield"><span class="pel">Thời gian</span><button class="peval" id="pe_time" onclick="peEdit('time')"></button></div>
-      <div class="pefield"><span class="pel">Ngày rang</span><button class="peval" id="pe_date" onclick="peEdit('date')"></button></div>
-      <div class="pefield"><span class="pel">Thợ rang</span><button class="peval" id="pe_roaster" onclick="peEdit('roaster')"></button></div>
+      <div class="pefield"><span class="pel">Nhiệt xả (°C)</span><input class="peval" id="pe_temp" type="text" inputmode="numeric" autocomplete="off" onblur="peTempClamp(this)" oninput="peTmp.temp=parseInt(this.value,10)||0"></div>
+      <div class="pefield"><span class="pel">Thời gian</span><input class="peval" id="pe_time" type="text" autocomplete="off" oninput="peTmp.time=this.value"></div>
+      <div class="pefield"><span class="pel">Ngày rang</span><input class="peval" id="pe_date" type="text" autocomplete="off" oninput="peTmp.date=this.value"></div>
+      <div class="pefield"><span class="pel">Thợ rang</span><input class="peval" id="pe_roaster" type="text" spellcheck="false" autocomplete="off" oninput="peTmp.roaster=this.value"></div>
       <div class="perow"><button class="bigbtn ghost" onclick="closeProfEdit()">Hủy</button>
         <button class="bigbtn primary" onclick="saveProfEdit()">Lưu</button></div>
     </div></div>
@@ -1879,15 +1933,21 @@ function cycleSort(){const o=['name','temp','time'],lbl={name:'Tên',temp:'Nhi�
 /* sửa 1 hồ sơ */
 let peIdx=-1, peTmp=null;
 function editProfile(i){peIdx=i;peTmp=Object.assign({},loadProfiles()[i]);refreshPE();document.getElementById('profedit').classList.add('on');}
-function refreshPE(){document.getElementById('pe_name').textContent=peTmp.name;
-  document.getElementById('pe_notes').textContent=peTmp.notes;document.getElementById('pe_roast').textContent=peTmp.roast;
-  document.getElementById('pe_temp').textContent=(peTmp.temp||0)+'°C';
-  document.getElementById('pe_time').textContent=peTmp.time||'';
-  document.getElementById('pe_date').textContent=peTmp.date||'';document.getElementById('pe_roaster').textContent=peTmp.roaster||'';}
-async function peEdit(f){const v=await openKb(peTmp[f]||'');if(v!=null&&v!=='') {peTmp[f]=v;refreshPE();}}
-async function peNum(f){const v=await openKb(String(peTmp[f]||''));if(v!=null&&v!==''){
-  const n=parseInt(v,10);if(!isNaN(n)){peTmp[f]=Math.max(100,Math.min(260,n));refreshPE();}}}
-function peRoast(){const o=loadRoasts();const i=o.indexOf(peTmp.roast);peTmp.roast=o[(i+1)%o.length];refreshPE();}
+function refreshPE(){document.getElementById('pe_name').value=peTmp.name||'';
+  document.getElementById('pe_notes').value=peTmp.notes||'';document.getElementById('pe_roast').textContent=peTmp.roast;
+  document.getElementById('pe_temp').value=peTmp.temp||0;
+  document.getElementById('pe_time').value=peTmp.time||'';
+  document.getElementById('pe_date').value=peTmp.date||'';document.getElementById('pe_roaster').value=peTmp.roaster||'';}
+function peTempClamp(el){let n=parseInt(el.value,10);if(isNaN(n))n=200;
+  n=Math.max(100,Math.min(260,n));peTmp.temp=n;el.value=n;}
+/* Mức rang: XỔ LIST chọn (trước là bấm xoay vòng — khó hiểu, thợ tưởng hỏng) */
+function peRoast(){
+  const o=loadRoasts();
+  document.getElementById('pkBox').innerHTML=o.map(r=>
+    `<div class="pkopt ${r===peTmp.roast?'sel':''}" onclick="peRoastPick('${r.replace(/'/g,"\\'")}')">${r}</div>`).join('');
+  document.getElementById('picker').classList.add('on');
+}
+function peRoastPick(v){peTmp.roast=v;refreshPE();document.getElementById('picker').classList.remove('on');}
 function closeProfEdit(){document.getElementById('profedit').classList.remove('on');}
 /* quản lý danh sách mức rang (tuỳ khách) */
 function openRoastMgr(){renderRoastMgr();document.getElementById('roastmgr').classList.add('on');}
@@ -1959,7 +2019,7 @@ const I18N={vi:{
  'rang.nosel':'Chưa chọn hồ sơ rang','rang.noselhint':'Chọn một hồ sơ để nạp và bắt đầu mẻ rang','rang.pickprof':'Chọn hồ sơ rang','rang.change':'Đổi hồ sơ',
  'ph.title':'Làm nóng máy','ph.idle':'Sẵn sàng','ph.heating':'Đang làm nóng','ph.reached':'Đã đạt nhiệt','ph.drum':'Nhiệt trống','ph.target':'Mục tiêu','ph.settemp':'Nhiệt đích','ph.settime':'Thời gian','ph.min':'phút','ph.start':'LÀM NÓNG','ph.stop':'DỪNG',
  'prof.new':'Hồ sơ mới','prof.empty':'Chưa có hồ sơ rang nào','prof.emptyhint':'Tạo hồ sơ đầu tiên để bắt đầu rang','prof.nofilter':'Không có hồ sơ phù hợp bộ lọc.',
- 'tb.settings':'Cài đặt','tb.ignite':'Đánh lửa','tb.charge':'Nạp hạt','tb.eject':'Xả liệu','tb.pause':'Tạm dừng','tb.drop':'Xả mẻ','tb.prof':'Prof No.','tb.profile':'Hồ sơ','tb.view':'Đổi view',
+ 'tb.settings':'Cài đặt','tb.ignite':'Đánh lửa','tb.charge':'Nạp hạt','tb.eject':'Xả liệu','tb.pause':'Tạm dừng','tb.drop':'Kết thúc mẻ','tb.prof':'Prof No.','tb.profile':'Hồ sơ','tb.view':'Đổi view',
  'set.locked':'Cài đặt đang khoá','set.needlogin':'Đăng nhập tài khoản có quyền để mở khoá.','set.note':'Thay đổi chưa áp dụng vào máy đang chạy',
  'sub.ketnoi':'Kết nối','sub.calib':'Calib gas','sub.model':'Model nhiệt','sub.taikhoan':'Tài khoản','sub.nhatky':'Nhật ký',
  'ketnoi.lead':'Cổng RS485 tới Artisan / module cảm biến. Trạng thái kết nối thời gian thực.','ketnoi.artisan':'Cổng Modbus (Artisan)','ketnoi.bt':'Module BT (CP210x)','ketnoi.dup':'Hai cổng đang trùng nhau — Artisan và ET không thể dùng chung một COM.',
@@ -2017,7 +2077,7 @@ const STP={"CHARGE": 5, "TP": 6, "DE": 7, "FCs": 8, "DEV": 9, "DROP": 10, "COOLI
 /* Mốc ĐÃ ĐẠT ⟺ progStep >= giá trị này — lệch 1 bước so với STP,
    vì progStep nghĩa là 'đang CHỜ mốc đó'. Chấm mốc phải dùng bảng này. */
 const MILE_STEP={"TP": 7, "DE": 8, "FCs": 9, "DEV": 9, "DROP": 10};
-const PCL_FLAGS=["auto", "gas", "charge", "drop", "escape", "cool", "pc_control", "flame", "pc_lost", "flame_fail"];
+const PCL_FLAGS=["auto", "gas", "charge", "drop", "escape", "cool", "pc_control", "flame", "pc_lost", "flame_fail", "drumfan", "mixer", "afterburner", "loader", "destoner"];
 const PCL_PHASES=["dry", "mai", "dev"];
 /* Ngưỡng/hệ số app dùng khi TỰ TÍNH (máy chưa có PC_Link, hoặc app tự lái) */
 const PCL_DERIVE={"ror_window_s": 3, "ror_gain": 20, "ror_bt_clamp": 95.0, "ror_et_clamp": 20.0, "kalman_bt": [1.0, 1.0, 0.005], "kalman_et": [1.0, 1.0, 0.01], "tp_min_time_s": 20, "tp_max_temp": 150.0, "de_temp_default": 150.0, "fcs_temp_default": 196.0, "charge_drop_bt": 8.0};
@@ -2068,10 +2128,39 @@ async function dsTick(){
   if(dsLive())applyMachine(DS.snap);
 }
 /* Đổ 1 gói dữ liệu máy vào trạng thái app */
+/* Chống nảy số khi thợ vừa bấm ±: giữ số VỪA ĐẶT tối đa 3s — máy báo về đúng số
+   thì nhả (máy là sự thật), quá hạn mà máy vẫn khác thì cũng nhả (lệnh bị lơ). */
+const OUT_HOLD={};   // k → {v, until}
+function outShow(k,mv){
+  const h=OUT_HOLD[k];
+  if(!h)return mv;
+  if(Math.round(mv)===Math.round(h.v)||Date.now()>h.until){delete OUT_HOLD[k];return mv;}
+  return h.v;
+}
 function applyMachine(d){
   txt('ltBT',d.bt.toFixed(1)+'°'); txt('ltET',d.et.toFixed(1)+'°');   // 2 số đỉnh luôn theo máy
   R.burner=d.gas; R.air=d.air; R.drum=d.drum;
-  txt('ovBurner',d.gas.toFixed(1)); txt('ovAir',d.air.toFixed(1)); txt('ovDrum',d.drum.toFixed(1));
+  // ovSet: KHÔNG đè khi thợ đang gõ inline (dataset.editing)
+  const ovSet=(id,val)=>{const e=document.getElementById(id);if(e&&!e.dataset.editing)e.textContent=val;};
+  ovSet('ovBurner',outShow('burner',d.gas).toFixed(0));
+  ovSet('ovAir',   outShow('air',d.air).toFixed(0));
+  ovSet('ovDrum',  outShow('drum',d.drum).toFixed(0));
+  // Nút Nạp/Xả sáng theo trạng thái THẬT của xi lanh (firmware tự đóng là nút tự tắt);
+  // flagShow = có cầu lạc quan 3s sau khi bấm để không chớp trong lúc chờ cờ về
+  const bc=document.getElementById('btnCharge'),be=document.getElementById('btnEscape'),
+        bd=document.getElementById('btnDrop'),bi=document.getElementById('btnIgnite'),
+        bo=document.getElementById('btnCool');
+  if(bc)bc.classList.toggle('on',flagShow('charge'));
+  if(be)be.classList.toggle('on',flagShow('escape'));
+  if(bd)bd.classList.toggle('on',flagShow('drop'));
+  if(bi)bi.classList.toggle('on',flagShow('ignite'));
+  if(bo)bo.classList.toggle('on',flagShow('cool'));
+  // Dải thiết bị phụ — đèn theo cờ thật của máy
+  [['drumfan','btnDrumFan'],['mixer','btnMixer'],['afterburner','btnAB'],
+   ['loader','btnLoader'],['destoner','btnDestoner']].forEach(([n,id])=>{
+    const b=document.getElementById(id);if(b)b.classList.toggle('on',flagShow(n));
+  });
+  checkMileSets(d.bt);   // ngưỡng DE/FCs/DROP thợ cài — DROP chạm là tự xả
 
   // MÁY là chủ nhịp mẻ: đang trong dải CHARGE..DROP nghĩa là đang rang
   // AI LÀM CHỦ NHỊP MẺ:
@@ -2122,7 +2211,17 @@ function dsStart(){ dsTick(); setInterval(dsTick,1000);
    được thì im lặng, thợ không phải chạm gì. Cổng cũ biến mất (đổi cáp, cắm cổng
    USB khác) thì mới hỏi — chứ không bắt chọn mỗi lần.
    ════════════════════════════════════════════════════════════════ */
-const PP={open:false,busy:false,ports:[],cfg:null};
+const PP={open:false,busy:false,ports:[],cfg:null,sel:{}};   // sel = baud/slave thợ chỉnh trong hộp
+/* Panel Modbus bên phải hộp chọn cổng: baud + slave ID, áp vào lệnh nối cổng */
+function ppSideRender(){
+  const cb=+(PP.sel.baud||(PP.cfg&&PP.cfg.baud)||9600);
+  const cs=+(PP.sel.slave||(PP.cfg&&PP.cfg.slave)||1);
+  const eb=document.getElementById('ppBaud'),es=document.getElementById('ppSlave');
+  if(eb)eb.innerHTML=[9600,19200,38400,57600,115200].map(b=>`<button class="ppopt${b===cb?' on':''}" onclick="ppSetBaud(${b})">${b}</button>`).join('');
+  if(es)es.innerHTML=[1,2,3,4,5,6,7,8].map(s=>`<button class="ppopt${s===cs?' on':''}" onclick="ppSetSlave(${s})">${s}</button>`).join('');
+}
+function ppSetBaud(b){PP.sel.baud=b;ppSideRender();}
+function ppSetSlave(s){PP.sel.slave=s;ppSideRender();}
 const PP_WAIT_MS=6000;      // chờ nối tối đa trước khi kết luận là hỏng
 
 function ppSet(msg,cls){const e=document.getElementById('ppStat');if(!e)return;
@@ -2162,6 +2261,7 @@ async function ppRefresh(){
     PP.ports=await window.pywebview.api.link_ports();
     PP.cfg=await window.pywebview.api.link_config();
   }catch(e){ppSet('Không đọc được danh sách cổng: '+e,'err');return;}
+  ppSideRender();
   const cur=PP.cfg&&PP.cfg.port;
   const el=document.getElementById('ppList');
   el.innerHTML=PP.ports.length
@@ -2177,7 +2277,7 @@ async function ppPick(port){
   document.querySelectorAll('.pprow').forEach(r=>r.classList.toggle('on',r.dataset.port===port));
   ppSet(`Đang thử ${port}…`);
   try{
-    await window.pywebview.api.link_set_config(Object.assign({},PP.cfg||{},{port,enabled:true}));
+    await window.pywebview.api.link_set_config(Object.assign({},PP.cfg||{},{port,enabled:true},PP.sel));
   }catch(e){ppSet('Không đặt được cổng: '+e,'err');PP.busy=false;return;}
   const ok=await ppWaitConnect(PP_WAIT_MS);
   PP.busy=false;
@@ -2218,8 +2318,9 @@ async function portGateAfterLogin(){
    Máy chỉ nhận khi nút "PC control" trên HMI đang BẬT. Ở chế độ tương thích app
    KHÔNG đọc được trạng thái nút đó, nên không hứa suông: báo "đã gửi", còn máy
    có nhận hay không thì nhìn số live đổi mới biết. */
-const CMD_LBL={ignite:'Đánh lửa',charge:'Nạp hạt',drop:'Xả mẻ',escape:'Xả liệu',
-  cool:'Làm nguội',gas:'Gas',air:'Gió',drum:'Trống',sv:'SV',vac:'Áp hút'};
+const CMD_LBL={ignite:'Đánh lửa',charge:'Nạp hạt',drop:'Kết thúc mẻ',escape:'Xả liệu',
+  cool:'Làm nguội',gas:'Gas',air:'Gió',drum:'Trống',sv:'SV',vac:'Áp hút',
+  drumfan:'Quạt trống',mixer:'Cánh khuấy',afterburner:'Afterburner',loader:'Nạp liệu',destoner:'Tách đá'};
 async function machCmd(name,value){
   if(!dsBridge()){toast('Chế độ mô phỏng — chưa nối máy');return false;}
   if(DS.state!=='connected'){toast('Chưa nối được máy — không gửi lệnh được');return false;}
@@ -2241,21 +2342,93 @@ async function machCmd(name,value){
 const CMD_ON={ignite:false,cool:false};
 async function cmdToggle(name,btn){
   const want=!CMD_ON[name];
-  if(await machCmd(name,want?1:0)||!dsBridge()){
-    CMD_ON[name]=want;
-    if(btn)btn.classList.toggle('on',want);
+  // Đổi màu NGAY khi bấm — khách biết lệnh ĐÃ GỬI; gửi hụt thì toast của machCmd
+  // báo lỗi ("Chưa nối được máy…"), màu nút vẫn giữ theo ý người bấm.
+  CMD_ON[name]=want;
+  if(btn)btn.classList.toggle('on',want);
+  await machCmd(name,want?1:0);
+}
+/* Chớp đỏ nút toolbar: đỏ suốt lúc ĐÈ, nhả tay giữ thêm 1.2s — đủ gối đầu qua
+   lúc cờ xác nhận từ máy về (poll 1s) nên chuyển sang màu 'on' liền mạch, không hở.
+   (gắn cho MỌI .tbtn — nút toggle có 'on' riêng, không đụng) */
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.toolbar .tbtn').forEach(b=>{
+    const off=()=>setTimeout(()=>b.classList.remove('hit'),1200);
+    b.addEventListener('pointerdown',()=>b.classList.add('hit'));
+    b.addEventListener('pointerup',off);
+    b.addEventListener('pointercancel',off);
+    b.addEventListener('pointerleave',off);
+  });
+  /* Nút ± Burner/Airflow/Drum: chạm = 1 nấc; ĐÈ GIỮ 0.45s = tự lặp mỗi 0.25s */
+  document.querySelectorAll('.outrow .pm').forEach(b=>{
+    b.onclick=null;                       // bỏ onclick inline — pointerdown lo hết, khỏi bắn đúp
+    let hold=null,rep=null;
+    const stop=()=>{clearTimeout(hold);clearInterval(rep);hold=rep=null;};
+    b.addEventListener('pointerdown',()=>{
+      stepOut(b);                         // nấc đầu tiên ngay khi chạm
+      hold=setTimeout(()=>{rep=setInterval(()=>stepOut(b),250);},450);
+    });
+    ['pointerup','pointerleave','pointercancel'].forEach(e=>b.addEventListener(e,stop));
+  });
+});
+/* Đánh lửa & Cooling: nối máy thì theo CỜ MÁY như Nạp/Xả (mồi hụt firmware đóng
+   gas hay thợ tắt trên HMI là nút app tự tắt theo); demo trình duyệt giữ kiểu cũ */
+async function cmdIgnite(e){
+  if(!dsBridge()){ await cmdToggle('ignite', e&&e.currentTarget); return; }
+  await cmdLatch('ignite','btnIgnite');
+}
+async function cmdCool(e){
+  if(!dsBridge()){ await cmdToggle('cool', e&&e.currentTarget); return; }
+  await cmdLatch('cool','btnCool');
+}
+/* Trạng thái nút trên MÁY từ gói live: pclink đọc flags.*, tương thích đọc reg nút.
+   Nạp/Xả = toggle theo máy: đang mở thì ghi 0 (đóng sớm), đang đóng thì ghi 1.
+   Firmware tự đóng sau *Duration_R giây vẫn là lưới an toàn khi thợ quên tắt. */
+function machFlag(name){
+  const d=DS.snap||{};
+  if(d.flags){                       // pclink: cờ thật — ignite = cờ 'gas' (START_GAS_BTN_R)
+    return !!d.flags[name==='ignite'?'gas':name];
+  }
+  if(name==='ignite')return CMD_ON.ignite;   // tương thích: không đọc được nút gas → tin app
+  return !!d[name];                          // LƯU Ý: đừng đổi thành d['gas'] — đó là gas %
+}
+/* Giữ trạng thái LẠC QUAN sau khi gửi lệnh (như OUT_HOLD của gas): sáng ngay,
+   chờ máy xác nhận tối đa 3s — cờ về đường vòng HMI mất 1.5-2.5s, không giữ là chớp */
+const BTN_HOLD={};   // name → {v, until}
+function flagShow(name){
+  const h=BTN_HOLD[name], mv=machFlag(name);
+  if(!h)return mv;
+  if((mv?1:0)===h.v||Date.now()>h.until){delete BTN_HOLD[name];return mv;}
+  return !!h.v;
+}
+async function cmdLatch(name,btnId){
+  // Quyết định theo flagShow (đã tính phần giữ lạc quan) — hỏi thẳng machFlag là
+  // dính kẹt: vừa tắt xong bật lại ngay thì cờ máy còn trễ 1-2s, app ghi 0 trùng
+  const want=flagShow(name)?0:1;
+  if(await machCmd(name,want)){
+    BTN_HOLD[name]={v:want,until:Date.now()+3000};
+    if(name in CMD_ON)CMD_ON[name]=!!want;     // đồng bộ fallback chế độ tương thích
+    const b=document.getElementById(btnId);if(b)b.classList.toggle('on',!!want);
   }
 }
-async function cmdIgnite(e){ await cmdToggle('ignite', e&&e.currentTarget); }
-async function cmdCool(e){ await cmdToggle('cool', e&&e.currentTarget); }
-async function cmdEscape(){ await machCmd('escape'); }
+async function cmdEscape(){
+  if(!dsBridge()){ await machCmd('escape'); return; }
+  await cmdLatch('escape','btnEscape');
+}
 async function cmdCharge(){
   if(!dsBridge()){ startRoast(); return; }              // demo trong trình duyệt
-  await machCmd('charge');
+  await cmdLatch('charge','btnCharge');
 }
 async function cmdDrop(){
   if(!dsBridge()){ finishRoast(); return; }
-  if(await machCmd('drop') && R.phase==='RUNNING') finishRoast();   // đang rang mới chốt mẻ
+  // Toggle như Nạp/Xả: đang mở → ghi 0 đóng ngay; đang đóng → ghi 1 mở
+  // (flagShow chứ không machFlag — cờ máy trễ 1-2s, xem chú thích cmdLatch)
+  const want=flagShow('drop')?0:1;
+  if(await machCmd('drop',want)){
+    BTN_HOLD.drop={v:want,until:Date.now()+3000};
+    const b=document.getElementById('btnDrop');if(b)b.classList.toggle('on',!!want);
+    if(want && R.phase==='RUNNING') finishRoast();   // đang rang mới chốt mẻ
+  }
 }
 
 /* ════════ RANG: mode / output ± / view ════════ */
@@ -2286,19 +2459,63 @@ function curveAt(m){
   return {bt,et,abt,ror,burner};
 }
 const OUT_STEP=5;                                 // bước tăng/giảm
-const OUT_MAX={burner:100,air:100,drum:200};      // Burner/Air %:0–100, Drum RPM:0–200
+const OUT_MAX={burner:100,air:100,drum:100};      // cả 3 đều %: 0–100, bước 5
 function toggleMode(){R.mode=R.mode==='MANUAL'?'AUTO':'MANUAL';
   const b=document.getElementById('modeBtn');b.classList.toggle('manual',R.mode==='MANUAL');
   document.getElementById('modeVal').textContent=R.mode;
   document.querySelectorAll('.outrow .pm').forEach(p=>p.classList.toggle('dis',R.mode!=='MANUAL'));
   document.getElementById('loopBtn').classList.toggle('dis',R.mode!=='AUTO');}  // Loop chỉ ở AUTO
+/* Chạm vào SỐ → gõ trực tiếp tại chỗ (Enter/rời ô = áp dụng, Esc = hủy) */
+function outEdit(k){
+  if(R.mode!=='MANUAL')return;
+  const map={burner:'ovBurner',air:'ovAir',drum:'ovDrum'};
+  const span=document.getElementById(map[k]);
+  if(!span||span.dataset.editing)return;
+  span.dataset.editing='1';
+  const old=span.textContent;
+  const inp=document.createElement('input');
+  inp.type='text';inp.inputMode='numeric';inp.className='ovedit';inp.value=old;
+  span.textContent='';span.appendChild(inp);
+  setTimeout(()=>{inp.focus();inp.select();},30);
+  let fin=false;
+  const done=commit=>{
+    if(fin)return;fin=true;
+    delete span.dataset.editing;
+    let v=parseInt(inp.value,10);
+    inp.remove();
+    if(!commit||isNaN(v)){span.textContent=old;return;}
+    v=Math.max(0,Math.min(OUT_MAX[k],v));
+    R[k]=v;span.textContent=v.toFixed(0);
+    if(dsBridge()){OUT_HOLD[k]={v:v,until:Date.now()+3000};machCmd(k==='burner'?'gas':k,v);}
+  };
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter')done(true);else if(e.key==='Escape')done(false);
+    e.stopPropagation();});
+  inp.addEventListener('blur',()=>done(true));
+  inp.addEventListener('click',e=>e.stopPropagation());   // đừng mở lại chính mình
+}
 function stepOut(btn){if(R.mode!=='MANUAL')return;
   const k=btn.dataset.out,d=+btn.dataset.d,map={burner:'ovBurner',air:'ovAir',drum:'ovDrum'};
-  R[k]=Math.max(0,Math.min(OUT_MAX[k],R[k]+d*OUT_STEP));document.getElementById(map[k]).textContent=R[k].toFixed(1);}
+  const el=document.getElementById(map[k]);
+  // nối máy: bậc dựa trên giá trị LIVE đang hiển thị (máy là nguồn sự thật),
+  // không dựa R[k] — R[k] chỉ là bản nháp cho chế độ mô phỏng
+  const cur=dsLive()?(parseFloat(el.textContent)||0):R[k];
+  const v=Math.max(0,Math.min(OUT_MAX[k],cur+d*OUT_STEP));
+  R[k]=v; el.textContent=v.toFixed(0);
+  if(dsBridge()){
+    OUT_HOLD[k]={v:v,until:Date.now()+3000};       // giữ số hiển thị tới khi máy xác nhận
+    machCmd(k==='burner'?'gas':k,v);               // gửi thẳng xuống máy, live đọc về sẽ tự khớp
+  }
+}
 function toggleView(){R.view=R.view==='detail'?'simple':'detail';
   document.getElementById('pane-rang').classList.toggle('simple',R.view==='simple');drawChart();}
-const DEV={};   // trạng thái thiết bị phụ
+const DEV={};   // trạng thái thiết bị phụ (chỉ dùng cho demo trình duyệt)
 function toggleDev(btn){const d=btn.dataset.dev;DEV[d]=!btn.classList.contains('on');btn.classList.toggle('on',DEV[d]);}
+/* Thiết bị phụ: nối máy → lệnh THẬT qua PC_Link (toggle theo cờ máy); demo → toggle giả */
+async function cmdDev(name,btn){
+  if(!dsBridge()){ toggleDev(btn); return; }
+  await cmdLatch(name,btn.id);
+}
 
 /* ════════ STATE MACHINE MÀN RANG: IDLE → RUNNING → DONE ════════ */
 let roastTimer=null;
@@ -2309,7 +2526,7 @@ function setRoastPhase(p){
 }
 function startRoast(){
   if(R.phase==='RUNNING')return;
-  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};seriesReset();
+  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};R._dropFired=false;seriesReset();
   // nối máy: đồng hồ + mốc do Python giữ, phải báo cho nó biết mẻ mở từ giây này
   if(dsBridge()&&window.pywebview.api.link_begin_batch)window.pywebview.api.link_begin_batch();
   setRoastPhase('RUNNING');
@@ -2424,6 +2641,63 @@ function loadProfile(idx){
   document.getElementById('pane-rang').classList.remove('paused');
   gotoTab('rang');                // gotoTab sẽ updateRoastLive()
 }
+/* ── NGƯỠNG NHIỆT DE/FCs/DROP do thợ cài (chạm vào chip mốc) ──
+   DE/FCs: chỉ ĐÁNH DẤU mốc khi BT chạm ngưỡng.
+   DROP:   HÀNH ĐỘNG THẬT — BT chạm ngưỡng là gửi lệnh xả, firmware mở xi lanh
+           và TỰ ĐÓNG sau dropDuration_R giây (y hệt auto-drop của chế độ AUTO). */
+R.mileSet=(()=>{try{return JSON.parse(localStorage.getItem('otl_milset'))||{};}catch(e){return{}}})();
+const MILE_IDX={DE:1,FCs:2,DROP:4};   // vị trí chip trong dải mốc
+function mileSetEdit(id){
+  // ĐANG RANG + mốc chưa qua: chạm DE/FCs = CHẤM MỐC NGAY tại BT/giây hiện tại
+  // (hạt vàng/nổ sớm hơn ngưỡng đã cài thì thợ chấm tay, ngưỡng tự động hết vai).
+  // DROP không chấm tay qua chip — xả thật phải qua nút Kết thúc mẻ.
+  if(R.phase==='RUNNING'&&(id==='DE'||id==='FCs')&&R.mileT[id]==null){
+    const bt=dsLive()?DS.snap.bt:curveAt(R.prog).bt;
+    R.mileT[id]=R.elapsed; R.mileD[id]=bt;
+    updateRoastLive();
+    toast(`Đã chấm ${id} tại ${bt.toFixed(1)}°C · ${fmtMMSS(R.elapsed)}`,true);
+    return;
+  }
+  // Gõ NGAY TRONG CHIP (như số gas) — không bung hộp nhập che màn hình
+  const chips=document.querySelectorAll('.milestrip .mchip');
+  const chip=chips[MILE_IDX[id]]; const dg=chip&&chip.querySelector('.dg');
+  if(!dg||dg.dataset.editing)return;
+  dg.dataset.editing='1';
+  const old=dg.textContent;
+  const inp=document.createElement('input');
+  inp.type='text';inp.inputMode='numeric';inp.className='ovedit mile';
+  inp.value=R.mileSet[id]||'';inp.placeholder='°C';
+  dg.textContent='';dg.appendChild(inp);
+  setTimeout(()=>{inp.focus();inp.select();},30);
+  let fin=false;
+  const done=commit=>{
+    if(fin)return;fin=true;delete dg.dataset.editing;
+    const raw=inp.value.trim();inp.remove();
+    if(!commit){dg.textContent=old;return;}
+    const n=parseInt(raw,10);
+    if(raw===''||isNaN(n))delete R.mileSet[id];        // để trống = bỏ cài
+    else R.mileSet[id]=Math.max(100,Math.min(260,n));
+    localStorage.setItem('otl_milset',JSON.stringify(R.mileSet));
+    updateRoastLive();
+    toast(R.mileSet[id]?`${id} tự động tại ${R.mileSet[id]}°C`:`${id}: đã bỏ cài ngưỡng`,true);
+  };
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter')done(true);else if(e.key==='Escape')done(false);
+    e.stopPropagation();});
+  inp.addEventListener('blur',()=>done(true));
+  inp.addEventListener('click',e=>e.stopPropagation());
+}
+function checkMileSets(bt){
+  if(R.phase!=='RUNNING')return;
+  const S=R.mileSet;
+  if(S.DE  &&R.mileT.DE ==null&&bt>=S.DE ){R.mileT.DE =R.elapsed;R.mileD.DE =bt;}
+  if(S.FCs &&R.mileT.FCs==null&&bt>=S.FCs){R.mileT.FCs=R.elapsed;R.mileD.FCs=bt;}
+  if(S.DROP&&!R._dropFired&&bt>=S.DROP){
+    R._dropFired=true;
+    toast(`BT ${bt.toFixed(1)}° ≥ ${S.DROP}° — tự KẾT THÚC MẺ`,true);
+    cmdDrop();                                         // mở xi lanh, firmware tự đóng
+  }
+}
 /* Nội suy số liệu live theo tiến độ + đánh dấu mốc + đồng hồ */
 function txt(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 /* Giây của 1 mốc: nối máy → giờ THẬT firmware chốt (null nếu chưa tới);
@@ -2450,7 +2724,11 @@ function updateRoastLive(){
     c.classList.toggle('now',started && !passed && i===nextIdx);
     c.classList.toggle('todo',!passed && !(started && i===nextIdx));
     const tm=c.querySelector('.tm'),dg=c.querySelector('.dg');
-    if(tm)tm.textContent=passed?fmtMMSS(ms):'—'; if(dg)dg.textContent=passed?mileDeg(m):'—';
+    // chưa qua mốc mà có ngưỡng thợ cài → hiện "→X°" cho biết sẽ tự kích tại đó
+    // (đang gõ inline thì đừng đè — dataset.editing)
+    const tgt=R.mileSet[m.id];
+    if(tm)tm.textContent=passed?fmtMMSS(ms):'—';
+    if(dg&&!dg.dataset.editing)dg.textContent=passed?mileDeg(m):(tgt?('→'+tgt+'°'):'—');
   });
   // ── số liệu live: từ máy nếu đang nối, không thì theo curve mô phỏng ──
   // Nối máy thì hiện số máy KỂ CẢ khi chưa rang — trước đây màn chờ vẫn treo số
@@ -2461,14 +2739,23 @@ function updateRoastLive(){
       const d=DS.snap;
       txt('liveBT', d.bt.toFixed(1));   txt('liveBTror', sgn(d.ror_bt));
       txt('liveET', d.et.toFixed(1));   txt('liveETror', sgn(d.ror_et));
-      txt('liveABT','—');               // máy chưa có cảm biến ABT — không bịa số
-      txt('liveDrumRpm', Math.round(d.drum));
+      // RPM trống = Hz × (RPM@50Hz ÷ 50). Ưu tiên tần số THẬT từ biến tần (drum_hz,
+      // khối PC_Link); máy cũ chưa có thì suy từ % theo map firmware 0-100% → 30-50Hz.
+      {
+        const rpm50=parseFloat(CFG.cn_rpm50)||71;
+        const hz=(d.drum_hz!=null)?d.drum_hz:(30+d.drum*0.2);
+        txt('liveDrumRpm', Math.round(hz*rpm50/50));
+        txt('liveDrumHz', hz.toFixed(1));
+        txt('liveDrumPct', Math.round(d.drum));
+      }
       txt('liveVac', d.vac);
     }else{
       const c=curveAt(R.prog);
       txt('liveBT', c.bt.toFixed(1));   txt('liveBTror', sgn(c.ror));
       txt('liveET', c.et.toFixed(1));   txt('liveETror', sgn(c.et-c.bt));
-      txt('liveABT',c.abt.toFixed(1));  txt('liveDrumRpm', Math.round(R.drum));
+      const rpm50=parseFloat(CFG.cn_rpm50)||71, hz=30+R.drum*0.2;   // mô phỏng: suy từ %
+      txt('liveDrumRpm', Math.round(hz*rpm50/50));
+      txt('liveDrumHz', hz.toFixed(1)); txt('liveDrumPct', Math.round(R.drum));
     }
   }
   updatePhaseBar();      // thanh pha + bigcard đơn giản
@@ -2605,12 +2892,33 @@ function pushAudit(action,field,ov,nv){const a=loadAudit();a.unshift({ts:Date.no
   localStorage.setItem(LS_AUDIT,JSON.stringify(a.slice(0,500)));}
 
 /* ── config ── */
-const CFG_FIELDS={ketnoi:['cn_artisan','cn_bt','cn_baud'],calib:['cg_db_pre','cg_db_fcs','cg_step','cg_period','cg_cap'],model:['mn_preset','mn_gasbal','mn_sens','mn_loss','ch_auto','ch_tmax','ch_rmax','ch_time']};
-const CFG_DEFAULT={cn_artisan:'COM3',cn_bt:'COM5',cn_baud:'38400',cg_db_pre:'1.0',cg_db_fcs:'0.6',cg_step:'5',cg_period:'10',cg_cap:'10',mn_preset:'Cacao 30kg (anh Hiếu)',mn_gasbal:'22',mn_sens:'1.0',mn_loss:'0.35',ch_auto:'Tự động',ch_tmax:'300',ch_rmax:'40',ch_time:'15'};
+const CFG_FIELDS={ketnoi:['cn_artisan','cn_bt','cn_baud','cn_rpm50'],calib:['cg_db_pre','cg_db_fcs','cg_step','cg_period','cg_cap'],model:['mn_preset','mn_gasbal','mn_sens','mn_loss','ch_auto','ch_tmax','ch_rmax','ch_time']};
+const CFG_DEFAULT={cn_artisan:'COM3',cn_bt:'COM5',cn_baud:'38400',cn_rpm50:'71',
+  dv_drumfan:'1',dv_mixer:'1',dv_cooling:'1',dv_afterburner:'1',dv_loader:'1',dv_destoner:'1',cg_db_pre:'1.0',cg_db_fcs:'0.6',cg_step:'5',cg_period:'10',cg_cap:'10',mn_preset:'Cacao 30kg (anh Hiếu)',mn_gasbal:'22',mn_sens:'1.0',mn_loss:'0.35',ch_auto:'Tự động',ch_tmax:'300',ch_rmax:'40',ch_time:'15'};
 let CFG={};       // giá trị đã lưu
 let CFG_EDIT={};  // giá trị đang sửa (chưa lưu)
 function loadCfg(){try{return Object.assign({},CFG_DEFAULT,JSON.parse(localStorage.getItem(LS_CFG))||{});}catch(e){return Object.assign({},CFG_DEFAULT);}}
-function initConfig(){CFG=loadCfg();CFG_EDIT=Object.assign({},CFG);renderConfigUI();}
+/* Máy này CÓ thiết bị nào → hiện nút đó trên màn Rang; không có → ẩn.
+   LUẬT PHẦN CỨNG: máy KHÔNG điều khiển được drum/fan ⇒ dây mixer đấu CHUNG cooling
+   (CH2) → ẩn luôn nút Mixer, nút Cooling gánh cả hai (đổi nhãn Cooling · Mixer). */
+const DEV_EN_BTN={drumfan:'btnDrumFan',mixer:'btnMixer',cooling:'btnCool',
+                  afterburner:'btnAB',loader:'btnLoader',destoner:'btnDestoner'};
+function applyDevVisibility(){
+  // đọc CFG_EDIT (giá trị đang tích) để bỏ tích là ẨN NGAY, không phải chờ Lưu
+  const V=k=>String((CFG_EDIT&&CFG_EDIT[k]!=null?CFG_EDIT[k]:CFG[k])||'1')==='1';
+  const noDrumFan=!V('dv_drumfan');
+  const mixerHidden=!V('dv_mixer')||noDrumFan;   // mixer tắt (hoặc đi chung vì không có drum/fan)
+  Object.entries(DEV_EN_BTN).forEach(([k,id])=>{
+    const b=document.getElementById(id);if(!b)return;
+    let show=V('dv_'+k);
+    if(k==='mixer'&&mixerHidden)show=false;
+    b.style.display=show?'':'none';
+  });
+  // Mixer ẩn → dây khuấy đấu chung CH2: nút Cooling gánh cả hai, đổi nhãn cho thợ hiểu
+  const cl=document.querySelector('#btnCool span');
+  if(cl)cl.textContent=mixerHidden?'Mixer & Cooling':'Cooling';
+}
+function initConfig(){CFG=loadCfg();CFG_EDIT=Object.assign({},CFG);renderConfigUI();applyDevVisibility();}
 function renderConfigUI(){
   // field số
   document.querySelectorAll('.field[data-num]').forEach(f=>{
@@ -2621,6 +2929,13 @@ function renderConfigUI(){
   });
   // picker
   document.querySelectorAll('.pick[data-cfg]').forEach(p=>{p.querySelector('.pv').textContent=CFG_EDIT[p.dataset.cfg];});
+  // tích thiết bị máy có — hiệu lực NGAY trên màn Rang (Lưu chỉ để giữ bền)
+  document.querySelectorAll('#devEnRow .permchk').forEach(c=>{
+    const k='dv_'+c.dataset.devEn;
+    c.classList.toggle('on',String(CFG_EDIT[k]||'1')==='1');
+    c.onclick=()=>{CFG_EDIT[k]=(String(CFG_EDIT[k]||'1')==='1')?'0':'1';
+      c.classList.toggle('on',CFG_EDIT[k]==='1');applyDevVisibility();markDirty();};
+  });
   validateCom();
 }
 function fstep(id,dir){const f=document.querySelector(`.field[data-num="${id}"]`);
@@ -2631,7 +2946,7 @@ function validateCom(){const dup=CFG_EDIT.cn_artisan===CFG_EDIT.cn_bt;
   document.getElementById('comWarn').classList.toggle('on',dup);return !dup;}
 let dirty=false;
 function markDirty(){dirty=true;document.getElementById('setNote').textContent=(LANG==='vi'?'● Có thay đổi chưa lưu':'● Unsaved changes');}
-function settingsCancel(){CFG_EDIT=Object.assign({},CFG);renderConfigUI();dirty=false;
+function settingsCancel(){CFG_EDIT=Object.assign({},CFG);renderConfigUI();applyDevVisibility();dirty=false;
   document.getElementById('setNote').textContent=I18N[LANG]['set.note'];toast(LANG==='vi'?'Đã huỷ thay đổi':'Changes discarded');}
 function settingsSave(persist){
   if(!validateCom()){toast(LANG==='vi'?'Cổng COM trùng — sửa trước khi lưu':'Duplicate COM — fix first');return;}
@@ -2640,11 +2955,36 @@ function settingsSave(persist){
   if(persist)localStorage.setItem(LS_CFG,JSON.stringify(CFG));
   dirty=false;document.getElementById('setNote').textContent=I18N[LANG]['set.note'];
   renderAudit();drawChart();   // áp dụng cấu hình trục biểu đồ ngay
+  applyDevVisibility();        // ẩn/hiện nút thiết bị theo máy
+  // Đẩy Cổng + Baud xuống cầu Modbus (otl_link tự ngắt & nối lại nóng, không cần mở lại app)
+  if(dsBridge())(async()=>{try{
+    const c=await window.pywebview.api.link_config();
+    const port=(String(CFG.cn_artisan||'').match(/^[^\s—·]+/)||[''])[0];  // "COM9 — CP210x…" → "COM9"
+    const chg={};
+    if(+CFG.cn_baud && +CFG.cn_baud!==+c.baud)chg.baud=+CFG.cn_baud;
+    if(port && port!==c.port)chg.port=port;
+    if(Object.keys(chg).length){
+      await window.pywebview.api.link_set_config(Object.assign({},c,chg));
+      toast((LANG==='vi'?'Đang nối lại máy: ':'Reconnecting: ')+(chg.port||c.port)+' @ '+(chg.baud||c.baud),true);
+    }
+  }catch(e){}})();
   toast(n?(LANG==='vi'?`Đã ${persist?'lưu':'áp dụng'} ${n} thay đổi`:`${persist?'Saved':'Applied'} ${n} change(s)`):(LANG==='vi'?'Không có thay đổi':'No changes'),true);
 }
 function cfgLabel(id){const el=document.querySelector(`[data-num="${id}"],[data-cfg="${id}"]`);return el?el.dataset.label:id;}
 
 /* ── picker ── */
+/* Chọn cổng COM: hiện ĐẦY ĐỦ thông tin (COM9 — CP210x USB to UART…) để thợ
+   nhận ra đúng cáp máy rang; giá trị lưu vẫn nguyên chuỗi, khi đẩy xuống
+   cầu Modbus mới tách lấy "COMx" ở đầu. */
+async function openPickPorts(el){
+  let opts=[];
+  if(dsBridge()){try{
+    const ps=await window.pywebview.api.link_ports();
+    opts=(ps||[]).map(p=>(p.port+(p.desc?' — '+p.desc:'')).replace(/["']/g,''));
+  }catch(e){}}
+  if(!opts.length)opts=['COM3','COM5','COM15'];   // demo trình duyệt
+  openPick(el,opts);
+}
 let pickTarget=null;
 function openPick(el,opts){pickTarget=el;const cur=el.querySelector('.pv').textContent;
   document.getElementById('pkBox').innerHTML=opts.map(o=>`<div class="pkopt ${o===cur?'sel':''}" onclick="choosePick('${o.replace(/'/g,"\\'")}')">${o}</div>`).join('');
@@ -2674,15 +3014,23 @@ document.getElementById('numpad').addEventListener('click',e=>{if(e.target.id===
 /* ── keyboard (tên) ── */
 let kbStr='',kbResolve=null;
 function openKb(init){return new Promise(res=>{kbStr=init||'';kbResolve=res;
-  const rows=['1 2 3 4 5 6 7 8 9 0','q w e r t y u i o p','a s d f g h j k l','z x c v b n m'].map(r=>
-    `<div class="kbrow">${r.split(' ').map(c=>`<button class="kbkey" data-c="${c}">${c}</button>`).join('')}</div>`).join('')
-    +`<div class="kbrow"><button class="kbkey" data-c="·">·</button><button class="kbkey" data-c="/">/</button><button class="kbkey" data-c=":">:</button><button class="kbkey wide" data-c="_">space</button><button class="kbkey wide" data-c="⌫">⌫</button></div>`;
-  document.getElementById('kbRows').innerHTML=rows;document.getElementById('kbVal').textContent=kbStr;
-  document.getElementById('kbRows').querySelectorAll('.kbkey').forEach(b=>b.onclick=()=>kbKey(b.dataset.c));
-  document.getElementById('keyboard').classList.add('on');});}
-function kbKey(c){if(c==='⌫')kbStr=kbStr.slice(0,-1);else if(c==='_')kbStr+=' ';else kbStr+=c;document.getElementById('kbVal').textContent=kbStr;}
+  const inp=document.getElementById('kbInput');
+  inp.value=kbStr;
+  document.getElementById('keyboard').classList.add('on');
+  setTimeout(()=>{inp.focus();inp.select();},50);   // focus → Surface tự bung bàn phím Windows
+});}
 function closeKb(){document.getElementById('keyboard').classList.remove('on');if(kbResolve){kbResolve(null);kbResolve=null;}}
-function okKb(){document.getElementById('keyboard').classList.remove('on');if(kbResolve){kbResolve(kbStr.trim());kbResolve=null;}}
+function okKb(){document.getElementById('keyboard').classList.remove('on');
+  if(kbResolve){kbResolve(document.getElementById('kbInput').value.trim());kbResolve=null;}}
+/* Enter = OK, Esc = Hủy — cho người dùng phím cứng */
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('kbInput');
+  if(inp)inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter')okKb();
+    else if(e.key==='Escape')closeKb();
+    e.stopPropagation();
+  });
+});
 
 /* ════════ LOGIN + PHÂN QUYỀN ════════ */
 let loginMode='login',loginUserId=null,loginPin='',loginPin1='';
@@ -2791,7 +3139,20 @@ function enterSettings(){
 function gotoSub(name){document.querySelectorAll('.subpane').forEach(p=>p.classList.remove('on'));
   document.getElementById('sub-'+name).classList.add('on');
   document.querySelectorAll('#subnav button').forEach(b=>b.classList.toggle('on',b.dataset.sub===name));
-  if(name==='nhatky')renderAudit();if(name==='taikhoan')renderAccounts();}
+  if(name==='nhatky')renderAudit();if(name==='taikhoan')renderAccounts();
+  // Mở tab Kết nối: hiện đúng cổng/baud THẬT cầu Modbus đang dùng (link.json)
+  // — quan trọng: CFG_EDIT phải khớp cổng thật, không thì Lưu sẽ đẩy nhầm cổng cũ
+  if(name==='ketnoi'&&dsBridge())(async()=>{try{
+    const c=await window.pywebview.api.link_config();if(!c)return;
+    if(c.baud){CFG_EDIT.cn_baud=String(c.baud);CFG.cn_baud=String(c.baud);
+      const el=document.querySelector('[data-cfg="cn_baud"] .pv');if(el)el.textContent=c.baud;}
+    if(c.port){CFG_EDIT.cn_artisan=c.port;CFG.cn_artisan=c.port;
+      const el=document.querySelector('[data-cfg="cn_artisan"] .pv');if(el)el.textContent=c.port;}
+    const chip=document.getElementById('cnStMach'),tx=document.getElementById('cnStMachTxt');
+    if(chip&&tx){const ok=DS.state==='connected';
+      chip.className='connst '+(ok?'ok':'err');
+      tx.textContent='· '+(c.port||'—')+' · '+(c.baud||'—')+' · '+(ok?(DS.mode==='pclink'?'PC_Link':'tương thích'):(LANG==='vi'?'mất kết nối':'offline'));}
+  }catch(e){}})();}
 
 /* ── tài khoản ── */
 function renderAccounts(){const body=document.getElementById('accBody');if(!body)return;
@@ -2875,7 +3236,7 @@ function applyHelp(){
   const mb=document.getElementById('modeBtn');if(mb)mb.setAttribute('data-help','Đổi AUTO ↔ MANUAL. AUTO: máy tự bám hồ sơ; MANUAL: chỉnh tay.');
   document.querySelectorAll('.outrow.burner .pm').forEach(b=>b.setAttribute('data-help','Chỉnh mức gas đầu đốt, bước 5%.'));
   document.querySelectorAll('.outrow.air .pm').forEach(b=>b.setAttribute('data-help','Chỉnh lưu lượng gió hút, bước 5%.'));
-  document.querySelectorAll('.outrow.drum .pm').forEach(b=>b.setAttribute('data-help','Chỉnh tốc độ trống quay, bước 5 rpm.'));
+  document.querySelectorAll('.outrow.drum .pm').forEach(b=>b.setAttribute('data-help','Chỉnh tốc độ trống quay, bước 5%.'));
   const DH={drumfan:'Quạt trống — hút khói / thoát nhiệt trống.',mixer:'Cánh khuấy đảo hạt trong trống.',cooling:'Quạt làm nguội mẻ sau khi xả.',afterburner:'Buồng đốt phụ xử lý khói thải.',loader:'Nạp hạt tự động vào phễu.',destoner:'Tách đá / tạp chất khỏi hạt.'};
   document.querySelectorAll('.devbtn').forEach(b=>{const d=b.dataset.dev;if(DH[d])b.setAttribute('data-help',DH[d]);});
 }
