@@ -98,6 +98,7 @@ static void pclSafety(){
         pclAppSeenMs = now;
         pclAppLost   = false;
     }
+#if PCL_APP_WATCHDOG_EN
     if (PC_CONTROL_BTN_R == 1) {
         if (pclAppSeenMs == 0) pclAppSeenMs = now;   // vừa bật PC control, cho app 1 nhịp
         if (!pclAppLost && (now - pclAppSeenMs) > (uint32_t)PCL_APP_TMO_S * 1000UL) {
@@ -109,6 +110,9 @@ static void pclSafety(){
     } else {
         pclAppSeenMs = 0;
     }
+#else
+    (void)now;   // watchdog TẮT theo Config.h — PC control không bao giờ tự nhả
+#endif
 
     // ── 2) Mồi hụt → đóng gas ──────────────────────────────────────────────
     if (START_GAS_BTN_R == 1 && gasSignal == 0) {
@@ -140,6 +144,7 @@ void handle_PC_Link(){
     mbs.Hreg(PCL_R_VAC,    (uint16_t)Diff_Air);
     mbs.Hreg(PCL_R_STEP,   progStep);
     mbs.Hreg(PCL_R_TROAST, timeRoast);
+    mbs.Hreg(PCL_R_DRUMHZ, (uint16_t)Drum_Freq_CP);   // tần số thật biến tần trống (0.01Hz)
 
     uint16_t ph = 0;
     if (START_BTN_R == 1) {
@@ -160,6 +165,11 @@ void handle_PC_Link(){
     if (gasSignal == 1)         fl |= PCLF_FLAME;    // CÓ LỬA THẬT (chân CH1)
     if (pclAppLost)             fl |= PCLF_PCLOST;
     if (pclFlameFail)           fl |= PCLF_FLMFAIL;
+    if (DRUM_FAN_BTN_R == 1)    fl |= PCLF_DRUMFAN;
+    if (MIXER_BTN_R == 1)       fl |= PCLF_MIXER;
+    if (AB_BTN_R == 1)          fl |= PCLF_AB;
+    if (FEEDER_BTN_R == 1)      fl |= PCLF_LOADER;
+    if (DESTONER_BTN_R == 1)    fl |= PCLF_DESTONER;
     mbs.Hreg(PCL_R_FLAGS, fl);
     mbs.Hreg(PCL_R_HB, ++hb);
 
@@ -174,7 +184,8 @@ void handle_PC_Link(){
             svPC, vacuumSetpoint_R,
             START_GAS_BTN_R, CHARGE_BTN_R, DROP_BTN_R, ESCAPE_BTN_R, COOLING_BTN_R,
             START_BTN_R,
-            0                      // PCL_W_HB — heartbeat app, không phải setpoint
+            0,                     // PCL_W_HB — heartbeat app, không phải setpoint
+            DRUM_FAN_BTN_R, MIXER_BTN_R, AB_BTN_R, FEEDER_BTN_R, DESTONER_BTN_R
         };
         for (int i = 0; i < PCL_W_COUNT; i++) {
             mbs.Hreg(PCL_W_BASE + i, (uint16_t)sp[i]);
@@ -189,7 +200,8 @@ void handle_PC_Link(){
             svPC, vacuumSetpoint_R,
             START_GAS_BTN_R, CHARGE_BTN_R, DROP_BTN_R, ESCAPE_BTN_R, COOLING_BTN_R,
             START_BTN_R,
-            0                      // PCL_W_HB — heartbeat app, không phải setpoint
+            0,                     // PCL_W_HB — heartbeat app, không phải setpoint
+            DRUM_FAN_BTN_R, MIXER_BTN_R, AB_BTN_R, FEEDER_BTN_R, DESTONER_BTN_R
         };
         for (int i = 0; i < PCL_W_COUNT; i++) {
             mbs.Hreg(PCL_W_BASE + i, (uint16_t)sp[i]);
@@ -214,28 +226,48 @@ void handle_PC_Link(){
                 mbs.Hreg(PCL_W_BASE + idx, (uint16_t)cur[i]);
             }
         }
+        // Thiết bị phụ (ô 12-16): cùng luật phản chiếu khi máy/thợ HMI tự đổi
+        const int16_t cur2[5] = { DRUM_FAN_BTN_R, MIXER_BTN_R, AB_BTN_R,
+                                  FEEDER_BTN_R, DESTONER_BTN_R };
+        for (uint8_t i = 0; i < 5; i++) {
+            const uint8_t idx = 12 + i;             // PCL_W_DRUMFAN..PCL_W_DESTONER
+            if (cur2[i] != pclLastW[idx] &&
+                (int16_t)mbs.Hreg(PCL_W_BASE + idx) == pclLastW[idx]) {
+                pclLastW[idx] = cur2[i];
+                mbs.Hreg(PCL_W_BASE + idx, (uint16_t)cur2[i]);
+            }
+        }
     }
 
     int16_t v;
-    // — Setpoint: ghi HMI + cập nhật *_R/_R_CP/*Percent (giữ handler Artisan im) —
+    // — Setpoint: ghi HMI + cập nhật *_R/_R_CP/*Percent (giữ handler Artisan im).
+    //   PHẢI đồng bộ cả Ô ARTISAN (reg 10/11/18/20/22): khi PC control bật, khối
+    //   tương thích ngừng phản chiếu các ô đó (naviSource = AI_PC) nên chúng đứng
+    //   im ở số cũ; handler của nó thấy lệch *_R_CP là kéo setpoint NGƯỢC về số
+    //   cũ mỗi vòng — app chỉnh gas/gió/trống mà máy không đổi là vì vậy. —
     if (pclChanged(0, v) && MACHINE_HAS_GAS_CONTROL) {
         gasPercent = v; burnerValue_R = v; burnerValue_R_CP = v;
+        mbs.Hreg(GAS_artisan_W, (uint16_t)v);
         nodeHMI.writeSingleRegister(burnerValue_W + 2000, v);
     }
     if (pclChanged(1, v)) {
         airflowPercent = v; airSpeed_R = v; airSpeed_R_CP = v;
+        mbs.Hreg(AIR_artisan_W, (uint16_t)v);
         nodeHMI.writeSingleRegister(airSpeed_W + 2000, v);
     }
     if (pclChanged(2, v) && MACHINE_HAS_DRUM_SPEED_CONTROL) {
         drumPercent = v; drumSpeed_R = v; drumSpeed_R_CP = v;
+        mbs.Hreg(DRUM_artisan_W, (uint16_t)v);
         nodeHMI.writeSingleRegister(drumSpeed_W + 2000, v);
     }
     if (pclChanged(3, v)) {
         svPC = v;
+        mbs.Hreg(SV_artisan_W, (uint16_t)v);
         nodeHMI.writeSingleRegister(btSV_W + 2000, v / 10);
     }
     if (pclChanged(4, v) && MACHINE_HAS_VACUUM_SENSOR) {
         vacuumSetpoint_R = v; vacuumSetpoint_R_CP = v;
+        mbs.Hreg(vacuumC_artisan_W, (uint16_t)v);
         nodeHMI.writeSingleRegister(vacuumSetpoint_W + 2000, v);
         pidAirflowReset();
     }
@@ -259,6 +291,18 @@ void handle_PC_Link(){
         nodeHMI.writeSingleRegister(COOLING_BTN_W - 1, v);
     if (pclChanged(10, v))
         nodeHMI.writeSingleRegister(START_BTN_W - 1, v);
+
+    // — Thiết bị phụ: mức BẬT/TẮT thuần, ghi coil HMI, relay theo IOConfig.h —
+    if (pclChanged(12, v))
+        nodeHMI.writeSingleRegister(DRUM_FAN_BTN_W - 1, v);
+    if (pclChanged(13, v))
+        nodeHMI.writeSingleRegister(MIXER_BTN_W - 1, v);
+    if (pclChanged(14, v))
+        nodeHMI.writeSingleRegister(AB_BTN_W - 1, v);
+    if (pclChanged(15, v))
+        nodeHMI.writeSingleRegister(FEEDER_BTN_W - 1, v);
+    if (pclChanged(16, v))
+        nodeHMI.writeSingleRegister(DESTONER_BTN_W - 1, v);
 }
 
 #else   // PC_LINK_EN == 0 — vô hiệu, không tốn gì

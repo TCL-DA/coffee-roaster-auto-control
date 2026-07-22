@@ -37,7 +37,10 @@
 ModbusRTU mbs;   
 
 uint32_t artisanModbusBaud(){
-    return (modbusBaud_R > 0) ? (uint32_t)modbusBaud_R : ARTISAN_MODBUS_BAUD_DEFAULT;
+    // iMemHMI la int16_t: 38400/57600 tran thanh so AM -> phai doc lai kieu KHONG DAU.
+    // (uint16 max 65535 nen 115200 khong truyen qua thanh ghi HMI duoc)
+    uint16_t b = (uint16_t)modbusBaud_R;
+    return (b > 0) ? (uint32_t)b : ARTISAN_MODBUS_BAUD_DEFAULT;
 }
 
 uint8_t artisanModbusID(){
@@ -53,12 +56,19 @@ void ModbusSlaveConfig(){
         SerialComputer.begin(baud);
         mbs.begin(&SerialComputer);
     }
+    // BUG LIB: tren STM32 mbs.begin() gan chet timing khung theo 9600
+    // (chi ESP moi tu doc baudRate). Phai bao baud that de tinh lai t3.5.
+    mbs.setBaudrate(baud);
     mbs.slave(artisanModbusID());
 
     for(int i=0; i<MaxReg; i++){
         mbs.addHreg(i);
     }
-    SerialComputer.println("=> Modbus Slave RTU OK");
+    // In baud/ID dang dung de doi chieu voi cai dat tren HMI (reg 12/13)
+    SerialComputer.print("=> Modbus Slave RTU OK, baud=");
+    SerialComputer.print(baud);
+    SerialComputer.print(" id=");
+    SerialComputer.println(artisanModbusID());
 }
 
 
@@ -99,13 +109,16 @@ void handle_Modbus_Slave() {
             mbs.begin(&SerialComputer);
             SerialComputer.println("Switched to Serial Computer for Modbus");
         }
+        mbs.setBaudrate(baud);   // tinh lai t3.5 theo baud moi (lib mac dinh 9600 tren STM32)
         mbs.slave(artisanModbusID());
         idBaudSetEn = 0;
     }
 
     if(swSignalFallingEdge()){
-        SerialBluetooth.begin(artisanModbusBaud());
+        uint32_t baud = artisanModbusBaud();
+        SerialBluetooth.begin(baud);
         mbs.begin(&SerialBluetooth);
+        mbs.setBaudrate(baud);   // tinh lai t3.5 theo baud moi (lib mac dinh 9600 tren STM32)
         SerialComputer.println("Switched to Serial Bluetooth for Modbus");
     }
 

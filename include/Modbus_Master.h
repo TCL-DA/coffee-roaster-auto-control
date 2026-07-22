@@ -191,14 +191,16 @@ void rwMemHMI(){
 
         //Modbus ID for Artisan
         if(modbusID_R != modbusID_R_CP){
-            modbusID_R = modbusID_R_CP; 
-            idBaudSetEn = 1; // Cho phÃ©p cáº­p nháº­p   
+            modbusID_R = modbusID_R_CP;
+            idBaudSetEn = 1; // Cho phÃ©p cáº­p nháº­p
+            if (enDebug) { SerialComputer.print("HMI -> modbusID_R = "); SerialComputer.println(modbusID_R); }
         }
 
         //Modbus baudrate for Artisan
         if(modbusBaud_R != modbusBaud_R_CP){
-            modbusBaud_R = modbusBaud_R_CP;   
-            idBaudSetEn = 1; // Cho phÃ©p cáº­p nháº­p  
+            modbusBaud_R = modbusBaud_R_CP;
+            idBaudSetEn = 1; // Cho phÃ©p cáº­p nháº­p
+            if (enDebug) { SerialComputer.print("HMI -> modbusBaud_R = "); SerialComputer.println((uint16_t)modbusBaud_R); }
         }
 
         //Feeder timer
@@ -271,7 +273,13 @@ void rwMemHMI(){
 
         //Max gas set
         if(maxGasSet_R !=maxGasSet_R_CP){
-            maxGasSet_R = maxGasSet_R_CP;    
+            maxGasSet_R = maxGasSet_R_CP;
+        }
+        // Trong rang AUTO: cho HẠ gas, CẤM NÂNG maxGas vượt trần đã lưu trong profile.
+        // Chống ai đó phá trần an toàn giữa mẻ. Vượt → kéo về trần + ghi HMI để báo từ chối.
+        if(progStatus == STT_PROGRAM_AUTO && progStep > 0 && sdMaxGasLoaded >= 0 && maxGasSet_R > sdMaxGasLoaded){
+            maxGasSet_R = sdMaxGasLoaded;
+            nodeHMI.writeSingleRegister(maxGasSet_W + 2000, sdMaxGasLoaded);
         }
         if(maxGasSet_R>100) maxGasSet_R=100;
         if(maxGasSet_R<0) maxGasSet_R=0;
@@ -793,9 +801,9 @@ void rwHMI_2(){
             nodeHMI.writeSingleRegister(DROP_DATA_HMI_W-1, BT_DROP_SAVE); 
         }
 
-        //Show cÃ¢n
-        if(NETW_R_CP != netW){
-            nodeHMI.writeSingleRegister(NETW_W-1, netW); 
+        //Show cân — gửi netW100 (×100) để HMI hiển thị đủ 2 số lẻ (cân ≤200kg nên ≤20000, vừa 1 register)
+        if(NETW_R_CP != netW100){
+            nodeHMI.writeSingleRegister(NETW_W-1, netW100);
         }
 
         //Show tá»‘c Ä‘á»™ trá»‘ng rang
@@ -811,6 +819,11 @@ void rwHMI_2(){
         //Show PID 0800 setting, 87
         if(PID_0800_R != PID_0800_R_CP){
             nodeHMI.writeSingleRegister(PID_0800_W-1, vacuumSetFlag_R);
+        }
+
+        if(rorKG != ROR_KG_R_CP){
+            nodeHMI.writeSingleRegister(ROR_KG_W-1, rorKG);
+            ROR_KG_R_CP = rorKG;   // reg 91 không nằm trong dải đọc lại nên tự cập nhật _CP
         }
 
         
@@ -952,16 +965,23 @@ void readWriteAirINV_PID(){
 void readUnder(){
     uint8_t result = 0;
 
+    // Node đọc vacuum: drum (slave 4) hoặc quạt gió (slave 5) tùy MACHINE_VACUUM_FROM_DRUM
+#if MACHINE_VACUUM_FROM_DRUM
+    ModbusMaster& nodeVacuum = nodeDrum;
+#else
+    ModbusMaster& nodeVacuum = nodeAir;
+#endif
+
     // Äá»c thanh ghi 8716 cá»§a biáº¿n táº§n quáº¡t giÃ³ qua Modbus
     // Thanh ghi 8716 chá»©a giÃ¡ trá»‹ tÃ­n hiá»‡u analog ACI (0~10000)
-    result = nodeAir.readHoldingRegisters(AIR_INV_ACI_RAW_REGISTER, 1);
+    result = nodeVacuum.readHoldingRegisters(AIR_INV_ACI_RAW_REGISTER, 1);
     delay(5);
 
-    if (result == nodeAir.ku8MBSuccess){
+    if (result == nodeVacuum.ku8MBSuccess){
         modbusNoteSuccess(MB_DEV_VACUUM);
 
         // â”€â”€ BÆ°á»›c 1: Láº¥y giÃ¡ trá»‹ thÃ´ tá»« buffer Modbus (0~10000) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        raw_Diff_Air = nodeAir.getResponseBuffer(0);
+        raw_Diff_Air = nodeVacuum.getResponseBuffer(0);
 
         // â”€â”€ BÆ°á»›c 2: Lá»c Kalman trá»±c tiáº¿p trÃªn raw â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         //
@@ -1054,6 +1074,25 @@ void rwIORelayCoil(){
     delay(5);
 }
 
+// Ghi STATUS_MC lên HMI CHỈ khi giá trị đổi (0 = not ready, 1 = ready).
+// Tránh ghi register liên tục lên bus khi trạng thái không đổi.
+void setStatusMC(uint8_t v) {
+    static int16_t last = -1;   // -1 = chưa ghi lần nào
+    if (v == last) return;
+    last = v;
+    nodeHMI.writeSingleRegister(STATUS_MC_W - 1, v);
+}
+
+// Cập nhật STATUS_MC theo sức khỏe Modbus lúc chạy: thiết bị nào lỗi liên tiếp ≥ ngưỡng
+// (cùng ngưỡng cắt gas) → not ready (0); tất cả đọc lại OK → ready (1).
+// setStatusMC change-gated nên gọi mỗi vòng loop() vẫn chỉ ghi HMI khi đổi.
+void updateStatusMC() {
+    for (uint8_t i = 0; i < MB_DEV_COUNT; i++) {
+        if (modbusFailCount[i] >= MODBUS_GAS_CUTOFF_FAIL_LIMIT) { setStatusMC(0); return; }
+    }
+    setStatusMC(1);
+}
+
 void checkError() {
     uint8_t result = 0;
     uint16_t buzzer_delay = 1000;
@@ -1105,6 +1144,7 @@ void checkError() {
     if (chHMIFlag) {
         checkMB(nodeHMI, 0, 1, false, "HMI", 0, MB_DEV_HMI, STT_MB_HMI_ERROR);  // block until HMI responds
         sendSTT(STT_SYSTEM_BOOT);               // HMI now connected, announce boot
+        setStatusMC(0);                         // not ready: đang dò thiết bị
         delay(600);                             // hold 600ms so HMI can read
         sendSTT(STT_STARTUP_HMI_OK);
         delay(600);
@@ -1162,6 +1202,7 @@ void checkError() {
 
     // All OK
     sendSTT(STT_SYSTEM_READY);
+    setStatusMC(1);                             // ready: tất cả thiết bị OK
     BUZZ_ON; delay(1000); BUZZ_OFF;
 }
 

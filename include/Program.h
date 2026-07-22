@@ -1,4 +1,8 @@
-﻿#include "Preheat.h"
+﻿#if PREHEAT_USE_PID
+#include "Preheat_PID.h"
+#else
+#include "Preheat.h"
+#endif
 void loadAllProfileDates(); // forward declaration
 #include "RoR_Control.h"
 
@@ -12,10 +16,11 @@ void timerPoll_1000ms(){
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ── PRIORITY 1: safety cutoff — BT > 250°C or ET > 350°C ────────────────
+    // ── PRIORITY 1: safety cutoff ────────────────────────────────────────────
     // ISR context: NO Modbus calls — use flag pattern only
     if ((int16_t)Temperature_BT > 2500 ||   // BT > 250.0°C
-        (int16_t)Temperature_ET > 3500) {   // ET > 350.0°C
+        (int16_t)Temperature_ET > 3500 ||   // ET > 350.0°C
+        ((int16_t)Temperature_ET > 3000 && (int16_t)Temperature_BT < 1500)) {  // ET>300°C, BT<150°C
         gasPercent  = 0;      // cut gas via DAC immediately
         fireCutFlag = true;   // programScan() will execute Modbus cutoff
     }
@@ -110,8 +115,8 @@ void timerPoll_1000ms(){
         rorBT = rorBTKalmanFilter.updateEstimate(raw_rorBT); //Lọc kalman
         rorET = rorETKalmanFilter.updateEstimate(raw_rorET); //Lọc kalman
         // raw_rorBT = raw_rorBT*10;
-        if(rorBT>(200)) rorBT = 200;
-        if(rorBT<(-200)) rorBT = -200;
+        if(rorBT>(950)) rorBT = 950;    // trần ±95°C/phút (950 ×10 = 9500 = 95.00)
+        if(rorBT<(-950)) rorBT = -950;
         rorBT = rorBT*10;
 
         if(rorET>(200)) rorET = 200;
@@ -121,7 +126,35 @@ void timerPoll_1000ms(){
         // old_rorBT = raw_rorBT;
         rorBTSamp_1 = Temperature_BT;
         rorETSamp_1 = Temperature_ET;
-        rorCount = 0; //Reset count    
+
+        //RoR của profile mẫu tại thời điểm hiện tại — tính cùng cách rorBT thực
+        //(window 3s, *20 rồi *10) để so sánh trực tiếp với rorBT.
+        //Không cần Kalman vì sdBT[] mẫu đã mượt sẵn. Chỉ có nghĩa khi rang AUTO.
+        if(lastTimeSD>=3){
+            int16_t raw_rorBT_pro = ((int16_t)sdBT[lastTimeSD]-(int16_t)sdBT[lastTimeSD-3])*20;
+            if(raw_rorBT_pro>950)  raw_rorBT_pro = 950;    // cùng trần ±95°C/phút với rorBT
+            if(raw_rorBT_pro<-950) raw_rorBT_pro = -950;
+            rorBT_pro = raw_rorBT_pro*10;
+        }else{
+            rorBT_pro = 0;
+        }
+
+        rorCount = 0; //Reset count
+    }
+
+    //RoR cân — bộ đếm RIÊNG, cửa sổ 1 giây (bám NHANH cho mẻ ngắn: mẻ nhỏ chỉ chảy ~2-3s), tách khỏi rorBT/rorET (3s).
+    //Cùng chiều rorBT: cân TĂNG → dương, cân GIẢM (hút) → âm.
+    //Hệ số ×6 cho cửa sổ 1s; clamp ±600 → ×10 = ±6000 = trần 60 kg/phút (1kg/phút=100).
+    rorCountKG++;
+    if(rorCountKG==1){
+        int32_t d = ((int32_t)netW100 - kgSamp_1) * 6;  // int32 tránh tràn khi delta lớn (vd boot: kgSamp_1=0)
+        if(d > 600)  d = 600;                            // clamp ±600 = ±60 kg/phút TRƯỚC Kalman (chặn rác vào bộ lọc)
+        if(d < -600) d = -600;
+        raw_rorKG = (int16_t)d;
+        rorKG = rorKGKalmanFilter.updateEstimate(raw_rorKG);
+        rorKG = rorKG*10;
+        kgSamp_1 = netW100;
+        rorCountKG = 0; //Reset count cân
     }
 
     //Dự đoán YL
@@ -144,7 +177,11 @@ void timerPoll_1000ms(){
     // Preheat timer -- count up every second (no Modbus here, ISR context)
     if (wuState == WU_IGNITE) {
         wuIgniteTimer++;
-    } else if (wuState == WU_HEATING || wuState == WU_HOLDING || wuState == WU_PRECISION) {
+    } else if (wuState == WU_HEATING || wuState == WU_HOLDING || wuState == WU_PRECISION
+#if PREHEAT_USE_PID
+               || wuState == WU_TUNE
+#endif
+              ) {
         wuElapsed++;
     }
 
@@ -185,12 +222,14 @@ void sdLogWrite(){
             sdStartDD   = (uint8_t)DAY_R;
             sdStartMM   = (uint8_t)MONTH_R;
             sdStartYYYY = (uint16_t)YEAR_R;
+            sdMaxGasSaved = (uint8_t)constrain((int)maxGasSet_R, 0, 100);  // chốt trần gas lúc START để lưu 1 lần vào header
             // Placeholder header — độ dài cố định 110 bytes (MM:SS / HH:MM luôn 5 ký tự)
             // Sẽ được overwrite bằng seek(0) khi DROP với milestone thực
             { char datetime[20]; sprintf(datetime, "%02d.%02d.%04d %02d:%02d:%02d",
                 (int)sdStartDD, (int)sdStartMM, (int)sdStartYYYY, 0, 0, 0);
             sdLogFile.print("Date:"); sdLogFile.print(datetime);
-            sdLogFile.print("\tUnit:C\tCHARGE:00:00\tTP:00:00\tDRYe:00:00\tFCs:00:00\tFCe:\tSCs:\tSCe:\tDROP:00:00\tCOOL:\tTime:00:00\r\n"); }
+            sdLogFile.print("\tUnit:C\tCHARGE:00:00\tTP:00:00\tDRYe:00:00\tFCs:00:00\tFCe:\tSCs:\tSCe:\tDROP:00:00\tCOOL:\tTime:00:00");
+            { char mg[14]; sprintf(mg, "\tMaxGas:%03d\r\n", (int)sdMaxGasSaved); sdLogFile.print(mg); } }
             // Header cột — Artisan format chuẩn
             sdLogFile.print("Time1\tTime2\tET\tBT\tEvent\tAir(%)\tBurner(%)\tDrum(%)\tVacFlag\tVacSP(Pa)\r\n");
             sdLogFile.flush();
@@ -327,7 +366,9 @@ void sdLogWrite(){
             sdLogFile.print("\tCOOL:\tTime:");                            // +12 → 103
             { char rtc[6]; sprintf(rtc, "%02d:%02d", (int)sdChargeHH, (int)sdChargeMM);
             sdLogFile.print(rtc); }                                        // +5 → 108
-            sdLogFile.print("\r\n");                                       // +2 → 110 ✓
+            { char mg[12]; sprintf(mg, "\tMaxGas:%03d", (int)sdMaxGasSaved);
+            sdLogFile.print(mg); }                                         // +11 → 119
+            sdLogFile.print("\r\n");                                       // +2 → 121 ✓
             sdLogFile.close();
             SDLogSTEP = "SUCCESS";
             nodeHMI.writeSingleRegister(DATE_PROFILE_W-1, 1); delay(5);
@@ -368,6 +409,7 @@ void sdRead(){
                 sdMillis = millis();
                 sdProfileLoadOK = false;
                 sdProfileLoadFailStatus = STT_SD_LOAD_FAIL;
+                sdMaxGasLoaded = -1;   // reset: profile không có MaxGas thì giữ -1, không áp giá trị cũ
                 strProfileName[0] = '\0';
         setMachineStatus(STT_SD_LOADING_PROFILE);
                 // Thử mở .csv trước (format mới), nếu không có thì dùng .txt cũ
@@ -436,6 +478,8 @@ void sdRead(){
                                 p = strstr(lineBuf, "DRYe:"); if(p){ sscanf(p+5, "%d:%d", &mm, &ss); csvDRYe = mm*60+ss; }
                                 p = strstr(lineBuf, "FCs:"); if(p){ sscanf(p+4, "%d:%d", &mm, &ss); csvFCs  = mm*60+ss; }
                                 p = strstr(lineBuf, "DROP:"); if(p){ sscanf(p+5, "%d:%d", &mm, &ss); csvDROP = mm*60+ss; }
+                                // Lưu trần gas từ profile (chỉ lưu, áp lúc bắt đầu rang AUTO; profile cũ không có field → giữ -1)
+                                p = strstr(lineBuf, "MaxGas:"); if(p){ int mg=-1; sscanf(p+7, "%d", &mg); if(mg>=0 && mg<=100) sdMaxGasLoaded = mg; }
                             }
                             else if(strncmp(lineBuf, "Time1", 5) == 0) {
                                 // Skip header cột
@@ -730,6 +774,11 @@ void sdRead(){
     }
 }
 
+// Lưu trạng thái vacuumSetFlag trước khi rang AUTO để khôi phục khi DROP/abort.
+// Profile có thể tự bật vacuum PID giữa mẻ; khi xong phải trả về đúng trạng thái ban đầu:
+// trước rang TẮT → sau rang tắt lại; trước rang BẬT sẵn → sau rang giữ bật.
+static uint8_t roastVacFlagSaved = 0;
+
 void calibProgram(){
     //Cập nhập dữ liệu từ SD mỗi giây
     //Dữ liệu gốc từ SD
@@ -771,8 +820,11 @@ void calibProgram(){
     //Bắt đầu hiệu chỉnh sau khi TP
     //Auto gas khi temp BT nằm ngoài định mức
     if(progStep>STP_TP){
-        if( Temperature_BT>sdBT[lastTimeSD]+clRangeBt
-        ||  Temperature_BT<sdBT[lastTimeSD]-clRangeBt){
+        //Từ FCS trở đi siết deadband xuống ±0.6°C (=6) để giữ Dev time bám mẫu chặt hơn
+        //Trước FCS giữ ±1.0°C (clRangeBt) cho đỡ nhạy nhiễu giai đoạn đầu
+        uint16_t clRange = (Temperature_BT>=FCS_PRO_R) ? 6 : clRangeBt;
+        if( Temperature_BT>sdBT[lastTimeSD]+clRange
+        ||  Temperature_BT<sdBT[lastTimeSD]-clRange){
             timeCalibGas++; //Đếm hiệu chỉnh gas
             //Tăng giảm gas theo BT (cách 10s)
             if(timeCalibGas>=10){
@@ -812,11 +864,11 @@ void calibProgram(){
             }
 
             //BT thực tế thấp hơn SD thì tăng gas
-            if(Temperature_BT<(sdBT[lastTimeSD]-clRangeBt))
+            if(Temperature_BT<(sdBT[lastTimeSD]-clRange))
                 gasPercent = gasPercent+numIncGas;
 
             //BT thực tế cao hơn SD thì giảm gas
-            if(Temperature_BT>(sdBT[lastTimeSD]+clRangeBt))
+            if(Temperature_BT>(sdBT[lastTimeSD]+clRange))
                 gasPercent = gasPercent-numIncGas;
 
             if(gasPercent>100)  gasPercent = 100;
@@ -1008,8 +1060,318 @@ void debugRoastStatus() {
     SerialComputer.println();
 }
 
+#if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)
+// Đọc 1 trường số thập phân tới dấu ',' hoặc hết chuỗi; trả về ×10^scale; nhảy *pp qua dấu phẩy.
+// Tự parse (không dùng sscanf %f — newlib nano trên STM32 không bật float scanf mặc định).
+static int32_t loaderParseScaled(char** pp, uint8_t scale){
+    char* s = *pp;
+    int32_t whole = 0, frac = 0; uint8_t fdig = 0; bool inFrac = false, neg = false;
+    while(*s == ' ') s++;
+    if(*s == '-'){ neg = true; s++; }
+    for(; *s && *s != ','; s++){
+        if(*s == '.'){ inFrac = true; continue; }
+        if(*s < '0' || *s > '9') continue;
+        if(!inFrac) whole = whole * 10 + (*s - '0');
+        else if(fdig < scale){ frac = frac * 10 + (*s - '0'); fdig++; }
+    }
+    if(*s == ',') s++;
+    *pp = s;
+    while(fdig < scale){ frac *= 10; fdig++; }
+    int32_t mul = 1; for(uint8_t i = 0; i < scale; i++) mul *= 10;
+    int32_t v = whole * mul + frac;
+    return neg ? -v : v;
+}
 
+// Snap cân (×100) và ror (×100) về tâm ô lưới → trả qua *qw (kg), *qr10 (×10 kg/phút).
+static void loaderQuantize(int16_t w100, int16_t rorMag, int16_t* qw, int16_t* qr10){
+    int16_t wKg = (w100 + 50) / 100;                                       // ×100 → kg (làm tròn)
+    *qw   = ((wKg + FEEDER_W_BUCKET / 2) / FEEDER_W_BUCKET) * FEEDER_W_BUCKET;
+    int16_t r10 = (rorMag + 5) / 10;                                       // ×100 → ×10 (làm tròn)
+    *qr10 = ((r10 + FEEDER_ROR_BUCKET10 / 2) / FEEDER_ROR_BUCKET10) * FEEDER_ROR_BUCKET10;
+    if(*qw   < FEEDER_W_BUCKET)     *qw   = FEEDER_W_BUCKET;
+    if(*qr10 < FEEDER_ROR_BUCKET10) *qr10 = FEEDER_ROR_BUCKET10;
+}
 
+// Tìm ô KHỚP ĐÚNG (qw,qr10). Trả index hoặc -1.
+static int16_t loaderCfgFind(int16_t qw, int16_t qr10){
+    for(uint8_t i = 0; i < cfgCount; i++)
+        if(cfgW[i] == qw && cfgRor10[i] == qr10) return i;
+    return -1;
+}
+
+// Tìm ô đã học GẦN nhất (khoảng cách tính theo số bước lưới). Trả index hoặc -1 nếu bảng rỗng.
+static int16_t loaderCfgNearest(int16_t qw, int16_t qr10){
+    int16_t best = -1; int32_t bestD = 0x7fffffff;
+    for(uint8_t i = 0; i < cfgCount; i++){
+        int32_t dw = (cfgW[i]   - qw)   / FEEDER_W_BUCKET;
+        int32_t dr = (cfgRor10[i] - qr10) / FEEDER_ROR_BUCKET10;
+        int32_t d  = dw * dw + dr * dr;
+        if(d < bestD){ bestD = d; best = i; }
+    }
+    return best;
+}
+
+// Tạo bảng MẶC ĐỊNH khi chưa có file: nội suy dif theo công thức T_kg cho từng ô ror
+// (FEEDER_ROR_BUCKET10..30) tại cân tham chiếu FEEDER_SEED_WKG → có sẵn dòng để dùng & sửa.
+static void loaderCfgSeed(){
+    cfgCount = 0;
+    int16_t w100 = (int16_t)FEEDER_SEED_WKG * 100;
+    for(int16_t r10 = FEEDER_ROR_BUCKET10; r10 <= 300 && cfgCount < FEEDER_CFG_MAX; r10 += FEEDER_ROR_BUCKET10){
+        int16_t rorMag = r10 * 10;                                          // ×10 → ×100
+        int32_t dif100 = (int32_t)((int64_t)rorMag * feederTkg * w100 / 60000000LL);
+        if(dif100 > FEEDER_DIF_MAX * 10) dif100 = FEEDER_DIF_MAX * 10;
+        if(dif100 < 0) dif100 = 0;
+        cfgW[cfgCount] = FEEDER_SEED_WKG; cfgRor10[cfgCount] = r10;
+        cfgDif100[cfgCount] = (int16_t)dif100; cfgN[cfgCount] = 0;          // n=0: mẫu mặc định (chưa học thật)
+        cfgCount++;
+    }
+}
+
+void loaderCfgSave();   // forward decl: loaderCfgLoad tạo file mới khi thiếu
+
+// Nạp bảng dif đã học từ /loadcfg.csv vào RAM — gọi 1 lần lúc boot (sau SD.begin).
+// Tên 8.3 (loadcfg.csv) vì SD@1.2.4 KHÔNG hỗ trợ tên dài >8.3 → tên dài tạo file thất bại âm thầm.
+// Không thấy file / file hỏng → tạo file rỗng; bảng rỗng = dùng công thức T_kg default tới khi học được.
+void loaderCfgLoad(){
+    cfgCount = 0;
+    File f = SD.open("loadcfg.csv");
+    if(f){
+        char line[48];
+        bool firstLine = true;
+        while(f.available() && cfgCount < FEEDER_CFG_MAX){
+            uint8_t len = 0;
+            while(f.available()){
+                char ch = f.read();
+                if(ch == '\n') break;
+                if(ch != '\r' && len < sizeof(line) - 1) line[len++] = ch;
+            }
+            line[len] = 0;
+            if(len == 0) continue;
+            if(firstLine){ firstLine = false; if(line[0] < '0' || line[0] > '9') continue; }  // bỏ header
+            char* p = line;                                  // cột: wKg, rorKgMin, dif, n
+            int16_t w    = (int16_t)loaderParseScaled(&p, 0);
+            int16_t r10  = (int16_t)loaderParseScaled(&p, 1);
+            int16_t d100 = (int16_t)loaderParseScaled(&p, 2);
+            int16_t n    = (int16_t)loaderParseScaled(&p, 0);
+            if(w > 0 && r10 > 0 && d100 >= 0 && d100 <= FEEDER_DIF_MAX * 10){
+                cfgW[cfgCount] = w; cfgRor10[cfgCount] = r10; cfgDif100[cfgCount] = d100;
+                cfgN[cfgCount] = (n > 0 && n < 255) ? (uint8_t)n : 1;
+                cfgCount++;
+            }
+        }
+        f.close();
+    }else{
+        loaderCfgSeed();   // chưa có file → nội suy bảng mặc định theo ror (tại cân FEEDER_SEED_WKG)
+        loaderCfgSave();   // ghi xuống SD để có sẵn dòng mà dùng & sửa
+    }
+
+    // Seed loaderSeq từ STT dòng dữ liệu cuối /loader.csv để đánh số liên tục qua các lần boot.
+    // Chỉ seed nếu header đúng định dạng mới (bắt đầu bằng "STT"); file cũ/lạ → bỏ qua (tránh đọc nhầm
+    // cột ms thành STT làm số nhảy bậy). Nên xóa file cũ trước khi đổi định dạng cột.
+    File c = SD.open("loader.csv");
+    if(c && c.peek() != 'S'){ c.close(); }
+    else if(c){
+        uint16_t lastSeq = 0, cur = 0;
+        bool atLineStart = true, lineHasDigit = false;
+        while(c.available()){
+            char ch = c.read();
+            if(ch == '\n'){
+                if(lineHasDigit) lastSeq = cur;   // STT của dòng vừa kết thúc
+                atLineStart = true; cur = 0; lineHasDigit = false;
+            }else if(atLineStart){
+                if(ch >= '0' && ch <= '9'){ cur = cur * 10 + (ch - '0'); lineHasDigit = true; }
+                else atLineStart = false;         // hết cột STT (header chữ hoặc dấu ',')
+            }
+        }
+        c.close();
+        loaderSeq = lastSeq;
+    }
+}
+
+// Lưu toàn bộ bảng dif ra /loadcfg.csv (ghi đè, ≤FEEDER_CFG_MAX dòng → nhanh).
+void loaderCfgSave(){
+    SD.remove("loadcfg.csv");
+    File f = SD.open("loadcfg.csv", FILE_WRITE);
+    if(!f) return;
+    f.print("wKg,rorKgMin,dif,n\r\n");
+    for(uint8_t i = 0; i < cfgCount; i++){
+        f.print(cfgW[i]);                 f.print(',');
+        f.print(cfgRor10[i] / 10.0f, 1);  f.print(',');
+        f.print(cfgDif100[i] / 100.0f, 2);f.print(',');
+        f.print(cfgN[i]);                 f.print("\r\n");
+    }
+    f.close();
+}
+
+// Cắt /loader.csv chỉ giữ LOADER_CSV_MAX dòng dữ liệu gần nhất (luôn giữ header).
+// Stream qua /loader.tmp để không phải nạp cả file vào RAM (20KB rất hạn chế).
+void loaderLogTrim(){
+    File f = SD.open("loader.csv");
+    if(!f) return;
+
+    // Đếm số dòng dữ liệu (tổng số '\n' trừ header).
+    int32_t dataRows = -1;   // -1 để trừ dòng header
+    while(f.available()){ if(f.read() == '\n') dataRows++; }
+    if(dataRows <= LOADER_CSV_MAX){ f.close(); return; }
+
+    int32_t skip = dataRows - (LOADER_CSV_MAX - 40);   // cắt dư 40 dòng → chỉ trim mỗi ~40 log, giảm churn ghi thẻ 40×
+    f.seek(0);
+
+    SD.remove("loader.tmp");
+    File t = SD.open("loader.tmp", FILE_WRITE);
+    if(!t){ f.close(); return; }
+
+    // Giữ header (lineIdx 0) và các dòng có lineIdx > skip; bỏ dòng 1..skip.
+    int32_t lineIdx = 0;
+    while(f.available()){
+        char c = f.read();
+        if(lineIdx == 0 || lineIdx > skip) t.write(c);
+        if(c == '\n') lineIdx++;
+    }
+    f.close();
+    t.close();
+
+    // Thay thế: SD lib này không có rename → copy tmp về csv rồi xoá tmp.
+    SD.remove("loader.csv");
+    File s = SD.open("loader.tmp");
+    File d = SD.open("loader.csv", FILE_WRITE);
+    if(s && d){ while(s.available()) d.write(s.read()); }
+    if(s) s.close();
+    if(d) d.close();
+    SD.remove("loader.tmp");
+}
+
+// Ghi 1 dòng /loader.csv mỗi lần hút (event-based, không streaming).
+// Cột: STT, s(giây kể từ lúc bật máy), wStart(cân đầu), batch(thực tế hút), set(cài đặt), secHut(giây hút), rorKG, dif,
+//      offset(lực hút), target(đích), final(thực tế), err(lệch >0=thiếu), score(0-10), result, Told, Tnew.
+void loaderLogEvent(int32_t final100, int32_t target100, int32_t err100,
+                    int16_t score_x10, const char* result, int16_t difOld100, int16_t difNew100, uint16_t secHut){
+    File f = SD.open("loader.csv", FILE_WRITE);
+    if(!f){ if(loaderDbgEn) SerialComputer.println("LDR >>> LOG FAIL: SD.open loader.csv FAILED"); return; }
+    // Ghi header CHỈ khi file rỗng thật (size 0). Không dùng SD.exists() vì sau chu kỳ
+    // remove/recreate của loaderLogTrim() nó hay trả false-negative → chèn header vào giữa.
+    if(f.size() == 0) f.print("STT,s,wStart,batch,set,secHut,rorKG,dif,offset,target,final,err,score,result,difOld,difNew\r\n");
+    f.print(++loaderSeq);                           f.print(',');  // số thứ tự lần hút
+    f.print(millis() / 1000);                       f.print(',');  // thời điểm ghi (giây kể từ lúc bật máy)
+    f.print(adaptStartW100 / 100.0f, 2);            f.print(',');  // cân lúc bắt đầu hút (kg)
+    f.print((adaptStartW100 - target100) / 100.0f, 2); f.print(','); // batch thực tế hút ra (kg)
+    f.print(adaptSet / 10.0f, 1);                   f.print(',');  // set: lượng cài đặt cần hút (kg, chốt lúc cắt)
+    f.print(secHut);                                f.print(',');  // thời gian hút (giây)
+    f.print(adaptRorMag / 100.0f, 2);               f.print(',');  // tốc độ hút (kg/phút)
+    f.print(adaptDif100 / 100.0f, 2);               f.print(',');  // dif đã dùng (kg)
+    f.print(suctionOffset100 / 100.0f, 2);          f.print(',');  // offset lực hút đo được (kg)
+    f.print(target100 / 100.0f, 2);                 f.print(',');  // đích (kg)
+    f.print(final100 / 100.0f, 2);                  f.print(',');  // thực tế (kg)
+    f.print(err100 / 100.0f, 2);                    f.print(',');  // lệch (kg, >0=thiếu)
+    f.print(score_x10 / 10.0f, 1);                  f.print(',');  // điểm (0.0-10.0)
+    f.print(result);                                f.print(',');  // OK / UNDER / OVER
+    f.print(difOld100 / 100.0f, 2);                 f.print(',');  // dif ô TRƯỚC học (kg)
+    f.print(difNew100 / 100.0f, 2);                 f.print("\r\n");// dif ô SAU học (kg)
+    f.close();
+    loaderLogTrim();   // giữ tối đa LOADER_CSV_MAX dòng gần nhất
+}
+
+// Vòng tự học: sau khi cắt feeder, chờ cân ổn định → chấm điểm → chỉnh dif của Ô (cân,ror) nếu thất bại.
+// Điểm = 10.0 − lệch_kg×10 (lệch 0.05kg=9.5đ, 0.10kg=9.0đ). Hút OK = >9.0đ (lệch ≤0.09kg).
+// CHỈ sửa dif khi THẤT BẠI (deadband): đạt rồi thì giữ nguyên, tránh giật. THIẾU(dư cà)→dif nhỏ hơn, DƯ→dif lớn hơn.
+void loaderAdapt(){
+    if(loaderAdaptPhase != 1) return;
+
+    uint32_t elapsed   = millis() - adaptSettleStartMs;
+    int16_t  rorMagNow = (rorKG < 0) ? -rorKG : rorKG;
+
+    // Đợi tối thiểu SETTLE_MIN_MS cho cà lắng, RỒI cân ổn định; hoặc hết timeout.
+    bool settled = (elapsed >= (uint32_t)FEEDER_SETTLE_MIN_MS) && (rorMagNow <= FEEDER_STABLE_ROR);
+    bool timeout = (elapsed >= (uint32_t)FEEDER_SETTLE_TMO * 1000);
+    if(!settled && !timeout) return;
+
+    int32_t final100  = netW100;                        // ×100 kg
+    int32_t target100 = (int32_t)adaptTarget * 10;      // ×100 kg
+    int32_t batch100  = adaptStartW100 - target100;     // ×100 kg, lượng hút mục tiêu
+
+    int32_t err100    = final100 - target100;           // >0 = hút thiếu (dư cà)
+    int32_t absErr    = (err100 < 0) ? -err100 : err100;
+
+    // Chấm điểm: mỗi 0.01kg lệch trừ 0.1 điểm. score_x10 đơn vị 0.1 điểm.
+    int16_t score_x10 = (int16_t)(100 - absErr);
+    if(score_x10 < 0) score_x10 = 0;
+    bool ok = (score_x10 >= 91);                        // >9.0đ (lệch ≤0.09kg) = hút OK
+
+    uint16_t secHut = (uint16_t)((adaptSettleStartMs - adaptStartMs) / 1000);
+    int16_t  difOld100 = (int16_t)adaptDif100;         // dif đã dùng mẻ này (tham chiếu "trước")
+    int16_t  difNew100 = (int16_t)adaptDif100;         // mặc định: không đổi
+    const char* result;
+
+    if(batch100 < FEEDER_MIN_BATCH100){
+        // Mẻ quá nhỏ (nhiễu cân, không phải mẻ hút thật) → VẪN log để xem, nhưng KHÔNG học.
+        // Tránh nhiễu 0.05–0.25kg kéo dif dao động (xem loader.csv mô phỏng 2026-06-22).
+        result = "SMALL";
+    }else if(ok){
+        result = "OK";                                 // đạt → KHÔNG sửa dif (deadband)
+    }else{
+        result = (err100 > 0) ? "UNDER" : "OVER";      // dư cà(hút thiếu)→dif cần nhỏ hơn ; hút dư→dif cần lớn hơn
+        // Học dif cho Ô (cân, ror) của mẻ này. dif lẽ ra đúng = dif đã dùng − err. Cần ror & cân đủ lớn.
+        if(adaptRorMag >= 100 && adaptStartW100 >= 100){
+            int32_t difReal100 = adaptDif100 - err100;
+            if(difReal100 < 0) difReal100 = 0;
+            if(difReal100 > FEEDER_DIF_MAX * 10) difReal100 = FEEDER_DIF_MAX * 10;
+            int16_t qw, qr10;
+            loaderQuantize(adaptStartW100, adaptRorMag, &qw, &qr10);
+            int16_t ci = loaderCfgFind(qw, qr10);
+            if(ci < 0 && cfgCount < FEEDER_CFG_MAX){    // ô mới → tạo, lấy luôn dif đúng
+                ci = cfgCount++;
+                cfgW[ci] = qw; cfgRor10[ci] = qr10; cfgDif100[ci] = (int16_t)difReal100; cfgN[ci] = 1;
+            }else if(ci < 0){                           // bảng ĐẦY → thay ô ít tin cậy nhất (n nhỏ nhất,
+                uint8_t lo = 0;                         // thường là seed/ô rác cũ) → KHÔNG bao giờ ngừng học
+                for(uint8_t i = 1; i < cfgCount; i++) if(cfgN[i] < cfgN[lo]) lo = i;
+                ci = lo;
+                cfgW[ci] = qw; cfgRor10[ci] = qr10; cfgDif100[ci] = (int16_t)difReal100; cfgN[ci] = 1;
+            }else{                                      // ô cũ → EMA kéo dần về dif đúng (chống nhiễu 1 mẻ)
+                difOld100 = cfgDif100[ci];
+                cfgDif100[ci] += (int16_t)((FEEDER_ADAPT_GAIN * (difReal100 - cfgDif100[ci])) / 100);
+                if(cfgDif100[ci] < 0) cfgDif100[ci] = 0;
+                if(cfgN[ci] < 255) cfgN[ci]++;
+            }
+            difNew100 = cfgDif100[ci]; loaderCfgSave();  // ci luôn ≥0 giờ → luôn lưu
+        }
+    }
+
+    loaderLogEvent(final100, target100, err100, score_x10, result, difOld100, difNew100, secHut);
+    if(loaderDbgEn){
+        SerialComputer.print("LDR >>> LOG: result="); SerialComputer.print(result);
+        SerialComputer.print(" score="); SerialComputer.print(score_x10);   // ×10 (98=9.8đ)
+        SerialComputer.print(" set="); SerialComputer.print(adaptSet);       // cân cài hút (×10)
+        SerialComputer.print(" err="); SerialComputer.print(err100);
+        SerialComputer.print(" final="); SerialComputer.print(final100);
+        SerialComputer.print(" batch100="); SerialComputer.print(batch100);
+        SerialComputer.print(" secHut="); SerialComputer.println(secHut);
+    }
+    loaderAdaptPhase = 0;
+}
+#endif
+
+// Cập nhật cờ GIAI ĐOẠN rang lên HMI (Dry / Maillard / DEV) cho thanh phase kiểu Artisan.
+// CỘNG DỒN: giai đoạn nào ĐÃ vào thì cờ GIỮ SÁNG tới hết mẻ (giống thanh 3 khúc của Artisan).
+//   Dry      : từ CHARGE→DE trở đi (progStep >= STP_TP)
+//   Maillard : từ DE→FCs   trở đi (progStep >= STP_FCS)
+//   DEV      : từ FCs→DROP  trở đi (progStep >= STP_DEV)
+// Hết mẻ / mẻ mới (progStep về STP_DATA hoặc START tắt) → cả 3 = 0.
+// Change-gated: chỉ ghi HMI khi tổ hợp cờ ĐỔI, không ghi register liên tục.
+void updateRoastPhaseFlags() {
+    uint8_t dry = 0, mail = 0, dev = 0;
+    if (START_BTN_R == 1) {
+        if (progStep >= STP_TP)  dry  = 1;  // đã vào Dry
+        if (progStep >= STP_FCS) mail = 1;  // đã vào Maillard
+        if (progStep >= STP_DEV) dev  = 1;  // đã vào DEV
+    }
+    static int8_t last = -1;
+    int8_t sig = dry * 4 + mail * 2 + dev;   // gộp 3 cờ thành 1 mã để so đổi
+    if (sig == last) return;                 // không đổi → khỏi ghi bus
+    last = sig;
+    nodeHMI.writeSingleRegister(showPointDry_W      - 1, dry);  delay(1);
+    nodeHMI.writeSingleRegister(showPointMaillard_W - 1, mail); delay(1);
+    nodeHMI.writeSingleRegister(showPointDEV_W      - 1, dev);  delay(1);
+}
 
 void programScan(){
     // PRIORITY 1: keep drum/fan on when BT or ET is hotter than 80C
@@ -1028,16 +1390,19 @@ void programScan(){
         forceDrumFanOnFlag = false;
     }
 
-    // PRIORITY 1: safety cutoff — BT > 250C or ET > 350C, ISR flagged it
+    // PRIORITY 1: safety cutoff — ISR flagged it
     if (fireCutFlag) {
         nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);  // cut gas
         gasPercent = 0;
         // Report specific cause
         if ((int16_t)Temperature_BT > 2500) {
-            setMachineStatus(STT_ERR_FIRE_ALARM);   // 401: BT > 250C
+            setMachineStatus(STT_ERR_FIRE_ALARM);       // 401: BT > 250C
             if (enDebug) SerialComputer.println("!!! BT > 250C: GAS CUT OFF !!!");
+        } else if ((int16_t)Temperature_ET > 3000 && (int16_t)Temperature_BT < 1500) {
+            setMachineStatus(STT_TEMP_DIVERGENCE);      // 267: ET>300C, BT<150C
+            if (enDebug) SerialComputer.println("!!! ET>300C BT<150C: EMERGENCY GAS CUT !!!");
         } else {
-            setMachineStatus(STT_TEMP_ET_HIGH);     // 264: ET > 350C
+            setMachineStatus(STT_TEMP_ET_HIGH);         // 264: ET > 350C
             if (enDebug) SerialComputer.println("!!! ET > 350C: GAS CUT OFF !!!");
         }
         fireCutFlag = false;
@@ -1070,6 +1435,14 @@ void programScan(){
         switch(progStep){
             case STP_DATA:
                 setMachineStatus(STT_ROAST_INIT);
+#if MACHINE_HAS_VACUUM_SENSOR
+                roastVacFlagSaved = vacuumSetFlag_R;  // lưu trạng thái vacuum PID trước rang (khôi phục lúc DROP/abort)
+#endif
+                // Áp trần gas từ profile CHỈ khi rang AUTO (profile không có MaxGas → sdMaxGasLoaded=-1 → bỏ qua)
+                if(progStatus == STT_PROGRAM_AUTO && sdMaxGasLoaded >= 0 && sdMaxGasLoaded <= 100){
+                    maxGasSet_R = sdMaxGasLoaded;
+                    nodeHMI.writeSingleRegister(maxGasSet_W + 2000, sdMaxGasLoaded);
+                }
                 //Xoá profile đã chọn trên SD, nếu chương trình rang là manual save
                 if(progStatus == STT_PROGRAM_SAVE){
                     sdLogStartEn = 1;
@@ -1114,6 +1487,7 @@ void programScan(){
 
                 timeRoast = 0;
                 rorCtrl_reset(); // Reset RoR control state khi bắt đầu mẻ mới
+                trendPreStarted = false; // Cho phép bật lại trend sớm ở mẻ mới
 
                 nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 1);  //Clear trend graph
                 nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 1);    //Lock các button trên HMI khi rang
@@ -1256,7 +1630,7 @@ void programScan(){
             case STP_YELLOW:
                 STEP_STRING = "WAIT YELLOW";
                 //Check YL
-                if(Temperature_BT>=yellowPhase_R_CV){
+                if(Temperature_BT>=yellowPhase_R_CV){// đã đạt mốc yellow
                     BT_YELLOW_SAVE = Temperature_BT;
                     TIME_YELLOW_SAVE = timeRoast;
                     TIME_YELLOW_MIN_SAVE = TIME_YELLOW_SAVE/60;
@@ -1267,7 +1641,7 @@ void programScan(){
                 }
                 break;
 
-            case STP_FCS:
+            case STP_FCS: //đang chờ từ mốc yellow đến first crack
                 STEP_STRING = "WAIT FCS";
                 //Check FCS
                 if(Temperature_BT>=fcsPhase_R_CV){
@@ -1347,13 +1721,23 @@ void programScan(){
                 break;
         }
 
+        //Bật trend SỚM: sau khi bật lửa (gas on), BT tăng dần tới charge —
+        //khi còn cách charge TREND_PRECHARGE_BAND (10°C) thì bật sample để ghi cả đoạn tiến tới charge.
+        //Chỉ khi có cài charge temp; mỗi mẻ 1 lần (trendPreStarted). Charge-press vẫn bật lại phòng hờ.
+        if(chargeTemp_R_CV>0 && progStep>=STP_GAS && progStep<STP_TP && !trendPreStarted
+           && Temperature_BT>=(chargeTemp_R_CV-TREND_PRECHARGE_BAND)){
+            nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 1);  //Turn on trend graph sample sớm
+            trendPreStarted = true;
+            delay(1);
+        }
+
         //Check auto cân
         //Chỉ cân tự động sau khi DE hoàn thành
         if(progStep==STP_FCS){
             //Xử lí các tình huống trong khi rang auto
             if(progStatus == STT_PROGRAM_AUTO){
                 if(autoLoader_R == 1 && aLoaderStep == 0 && loop_R>1){
-                    //Chỉ cho auto cân khi có trên 7.2kg
+                    //Chỉ cho auto cân khi phễu nguồn còn ≥ LOADER_MIN_BATCH_PCT% của 1 mẻ (LOADER_MIN_NETW ×10 kg)
                     //Nếu không sẽ auto tắt start
                     if(!scaleDataValid){
                         setMachineStatus(STT_SCALE_DATA_INVALID);
@@ -1361,8 +1745,8 @@ void programScan(){
                     }else if(netW < 0){
                         setMachineStatus(STT_SCALE_NEGATIVE);
                         setMachineStatus(STT_LOADER_FAIL); aLoaderStep = STP_FAIL_LOADER;
-                    }else if(netW>=72){
-                        setMachineStatus(STT_LOADER_RUNNING); aLoaderStep = STP_ON_LOADER; //Bắt đầu vào auto loader  
+                    }else if(netW>=LOADER_MIN_NETW){
+                        setMachineStatus(STT_LOADER_RUNNING); aLoaderStep = STP_ON_LOADER; //Bắt đầu vào auto loader
                     }else{
                         setMachineStatus(STT_LOADER_FAIL); aLoaderStep = STP_FAIL_LOADER; 
                     } 
@@ -1411,6 +1795,10 @@ void programScan(){
                 naviSourceGAS = SOURCE_AI_VR; //Đổi source sang VR
                 naviSourceDRUM = SOURCE_AI_VR;
                 naviSourceAIR = SOURCE_AI_VR;
+#if MACHINE_HAS_VACUUM_SENSOR
+                vacuumSetFlag_R = roastVacFlagSaved;  // khôi phục vacuum PID về trạng thái trước rang
+                nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, vacuumSetFlag_R);
+#endif
 
                 //Bật cooling&mixer nếu nhập số lớn hơn 0
                 if(coolTimer_R>0&&coolStep==0) coolStep = COOL_STEP_COOLING; 
@@ -1454,7 +1842,11 @@ void programScan(){
             naviSourceGAS = SOURCE_AI_VR; //Đổi source sang VR
             naviSourceDRUM = SOURCE_AI_VR;
             naviSourceAIR = SOURCE_AI_VR;
-            
+#if MACHINE_HAS_VACUUM_SENSOR
+            vacuumSetFlag_R = roastVacFlagSaved;  // khôi phục vacuum PID về trạng thái trước rang
+            nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, vacuumSetFlag_R);
+#endif
+
             nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
             nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
             STEP_STRING = "NONE";
@@ -1492,8 +1884,12 @@ void programScan(){
         //Thổi cà thành công
         case STP_OK_LOADER:
             STEP_LOADER = "OKLOA"; //Thổi ok
-        break;    
+        break;
     }
+
+#if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)
+    loaderAdapt();   // Vòng tự học dif: chờ cân ổn định sau cắt → chỉnh feederTkg
+#endif
 
     // Tự động cập nhật cân sau 10 giây nếu không có dữ liệu từ Bluetooth
     if (updateNetWTi >= 5 && SerialBluetooth.available() == 0) {
@@ -1507,6 +1903,32 @@ void programScan(){
         }
     }
 
+#if MACHINE_HAS_SCALE_FEEDER
+    // Bắt đầu mẻ hút bằng LATCH (không dùng sườn 1-vòng): FEEDER_BTN_R đọc từ HMI qua Modbus,
+    // đôi khi vòng quét đọc LỠ cạnh 0→1 → mẻ rác (adaptStartMs/wStart cũ). feederWasOff giữ
+    // "đã thấy nút nhả" qua nhiều vòng nên dù lỡ cạnh vẫn bắt được mẻ mới. Chỉ bắt khi không ở pha lắng.
+    if (FEEDER_BTN_R == 0) feederWasOff = true;
+    if (FEEDER_BTN_R == 1 && feederWasOff && loaderAdaptPhase == 0) {
+        adaptStartMs       = millis();
+        adaptStartW100     = netW100;
+        adaptWStartPending = true;
+        adaptArmed         = true;   // mẻ hút hợp lệ → cho phép 1 lần vào pha học
+        feederWasOff       = false;
+    }
+    // Phễu đã ổn định sau khi bật hút → đo offset lực hút rồi chốt lại wStart (cà chưa chảy).
+    // offset = cân lúc đang hút ổn định (netW100) − cân lúc chưa hút (adaptStartW100 tạm).
+    // Kẹp [0, OFFSET_MAX] để mẫu lỗi không phá ngưỡng cắt.
+    if (adaptWStartPending && FEEDER_BTN_R == 1
+        && (millis() - adaptStartMs >= (uint32_t)FEEDER_WSTART_DELAY_MS)) {
+        int16_t off = netW100 - adaptStartW100;
+        if (off < 0) off = 0;
+        if (off > FEEDER_OFFSET_MAX100) off = FEEDER_OFFSET_MAX100;
+        suctionOffset100   = off;
+        adaptStartW100     = netW100;
+        adaptWStartPending = false;
+    }
+#endif
+
     // Tính hiệu số giữa trọng lượng hiện tại và trọng lượng mục tiêu
     if (netW > netWTG_R && FEEDER_BTN_R == 0) {
         difNetW = netW - netWTG_R; // Nếu trọng lượng hiện tại lớn hơn mục tiêu
@@ -1514,31 +1936,87 @@ void programScan(){
         difNetW = 0; // Nếu trọng lượng hiện tại nhỏ hơn hoặc bằng mục tiêu
     }
 
-    if (netW >= wThresholdHigh_R) {
-        dif = difHigh_R; // Trọng lượng lớn hơn hoặc bằng wThresholdHigh_R
-    } else if (netW >= wThresholdMedium_R) {
-        dif = difMedium_R; // Trọng lượng từ wThresholdMedium_R đến dưới wThresholdHigh_R
-    } else if (netW >= wThresholdLow_R) {
-        dif = difLow_R; // Trọng lượng nhỏ hơn 5
-    } else {
-        dif = difLow_R; // Trọng lượng thấp hơn ngưỡng thấp
-    }
+    // Auto-dif: đóng feeder sớm theo lượng cà còn rơi trong lúc xi lanh đóng.
+    // Tính & so sánh ở ×100 (0.01kg) để KHÔNG giật bậc 0.1kg.
+    // dif100 lấy từ BẢNG đã học: snap (cân, ror) về ô lưới → dùng dif của ô đó; ô trống → ô học
+    // gần nhất; bảng rỗng hoàn toàn → công thức T_kg default (|rorKG|×T_kg×wStart/60000000) làm mồi.
+    int32_t dif100 = 0;
+#if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)
+    int16_t rorMag = (rorKG < 0) ? -rorKG : rorKG;
+    int16_t qw, qr10;
+    loaderQuantize(adaptStartW100, rorMag, &qw, &qr10);
+    int16_t ci = loaderCfgFind(qw, qr10);
+    if (ci < 0) ci = loaderCfgNearest(qw, qr10);
+    if (ci >= 0) dif100 = cfgDif100[ci];                                   // dif đã học
+    else dif100 = (int32_t)((int64_t)rorMag * feederTkg * adaptStartW100 / 60000000LL);
+    if (dif100 > (int32_t)FEEDER_DIF_MAX * 10) dif100 = (int32_t)FEEDER_DIF_MAX * 10;
+    if (dif100 < 0) dif100 = 0;
+#endif
+    dif = (int16_t)(dif100 / 10); // bản ×10 để tham chiếu/hiển thị
 
     // Tự động tắt feeder dựa trên trọng lượng và trạng thái nút FEEDER
     if (FEEDER_BTN_R == 1 && netWTG_R > 0 && scaleDataValid) { // Nếu nút FEEDER đang bật và có trọng lượng mục tiêu
-        if (netW <= (difNetW + dif)) { // Kiểm tra nếu trọng lượng hiện tại đạt ngưỡng
-            if (netW > vacuumTraction_R) { // Nếu trọng lượng lớn hơn 7
+        // So sánh ở ×100: netW100 vs (đích còn lại ×10 + dif100 + offset). Mượt tới 0.01kg.
+        // Cộng suctionOffset100 vào ngưỡng = trừ offset khỏi netW100 (cân đang bị lực hút thổi cao).
+        if (netW100 <= ((int32_t)difNetW * 10 + dif100 + suctionOffset100)) { // Đạt ngưỡng cắt
+            if (netW100 > (int32_t)vacuumTraction_R * 10) { // Còn đủ lực kéo vacuum
                 nodeHMI.writeSingleRegister(FEEDER_BTN_W-1, 0); // Tắt FEEDER
+                if(loaderDbgEn) SerialComputer.println("LDR >>> AUTO-CUT (normal path, will settle+log)");
                 if(aLoaderStep == STP_WAIT_LOADER){
                     setMachineStatus(STT_LOADER_OK);
                     aLoaderStep = STP_OK_LOADER;
                 }
+#if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)
+                // Chốt số liệu lúc cắt → vào pha chờ ổn định để tự học dif.
+                // Chỉ khi armed (có sườn hút thật) → tránh cắt lặp/giả ghi dòng rác. Mỗi sườn 1 lần.
+                if (adaptArmed) {
+                    adaptTarget = difNetW;
+                    adaptSet    = netWTG_R;   // chốt set thật của mẻ ngay lúc cắt
+                    adaptRorMag = rorMag;
+                    adaptDif100 = dif100;
+                    adaptSettleStartMs = millis();
+                    loaderAdaptPhase = 1;
+                    adaptArmed = false;
+                }
+#endif
                 delay(1);
             } else {
                 cleanFeederTiEn = 1; // Bật cờ dọn sạch FEEDER
+                if(loaderDbgEn) SerialComputer.println("LDR >>> CLEAN-FEEDER (netW100<=vacTr, NO LOG)");
             }
         }
     }
+
+#if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)
+    // --- Debug loader: tự bật khi bấm loader; tắt 10s sau khi off (và đã ghi log xong); in 1s/lần ---
+    if(FEEDER_BTN_R == 1 && enDebug){                   // chỉ bật debug khi enDebug=1 (mặc định TẮT)
+        loaderDbgEn = true;
+        loaderDbgOffMs = 0;                              // đang chạy → hoãn đếm tắt
+    }else if(loaderDbgEn){
+        if(loaderDbgOffMs == 0) loaderDbgOffMs = millis();                     // vừa off → bắt đầu đếm
+        else if(millis() - loaderDbgOffMs >= 10000 && loaderAdaptPhase == 0)   // đủ 10s & log xong → tắt
+            loaderDbgEn = false;
+    }
+    if(loaderDbgEn && millis() - loaderDbgPrintMs >= 1000){
+        loaderDbgPrintMs = millis();
+        int32_t thr = (int32_t)difNetW * 10 + dif100 + suctionOffset100;       // ngưỡng cắt (×100)
+        SerialComputer.print("LDR t=");    SerialComputer.print((millis() - adaptStartMs) / 1000); // giây kể từ lúc bắt đầu hút
+        SerialComputer.print(" btn=");     SerialComputer.print(FEEDER_BTN_R);
+        SerialComputer.print(" vld=");     SerialComputer.print(scaleDataValid);
+        SerialComputer.print(" w=");       SerialComputer.print(netW100);
+        SerialComputer.print(" set=");     SerialComputer.print(netWTG_R);   // cân cài hút (×10)
+        SerialComputer.print(" dN=");      SerialComputer.print(difNetW);    // cân đích cuối (×10)
+        SerialComputer.print(" raw=");     SerialComputer.print(raw_rorKG * 10); // ror thô trước Kalman (cùng thang ror)
+        SerialComputer.print(" ror=");     SerialComputer.print(rorKG);
+        SerialComputer.print(" dif=");     SerialComputer.print(dif100);
+        SerialComputer.print(" thr=");     SerialComputer.print(thr);
+        SerialComputer.print(" wS=");      SerialComputer.print(adaptStartW100);
+        SerialComputer.print(" ph=");      SerialComputer.print(loaderAdaptPhase);
+        SerialComputer.print(" arm=");     SerialComputer.print(adaptArmed);
+        SerialComputer.print(" stp=");     SerialComputer.print(aLoaderStep);
+        SerialComputer.print(" cfg=");     SerialComputer.println(cfgCount);
+    }
+#endif
 
     //Tự tắt feeder sau 5 giây dọn sạch feeder.
     if(FEEDER_BTN_R == 1 && cleanFeederTi>=10 && cleanFeederTiEn){
@@ -1601,6 +2079,8 @@ void programScan(){
         chargeTimerEn = 0;
         chargeTimer = 0;
         nodeHMI.writeSingleRegister(CHARGE_BTN_W-1, 0);  //Turn off charge
+        // Reset ca o lenh PC (Hreg 14) — khong thi lenh ke tiep tu app bi coi la "khong doi"
+        Charge_btn_PC = 0; mbs.Hreg(CHARGE_artisan_W, 0);
         setMachineStatus(STT_EVENT_CHARGE_CLOSED);
         buzzerTimerEn = 1; //Call buzzer
         delay(1);
@@ -1618,6 +2098,7 @@ void programScan(){
         dropTimerEn = 0;
         dropTimer = 0;
         nodeHMI.writeSingleRegister(DROP_BTN_W-1, 0);  //Turn off Drop
+        Drop_btn_PC = 0; mbs.Hreg(DROP_artisan_W, 0);   // reset o lenh PC (xem charge)
         setMachineStatus(STT_EVENT_DROP_CLOSED);
         buzzerTimerEn = 1; //Call buzzer
         STEP_STRING = "NONE";
@@ -1698,11 +2179,12 @@ void programScan(){
         if(escapeTimer>=escapeDuration_R){
             STEP_COOLING_STRING = "OFFESC";
             nodeHMI.writeSingleRegister(ESCAPE_BTN_W-1, 0);  //Turn off escape
+            Escape_btn_PC = 0; mbs.Hreg(ESCAPE_artisan_W, 0);   // reset o lenh PC (xem charge)
             setMachineStatus(STT_EVENT_ESCAPE_CLOSED);
             escapeTimerEn = 0; //Turn off escape timer
             escapeTimer = 0;
             buzzerTimerEn = 1; //Call buzzer
-        }     
+        }
     }
 
     //Điều hướng gas analog source control
@@ -1860,8 +2342,22 @@ void programScan(){
                 buzzerTimerEn = 1; //Call buzzer
 
                 coolStep = 0; //Turn off cooling program
-            }        
-        break; 
+            }
+        break;
+    }
+
+    //Log đếm cooling: in mỗi giây khi cooling đang chạy — coolTimer (đang đếm) / coolTimer_R (cài đặt)
+    static int16_t coolTimerLog = -1;
+    if(coolStep>=1){
+        if(enDebug && coolTimer!=coolTimerLog){
+            SerialComputer.print("Cool count: ");
+            SerialComputer.print(coolTimer);
+            SerialComputer.print(" / set: ");
+            SerialComputer.println(coolTimer_R);
+        }
+        coolTimerLog = coolTimer;
+    }else{
+        coolTimerLog = -1;
     }
 }
 

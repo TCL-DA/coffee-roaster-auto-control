@@ -2,7 +2,9 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang 3kg auto — không cân, KHÔNG biến trở (VR đọc từ HMI), có module relay ngoài (IO), vacuum đọc từ biến tần gió.
+ * Cấu hình hiện tại: máy 6kg auto xuất Philippines — không IO module, không cân serial
+ * (feeder chạy theo timer), có afterburner + destoner (relay onboard), vacuum đọc từ
+ * biến tần gió, có drum speed, bếp premix. CÓ biến trở vật lý: gió/drum/gas đọc từ VR trên board.
  *
  * Đổi file này khi build firmware cho từng model máy rang khác nhau.
  * Các tùy chọn dạng bật/tắt nên giữ giá trị 0/1, trừ khi dòng chú thích
@@ -28,10 +30,14 @@
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió có nối RS485 Modbus (cần cho vacuum)
 #define MACHINE_HAS_VACUUM_SENSOR         1  // Có cảm biến áp suất hút/vacuum, dùng PID gió
 #define MACHINE_HAS_SCALE_FEEDER          0  // Có đầu cân Bluetooth cho auto loader
-#define MACHINE_HAS_IO_RELAY_MODULE       1  // Có module relay ngoài qua Modbus
+#define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  3  // Khối lượng mẻ rang danh định (kg) — máy 3kg (dùng suy ngưỡng auto-loader)
+#define MACHINE_BATCH_KG                  6  // Khối lượng mẻ rang danh định (kg) — máy 6kg (dùng suy ngưỡng auto-loader)
+// Loại đầu đốt do HMI chọn lúc chạy qua thanh ghi burnerPremix_R (địa chỉ 29):
+//   0 = đầu đốt thường (khuếch tán), 1 = đầu đốt premix (khí+gió trộn sẵn).
+// KHÔNG có cờ compile — 1 firmware chạy cả 2 loại. Bộ tham số preheat tự đổi theo
+// burnerPremix_R trong Preheat_PID.h (xem cặp PH_*_PREMIX bên dưới + docs/config/config-preheat-premix.md).
 
 // ---------------------------------------------------------------------------
 // Tốc độ truyền serial.
@@ -46,7 +52,7 @@
 #define MACHINE_RS485_BAUD                38400UL
 #define DEBUG_SERIAL_BAUD                 9600UL
 #define SCALE_SERIAL_BAUD                 2400UL
-#define ARTISAN_MODBUS_BAUD_DEFAULT       9600UL
+#define ARTISAN_MODBUS_BAUD_DEFAULT       38400UL   // đội đã chuẩn hoá 38400; HMI cài modbusBaud_R vẫn ghi đè được
 
 // ---------------------------------------------------------------------------
 // Địa chỉ ID Modbus của từng thiết bị.
@@ -93,7 +99,7 @@
 // 0 = đọc VR vật lý trên chân analog của board.
 // 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
 // ---------------------------------------------------------------------------
-#define MACHINE_VR_SOURCE_FROM_HMI        1
+#define MACHINE_VR_SOURCE_FROM_HMI        0  // máy có biến trở vật lý — drum/air/gas đọc từ VR trên board
 
 // ---------------------------------------------------------------------------
 // TREND bật SỚM trước charge.
@@ -152,7 +158,7 @@
 // 1 = in serial log preheat (APPR, HOLD_REC, PREC, MON...)
 // 0 = im lặng hoàn toàn
 // ---------------------------------------------------------------------------
-#define PREHEAT_DEBUG_EN                  0
+#define PREHEAT_DEBUG_EN                  1
 
 // ---------------------------------------------------------------------------
 // Debug factory auto-tune PID gió — cần enDebug=1 VÀ cờ này=1 mới in.
@@ -185,9 +191,15 @@
 #define PH_PID_KD                         20000  // ×1000
 // Bộ hệ số HOLDING: BT đã đạt target, chỉ cần giữ yên — Kp nhỏ hơn tránh dao động,
 // Ki lớn hơn để triệt tiêu lệch tĩnh, Kd lớn hơn để chặn BT trôi.
+// HOLD gains: bộ THƯỜNG (đầu đốt khuếch tán). Bộ PREMIX ở cặp PH_*_PREMIX bên dưới,
+// Preheat_PID.h chọn theo burnerPremix_R lúc bắt đầu preheat.
 #define PH_PID_KP_HOLD                    5000   // ×1000 (kéo về SV, không bão hòa output ở lệch nhỏ → hết đập gas 0↔100)
 #define PH_PID_KI_HOLD                    100    // ×1000 (0.10 — triệt lệch tĩnh chậm rãi, chống windup)
 #define PH_PID_KD_HOLD                    15000  // ×1000 (dập dao động vừa đủ, bớt D giật so với 35000)
+// PREMIX: turndown hẹp → P/D mạnh đập gas 0↔35 gây limit-cycle khi giữ.
+// 3500/10000 vẫn còn ±6°C → hạ dứt khoát xuống 2000/6000 để cắt vòng rung (log 2026-07-13)
+#define PH_PID_KP_HOLD_PREMIX             2000   // ×1000
+#define PH_PID_KD_HOLD_PREMIX             6000   // ×1000
 #define PH_PID_IMAX                       100    // kẹp tích phân (đơn vị output %)
 #define PH_PID_EVAL_SEC                   1      // chu kỳ tính PID (giây)
 // Lookahead (giây): SV hiệu dụng = điểm trên đường tiến độ tại (elapsed + lookahead).
@@ -213,7 +225,7 @@
 // α lớn → phản ứng nhanh; α nhỏ → mượt hơn. Artisan dùng Wn≈0.1Hz (≈α≈0.4) cho D
 // và Wn≈0.35Hz (≈α≈0.75) cho output. Giá trị mặc định phù hợp chu kỳ 1s.
 #define PH_EMA_D_ALPHA                    40     // α×100 cho D term  (0.40 ≈ Artisan D filter)
-#define PH_EMA_OUT_ALPHA                  75     // α×100 cho output  (0.75 ≈ Artisan output filter)
+#define PH_EMA_OUT_ALPHA                  75     // α×100 cho output (0.75 ≈ Artisan). ĐỪNG hạ: thử 0.50 gây thêm trễ pha → BT limit-cycle ±5°C (log 2026-07-13)
 
 // ---------------------------------------------------------------------------
 // RELAY AUTOTUNE (Ziegler-Nichols) — chỉ chạy khi /pid_pre.txt CHƯA có trên SD.
@@ -221,7 +233,8 @@
 //   BT < SV_tune → gas = PH_TUNE_GAS_HI ; BT > SV_tune → gas = 0 + gió mạnh
 //   Ku = 4·d/(π·a) ; Kp = 0.6·Ku ; Ki = 2·Kp/Pu ; Kd = 0.125·Kp·Pu
 // ---------------------------------------------------------------------------
-#define PH_TUNE_GAS_HI                    25     // gas mức cao khi BT<SV_tune (%)
+#define PH_TUNE_GAS_HI                    25     // gas mức cao khi BT<SV_tune (%) — bộ THƯỜNG
+#define PH_TUNE_GAS_HI_PREMIX             40     // PREMIX: 40% để lửa tune vượt hẳn trần SV_tune, chạm sớm & dao động cân đối
 #define PH_TUNE_GAS_LO                    0      // gas tắt khi BT>SV_tune
 #define PH_TUNE_AIR_HI                    20     // gió nền khi đang đốt (BT<SV_tune)
 #define PH_TUNE_AIR_LO                    100    // gió tối đa hạ nhiệt (BT>SV_tune)
@@ -382,7 +395,8 @@
 // MỒI LỬA
 // ---------------------------------------------------------------------------
 // Chờ tín hiệu lửa tối đa bao nhiêu giây trước khi retry
-#define PH_IGNITE_TMO                     65
+#define PH_IGNITE_TMO                     60     // bộ THƯỜNG (mồi nhanh)
+#define PH_IGNITE_TMO_PREMIX             65     // PREMIX: mồi chậm ~40s → nới timeout tránh báo lỗi mồi sai
 
 // Số lần thử mồi tối đa trước khi báo lỗi IGNITE_FAIL
 #define PH_IGNITE_RETRY                   3
@@ -390,3 +404,12 @@
 #if MACHINE_VR_SOURCE_FROM_HMI
 #define SOURCE_AI_VR_FROM_HMI true
 #endif
+
+// ---------------------------------------------------------------------------
+// PCL_APP_WATCHDOG_EN: watchdog PC control (PC_Link).
+//   1 = app im quá PCL_APP_TMO_S giây → firmware tự nhả PC control về HMI + còi.
+//   0 = KHÔNG BAO GIỜ tự nhả (chủ máy yêu cầu 2026-07-22). Lưu ý: app treo giữa
+//       mẻ thì máy chạy tiếp setpoint cuối vô thời hạn — thợ phải tự tắt PC
+//       control trên HMI. Chốt MỒI HỤT ĐÓNG GAS vẫn hoạt động bình thường.
+// ---------------------------------------------------------------------------
+#define PCL_APP_WATCHDOG_EN               0
