@@ -176,9 +176,9 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 #pane-rang[data-phase="IDLE"] .roast-idle{display:flex}
 /* Chỉ mờ CHART — dải mốc (chip tự về "—" khi chưa mẻ), nút chế độ, cột phải,
    thanh pha, dải thiết bị đều sáng & dùng được khi chưa vào mẻ */
-#pane-rang[data-phase="NOSEL"] .rangbody .chartcol,
+#pane-rang[data-phase="NOSEL"] .rangbody .chartwrap,
 #pane-rang[data-phase="NOSEL"] .simplewrap,
-#pane-rang[data-phase="IDLE"] .rangbody .chartcol,
+#pane-rang[data-phase="IDLE"] .rangbody .chartwrap,
 #pane-rang[data-phase="IDLE"] .simplewrap{opacity:.28;filter:grayscale(.4);pointer-events:none}
 #pane-rang[data-phase="DONE"] .roast-done{display:flex}
 /* Overlay che phần XEM (curve, số live), KHÔNG che thanh công cụ dưới cùng:
@@ -218,6 +218,16 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .startcirc .sc-ic{width:96px;height:96px;color:#fff}
 .startcirc .sc-t{font-size:44px;font-weight:800;letter-spacing:3px}
 .ri-hint{font-size:22px;color:var(--mute)}
+.ri-charge{margin-top:10px;cursor:pointer;user-select:none}
+.ri-charge b{color:var(--accent);font-size:26px}
+.ri-charge:active{opacity:.7}
+.ri-sdauto{margin-top:10px}
+.ri-sdauto.running{border-color:var(--accent);color:var(--accent)}
+/* bảng cân phễu */
+.scgrid{display:flex;gap:16px;margin-bottom:18px}
+.scitem{flex:1;background:var(--inset);border:1px solid var(--hair);border-radius:14px;padding:16px 20px;text-align:center}
+.scitem .k{font-size:16px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mute)}
+.scitem .v{font-family:var(--f-num);font-weight:700;font-size:44px;margin-top:4px}
 /* DONE: banner nổi trên cùng, giữ curve phía sau */
 .roast-done{position:absolute;left:50%;top:40px;transform:translateX(-50%);z-index:20;
   flex-direction:column;align-items:center;gap:22px;padding:34px 56px;border-radius:24px;
@@ -265,7 +275,8 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .duo .col.et .v{color:var(--c-et)} .duo .col.abt .v{color:var(--c-abt)}
 .duo .col .sub{font-size:16px;color:var(--dim);font-family:var(--f-mono)}
 /* output ± */
-.outcard{display:flex;flex-direction:column;gap:10px}
+.outcard{display:flex;flex-direction:column;gap:10px;flex:1;justify-content:space-evenly}
+.outcard .outrow{flex:1}
 /* Mỗi hàng = 1 thẻ inset riêng, số căn GIỮA hai nút ± cho cân mắt */
 .outrow{display:flex;align-items:center;gap:12px;background:var(--inset);
   border:1px solid var(--hair);border-radius:16px;padding:4px 8px}
@@ -292,6 +303,11 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .tbtn:active{transform:scale(.95);background:var(--btn-h)}
 .tbtn .ti{font-size:30px}
 .tbtn.on{background:color-mix(in srgb,var(--accent) 26%,var(--btn));border-color:var(--accent);color:var(--accent)}
+/* đạt nhiệt charge theo hồ sơ → nút Nạp hạt nhấp nháy mời bấm */
+.tbtn.ready{border-color:var(--accent);animation:chargePulse 1.2s ease-in-out infinite}
+@keyframes chargePulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}
+  50%{box-shadow:0 0 0 8px transparent}}
 /* Chớp đỏ khi CHẠM nút lệnh một-phát (Nạp hạt/Xả liệu…) — phản hồi xúc giác cho thợ.
    CÙNG TÔNG với .on (26%): lúc 'hit' rút đi nhường 'on' (máy xác nhận) không thấy chớp */
 .tbtn.hit{background:color-mix(in srgb,var(--accent) 26%,var(--btn));border-color:var(--accent);color:var(--accent)}
@@ -648,7 +664,7 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 .roastbadge{flex:none;font-size:18px;font-weight:600;padding:9px 20px;border-radius:22px;
   background:color-mix(in srgb,var(--c-gas) 16%,transparent);color:#a9760f;
   border:1px solid color-mix(in srgb,var(--c-gas) 32%,transparent)}
-.profcard .pmeta{display:flex;gap:50px;margin:24px 0}
+.profcard .pmeta{display:flex;gap:36px;margin:24px 0}
 .profcard .pmeta .k{font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mute)}
 .profcard .pmeta .v{font-family:var(--f-num);font-weight:700;font-size:36px;margin-top:2px}
 .profcard .pmeta .v.temp{color:var(--c-et)}
@@ -732,6 +748,10 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 /* Bản input: gõ trực tiếp trong form — mở lại user-select (bị #stage chặn toàn cục) */
 input.peval{user-select:text;-webkit-user-select:text;outline:none;cursor:text;font-family:var(--f-ui)}
 input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+input.peval[type=date]{color-scheme:dark;cursor:pointer}
+input.peval[type=date]::-webkit-calendar-picker-indicator{width:28px;height:28px;cursor:pointer;opacity:.7}
+input.peval[readonly]{cursor:default;color:var(--dim);border-style:dashed}
+input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
 /* Gõ số Burner/Airflow/Drum tại chỗ: kế thừa nguyên font/màu của số, chỉ thêm gạch chân accent */
 .ovedit{width:130px;background:transparent;border:none;outline:none;
   border-bottom:4px solid var(--accent);color:inherit;font:inherit;text-align:center;
@@ -780,6 +800,46 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
 .devbtn:active{transform:scale(.96)}
 .devbtn .devico{width:36px;height:36px;fill:currentColor}
 .devbtn.on{background:color-mix(in srgb,var(--c-ok) 16%,transparent);border-color:var(--c-ok);color:var(--c-ok)}
+
+/* ══════════ LOGIN ĐẸP — nền curve rang + hộp kính ══════════ */
+/* Nền: curve BT/ET tự vẽ dần như một mẻ rang đang chạy (SVG stroke-dash) */
+.login-bg{position:absolute;inset:0;width:100%;height:100%;opacity:.7;pointer-events:none}
+.lbg-curve{fill:none;stroke-linecap:round;stroke-dasharray:2600;stroke-dashoffset:2600;
+  animation:lbgDraw 16s cubic-bezier(.3,.6,.4,1) .4s forwards}
+.lbg-bt{stroke:color-mix(in srgb,var(--c-bt) 26%,transparent);stroke-width:4;
+  filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c-bt) 30%,transparent))}
+.lbg-et{stroke:color-mix(in srgb,var(--c-et) 16%,transparent);stroke-width:2.5;animation-delay:1s}
+@keyframes lbgDraw{to{stroke-dashoffset:0}}
+.lbg-mile{stroke:color-mix(in srgb,#fff 5%,transparent);stroke-width:1.5;stroke-dasharray:3 12}
+.lbg-lbl{fill:color-mix(in srgb,#fff 14%,transparent);font-family:var(--f-mono);font-size:24px;letter-spacing:4px}
+/* Hộp đăng nhập: kính mờ nổi trên nền curve, viền sáng mép trên */
+.loginbox{background:color-mix(in srgb,var(--card) 72%,transparent);
+  backdrop-filter:blur(26px) saturate(1.15);-webkit-backdrop-filter:blur(26px) saturate(1.15);
+  border:1px solid color-mix(in srgb,#fff 9%,transparent);border-radius:34px;
+  box-shadow:0 40px 110px -30px rgba(0,0,0,.85),
+             inset 0 1px 0 color-mix(in srgb,#fff 9%,transparent),
+             0 0 90px -30px color-mix(in srgb,var(--accent) 24%,transparent)}
+.loginbox h1{letter-spacing:10px}
+.loginbox .lsub{color:var(--mute)}
+/* Phím PIN: nổi khối, bấm lún + viền accent */
+#login .padkey{background:linear-gradient(180deg,color-mix(in srgb,#fff 5%,var(--btn)),var(--btn));
+  border:1px solid var(--hair-2);border-radius:18px;
+  box-shadow:0 3px 0 rgba(0,0,0,.35),inset 0 1px 0 color-mix(in srgb,#fff 6%,transparent)}
+#login .padkey:active{transform:translateY(2px) scale(.97);border-color:var(--accent);color:var(--accent);box-shadow:none}
+/* Thẻ tài khoản: chọn = viền accent + quầng sáng, avatar chữ nổi */
+#login .utile{border-radius:20px;transition:transform .15s var(--ease),box-shadow .2s,border-color .2s}
+#login .utile.sel,#login .utile.on{border-color:var(--accent);
+  box-shadow:0 0 0 1px var(--accent),0 14px 40px -14px color-mix(in srgb,var(--accent) 55%,transparent);
+  transform:translateY(-3px)}
+/* Chấm PIN: đổ đầy có nhịp */
+.pindots i{transition:transform .12s,background .12s,border-color .12s}
+.pindots i.f{box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%,transparent);transform:scale(1.12)}
+/* Chip IP web LAN trên topbar — chạm để copy */
+.ipchip{margin-left:12px;height:56px;padding:0 22px;display:flex;align-items:center;gap:9px;
+  background:color-mix(in srgb,var(--c-bt) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--c-bt) 35%,transparent);border-radius:28px;
+  color:var(--c-bt);font-size:21px;font-weight:600;cursor:pointer;font-family:var(--f-num)}
+.ipchip:active{transform:scale(.96);background:color-mix(in srgb,var(--c-bt) 22%,transparent)}
 </style>
 </head>
 <body>
@@ -1277,6 +1337,9 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
       <div class="linkchip" id="linkChip" data-s="off" onclick="showLinkInfo()"
            data-help="Trạng thái kết nối tới máy rang (Modbus PC_Link). Chạm để xem chi tiết.">
         <span class="d"></span><span id="linkLbl">Chưa nối máy</span></div>
+      <!-- Địa chỉ web LAN — điện thoại cùng WiFi vào; chạm là copy -->
+      <button class="ipchip num" id="ipChip" style="display:none" onclick="copyWebIp()"
+        data-help="Địa chỉ để điện thoại cùng WiFi vào xem/điều khiển. Chạm để copy.">📶 <span id="ipChipV">—</span></button>
       <div class="vsep"></div>
       <div class="livetemps">
         <div class="lt bt"><span class="lab">BT</span><span class="v num" id="ltBT">198.4°</span></div>
@@ -1396,7 +1459,14 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
               <svg class="sc-ic ot" aria-hidden="true"><use href="#i-charge"/></svg>
               <span class="sc-t" data-i18n="rang.start">BẮT ĐẦU</span></button>
             <div class="ri-hint" data-i18n="rang.starthint">Nạp hạt để bắt đầu mẻ rang</div>
+            <!-- Nhiệt charge theo hồ sơ — chạm vào số là gõ đổi ngay (như chip DROP) -->
+            <div class="ri-hint ri-charge" id="riChargeRow" onclick="chargeTEdit()">
+              🌡 Nạp hạt tại <b class="num" id="riChargeT">—</b> · chạm để đổi</div>
             <button class="ri-change" onclick="gotoTab('hoso')" data-i18n="rang.change">Đổi hồ sơ</button>
+            <!-- RANG AUTO thật: chọn profile trên thẻ SD của máy → firmware phát lại
+                 (calibProgram). Chỉ hiện khi nối máy PC_Link. -->
+            <button class="ri-change ri-sdauto" id="sdAutoBtn" onclick="sdAutoRoast()" style="display:none">
+              ▶ RANG AUTO từ thẻ SD máy</button>
           </div>
         </div>
         <!-- Màn TỔNG KẾT MẺ (DONE) -->
@@ -1441,6 +1511,12 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
                 <div class="lg"><i style="background:var(--c-ror)"></i>RoR</div>
                 <div class="lg"><i style="background:var(--c-burner)"></i>Burner</div>
               </div>
+            </div>
+            <!-- Thanh chia pha — nằm TRONG cột đồ thị nên tự bằng đúng bề ngang chart -->
+            <div class="phasetl" id="phasetl">
+              <div class="ph" data-ph="dry" style="flex:58;background:#7a6f52"><span class="pn" data-i18n="phase.dry">Sấy</span><span class="pp">58% · 06:12</span></div>
+              <div class="ph" data-ph="mai" style="flex:32;background:#9a7038"><span class="pn" data-i18n="phase.mai">Maillard</span><span class="pp">32% · 03:28</span></div>
+              <div class="ph" data-ph="dev" style="flex:10;background:#6e4626"><span class="pn" data-i18n="phase.dev">Phát triển</span><span class="pp">10% · 01:02</span></div>
             </div>
           </div>
 
@@ -1492,13 +1568,6 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
           </div>
         </div>
 
-        <!-- Thanh chia pha (full-width) -->
-        <div class="phasetl detail-only" style="padding:0 28px" id="phasetl">
-          <div class="ph" data-ph="dry" style="flex:58;background:#7a6f52"><span class="pn" data-i18n="phase.dry">Sấy</span><span class="pp">58% · 06:12</span></div>
-          <div class="ph" data-ph="mai" style="flex:32;background:#9a7038"><span class="pn" data-i18n="phase.mai">Maillard</span><span class="pp">32% · 03:28</span></div>
-          <div class="ph" data-ph="dev" style="flex:10;background:#6e4626"><span class="pn" data-i18n="phase.dev">Phát triển</span><span class="pp">10% · 01:02</span></div>
-        </div>
-
         <!-- Dải thiết bị phụ (bật/tắt) -->
         <div class="devstrip detail-only">
           <button class="devbtn" id="btnDrumFan" data-dev="drumfan" onclick="cmdDev('drumfan',this)"><svg class="devico ot"><use href="#i-drumfan"/></svg><span>Drum-Fan</span></button>
@@ -1506,6 +1575,7 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
           <button class="devbtn" id="btnCool" data-dev="cooling" onclick="cmdCool(event)"><svg class="devico ot"><use href="#i-cool"/></svg><span>Cooling</span></button>
           <button class="devbtn" id="btnAB" data-dev="afterburner" onclick="cmdDev('afterburner',this)"><svg class="devico ot"><use href="#i-afterburner"/></svg><span>Afterburner</span></button>
           <button class="devbtn" id="btnLoader" data-dev="loader" onclick="cmdDev('loader',this)"><svg class="devico ot"><use href="#i-loader"/></svg><span>Loader</span></button>
+          <button class="devbtn" id="btnScale" onclick="openScale()"><svg class="devico ot"><use href="#i-loader"/></svg><span id="scaleBtnLbl">Cân</span></button>
           <button class="devbtn" id="btnDestoner" data-dev="destoner" onclick="cmdDev('destoner',this)"><svg class="devico ot"><use href="#i-destoner"/></svg><span>Destoner</span></button>
         </div>
 
@@ -1537,6 +1607,7 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
               </div>
               <button class="sortbtn" onclick="cycleSort()">⇅ <span id="sortLbl">Tên</span></button>
               <button class="sortbtn" onclick="openRoastMgr()">🏷 Mức rang</button>
+              <button class="sortbtn" onclick="profDirPick()" title="Chọn thư mục trên máy tính để lưu profiles.json">📁</button>
               <button class="sortbtn addprof" onclick="newProfile()">＋ <span data-i18n="prof.new">Hồ sơ mới</span></button>
             </div>
           </div>
@@ -1726,6 +1797,20 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
 </symbol></svg>
     <!-- ══════════ LOGIN (idle → chạm → numpad) ══════════ -->
     <div class="overlay" id="login">
+      <!-- Nền: curve rang BT/ET mờ tự vẽ dần như đang rang + vạch mốc TP/FCs/DROP -->
+      <svg class="login-bg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <!-- vạch mốc dọc -->
+        <line x1="360" y1="0" x2="360" y2="900" class="lbg-mile"/>
+        <line x1="980" y1="0" x2="980" y2="900" class="lbg-mile"/>
+        <line x1="1420" y1="0" x2="1420" y2="900" class="lbg-mile"/>
+        <text x="368" y="80" class="lbg-lbl">TP</text>
+        <text x="988" y="80" class="lbg-lbl">FCs</text>
+        <text x="1428" y="80" class="lbg-lbl">DROP</text>
+        <!-- ET: cao hơn, mờ hơn -->
+        <path class="lbg-curve lbg-et" d="M0,300 C180,430 300,470 360,455 C560,400 800,330 980,275 C1150,225 1330,185 1600,150"/>
+        <!-- BT: đường chính, tụt đáy TP rồi leo lên DROP -->
+        <path class="lbg-curve lbg-bt" d="M0,180 C160,520 300,620 360,600 C560,540 800,440 980,370 C1150,315 1330,265 1600,215"/>
+      </svg>
       <div class="login-top">
         <button class="ll on" id="llVI" onclick="setLoginLang('vi')">VI</button>
         <button class="ll" id="llEN" onclick="setLoginLang('en')">EN</button>
@@ -1795,12 +1880,26 @@ input.peval:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in s
       <div class="pefield"><span class="pel">Tên</span><input class="peval" id="pe_name" type="text" spellcheck="false" autocomplete="off" oninput="peTmp.name=this.value"></div>
       <div class="pefield"><span class="pel">Ghi chú</span><input class="peval" id="pe_notes" type="text" spellcheck="false" autocomplete="off" oninput="peTmp.notes=this.value"></div>
       <div class="pefield"><span class="pel">Mức rang</span><button class="peval" id="pe_roast" onclick="peRoast()"></button></div>
-      <div class="pefield"><span class="pel">Nhiệt xả (°C)</span><input class="peval" id="pe_temp" type="text" inputmode="numeric" autocomplete="off" onblur="peTempClamp(this)" oninput="peTmp.temp=parseInt(this.value,10)||0"></div>
+      <div class="pefield"><span class="pel">Nhiệt charge (°C)</span><input class="peval" id="pe_charge" type="text" inputmode="numeric" autocomplete="off" onblur="peNumClamp(this,'chargeT',160)" oninput="peTmp.chargeT=parseInt(this.value,10)||0"></div>
+      <div class="pefield"><span class="pel">Nhiệt xả (°C)</span><input class="peval" id="pe_temp" type="text" inputmode="numeric" autocomplete="off" onblur="peNumClamp(this,'temp',200)" oninput="peTmp.temp=parseInt(this.value,10)||0"></div>
       <div class="pefield"><span class="pel">Thời gian</span><input class="peval" id="pe_time" type="text" autocomplete="off" oninput="peTmp.time=this.value"></div>
-      <div class="pefield"><span class="pel">Ngày rang</span><input class="peval" id="pe_date" type="text" autocomplete="off" oninput="peTmp.date=this.value"></div>
-      <div class="pefield"><span class="pel">Thợ rang</span><input class="peval" id="pe_roaster" type="text" spellcheck="false" autocomplete="off" oninput="peTmp.roaster=this.value"></div>
+      <div class="pefield"><span class="pel">Ngày rang</span><input class="peval" id="pe_date" type="date" autocomplete="off" oninput="peTmp.date=peDateFromISO(this.value)"></div>
+      <div class="pefield"><span class="pel">Thợ rang</span><input class="peval" id="pe_roaster" type="text" readonly tabindex="-1"></div>
       <div class="perow"><button class="bigbtn ghost" onclick="closeProfEdit()">Hủy</button>
         <button class="bigbtn primary" onclick="saveProfEdit()">Lưu</button></div>
+    </div></div>
+
+    <!-- ══════════ CÂN PHỄU (Loader) — như bảng cân trên HMI ══════════ -->
+    <div class="overlay" id="scalebox"><div class="pebox">
+      <div class="petitle">⚖ Cân phễu — Loader</div>
+      <div class="scgrid">
+        <div class="scitem"><div class="k">Net Weight</div><div class="v num" id="scW">—</div></div>
+        <div class="scitem"><div class="k">RoR cân</div><div class="v num" id="scRor">—</div></div>
+      </div>
+      <div class="pefield"><span class="pel">Setup (kg)</span><button class="peval num" id="scTg" onclick="scTgEdit()">—</button></div>
+      <div class="pefield"><span class="pel">Auto loader</span><button class="peval" id="scAuto" onclick="scAutoToggle()">—</button></div>
+      <div class="perow"><button class="bigbtn ghost" onclick="closeScale()">Đóng</button>
+        <button class="bigbtn primary" id="scLoadBtn" onclick="scLoader()">▶ HÚT CÀ</button></div>
     </div></div>
 
     <!-- ══════════ QUẢN LÝ MỨC RANG ══════════ -->
@@ -1873,7 +1972,103 @@ const DEF_ROASTS=['Rang nhạt','Rang vừa','Rang đậm'];
 function loadRoasts(){try{const r=JSON.parse(localStorage.getItem('otl_roasts'));return Array.isArray(r)&&r.length?r:DEF_ROASTS;}catch(e){return DEF_ROASTS;}}
 function saveRoasts(r){localStorage.setItem('otl_roasts',JSON.stringify(r));}
 function loadProfiles(){try{return JSON.parse(localStorage.getItem(LS_PROF))||DEF_PROFILES;}catch(e){return DEF_PROFILES;}}
-function saveProfiles(p){localStorage.setItem(LS_PROF,JSON.stringify(p));}
+/* Lưu: localStorage (cache chạy app) + GHI KÈM ra <thư mục đã chọn>:
+     profiles.json         — bản đầy đủ để app đọc lại (kể cả curve)
+     profiles.csv          — bảng index mở bằng Excel
+     N.csv                 — CSV đúng PROTOCOL MÁY RANG (copy vô thẻ SD là rang auto)
+     N - tên - Artisan.csv — bản 5 cột chuẩn, mở thẳng trong Artisan
+     pdf/N - tên.pdf       — phiếu hồ sơ + đồ thị (matplotlib phía Python)
+   Chưa chọn thư mục thì chỉ localStorage. */
+function saveProfiles(p){
+  localStorage.setItem(LS_PROF,JSON.stringify(p));
+  if(window.pywebview&&pywebview.api.prof_save){
+    pywebview.api.prof_save(p).then(r=>{if(r&&!r.ok&&r.err!=='chưa chọn thư mục')toast('Lưu file hồ sơ lỗi: '+r.err);}).catch(()=>{});
+    profDiskWrite(p);
+  }
+}
+/* ── Sinh CSV ───────────────────────────────────────────────────── */
+function _p2(n){return String(n).padStart(2,'0');}
+function _mmss(s){return s==null?'00:00':_p2(Math.floor(s/60))+':'+_p2(Math.round(s)%60);}
+function _safeFn(s){return String(s).replace(/[\\/:*?"<>|]/g,'-').trim()||'ho-so';}
+/* Trải curve thành mảng THEO TỪNG GIÂY 0..DROP (giữ giá trị gần nhất) — đúng dạng
+   sdBT[]/sdGas[] firmware nạp; giây 0 phải có BT>0 để qua validate CHARGE. */
+function _curveGrid(cv){
+  const last=cv.t[cv.t.length-1], g=[];
+  let j=0;
+  for(let s=0;s<=last;s++){
+    while(j<cv.t.length-1&&cv.t[j+1]<=s)j++;
+    g.push({t:s,bt:cv.bt[j],et:cv.et[j],gas:cv.gas[j]||0,air:(cv.air&&cv.air[j])||0,drum:(cv.drum&&cv.drum[j])||0});
+  }
+  return g;
+}
+function _csvHead(p,cv,maxGas){
+  const m=cv.mile||{};
+  const dm=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(p.date||'');
+  const date=dm?`${_p2(dm[1])}.${_p2(dm[2])}.${dm[3]}`:'01.01.2026';
+  return `Date:${date} 00:00:00\tUnit:C\tCHARGE:00:00\tTP:${_mmss(m.TP)}\tDRYe:${_mmss(m.DE)}`+
+         `\tFCs:${_mmss(m.FCs)}\tFCe:\tSCs:\tSCe:\tDROP:${_mmss(m.DROP)}\tCOOL:\tTime:00:00`+
+         (maxGas!=null?`\tMaxGas:${String(maxGas).padStart(3,'0')}`:'')+`\r\n`;
+}
+function _evAt(cv,s){
+  const m=cv.mile||{};
+  if(s===0)return'CHARGE';
+  if(s===m.TP)return'TP'; if(s===m.DE)return'DRY End';
+  if(s===m.FCs)return'FCs'; if(s===m.DROP)return'DROP';
+  return'';
+}
+/* CSV protocol máy rang — cột y hệt sdLogWrite() của firmware */
+function profCsvMachine(p){
+  const cv=p.curve, g=_curveGrid(cv);
+  let out=_csvHead(p,cv,100);
+  out+='Time1\tTime2\tET\tBT\tEvent\tAir(%)\tBurner(%)\tDrum(%)\tVacFlag\tVacSP(Pa)\r\n';
+  for(const r of g)
+    out+=`${_mmss(r.t)}\t${_mmss(r.t)}\t${r.et.toFixed(1)}\t${r.bt.toFixed(1)}\t${_evAt(cv,r.t)}\t`+
+         `${r.air.toFixed(1)}\t${r.gas.toFixed(1)}\t${r.drum.toFixed(1)}\t0\t0\r\n`;
+  return out;
+}
+/* CSV cho Artisan — 5 cột chuẩn, không MaxGas/cột riêng của máy */
+function profCsvArtisan(p){
+  const cv=p.curve, g=_curveGrid(cv);
+  let out=_csvHead(p,cv,null);
+  out+='Time1\tTime2\tET\tBT\tEvent\r\n';
+  for(const r of g)
+    out+=`${_mmss(r.t)}\t${_mmss(r.t)}\t${r.et.toFixed(1)}\t${r.bt.toFixed(1)}\t${_evAt(cv,r.t)}\r\n`;
+  return out;
+}
+function _csvQ(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function profCsvIndex(ps){
+  let out='﻿slot,ten,ghichu,mucrang,nhietcharge,nhietxa,thoigian,ngayrang,thorang,curve\r\n';
+  ps.forEach((p,i)=>{out+=[i+1,_csvQ(p.name),_csvQ(p.notes),_csvQ(p.roast),p.chargeT||'',p.temp||'',
+    _csvQ(p.time),_csvQ(p.date),_csvQ(p.roaster),(p.curve&&p.curve.t&&p.curve.t.length)?'CO':'CHUA'].join(',')+'\r\n';});
+  return out;
+}
+function profDiskWrite(ps){
+  if(!(window.pywebview&&pywebview.api.prof_write_files))return;
+  const files={'profiles.csv':profCsvIndex(ps)};
+  ps.forEach((p,i)=>{
+    if(p.curve&&p.curve.t&&p.curve.t.length){
+      files[`${i+1}.csv`]=profCsvMachine(p);
+      files[`${i+1} - ${_safeFn(p.name)} - Artisan.csv`]=profCsvArtisan(p);
+    }
+  });
+  pywebview.api.prof_write_files(files).catch(()=>{});
+  pywebview.api.prof_export_pdf(ps).catch(()=>{});   // pdf/ — chạy nền phía Python
+}
+/* Lúc mở app: nếu đã chọn thư mục và có profiles.json → file là SỰ THẬT, đè cache */
+async function profDiskInit(){
+  if(!(window.pywebview&&pywebview.api.prof_load))return;
+  try{
+    const d=await pywebview.api.prof_load();
+    if(Array.isArray(d)&&d.length){localStorage.setItem(LS_PROF,JSON.stringify(d));renderProfiles();}
+  }catch(e){}
+}
+/* Chọn thư mục lưu hồ sơ (hộp thoại Windows) rồi ghi ngay bản hiện tại vào đó */
+async function profDirPick(){
+  if(!(window.pywebview&&pywebview.api.prof_dir_pick)){toast('Chỉ dùng được trong app desktop');return;}
+  const d=await pywebview.api.prof_dir_pick();
+  if(d){const ps=loadProfiles();await pywebview.api.prof_save(ps);profDiskWrite(ps);
+    toast('Hồ sơ lưu tại: '+d+' (CSV máy + Artisan + pdf/)',true);}
+}
 
 /* ── Lịch sử mẻ rang (localStorage) ── */
 const LS_HIST='otl_history';
@@ -1911,7 +2106,8 @@ function renderProfiles(){
           <span class="roastbadge">${esc(p.roast)}</span>
           <button class="editbtn" onclick="editProfile(${i})" title="Sửa">✎</button>
           <button class="editbtn del" onclick="deleteProfile(${i})" title="Xoá">🗑</button></div></div>
-      <div class="pmeta"><div><div class="k">Nhiệt xả</div><div class="v temp num">${p.temp}°C</div></div>
+      <div class="pmeta"><div><div class="k">Nhiệt charge</div><div class="v num">${p.chargeT?p.chargeT+'°C':'—'}</div></div>
+        <div><div class="k">Nhiệt xả</div><div class="v temp num">${p.temp}°C</div></div>
         <div><div class="k">Thời gian</div><div class="v num">${esc(p.time)}</div></div></div>
       <div class="pfoot">📅 ${esc(p.date||'—')} · 👤 ${esc(p.roaster||'—')}</div>
       <button class="loadbtn" onclick="loadProfile(${i})">▶  Nạp &amp; rang</button></div>`).join('');
@@ -1935,11 +2131,21 @@ let peIdx=-1, peTmp=null;
 function editProfile(i){peIdx=i;peTmp=Object.assign({},loadProfiles()[i]);refreshPE();document.getElementById('profedit').classList.add('on');}
 function refreshPE(){document.getElementById('pe_name').value=peTmp.name||'';
   document.getElementById('pe_notes').value=peTmp.notes||'';document.getElementById('pe_roast').textContent=peTmp.roast;
+  document.getElementById('pe_charge').value=peTmp.chargeT||160;
   document.getElementById('pe_temp').value=peTmp.temp||0;
   document.getElementById('pe_time').value=peTmp.time||'';
-  document.getElementById('pe_date').value=peTmp.date||'';document.getElementById('pe_roaster').value=peTmp.roaster||'';}
-function peTempClamp(el){let n=parseInt(el.value,10);if(isNaN(n))n=200;
-  n=Math.max(100,Math.min(260,n));peTmp.temp=n;el.value=n;}
+  document.getElementById('pe_date').value=peDateToISO(peTmp.date);
+  // Thợ rang = user đang đăng nhập (chỉ đọc); hồ sơ cũ đã có tên thì giữ nguyên
+  if(!peTmp.roaster && session) peTmp.roaster=session.name;
+  document.getElementById('pe_roaster').value=peTmp.roaster||(session?session.name:'');}
+/* Đổi qua lại giữa "dd/mm/yyyy" (lưu trữ) và "yyyy-mm-dd" (input type=date) */
+function peDateToISO(d){const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(d||'');
+  return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:'';}
+function peDateFromISO(v){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');
+  return m?`${m[3]}/${m[2]}/${m[1]}`:'';}
+/* Kẹp số nhiệt (charge/xả) về khoảng an toàn 100–260°C */
+function peNumClamp(el,key,def){let n=parseInt(el.value,10);if(isNaN(n))n=def;
+  n=Math.max(100,Math.min(260,n));peTmp[key]=n;el.value=n;}
 /* Mức rang: XỔ LIST chọn (trước là bấm xoay vòng — khó hiểu, thợ tưởng hỏng) */
 function peRoast(){
   const o=loadRoasts();
@@ -1968,7 +2174,7 @@ function saveProfEdit(){const ps=loadProfiles();
 function newProfile(){
   const colors=['#c9a227','#c97a1a','#b8621a','#8a4a1a','#7a9e3a','#3a7a9e'];
   peIdx=-1;   // đánh dấu hồ sơ mới
-  peTmp={name:'Hồ sơ mới', notes:'', roast:loadRoasts()[0], temp:200, time:'12:00',
+  peTmp={name:'Hồ sơ mới', notes:'', roast:loadRoasts()[0], chargeT:160, temp:200, time:'12:00',
     color:colors[loadProfiles().length % colors.length],
     date:new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/-/g,'/'),
     roaster:session?session.name:''};
@@ -2077,14 +2283,53 @@ const STP={"CHARGE": 5, "TP": 6, "DE": 7, "FCs": 8, "DEV": 9, "DROP": 10, "COOLI
 /* Mốc ĐÃ ĐẠT ⟺ progStep >= giá trị này — lệch 1 bước so với STP,
    vì progStep nghĩa là 'đang CHỜ mốc đó'. Chấm mốc phải dùng bảng này. */
 const MILE_STEP={"TP": 7, "DE": 8, "FCs": 9, "DEV": 9, "DROP": 10};
-const PCL_FLAGS=["auto", "gas", "charge", "drop", "escape", "cool", "pc_control", "flame", "pc_lost", "flame_fail", "drumfan", "mixer", "afterburner", "loader", "destoner"];
+const PCL_FLAGS=["auto", "gas", "charge", "drop", "escape", "cool", "pc_control", "flame", "pc_lost", "flame_fail", "drumfan", "mixer", "afterburner", "loader", "destoner", "autoloader"];
 const PCL_PHASES=["dry", "mai", "dev"];
 /* Ngưỡng/hệ số app dùng khi TỰ TÍNH (máy chưa có PC_Link, hoặc app tự lái) */
 const PCL_DERIVE={"ror_window_s": 3, "ror_gain": 20, "ror_bt_clamp": 95.0, "ror_et_clamp": 20.0, "kalman_bt": [1.0, 1.0, 0.005], "kalman_et": [1.0, 1.0, 0.01], "tp_min_time_s": 20, "tp_max_temp": 150.0, "de_temp_default": 150.0, "fcs_temp_default": 196.0, "charge_drop_bt": 8.0};
 const PCL_FAILSAFE={"app_timeout_s": 3, "on_app_lost": "release_to_hmi", "flame_timeout_s": 75};
 /* PC_LINK MAP >>> */
+/* ══════════ WEB MODE — mở qua http:// (điện thoại/tablet cùng WiFi) ══════════
+   App desktop nạp file:// và có pywebview thật. Qua web server thì KHÔNG có
+   pywebview → shim này giả lập pywebview.api bằng fetch về /api/* của Python.
+   Xem tự do; lệnh ĐỘNG VÀO MÁY đòi PIN web (settings.ini [WebServer]) 1 lần/12h. */
+if(location.protocol==='http:'||location.protocol==='https:'){
+  const _wtok={v:sessionStorage.getItem('otl_webtok')||''};
+  async function _wapi(p,body){
+    const r=await fetch('/api/'+p,body?{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)}:{});
+    return r.json();
+  }
+  async function _wcmd(p,body){                    // lệnh cần token; thiếu/hết hạn → hỏi PIN
+    body=Object.assign({},body,{token:_wtok.v});
+    let r=await _wapi(p,body);
+    if(r&&r.err==='pin'){
+      const pin=prompt('Nhập PIN điều khiển từ xa:');
+      if(pin==null)return{ok:false,err:'huỷ'};
+      const l=await _wapi('weblogin',{pin});
+      if(!l.ok){alert('Sai PIN');return{ok:false,err:'sai PIN'};}
+      _wtok.v=l.token;sessionStorage.setItem('otl_webtok',l.token);
+      body.token=_wtok.v;r=await _wapi(p,body);
+    }
+    return r;
+  }
+  window.pywebview={api:{
+    link_snapshot:()=>_wapi('snapshot'),
+    link_write:(name,value)=>_wcmd('write',{name,value}),
+    link_new_batch:()=>_wcmd('new_batch',{}),
+    link_begin_batch:()=>_wcmd('begin_batch',{}),
+    link_config:()=>_wapi('config'),
+    /* mấy việc thuộc về MÁY TÍNH (chọn cổng COM, thư mục hồ sơ, xuất file) —
+       trên điện thoại trả im lặng, giao diện tự ẩn/vô hiệu phần đó */
+    link_set_config:async c=>c, link_ports:async()=>[],
+    prof_load:async()=>null, prof_save:async()=>({ok:false,err:'chưa chọn thư mục'}),
+    prof_write_files:async()=>({ok:false,err:'web'}), prof_export_pdf:async()=>({ok:false,err:'web'}),
+    prof_dir:async()=>'', prof_dir_pick:async()=>'', toggle_fullscreen:()=>{},
+    web_info:async()=>({on:false})   /* điện thoại khỏi hiện chip IP của chính nó */
+  }};
+}
 /* chuỗi thời gian mẻ đang chạy: 1 mẫu/giây, dùng để vẽ curve thật */
-const SERIES={t:[],bt:[],et:[],ror:[],gas:[]};
+const SERIES={t:[],bt:[],et:[],ror:[],gas:[],air:[],drum:[]};
 function seriesReset(){for(const k in SERIES)SERIES[k].length=0;}
 function dsLive(){return DS.state==='connected'&&!!DS.snap;}
 function dsBridge(){return !!(window.pywebview&&window.pywebview.api&&window.pywebview.api.link_snapshot);}
@@ -2161,6 +2406,8 @@ function applyMachine(d){
     const b=document.getElementById(id);if(b)b.classList.toggle('on',flagShow(n));
   });
   checkMileSets(d.bt);   // ngưỡng DE/FCs/DROP thợ cài — DROP chạm là tự xả
+  chkChargeReady(d.bt);  // nhiệt charge hồ sơ — máy nóng tới là báo nạp hạt
+  scaleRender();         // bảng cân + nhãn ⚖ theo số cân live
 
   // MÁY là chủ nhịp mẻ: đang trong dải CHARGE..DROP nghĩa là đang rang
   // AI LÀM CHỦ NHỊP MẺ:
@@ -2171,8 +2418,12 @@ function applyMachine(d){
   const machineDrives = DS.mode!=='tuongthich';
   if(machineDrives){
     const running = d.step>=STP.CHARGE && d.step<STP.DROP;
-    if(running&&R.phase!=='RUNNING'){ if(R.phase==='NOSEL')setRoastPhase('IDLE'); startRoast(); }
-    if(!running&&R.phase==='RUNNING'){ machSample(d); finishRoast(); return; }  // chốt mẫu đúng giây DROP
+    if(running){R._machRun=true;                        // máy ĐÃ THẬT SỰ vào mẻ
+      if(R.phase!=='RUNNING'){ if(R.phase==='NOSEL')setRoastPhase('IDLE'); startRoast(); }}
+    // CHỈ chốt mẻ khi máy từng chạy thật — bấm BẮT ĐẦU lúc máy đứng yên
+    // không được chốt mẻ rỗng 00:00
+    if(!running&&R.phase==='RUNNING'&&R._machRun){
+      R._machRun=false; machSample(d); finishRoast(); return; }  // chốt mẫu đúng giây DROP
   }
   if(R.phase!=='RUNNING'){ updateRoastLive(); return; }
 
@@ -2198,11 +2449,40 @@ function machSample(d){
   }
   const last=SERIES.t.length?SERIES.t[SERIES.t.length-1]:-1;
   if(d.t_roast>last){SERIES.t.push(d.t_roast);SERIES.bt.push(d.bt);
-    SERIES.et.push(d.et);SERIES.ror.push(d.ror_bt);SERIES.gas.push(d.gas);}
+    SERIES.et.push(d.et);SERIES.ror.push(d.ror_bt);SERIES.gas.push(d.gas);
+    SERIES.air.push(d.air);SERIES.drum.push(d.drum);}
 }
 /* Nhịp poll bật ở cuối phần INIT (sau khi R/CFG đã khai báo) — xem dsStart() */
 function dsStart(){ dsTick(); setInterval(dsTick,1000);
-  window.addEventListener('pywebviewready',dsTick); }
+  window.addEventListener('pywebviewready',()=>{dsTick();profDiskInit();webIpInit();});
+  if(window.pywebview){profDiskInit();webIpInit();}   // bridge có sẵn rồi thì chạy luôn
+}
+/* ── Chip địa chỉ web LAN trên thanh trên: hiện IP:cổng, chạm là copy ── */
+let WEB_URL='';
+async function webIpInit(){
+  try{
+    if(!pywebview.api.web_info)return;
+    const w=await pywebview.api.web_info();
+    if(!w||!w.on)return;
+    WEB_URL=`http://${w.ip}:${w.port}`;
+    const c=document.getElementById('ipChip');
+    document.getElementById('ipChipV').textContent=`${w.ip}:${w.port}`;
+    c.style.display='';
+  }catch(e){}
+}
+function copyWebIp(){
+  if(!WEB_URL)return;
+  const done=()=>toast('Đã copy '+WEB_URL+' — mở trên điện thoại cùng WiFi',true);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(WEB_URL).then(done).catch(()=>copyWebIpFallback(done));
+  }else copyWebIpFallback(done);
+}
+function copyWebIpFallback(done){
+  const t=document.createElement('textarea');t.value=WEB_URL;
+  document.body.appendChild(t);t.select();
+  try{document.execCommand('copy');done();}catch(e){toast(WEB_URL);}
+  t.remove();
+}
 
 /* ════════════════════════════════════════════════════════════════
    CHỌN CỔNG COM — chạy ngay sau khi đăng nhập
@@ -2526,6 +2806,39 @@ function setRoastPhase(p){
 }
 function startRoast(){
   if(R.phase==='RUNNING')return;
+  // Nối máy (máy chủ nhịp): BẮT ĐẦU = gửi lệnh Nạp hạt. Mẻ chỉ thật sự mở khi
+  // firmware vào CHARGE — applyMachine thấy step chạy sẽ gọi lại hàm này.
+  if(dsLive()&&DS.mode!=='tuongthich'&&!R._machRun){
+    // Gác cổng theo nhiệt charge hồ sơ: cửa nạp = [charge−1°, charge+3°]
+    // (nóng quá → cháy mặt hạt; nguội quá → mẻ ì) — ngoài cửa thì hỏi lại.
+    // Nút Nạp hạt ở toolbar vẫn nạp thẳng không hỏi — đường override của thợ.
+    const bt=DS.snap?DS.snap.bt:0;
+    if(R.chargeT&&bt>R.chargeT+3&&
+       !confirm(`BT ${bt.toFixed(1)}° CAO hơn nhiệt charge ${R.chargeT}° — dễ cháy mặt hạt. Vẫn nạp?`))return;
+    if(R.chargeT&&bt<R.chargeT-1){
+      // đang chờ tự nạp mà bấm lần nữa = hủy chờ
+      if(R._autoCharge){R._autoCharge=false;toast('Đã hủy chờ tự nạp');return;}
+      // CHƯA CÓ LỬA → chờ là vô nghĩa (máy không nóng lên) — mời đánh lửa luôn.
+      // OK = đánh lửa + arm tự nạp (lửa → nóng → tự nạp, trọn chuỗi); Hủy = thôi.
+      if(!flagShow('flame')&&!flagShow('ignite')){
+        if(confirm(`BT ${bt.toFixed(1)}° còn nguội mà CHƯA ĐÁNH LỬA.\n`+
+            `Đánh lửa ngay và tự nạp khi tới ${R.chargeT}°?`)){
+          cmdIgnite(); R._autoCharge=true;
+          toast(`Đã đánh lửa — chờ BT tới ${R.chargeT}° là TỰ NẠP`,true);
+        }
+        return;
+      }
+      // OK = nạp non luôn; Hủy = ARM chờ — máy nóng tới cửa là app TỰ gửi lệnh nạp
+      if(!confirm(`BT ${bt.toFixed(1)}° CHƯA TỚI nhiệt charge ${R.chargeT}° — máy chưa đủ nóng.\n`+
+          `OK = nạp luôn · Hủy = chờ tới ${R.chargeT}° tự nạp`)){
+        R._autoCharge=true;
+        toast(`Chờ BT tới ${R.chargeT}° là TỰ NẠP — bấm BẮT ĐẦU lần nữa để hủy`,true);
+        return;
+      }
+    }
+    toast('Đã gửi lệnh Nạp hạt — mẻ bắt đầu khi máy vào CHARGE',true);
+    cmdCharge(); return;
+  }
   R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};R._dropFired=false;seriesReset();
   // nối máy: đồng hồ + mốc do Python giữ, phải báo cho nó biết mẻ mở từ giây này
   if(dsBridge()&&window.pywebview.api.link_begin_batch)window.pywebview.api.link_begin_batch();
@@ -2560,6 +2873,21 @@ function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết th�
   const rec={code:nextBatchCode(),name:R.profName,color:R.profColor,
     time:fmtMMSS(dropSec),temp:dropT,dev:devPct,date:dd+'/'+mm};
   const h=loadHist();h.unshift(rec);saveHist(h.slice(0,50));   // giữ tối đa 50 mẻ
+  // Mẻ THẬT (có chuỗi mẫu từ máy) → gắn curve vào hồ sơ đang nạp: đây là nguồn
+  // dữ liệu cho CSV protocol máy / Artisan / PDF trong thư mục hồ sơ.
+  if(nS>5&&R.profNo>=1){
+    const ps=loadProfiles();const p=ps[R.profNo-1];
+    if(p){
+      p.curve={t:SERIES.t.slice(),bt:SERIES.bt.slice(),et:SERIES.et.slice(),
+        gas:SERIES.gas.slice(),air:SERIES.air.slice(),drum:SERIES.drum.slice(),
+        mile:{TP:R.mileT.TP??null,DE:R.mileT.DE??null,FCs:R.mileT.FCs??null,DROP:dropSec}};
+      p.temp=dropT; p.time=fmtMMSS(dropSec);
+      p.date=new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
+      if(session)p.roaster=p.roaster||session.name;
+      saveProfiles(ps);
+      toast('Đã lưu curve mẻ này vào hồ sơ "'+p.name+'"',true);
+    }
+  }
   if(typeof pushAudit==='function'&&session)pushAudit('Hoàn tất','Mẻ rang',R.profName,rec.code);
   // ── đổ vào banner tổng kết ──
   txt('doneCode',rec.code); txt('doneName',R.profName);
@@ -2571,7 +2899,7 @@ function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết th�
 }
 function newRoast(){             // "Mẻ mới" → về IDLE
   clearInterval(roastTimer);roastTimer=null;
-  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};seriesReset();
+  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};R._machRun=false;seriesReset();
   // xoá luôn đồng hồ/mốc bên Python, không thì lệnh Nạp hạt lần sau bị bỏ qua
   if(dsBridge()&&window.pywebview.api.link_new_batch)window.pywebview.api.link_new_batch();
   setRoastPhase('IDLE');
@@ -2635,6 +2963,13 @@ function setPhStatus(key){
 function loadProfile(idx){
   const ps=loadProfiles(); const p=ps[idx]; if(!p)return;
   R.profName=p.name; R.profColor=p.color||'#c97a1a'; R.profNo=idx+1; R.profRoast=p.roast||'';
+  // ── ngưỡng THẬT lấy từ hồ sơ ──
+  // Nhiệt xả → ngưỡng DROP tự động (BT chạm là gửi lệnh xả, y hệt thợ cài chip)
+  if(p.temp){R.mileSet.DROP=Math.max(100,Math.min(260,p.temp));
+    localStorage.setItem('otl_milset',JSON.stringify(R.mileSet));
+    toast(`Xả tự động tại ${R.mileSet.DROP}°C theo hồ sơ`,true);}
+  // Nhiệt charge → máy nóng tới ngưỡng thì báo "nạp hạt được rồi"
+  R.chargeT=p.chargeT||0; R._chargeReady=false; renderChargeRow();
   txt('riProfName',p.name); txt('riProfRoast',p.roast||''); txt('riPfn','No.'+(idx+1)); txt('tbPfn',String(idx+1));
   if(R.phase==='RUNNING'){clearInterval(roastTimer);roastTimer=null;}   // đang rang dở → hủy
   R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};seriesReset(); setRoastPhase('IDLE');
@@ -2689,6 +3024,9 @@ function mileSetEdit(id){
 }
 function checkMileSets(bt){
   if(R.phase!=='RUNNING')return;
+  // Máy thật: BT lúc nạp còn nóng sẵn (180°+) — chưa qua đáy TP thì chưa xét
+  // ngưỡng, không thì DE/FCs/DROP bị chấm bậy ngay giây đầu mẻ.
+  if(dsLive()&&R.mileT.TP==null)return;
   const S=R.mileSet;
   if(S.DE  &&R.mileT.DE ==null&&bt>=S.DE ){R.mileT.DE =R.elapsed;R.mileD.DE =bt;}
   if(S.FCs &&R.mileT.FCs==null&&bt>=S.FCs){R.mileT.FCs=R.elapsed;R.mileD.FCs=bt;}
@@ -2697,6 +3035,139 @@ function checkMileSets(bt){
     toast(`BT ${bt.toFixed(1)}° ≥ ${S.DROP}° — tự KẾT THÚC MẺ`,true);
     cmdDrop();                                         // mở xi lanh, firmware tự đóng
   }
+}
+/* Nhiệt charge từ hồ sơ: máy nóng tới ngưỡng (CHƯA vào mẻ) → báo thợ + nút Nạp hạt
+   nhấp nháy. CHỈ BÁO, không tự nạp — thợ vẫn là người bấm. Nguội quá 10°C thì gài
+   lại để lần nóng tới báo tiếp. */
+function chkChargeReady(bt){
+  if(!R.chargeT)return;
+  const bc=document.getElementById('btnCharge');
+  if(R.phase==='RUNNING'||R.phase==='DONE'){if(bc)bc.classList.remove('ready');return;}
+  // đang chờ tự nạp mà MẤT LỬA (mồi hụt / firmware đóng gas) → nhả chờ, báo thợ
+  if(R._autoCharge&&!flagShow('flame')&&!flagShow('ignite')){
+    R._autoCharge=false;toast('Mất lửa — HỦY chờ tự nạp, kiểm tra đầu đốt');
+  }
+  if(bt>=R.chargeT-1&&!R._chargeReady){
+    R._chargeReady=true;
+    // đã ARM chờ tự nạp (bấm BẮT ĐẦU lúc máy còn nguội) → tới cửa là nạp luôn
+    if(R._autoCharge){
+      R._autoCharge=false;
+      toast(`BT ${bt.toFixed(1)}° đạt nhiệt — TỰ NẠP HẠT`,true);
+      cmdCharge();
+    }else toast(`BT ${bt.toFixed(1)}° tới cửa nạp ${R.chargeT}° (−1/+3) — nạp hạt đi`,true);
+  }
+  if(bt<R.chargeT-10)R._chargeReady=false;
+  if(bc)bc.classList.toggle('ready',R._chargeReady);
+}
+/* ── CÂN PHỄU (Loader) — bảng cân như HMI, số liệu live qua PC_Link ──
+   scale/ror_kg/scale_tg = null nghĩa là máy chạy firmware CŨ chưa có ô cân. */
+function openScale(){document.getElementById('scalebox').classList.add('on');scaleRender();}
+function closeScale(){document.getElementById('scalebox').classList.remove('on');}
+function scaleRender(){
+  const d=DS.snap||{};
+  txt('scW',  d.scale  !=null?d.scale.toFixed(2)+' kg':'—');
+  txt('scRor',d.ror_kg !=null?d.ror_kg.toFixed(2)+' kg/ph':'—');
+  const tg=document.getElementById('scTg');
+  if(tg&&!tg.dataset.editing)tg.textContent=d.scale_tg!=null?d.scale_tg.toFixed(1)+' kg':'—';
+  const au=document.getElementById('scAuto');
+  if(au){const on=d.flags&&d.flags.autoloader;au.textContent=on?'ĐANG BẬT':'TẮT';
+    au.style.color=on?'var(--accent)':'';}
+  const lb=document.getElementById('scLoadBtn');
+  if(lb){const on=typeof flagShow==='function'&&flagShow('loader');
+    lb.textContent=on?'■ DỪNG HÚT':'▶ HÚT CÀ';}
+  // nhãn nút ⚖ ở dải thiết bị: kèm số cân live
+  const bl=document.getElementById('scaleBtnLbl');
+  if(bl)bl.textContent=d.scale!=null?('Cân · '+d.scale.toFixed(1)+'kg'):'Cân';
+}
+async function scTgEdit(){
+  const raw=await openKb('');
+  const kg=parseFloat(String(raw).replace(',','.'));
+  if(raw===''||isNaN(kg)||kg<0||kg>99){if(raw)toast('Cân đích 0–99 kg');return;}
+  await pywebview.api.link_write('scale_tg',kg);
+  toast('Cân đích '+kg.toFixed(1)+' kg',true);scaleRender();
+}
+async function scAutoToggle(){
+  const on=DS.snap&&DS.snap.flags&&DS.snap.flags.autoloader;
+  await pywebview.api.link_write('autoloader',on?0:1);
+  toast(on?'Tắt Auto loader':'Bật Auto loader',true);
+}
+async function scLoader(){
+  const on=typeof flagShow==='function'&&flagShow('loader');
+  await pywebview.api.link_write('loader',on?0:1);
+}
+document.getElementById('scalebox').addEventListener('click',e=>{if(e.target.id==='scalebox')closeScale();});
+
+/* ── RANG AUTO THẬT từ thẻ SD máy (PC_Link: profile/mode/auto) ──
+   Luồng: chọn slot 1-30 → firmware nạp file + validate (prof_pct/prof_ok)
+   → đặt mode AUTO → bật START. Từ đó firmware TỰ chạy trọn quy trình
+   (chờ nhiệt charge → tự nạp → calibProgram bám curve → tự xả). */
+let sdAutoBusy=false;
+function sdAutoAvail(){return dsLive()&&DS.mode!=='tuongthich'&&DS.snap&&DS.snap.prof_pct!=null;}
+async function sdAutoRoast(){
+  if(sdAutoBusy)return;
+  const d=DS.snap||{};
+  // đang chạy AUTO → nút thành DỪNG
+  if(d.flags&&d.flags.auto){
+    if(confirm('Máy đang chạy AUTO — DỪNG chương trình?')){
+      await pywebview.api.link_write('auto',0);toast('Đã dừng AUTO');}
+    return;
+  }
+  const raw=await openKb('');            // bàn phím sẵn có của app
+  const slot=parseInt(raw,10);
+  if(!raw||isNaN(slot)||slot<1||slot>30){if(raw)toast('Slot phải 1-30');return;}
+  sdAutoBusy=true;
+  try{
+    toast(`Nạp hồ sơ SD #${slot}…`,true);
+    await pywebview.api.link_write('profile',slot);
+    // chờ firmware đọc file + validate (tối đa 30s)
+    let ok=0;
+    for(let i=0;i<60;i++){
+      await new Promise(r=>setTimeout(r,500));
+      const s=DS.snap||{};
+      if(s.prof_ok===1){ok=1;break;}
+      if(s.prof_ok===2){ok=2;break;}
+    }
+    if(ok!==1){
+      toast(ok===2?`Hồ sơ SD #${slot} LỖI — thiếu CHARGE/TP/DROP, không rang auto được`
+                  :`Nạp hồ sơ SD #${slot} quá lâu — kiểm tra thẻ SD`);
+      return;
+    }
+    if(!confirm(`Hồ sơ SD #${slot} hợp lệ.\nBật RANG AUTO? Máy sẽ tự chờ nhiệt, tự nạp hạt, tự bám curve, tự xả.`))return;
+    await pywebview.api.link_write('mode',2);        // AUTO
+    await new Promise(r=>setTimeout(r,300));
+    await pywebview.api.link_write('auto',1);        // START — firmware chạy trọn quy trình
+    toast(`RANG AUTO #${slot} — máy tự chạy, app theo dõi`,true);
+    if(typeof pushAudit==='function'&&session)pushAudit('Rang AUTO','SD slot','',String(slot));
+  }finally{sdAutoBusy=false;}
+}
+/* Dòng "Nạp hạt tại XXX°C" ở màn chờ rang + gõ đổi ngay tại chỗ (như chip DROP) */
+function renderChargeRow(){
+  const b=document.getElementById('riChargeT');
+  if(b&&!b.dataset.editing)b.textContent=R.chargeT?R.chargeT+'°C':'—';
+}
+function chargeTEdit(){
+  const b=document.getElementById('riChargeT');
+  if(!b||b.dataset.editing)return;
+  b.dataset.editing='1';
+  const inp=document.createElement('input');
+  inp.type='text';inp.inputMode='numeric';inp.className='ovedit mile';
+  inp.value=R.chargeT||'';inp.placeholder='°C';
+  b.textContent='';b.appendChild(inp);
+  setTimeout(()=>{inp.focus();inp.select();},30);
+  let fin=false;
+  const done=commit=>{
+    if(fin)return;fin=true;delete b.dataset.editing;
+    const raw=inp.value.trim();inp.remove();
+    if(commit){const n=parseInt(raw,10);
+      if(!isNaN(n)){R.chargeT=Math.max(100,Math.min(260,n));R._chargeReady=false;
+        toast(`Báo nạp hạt tại ${R.chargeT}°C`,true);}}
+    renderChargeRow();
+  };
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter')done(true);else if(e.key==='Escape')done(false);
+    e.stopPropagation();});
+  inp.addEventListener('blur',()=>done(true));
+  inp.addEventListener('click',e=>e.stopPropagation());
 }
 /* Nội suy số liệu live theo tiến độ + đánh dấu mốc + đồng hồ */
 function txt(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
@@ -2712,6 +3183,14 @@ function mileDeg(m){
   return (dsLive()||SERIES.t.length)?'—':m.d;
 }
 function updateRoastLive(){
+  renderChargeRow();   // dòng "Nạp hạt tại …°C" ở màn chờ luôn theo R.chargeT
+  { // nút RANG AUTO SD: chỉ hiện khi nối máy PC_Link; đổi chữ khi máy đang AUTO
+    const b=document.getElementById('sdAutoBtn');
+    if(b){b.style.display=sdAutoAvail()?'':'none';
+      const run=DS.snap&&DS.snap.flags&&DS.snap.flags.auto;
+      b.textContent=run?'■ DỪNG RANG AUTO':'▶ RANG AUTO từ thẻ SD máy';
+      b.classList.toggle('running',!!run);}
+  }
   const started=(R.phase==='RUNNING'||R.phase==='DONE');   // đã bắt đầu mẻ?
   // đồng hồ thời gian mẻ
   txt('rangClock', started?fmtMMSS(R.elapsed):'00:00');
