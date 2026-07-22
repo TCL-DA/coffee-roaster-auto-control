@@ -9,8 +9,8 @@ VERSION = 1
 BAUD_DEFAULT = 9600
 SLAVE_DEFAULT = 1
 
-R_BASE, R_COUNT = 100, 15
-W_BASE, W_COUNT = 120, 12
+R_BASE, R_COUNT = 100, 16
+W_BASE, W_COUNT = 120, 17
 
 # tên → chỉ số trong khối GHI (offset từ W_BASE)
 W_INDEX = {
@@ -26,6 +26,11 @@ W_INDEX = {
     "cool": 9,
     "auto": 10,
     "hb": 11,
+    "drumfan": 12,
+    "mixer": 13,
+    "afterburner": 14,
+    "loader": 15,
+    "destoner": 16,
 }
 
 # giới hạn kẹp phía PC (firmware kẹp lần nữa — clamp 2 tầng)
@@ -42,10 +47,15 @@ W_RANGE = {
     "cool": (0, 1),   # làm nguội
     "auto": (0, 1),   # bật/tắt AUTO (START)
     "hb": (0, 32767),   # heartbeat app: app tăng mỗi giây; firmware không thấy đổi quá PCL_APP_TMO_S thì nhả quyền
+    "drumfan": (0, 1),   # quạt trống (DRUM_FAN_BTN)
+    "mixer": (0, 1),   # cánh khuấy (MIXER_BTN)
+    "afterburner": (0, 1),   # buồng đốt khói (AB_BTN)
+    "loader": (0, 1),   # nạp liệu phễu (FEEDER_BTN)
+    "destoner": (0, 1),   # tách đá (DESTONER_BTN)
 }
 
 # hệ số ghi: giá trị kỹ thuật × scale = số gửi xuống máy
-W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1}
+W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1, "drumfan": 1, "mixer": 1, "afterburner": 1, "loader": 1, "destoner": 1}
 
 PHASE_BITS = {
     "dry": 0x01,   # đã qua TP  (progStep >= STP_TP)
@@ -64,6 +74,11 @@ FLAGS_BITS = {
     "flame": 0x80,   # CÓ LỬA THẬT (gasSignal, chân CH1) — khác hẳn 'đã bấm bật gas'
     "pc_lost": 0x100,   # firmware đã tự nhả quyền vì mất app (watchdog)
     "flame_fail": 0x200,   # firmware đã tự đóng gas vì mồi hoài không có lửa
+    "drumfan": 0x400,   # DRUM_FAN_BTN_R — quạt trống đang bật
+    "mixer": 0x800,   # MIXER_BTN_R — cánh khuấy đang bật
+    "afterburner": 0x1000,   # AB_BTN_R — buồng đốt khói đang bật
+    "loader": 0x2000,   # FEEDER_BTN_R — nạp liệu đang bật
+    "destoner": 0x4000,   # DESTONER_BTN_R — tách đá đang bật
 }
 
 # progStep của firmware (Define.h)
@@ -183,4 +198,5 @@ def decode(regs):
         "phase": {k: bool(regs[12] & m) for k, m in PHASE_BITS.items()},
         "flags": {k: bool(regs[13] & m) for k, m in FLAGS_BITS.items()},
         "hb": regs[14],   # heartbeat — tăng mỗi vòng loop, app dò treo
+        "drum_hz": regs[15] / 100.0,   # tần số THẬT đọc từ biến tần trống (Drum_Freq_CP, 0.01Hz)
     }

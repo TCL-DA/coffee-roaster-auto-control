@@ -31,7 +31,8 @@
       {"key": "t_roast", "c": "TROAST", "scale": 1,   "signed": false, "unit": "s",      "desc": "thời gian rang"},
       {"key": "phase",   "c": "PHASE",  "bits": "phase",                                 "desc": "bitmask pha rang"},
       {"key": "flags",   "c": "FLAGS",  "bits": "flags",                                 "desc": "bitmask trạng thái nút/chế độ"},
-      {"key": "hb",      "c": "HB",     "scale": 1,   "signed": false, "unit": "",       "desc": "heartbeat — tăng mỗi vòng loop, app dò treo"}
+      {"key": "hb",      "c": "HB",     "scale": 1,   "signed": false, "unit": "",       "desc": "heartbeat — tăng mỗi vòng loop, app dò treo"},
+      {"key": "drum_hz", "c": "DRUMHZ", "scale": 100, "signed": false, "unit": "Hz",     "desc": "tần số THẬT đọc từ biến tần trống (Drum_Freq_CP, 0.01Hz)"}
     ]
   },
 
@@ -131,7 +132,12 @@
       {"key": "escape", "c": "ESCAPE", "min": 0,  "max": 1,    "scale": 1,  "desc": "thoát"},
       {"key": "cool",   "c": "COOL",   "min": 0,  "max": 1,    "scale": 1,  "desc": "làm nguội"},
       {"key": "auto",   "c": "AUTO",   "min": 0,  "max": 1,    "scale": 1,  "desc": "bật/tắt AUTO (START)"},
-      {"key": "hb",     "c": "HB",     "min": 0,  "max": 32767,"scale": 1,  "desc": "heartbeat app: app tăng mỗi giây; firmware không thấy đổi quá PCL_APP_TMO_S thì nhả quyền"}
+      {"key": "hb",     "c": "HB",     "min": 0,  "max": 32767,"scale": 1,  "desc": "heartbeat app: app tăng mỗi giây; firmware không thấy đổi quá PCL_APP_TMO_S thì nhả quyền"},
+      {"key": "drumfan",   "c": "DRUMFAN",  "min": 0, "max": 1, "scale": 1, "desc": "quạt trống (DRUM_FAN_BTN)"},
+      {"key": "mixer",     "c": "MIXER",    "min": 0, "max": 1, "scale": 1, "desc": "cánh khuấy (MIXER_BTN)"},
+      {"key": "afterburner","c": "AB",      "min": 0, "max": 1, "scale": 1, "desc": "buồng đốt khói (AB_BTN)"},
+      {"key": "loader",    "c": "LOADER",   "min": 0, "max": 1, "scale": 1, "desc": "nạp liệu phễu (FEEDER_BTN)"},
+      {"key": "destoner",  "c": "DESTONER", "min": 0, "max": 1, "scale": 1, "desc": "tách đá (DESTONER_BTN)"}
     ]
   },
 
@@ -173,7 +179,12 @@
         {"key": "pc_control", "bit": 6, "c": "PCCTRL", "desc": "PC_CONTROL_BTN_R — app được phép điều khiển"},
         {"key": "flame",      "bit": 7, "c": "FLAME",  "desc": "CÓ LỬA THẬT (gasSignal, chân CH1) — khác hẳn 'đã bấm bật gas'"},
         {"key": "pc_lost",    "bit": 8, "c": "PCLOST", "desc": "firmware đã tự nhả quyền vì mất app (watchdog)"},
-        {"key": "flame_fail", "bit": 9, "c": "FLMFAIL","desc": "firmware đã tự đóng gas vì mồi hoài không có lửa"}
+        {"key": "flame_fail", "bit": 9, "c": "FLMFAIL","desc": "firmware đã tự đóng gas vì mồi hoài không có lửa"},
+        {"key": "drumfan",    "bit": 10, "c": "DRUMFAN",  "desc": "DRUM_FAN_BTN_R — quạt trống đang bật"},
+        {"key": "mixer",      "bit": 11, "c": "MIXER",    "desc": "MIXER_BTN_R — cánh khuấy đang bật"},
+        {"key": "afterburner","bit": 12, "c": "AB",       "desc": "AB_BTN_R — buồng đốt khói đang bật"},
+        {"key": "loader",     "bit": 13, "c": "LOADER",   "desc": "FEEDER_BTN_R — nạp liệu đang bật"},
+        {"key": "destoner",   "bit": 14, "c": "DESTONER", "desc": "DESTONER_BTN_R — tách đá đang bật"}
       ]
     }
   },
