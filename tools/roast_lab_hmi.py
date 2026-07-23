@@ -13,6 +13,8 @@ Phụ thuộc: pip install pywebview   (Windows cần WebView2 runtime — Win10
 import configparser
 import http.server
 import json
+import logging
+import logging.handlers
 import os
 import secrets
 import shutil
@@ -38,6 +40,35 @@ APP_TITLE = "OTL Roast Lab — HMI"
 APP_BG = "#0b0e13"          # nền khớp theme tối của HTML, tránh chớp trắng lúc mở
 HTML_NAME = "OTL Roast Lab.html"
 
+# ── LOG VẬN HÀNH (operation log) ────────────────────────────────────────────
+# MỘT file chung cho cả Python lẫn JS (JS đẩy qua api.op_log): mẻ rang, lệnh
+# máy + độ trễ ACK Modbus, đổi trạng thái kết nối, lỗi JS/Python kèm traceback.
+# Xoay vòng 2MB × 3 file. Xem trong app: Cài đặt → Log kỹ thuật.
+LOG_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+                       "OTL Roast Lab HMI", "logs")
+LOG_FILE = os.path.join(LOG_DIR, "app.log")
+log = logging.getLogger("otl")
+
+
+def setup_logging():
+    os.makedirs(LOG_DIR, exist_ok=True)
+    h = logging.handlers.RotatingFileHandler(
+        LOG_FILE, maxBytes=2_000_000, backupCount=3, encoding="utf-8")
+    h.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)-5s %(message)s", datefmt="%d/%m %H:%M:%S"))
+    log.addHandler(h)
+    log.setLevel(logging.INFO)
+
+    # Crash Python (kể cả trong thread link/web) → ghi traceback vào log rồi
+    # mới chết — hết cảnh exe tắt câm không dấu vết như vụ cp1252 sáng 23/07.
+    def _hook(t, v, tb):
+        log.error("[CRASH] app chết vì exception", exc_info=(t, v, tb))
+        sys.__excepthook__(t, v, tb)
+    sys.excepthook = _hook
+    threading.excepthook = lambda a: log.error(
+        "[CRASH] thread %s chết", a.thread.name if a.thread else "?",
+        exc_info=(a.exc_type, a.exc_value, a.exc_traceback))
+
 
 def html_path():
     """Đường dẫn file HTML: khi đóng exe lấy từ bundle (_MEIPASS), khi dev lấy ở gốc repo."""
@@ -62,6 +93,7 @@ class Api:
     def __init__(self):
         self._window = None
         self._link = otl_link.RoasterLink()
+        self._lk_state = None    # trạng thái link lần trước — đổi mới ghi log, khỏi spam
         self.web_cfg = {"bat": True, "cong": 8555, "pin": "1108"}  # [WebServer] trong settings.ini
         self.web_tokens = {}     # token → thời điểm cấp (điện thoại đã nhập đúng PIN web)
 
@@ -72,7 +104,30 @@ class Api:
 
     def link_snapshot(self):
         """Gói dữ liệu mới nhất + trạng thái kết nối. JS gọi mỗi giây."""
-        return self._link.snapshot()
+        s = self._link.snapshot()
+        st = s.get("state")
+        if st != self._lk_state:              # chỉ ghi lúc CHUYỂN trạng thái
+            log.log(logging.WARNING if st in ("error", "stalled") else logging.INFO,
+                    "[LINK] %s → %s%s%s", self._lk_state or "khởi động", st,
+                    " cổng " + s["port"] if s.get("port") else "",
+                    " (" + s["err"] + ")" if s.get("err") else "")
+            self._lk_state = st
+        return s
+
+    def op_log(self, level, tag, msg):
+        """JS đẩy sự kiện vận hành vào file log chung (Cài đặt → Log kỹ thuật)."""
+        lv = {"WARN": logging.WARNING, "ERROR": logging.ERROR}.get(
+            str(level).upper(), logging.INFO)
+        log.log(lv, "[%s] %s", tag, msg)
+        return True
+
+    def op_tail(self, n=400):
+        """Đuôi file log cho viewer trong app (dòng mới nhất ở cuối)."""
+        try:
+            with open(LOG_FILE, encoding="utf-8", errors="replace") as f:
+                return f.readlines()[-int(n):]
+        except Exception:
+            return []
 
     def link_config(self):
         return self._link.cfg
@@ -371,6 +426,8 @@ def start_webserver(api):
                 self._json(api.link_snapshot())
             elif self.path == "/api/config":
                 self._json({"port": api._link.cfg.get("port"), "baud": api._link.cfg.get("baud")})
+            elif self.path == "/api/oplog":
+                self._json({"lines": api.op_tail(400)})
             else:
                 self._json({"err": "not found"}, 404)
 
@@ -394,7 +451,10 @@ def start_webserver(api):
             # các lệnh dưới đây ĐỘNG VÀO MÁY → bắt buộc token hợp lệ
             if not self._tok_ok(req.get("token")):
                 self._json({"ok": False, "err": "pin"}); return
-            if self.path == "/api/write":
+            if self.path == "/api/oplog":
+                self._json({"ok": api.op_log(req.get("level"), req.get("tag") or "WEB",
+                                             req.get("msg") or "")})
+            elif self.path == "/api/write":
                 self._json(api.link_write(req.get("name"), req.get("value")))
             elif self.path == "/api/new_batch":
                 self._json(api.link_new_batch())
@@ -408,12 +468,16 @@ def start_webserver(api):
         srv = http.server.ThreadingHTTPServer(("0.0.0.0", port), Handler)
     except OSError as e:
         print(f"[web] không mở được cổng {port}: {e}")
+        log.warning("[WEB] không mở được cổng %s: %s", port, e)
         return
     threading.Thread(target=srv.serve_forever, name="otl-web", daemon=True).start()
     print(f"[web] điện thoại cùng WiFi vào: http://<ip-máy-này>:{port}")
+    log.info("[WEB] server LAN chạy — cổng %s", port)
 
 
 def main():
+    setup_logging()
+    log.info("[APP] khởi động — %s", "exe" if getattr(sys, "frozen", False) else "dev")
     api = Api()
     # Tự mở FULLSCREEN đúng độ phân giải màn hình hiện tại — hoàn toàn tự động.
     # Phần HTML tự co khung 2560×1440 vừa khít mọi phân giải (fit()).

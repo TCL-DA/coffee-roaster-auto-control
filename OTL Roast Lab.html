@@ -354,6 +354,17 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .subpane.on{display:block}
 .subpane h3{font-family:var(--f-num);font-weight:700;font-size:var(--fs-40);margin-bottom:4px}
 .subpane .lead{font-size:var(--fs-20);color:var(--dim);margin-bottom:24px}
+/* ── Log kỹ thuật (operation log viewer) ── */
+.oplogctl{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.opseg{display:flex;gap:8px}
+.opseg button,.opref{height:56px;padding:0 22px;border:1px solid var(--hair-2);border-radius:var(--r-sm);
+  background:var(--btn);color:var(--dim);font-family:var(--f-ui);font-size:var(--fs-18);font-weight:600;cursor:pointer}
+.opseg button.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);border-color:var(--accent)}
+.opref{margin-left:auto}
+.oplogbox{background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md);
+  padding:16px 20px;height:960px;overflow:auto;font-family:var(--f-mono);font-size:var(--fs-16);
+  line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--txt)}
+.oplogbox .lw{color:var(--warn)} .oplogbox .le{color:var(--danger)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px 48px}
 .section-t{grid-column:1/-1;font-size:var(--fs-16);font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
   color:var(--accent);margin:14px 0 2px}
@@ -1686,6 +1697,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
               <button data-sub="ketnoi" class="on" onclick="gotoSub('ketnoi')"><svg class="ic ot" aria-hidden="true"><use href="#i-usb"/></svg><span data-i18n="sub.ketnoi">Kết nối</span></button>
               <button data-sub="calib" onclick="gotoSub('calib')"><svg class="ic ot" aria-hidden="true"><use href="#i-edit"/></svg><span data-i18n="sub.calib">Calib gas</span></button>
               <button data-sub="model" onclick="gotoSub('model')"><svg class="ic ot" aria-hidden="true"><use href="#i-ignite"/></svg><span data-i18n="sub.model">Model nhiệt</span></button>
+              <button data-sub="oplog" onclick="gotoSub('oplog')"><svg class="ic ot" aria-hidden="true"><use href="#i-trend"/></svg><span data-i18n="sub.oplog">Log kỹ thuật</span></button>
               <div class="navsep" data-master></div>
               <button data-sub="nhatky" data-master onclick="gotoSub('nhatky')"><svg class="ic ot" aria-hidden="true"><use href="#i-list"/></svg><span data-i18n="sub.nhatky">Nhật ký</span></button>
               <button data-sub="taikhoan" data-master onclick="gotoSub('taikhoan')"><svg class="ic ot" aria-hidden="true"><use href="#i-user"/></svg><span data-i18n="sub.taikhoan">Tài khoản</span></button>
@@ -1771,6 +1783,20 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                 <h3 data-i18n="sub.nhatky">Nhật ký thay đổi</h3>
                 <div class="lead" data-i18n="audit.lead">Ai đổi thông số gì, lúc nào, giá trị cũ → mới.</div>
                 <div id="auditBody"></div>
+              </div>
+              <!-- Log kỹ thuật (operation log — file app.log do Python giữ) -->
+              <div class="subpane" id="sub-oplog">
+                <h3 data-i18n="sub.oplog">Log kỹ thuật</h3>
+                <div class="lead" data-i18n="oplog.lead">Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.</div>
+                <div class="oplogctl">
+                  <div class="opseg" id="opSeg">
+                    <button data-f="ALL" class="on" onclick="opFilter('ALL')" data-i18n="oplog.all">Tất cả</button>
+                    <button data-f="WARN" onclick="opFilter('WARN')" data-i18n="oplog.warn">Cảnh báo</button>
+                    <button data-f="ERROR" onclick="opFilter('ERROR')" data-i18n="oplog.err">Lỗi</button>
+                  </div>
+                  <button class="opref" onclick="renderOpLog()">⟳ <span data-i18n="oplog.refresh">Làm mới</span></button>
+                </div>
+                <div class="oplogbox num" id="opBody">—</div>
               </div>
             </div>
           </div>
@@ -2244,7 +2270,8 @@ document.addEventListener('click',()=>{
 
 /* ════════ I18N ════════ */
 const I18N={vi:{
- 'brand.sub':'Máy rang cà phê','um.lang':'Ngôn ngữ','um.web':'Web điện thoại','um.logout':'Đăng xuất','tab.tongquan':'Tổng quan','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.caidat':'Cài đặt',
+ 'brand.sub':'Máy rang cà phê','um.lang':'Ngôn ngữ','um.web':'Web điện thoại','um.logout':'Đăng xuất','tab.tongquan':'Tổng quan',
+ 'sub.oplog':'Log kỹ thuật','oplog.lead':'Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.','oplog.all':'Tất cả','oplog.warn':'Cảnh báo','oplog.err':'Lỗi','oplog.refresh':'Làm mới','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.caidat':'Cài đặt',
  'user.guest':'Khách','user.locked':'Chưa đăng nhập',
  'ph.tongquan':'Bảng tổng quan mẻ đang rang, trạng thái thiết bị, cảnh báo.','ph.hoso':'Nạp, xem và so sánh hồ sơ rang.','ph.lichsu':'Danh sách mẻ đã rang, xuất CSV.',
  'rang.mode':'Chế độ','rang.time':'Thời gian','phase.dry':'Sấy','phase.mai':'Maillard','phase.dev':'Phát triển',
@@ -2262,7 +2289,8 @@ const I18N={vi:{
  'login.title':'Đăng nhập','login.sub':'Chọn tài khoản và nhập mã PIN',
  'btn.cancel':'Hủy','btn.apply':'Áp dụng','btn.save':'Lưu','btn.ok':'OK'},
  en:{
- 'brand.sub':'Coffee Roaster HMI','um.lang':'Language','um.web':'Phone web','um.logout':'Sign out','tab.tongquan':'Overview','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.caidat':'Settings',
+ 'brand.sub':'Coffee Roaster HMI','um.lang':'Language','um.web':'Phone web','um.logout':'Sign out','tab.tongquan':'Overview',
+ 'sub.oplog':'Tech log','oplog.lead':'Operation timeline: machine commands + ACK latency, relay confirms, link, batches, app errors.','oplog.all':'All','oplog.warn':'Warnings','oplog.err':'Errors','oplog.refresh':'Refresh','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.caidat':'Settings',
  'user.guest':'Guest','user.locked':'Not signed in',
  'ph.tongquan':'Live batch overview, device status, alarms.','ph.hoso':'Load, view and compare roast profiles.','ph.lichsu':'List of past roasts, CSV export.',
  'rang.mode':'Mode','rang.time':'Time','phase.dry':'Drying','phase.mai':'Maillard','phase.dev':'Development',
@@ -2348,6 +2376,8 @@ if(location.protocol==='http:'||location.protocol==='https:'){
     link_config:()=>_wapi('config'),
     /* mấy việc thuộc về MÁY TÍNH (chọn cổng COM, thư mục hồ sơ, xuất file) —
        trên điện thoại trả im lặng, giao diện tự ẩn/vô hiệu phần đó */
+    op_log:(lv,tag,msg)=>_wcmd('oplog',{level:lv,tag,msg}),
+    op_tail:async n=>{const r=await _wapi('oplog');return (r&&r.lines)||[];},
     link_set_config:async c=>c, link_ports:async()=>[],
     prof_load:async()=>null, prof_save:async()=>({ok:false,err:'chưa chọn thư mục'}),
     prof_write_files:async()=>({ok:false,err:'web'}), prof_export_pdf:async()=>({ok:false,err:'web'}),
@@ -2360,6 +2390,20 @@ const SERIES={t:[],bt:[],et:[],ror:[],gas:[],air:[],drum:[]};
 function seriesReset(){for(const k in SERIES)SERIES[k].length=0;}
 function dsLive(){return DS.state==='connected'&&!!DS.snap;}
 function dsBridge(){return !!(window.pywebview&&window.pywebview.api&&window.pywebview.api.link_snapshot);}
+
+/* ── OPERATION LOG — đẩy sự kiện vận hành về file app.log (Python giữ file).
+   Mở trình duyệt thuần (không cầu, không web) thì im lặng, không lỗi. ── */
+function opLog(tag,msg,lv){
+  try{
+    const a=window.pywebview&&window.pywebview.api;
+    if(a&&a.op_log)a.op_log(lv||'INFO',tag,msg);
+  }catch(e){}
+}
+/* Lỗi JS bất kỳ → vào log kèm file:dòng — app đơ là biết vì đâu */
+window.addEventListener('error',e=>{
+  opLog('JS',`${e.message} @${(e.filename||'').split('/').pop()}:${e.lineno}`,'ERROR');});
+window.addEventListener('unhandledrejection',e=>{
+  opLog('JS','promise rejected: '+(e.reason&&e.reason.message||e.reason),'ERROR');});
 
 const LINK_LBL={connected:'Máy rang · trực tiếp',connecting:'Đang nối…',stalled:'Máy không phản hồi',
   error:'Mất kết nối',off:'Chưa nối máy',nobridge:'Chế độ mô phỏng'};
@@ -2397,7 +2441,7 @@ async function dsTick(){
   catch(e){DS.state='error';DS.err=String(e);renderLinkChip();return;}
   DS.state=s.state;DS.err=s.err||'';DS.port=s.port||'';DS.snap=s.data;DS.mode=s.mode||null;
   renderLinkChip();
-  if(dsLive())applyMachine(DS.snap);
+  if(dsLive()){applyMachine(DS.snap);chkConfirms();}
 }
 /* Đổ 1 gói dữ liệu máy vào trạng thái app */
 /* Chống nảy số khi thợ vừa bấm ±: giữ số VỪA ĐẶT tối đa 3s — máy báo về đúng số
@@ -2629,14 +2673,21 @@ const CMD_LBL={ignite:'Đánh lửa',charge:'Nạp hạt',drop:'Kết thúc mẻ
   cool:'Làm nguội',gas:'Gas',air:'Gió',drum:'Trống',sv:'SV',vac:'Áp hút',
   drumfan:'Quạt trống',mixer:'Cánh khuấy',afterburner:'Afterburner',loader:'Nạp liệu',destoner:'Tách đá'};
 async function machCmd(name,value){
+  const lbl=CMD_LBL[name]||name, v=value===undefined?1:value;
   if(!dsBridge()){toast('Chế độ mô phỏng — chưa nối máy');return false;}
-  if(DS.state!=='connected'){toast('Chưa nối được máy — không gửi lệnh được');return false;}
+  if(DS.state!=='connected'){toast('Chưa nối được máy — không gửi lệnh được');
+    opLog('CMD',`${lbl} = ${v} — KHÔNG GỬI (chưa nối máy)`,'WARN');return false;}
+  const t0=performance.now();                    // đo độ trễ app → máy ACK Modbus
   try{
-    const r=await window.pywebview.api.link_write(name,value===undefined?1:value);
-    if(!r||!r.ok){toast((r&&r.err)||'Máy từ chối lệnh');return false;}
+    const r=await window.pywebview.api.link_write(name,v);
+    const ms=Math.round(performance.now()-t0);
+    if(!r||!r.ok){toast((r&&r.err)||'Máy từ chối lệnh');
+      opLog('CMD',`${lbl} = ${v} — máy TỪ CHỐI sau ${ms}ms (${(r&&r.err)||'?'})`,'WARN');return false;}
+    opLog('CMD',`${lbl} = ${v} — máy ACK ${ms}ms`);
     toast(`Đã gửi: ${CMD_LBL[name]||name}`+(value!==undefined&&value!==1?` = ${value}`:''),true);
     return true;
-  }catch(e){toast('Lỗi gửi lệnh: '+e);return false;}
+  }catch(e){toast('Lỗi gửi lệnh: '+e);
+    opLog('CMD',`${lbl} = ${v} — LỖI gửi: ${e}`,'ERROR');return false;}
 }
 /* Nút thanh công cụ = LỆNH MÁY THUẦN.
    Chúng KHÔNG tự dựng mẻ. Mẻ chỉ bắt đầu khi thợ chọn hồ sơ rồi bấm Bắt đầu rang
@@ -2708,12 +2759,29 @@ function flagShow(name){
   if((mv?1:0)===h.v||Date.now()>h.until){delete BTN_HOLD[name];return mv;}
   return !!h.v;
 }
+/* Chờ MÁY xác nhận cờ sau lệnh (đo t2 — relay thật đã theo lệnh chưa).
+   Poll 1s nên độ phân giải ±1s; quá 10s không thấy → WARN vào log. */
+const CONFIRM_WAIT={};   // name → {want, t0}
+function chkConfirms(){
+  const now=Date.now();
+  for(const name in CONFIRM_WAIT){
+    const w=CONFIRM_WAIT[name], lbl=CMD_LBL[name]||name;
+    if((machFlag(name)?1:0)===w.want){
+      opLog('MÁY',`${lbl} = ${w.want?'BẬT':'TẮT'} — máy xác nhận sau ${((now-w.t0)/1000).toFixed(1)}s`);
+      delete CONFIRM_WAIT[name];
+    }else if(now-w.t0>10000){
+      opLog('MÁY',`${lbl} = ${w.want?'BẬT':'TẮT'} — KHÔNG thấy máy xác nhận sau 10s`,'WARN');
+      delete CONFIRM_WAIT[name];
+    }
+  }
+}
 async function cmdLatch(name,btnId){
   // Quyết định theo flagShow (đã tính phần giữ lạc quan) — hỏi thẳng machFlag là
   // dính kẹt: vừa tắt xong bật lại ngay thì cờ máy còn trễ 1-2s, app ghi 0 trùng
   const want=flagShow(name)?0:1;
   if(await machCmd(name,want)){
     BTN_HOLD[name]={v:want,until:Date.now()+3000};
+    CONFIRM_WAIT[name]={want,t0:Date.now()};   // chờ cờ máy về để đo độ trễ thật
     if(name in CMD_ON)CMD_ON[name]=!!want;     // đồng bộ fallback chế độ tương thích
     const b=document.getElementById(btnId);if(b)b.classList.toggle('on',!!want);
   }
@@ -2733,6 +2801,7 @@ async function cmdDrop(){
   const want=flagShow('drop')?0:1;
   if(await machCmd('drop',want)){
     BTN_HOLD.drop={v:want,until:Date.now()+3000};
+    CONFIRM_WAIT.drop={want,t0:Date.now()};
     const b=document.getElementById('btnDrop');if(b)b.classList.toggle('on',!!want);
     if(want && R.phase==='RUNNING') finishRoast();   // đang rang mới chốt mẻ
   }
@@ -2869,6 +2938,7 @@ function startRoast(){
   R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};R._dropFired=false;seriesReset();
   // nối máy: đồng hồ + mốc do Python giữ, phải báo cho nó biết mẻ mở từ giây này
   if(dsBridge()&&window.pywebview.api.link_begin_batch)window.pywebview.api.link_begin_batch();
+  opLog('MẺ',`bắt đầu rang — hồ sơ "${R.profName||'?'}"${dsLive()?' (máy thật)':' (mô phỏng)'}`);
   setRoastPhase('RUNNING');
   roastTimer=setInterval(roastTick,1000);
   roastTick();
@@ -2884,6 +2954,7 @@ function roastTick(){
 function togglePause(){
   if(R.phase!=='RUNNING')return;
   R.paused=!R.paused;
+  opLog('MẺ',R.paused?'tạm dừng':'chạy tiếp');
   document.getElementById('pane-rang').classList.toggle('paused',R.paused);
 }
 function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết thời gian
@@ -2989,6 +3060,7 @@ function setPhStatus(key){
 /* Nạp 1 hồ sơ (từ nút "Nạp & rang") → gán mẻ + về màn Rang trạng thái IDLE */
 function loadProfile(idx){
   const ps=loadProfiles(); const p=ps[idx]; if(!p)return;
+  opLog('MẺ',`nạp hồ sơ "${p.name}" (No.${idx+1})`);
   R.profName=p.name; R.profColor=p.color||'#c97a1a'; R.profNo=idx+1; R.profRoast=p.roast||'';
   // ── ngưỡng THẬT lấy từ hồ sơ ──
   // Nhiệt xả → ngưỡng DROP tự động (BT chạm là gửi lệnh xả, y hệt thợ cài chip)
@@ -3394,7 +3466,10 @@ async function pbkdf2(pin,saltHex){const k=await crypto.subtle.importKey('raw',_
 function loadUsers(){try{return JSON.parse(localStorage.getItem(LS_USERS))||null;}catch(e){return null;}}
 function saveUsers(u){localStorage.setItem(LS_USERS,JSON.stringify(u));}
 function loadAudit(){try{return JSON.parse(localStorage.getItem(LS_AUDIT))||[];}catch(e){return [];}}
-function pushAudit(action,field,ov,nv){const a=loadAudit();a.unshift({ts:Date.now(),user:session?session.name:'?',action,field,old:ov,'new':nv});
+function pushAudit(action,field,ov,nv){
+  // tee sang operation log — nhật ký thao tác và log kỹ thuật chung dòng thời gian
+  opLog('THAO TÁC',`${action} ${field}${ov?`: ${ov}`:''}${nv?` → ${nv}`:''} (${session?session.name:'?'})`);
+  const a=loadAudit();a.unshift({ts:Date.now(),user:session?session.name:'?',action,field,old:ov,'new':nv});
   localStorage.setItem(LS_AUDIT,JSON.stringify(a.slice(0,500)));}
 
 /* ── config ── */
@@ -3635,7 +3710,7 @@ function enterSettings(){
   const map={ketnoi:'ket_noi',calib:'calib_gas',model:'model_nhiet'};let first=null;
   document.querySelectorAll('#subnav [data-master]').forEach(el=>el.style.display=session.role==='master'?'':'none');
   document.querySelectorAll('#subnav button[data-sub]').forEach(b=>{const s=b.dataset.sub;
-    const vis=session.role==='master'?true:(map[s]?!!session.perms[map[s]]:false);
+    const vis=session.role==='master'?true:(s==='oplog'?true:(map[s]?!!session.perms[map[s]]:false));  // log kỹ thuật: ai đăng nhập cũng xem được
     b.style.display=vis?'':'none';if(vis&&!first)first=s;});
   if(!first){document.getElementById('setgate').style.display='flex';document.getElementById('setwrap').classList.remove('on');
     document.getElementById('setgate').querySelector('.s').textContent=LANG==='vi'?'Tài khoản chưa được cấp quyền vào mục nào.':'Account has no permitted section.';return;}
@@ -3645,7 +3720,7 @@ function enterSettings(){
 function gotoSub(name){document.querySelectorAll('.subpane').forEach(p=>p.classList.remove('on'));
   document.getElementById('sub-'+name).classList.add('on');
   document.querySelectorAll('#subnav button').forEach(b=>b.classList.toggle('on',b.dataset.sub===name));
-  if(name==='nhatky')renderAudit();if(name==='taikhoan')renderAccounts();
+  if(name==='nhatky')renderAudit();if(name==='taikhoan')renderAccounts();if(name==='oplog')renderOpLog();
   // Mở tab Kết nối: hiện đúng cổng/baud THẬT cầu Modbus đang dùng (link.json)
   // — quan trọng: CFG_EDIT phải khớp cổng thật, không thì Lưu sẽ đẩy nhầm cổng cũ
   if(name==='ketnoi'&&dsBridge())(async()=>{try{
@@ -3712,6 +3787,27 @@ function accDel(i){const users=loadUsers();const s=users.list[i];if(s.role==='ma
   pushAudit('Xoá','Thợ vận hành',s.name,'');renderAccounts();toast((LANG==='vi'?'Đã xoá ':'Deleted ')+s.name,true);}
 
 /* ── nhật ký ── */
+/* ── Viewer Log kỹ thuật: đọc đuôi app.log qua bridge, lọc mức, mới nhất cuối ── */
+let OP_FILTER='ALL';
+function opFilter(f){OP_FILTER=f;
+  document.querySelectorAll('#opSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f===f));
+  renderOpLog();}
+async function renderOpLog(){
+  const box=document.getElementById('opBody');if(!box)return;
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.op_tail)){box.textContent=LANG==='vi'?'Mở bằng app (hoặc web LAN) mới đọc được log.':'Open via the app (or LAN web) to read the log.';return;}
+  let lines=[];
+  try{lines=await a.op_tail(400)||[];}
+  catch(e){box.textContent='Không đọc được log: '+e;return;}
+  if(OP_FILTER==='WARN')lines=lines.filter(l=>l.includes(' WARN')||l.includes(' ERROR '));
+  if(OP_FILTER==='ERROR')lines=lines.filter(l=>l.includes(' ERROR '));
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  box.innerHTML=lines.map(l=>{
+    const c=l.includes(' ERROR ')?'le':l.includes(' WARN')?'lw':'';
+    return `<span class="${c}">${esc(l.trimEnd())}</span>`;
+  }).join('\n')||(LANG==='vi'?'(log trống)':'(empty)');
+  box.scrollTop=box.scrollHeight;   // dòng mới nhất nằm cuối — cuộn xuống sẵn
+}
 function renderAudit(){const body=document.getElementById('auditBody');if(!body)return;const a=loadAudit();
   if(!a.length){body.innerHTML=`<div class="audit"><div class="empty">${LANG==='vi'?'Chưa có thay đổi nào được ghi.':'No changes logged yet.'}</div></div>`;return;}
   const z=n=>String(n).padStart(2,'0');const fmt=ts=>{const d=new Date(ts);return `${z(d.getDate())}/${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`;};
