@@ -503,6 +503,9 @@ def start_webserver(api):
                 self._json({"port": api._link.cfg.get("port"), "baud": api._link.cfg.get("baud")})
             elif self.path == "/api/oplog":
                 self._json({"lines": api.op_tail(400)})
+            elif self.path == "/api/ports":
+                # danh sách cổng COM CỦA MÁY TÍNH chạy app — web chọn từ xa được
+                self._json({"ports": otl_link.list_serial_ports()})
             elif self.path == "/api/state":
                 # web mượn "linh hồn" app (tài khoản/theme/…) — LAN nội bộ,
                 # PIN trong đó là hash PBKDF2 chứ không phải số trần
@@ -577,6 +580,9 @@ def start_webserver(api):
                 self._json(api.prof_save(req.get("profiles") or []))
             elif self.path == "/api/uievent":
                 self._json(api.ui_event(req))
+            elif self.path == "/api/set_config":
+                # web đổi cổng/baud/slave từ xa (token) — áp thẳng vào cầu Modbus
+                self._json({"cfg": api.link_set_config(req.get("cfg") or {})})
             elif self.path == "/api/write":
                 self._json(api.link_write(req.get("name"), req.get("value")))
             elif self.path == "/api/new_batch":

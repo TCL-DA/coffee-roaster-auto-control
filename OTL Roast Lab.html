@@ -2398,7 +2398,10 @@ if(window._OTL_WEBCLONE){
     ui_event:async evt=>{if(!_wtok.v)return{ok:false};
       return _wapi('uievent',Object.assign({},evt,{token:_wtok.v}));},
     op_tail:async n=>{const r=await _wapi('oplog');return (r&&r.lines)||[];},
-    link_set_config:async c=>c, link_ports:async()=>[],
+    /* cổng COM: danh sách + đổi cấu hình đều là CỦA MÁY TÍNH chạy app — web
+       thao tác từ xa qua server (đổi cấu hình cần PIN) */
+    link_ports:async()=>{const r=await _wapi('ports');return (r&&r.ports)||[];},
+    link_set_config:async c=>{const r=await _wcmd('set_config',{cfg:c});return (r&&r.cfg)||c;},
     /* hồ sơ: web đọc/ghi CHUNG profiles.json với app qua server — đồng bộ thật */
     prof_load:async()=>{const r=await _wapi('profiles');return (r&&r.profiles)||null;},
     prof_save:async p=>_wcmd('profiles',{profiles:p}),
@@ -2478,11 +2481,6 @@ function showLinkInfo(){
     toast(DS.mode==='tuongthich'
       ? `${DS.port} · máy chưa nạp PC_Link → RoR, đồng hồ và mốc rang do app tự tính`
       : `${DS.port} · dữ liệu lấy thẳng từ firmware`, true);
-  }
-  if(window._WEBSHIM){                         // web: chỉ báo trạng thái, không mở hộp COM
-    toast(DS.state==='connected'?`Máy nối qua ${DS.port} (trên máy tính chạy app)`:
-      'Máy tính chạy app chưa nối máy rang',DS.state==='connected');
-    return;
   }
   ppRefresh().then(()=>{
     if(DS.state==='connected')ppSet(`Đang dùng ${DS.port}. Chạm cổng khác nếu muốn đổi.`,'ok');
@@ -2776,8 +2774,8 @@ function ppSkip(){ ppShow(false); toast('Chưa nối máy — vào Cài đặt �
 /* Cổng vào chính: gọi ngay sau đăng nhập */
 async function portGateAfterLogin(){
   if(!dsBridge())return;                       // mở HTML trong trình duyệt → bỏ qua
-  if(window._WEBSHIM)return;                   // web clone: cổng COM là chuyện của MÁY TÍNH
-                                               // chạy app — dữ liệu tự về qua SSE, khỏi hỏi
+  // web clone: vẫn cho chọn cổng — danh sách là CỔNG CỦA MÁY TÍNH chạy app,
+  // đổi cấu hình đi qua server (cần PIN). Máy đang nối thì im lặng như thường.
   let cfg=null, ports=[];
   try{
     cfg=await window.pywebview.api.link_config();
