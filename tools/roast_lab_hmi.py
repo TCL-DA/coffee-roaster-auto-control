@@ -25,6 +25,15 @@ import webview
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import otl_link                                  # noqa: E402  (cầu Modbus tới máy rang)
 
+# Console của exe (PyInstaller) mặc định codec cp1252 → print tiếng Việt là
+# UnicodeEncodeError chết app ngay lúc mở. Ép UTF-8, lỗi thì thay ? — không chết.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        if _s:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 APP_TITLE = "OTL Roast Lab — HMI"
 APP_BG = "#0b0e13"          # nền khớp theme tối của HTML, tránh chớp trắng lúc mở
 HTML_NAME = "OTL Roast Lab.html"
