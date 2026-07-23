@@ -3587,7 +3587,15 @@ let session=null;
 const _enc=new TextEncoder();
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
 const unhex=h=>new Uint8Array(h.match(/.{2}/g).map(x=>parseInt(x,16)));
-async function pbkdf2(pin,saltHex){const k=await crypto.subtle.importKey('raw',_enc.encode(pin),'PBKDF2',false,['deriveBits']);
+async function pbkdf2(pin,saltHex){
+  // Web LAN (http://192.168…): trình duyệt CẤM crypto.subtle ngoài HTTPS/localhost
+  // → nhờ Python băm giùm (hashlib.pbkdf2_hmac, cùng tham số, cùng kết quả)
+  if(!(window.crypto&&crypto.subtle)){
+    const r=await fetch('/api/pbkdf2',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pin,salt:saltHex})}).then(x=>x.json()).catch(()=>({}));
+    return r.hash||'';
+  }
+  const k=await crypto.subtle.importKey('raw',_enc.encode(pin),'PBKDF2',false,['deriveBits']);
   return hex(await crypto.subtle.deriveBits({name:'PBKDF2',salt:unhex(saltHex),iterations:150000,hash:'SHA-256'},k,256));}
 function loadUsers(){try{return JSON.parse(localStorage.getItem(LS_USERS))||null;}catch(e){return null;}}
 function saveUsers(u){localStorage.setItem(LS_USERS,JSON.stringify(u));}

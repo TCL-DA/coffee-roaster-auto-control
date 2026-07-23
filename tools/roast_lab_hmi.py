@@ -543,6 +543,20 @@ def start_webserver(api):
             except Exception:
                 self._json({"ok": False, "err": "bad json"}, 400); return
 
+            if self.path == "/api/pbkdf2":
+                # Băm PIN giùm web LAN (trình duyệt cấm crypto.subtle ngoài HTTPS).
+                # Chỉ băm — không lộ hash lưu trữ; đứng TRƯỚC cổng token vì đây là
+                # bước để đăng nhập.
+                import hashlib
+                try:
+                    h = hashlib.pbkdf2_hmac(
+                        "sha256", str(req.get("pin", "")).encode(),
+                        bytes.fromhex(str(req.get("salt", ""))), 150000).hex()
+                    self._json({"hash": h})
+                except Exception as e:
+                    self._json({"hash": "", "err": str(e)}, 400)
+                return
+
             if self.path == "/api/weblogin":
                 if str(req.get("pin", "")) == str(api.web_cfg.get("pin", "1108")):
                     tok = secrets.token_hex(16)
