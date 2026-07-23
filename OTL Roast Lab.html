@@ -81,8 +81,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
   background:var(--accent);color:var(--accent-ink);font-family:var(--f-num);font-weight:700;font-size:var(--fs-30)}
 .brand .nm{font-family:var(--f-num);font-weight:700;font-size:var(--fs-32);line-height:1}
 .brand .nm b{color:var(--accent)}
-.brand .nm small{display:block;font-family:var(--f-ui);font-weight:600;font-size:var(--fs-14);letter-spacing:3px;
-  text-transform:uppercase;color:var(--mute);margin-top:3px}
 #tabnav{display:flex;gap:8px;height:100%;padding:16px 0}
 #tabnav .tab{min-width:140px;height:100%;padding:0 24px;border:0;border-radius:var(--r-md);background:transparent;
   color:var(--dim);font-family:var(--f-ui);font-weight:600;font-size:var(--fs-22);cursor:pointer;
@@ -119,10 +117,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .tbuser .meta{display:flex;flex-direction:column;line-height:1.15}
 .tbuser .meta .u{font-size:var(--fs-20);font-weight:700}
 .tbuser .meta .r{font-size:var(--fs-14);letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
-.iconbtn{width:80px;height:80px;flex:none;border:1px solid var(--hair-2);border-radius:var(--r-lg);background:var(--btn);
-  color:var(--dim);font-family:var(--f-ui);font-weight:700;font-size:var(--fs-22);cursor:pointer;
-  display:inline-flex;align-items:center;justify-content:center;transition:transform .08s,background .15s,color .15s}
-.iconbtn:active{transform:scale(.94)} .iconbtn .ico{font-size:var(--fs-28)} .langbtn b{color:var(--accent)}
 
 /* ══════════ PANES ══════════ */
 #panes{flex:1;min-height:0;position:relative}
@@ -557,22 +551,20 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 .card,.rcard,.mchip,.chartwrap,.modebtn,.bigcard,.utile,.connst,.subnav{box-shadow:var(--elev),var(--edge)}
 .mchip.now{box-shadow:var(--elev),0 0 0 1px var(--accent),0 0 28px color-mix(in srgb,var(--accent) 42%,transparent)}
 .bthero .big{text-shadow:0 0 34px color-mix(in srgb,var(--c-bt) 45%,transparent)}
-.tbtn,.pm,.fpm,.iconbtn,.bigbtn,.padkey,.subnav button,#tabnav .tab,.utile,.mchip,.modebtn,.permchk,.pick,.field .val{transition:transform .16s var(--ease),background .2s var(--ease),color .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease)}
-.tbtn:active,.bigbtn:active,.padkey:active,.iconbtn:active,.pm:active,.utile:active{transform:scale(.97)}
+.tbtn,.pm,.fpm,.bigbtn,.padkey,.subnav button,#tabnav .tab,.utile,.mchip,.modebtn,.permchk,.pick,.field .val{transition:transform .16s var(--ease),background .2s var(--ease),color .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease)}
+.tbtn:active,.bigbtn:active,.padkey:active,.pm:active,.utile:active{transform:scale(.97)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 
 /* ── Icon OTL (SVG sprite, tô theo currentColor) ── */
 .ot{fill:currentColor;flex:none}
 .tbtn svg.ti{width:40px;height:40px}
 .subnav svg.ic{width:30px;height:30px;margin:0}
-.iconbtn svg.ico{width:30px;height:30px}
 
 /* ── Logo OTL thật (giữ màu thương hiệu đỏ/xanh) ── */
 .brandmark{width:62px;height:50px;flex:none}
 .loginmark{width:136px;height:110px;display:block;margin:0 auto 16px}
 
-/* ══════════ BỘ CHỌN THEME (topbar) ══════════ */
-.themewrap{position:relative}
+/* ══════════ BỘ CHỌN THEME — nằm trong menu người dùng (usermenu) ══════════ */
 .thememenu{position:absolute;top:calc(100% + 12px);right:0;z-index:200;background:var(--panel);
   border:1px solid var(--hair-2);border-radius:var(--r-lg);box-shadow:var(--elev);padding:18px;width:330px;
   display:none;flex-direction:column;gap:12px}
@@ -867,12 +859,6 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
 /* Chấm PIN: đổ đầy có nhịp */
 .pindots i{transition:transform .12s,background .12s,border-color .12s}
 .pindots i.f{box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%,transparent);transform:scale(1.12)}
-/* Chip IP web LAN trên topbar — chạm để copy */
-.ipchip{margin-left:12px;height:56px;padding:0 22px;display:flex;align-items:center;gap:9px;
-  background:color-mix(in srgb,var(--c-bt) 10%,transparent);
-  border:1px solid color-mix(in srgb,var(--c-bt) 35%,transparent);border-radius:var(--r-xl);
-  color:var(--c-bt);font-size:var(--fs-20);font-weight:600;cursor:pointer;font-family:var(--f-num)}
-.ipchip:active{transform:scale(.96);background:color-mix(in srgb,var(--c-bt) 22%,transparent)}
 </style>
 </head>
 <body>
@@ -2244,7 +2230,6 @@ function setCustomAccent(h){
   document.documentElement.style.setProperty('--accent-ink','#ffffff');
   localStorage.setItem('otl_accent','custom');localStorage.setItem('otl_hue',h);
   syncThemeMenu();drawChart();}
-function toggleThemeMenu(e){e.stopPropagation();document.getElementById('thememenu').classList.toggle('on');syncThemeMenu();}
 function toggleUserMenu(e){e.stopPropagation();const m=document.getElementById('usermenu');
   m.classList.toggle('on');if(m.classList.contains('on'))syncThemeMenu();}
 function syncThemeMenu(){

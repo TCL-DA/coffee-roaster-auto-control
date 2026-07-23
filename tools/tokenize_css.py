@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Chuẩn hóa design token cho OTL Roast Lab.html — chạy 1 lần.
+"""Chuẩn hóa design token cho OTL Roast Lab.html — ĐÃ CHẠY XONG 2026-07-23.
+GIỮ LẠI LÀM TƯ LIỆU. Chạy lại sẽ fail assert (an toàn) vì :root đã đổi;
+chỉ chạy lại sau khi restore Temp/OTL Roast Lab.pre-token.bak.html.
+Đường dẫn SRC hardcode theo máy này — máy khác phải sửa SRC trước.
 Chỉ biến đổi CSS bên trong các khối <style>…</style>; không đụng JS/inline/canvas.
 - font-size: 32 cỡ → thang 20 bậc (--fs-*)  [gập xuống, lệch tối đa 2px]
 - border-radius: 16 giá trị → 6 token (--r-*)

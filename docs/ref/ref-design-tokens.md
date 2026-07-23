@@ -23,6 +23,9 @@
 
 Alias cũ vẫn chạy (đừng dùng cho code mới): `--c-ok→--ok`, `--c-warn→--danger`, `--c-try→--warn`.
 
+> ⚠️ **Bẫy alias với JS canvas:** `css('--c-ok')` trả về chuỗi `"var(--ok)"` chứ KHÔNG phải mã màu
+> (getPropertyValue không resolve var lồng). Canvas cần màu trạng thái thì đọc thẳng `css('--ok')`.
+
 Màu **dữ liệu chart** giữ riêng, không gộp vào trạng thái: `--c-bt --c-et --c-abt --c-burner --c-ror --c-gas` (JS canvas đọc qua `css('--c-…')`).
 
 ## Thang cỡ chữ `--fs-*` (nền stage 2560×1440)
