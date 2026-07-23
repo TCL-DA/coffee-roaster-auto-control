@@ -360,7 +360,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .opseg button,.opref{height:56px;padding:0 22px;border:1px solid var(--hair-2);border-radius:var(--r-sm);
   background:var(--btn);color:var(--dim);font-family:var(--f-ui);font-size:var(--fs-18);font-weight:600;cursor:pointer}
 .opseg button.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);border-color:var(--accent)}
-.opref{margin-left:auto}
+.opref{margin-left:auto} .opref.nom{margin-left:0}
 .oplogbox{background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md);
   padding:16px 20px;height:960px;overflow:auto;font-family:var(--f-mono);font-size:var(--fs-16);
   line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--txt)}
@@ -1796,6 +1796,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                     <button data-f="ERROR" onclick="opFilter('ERROR')" data-i18n="oplog.err">Lỗi</button>
                   </div>
                   <button class="opref" onclick="renderOpLog()">⟳ <span data-i18n="oplog.refresh">Làm mới</span></button>
+                  <button class="opref nom" onclick="copyOpLog()">⧉ <span data-i18n="oplog.copy">Copy</span></button>
                 </div>
                 <div class="oplogbox num" id="opBody">—</div>
               </div>
@@ -2272,7 +2273,7 @@ document.addEventListener('click',()=>{
 /* ════════ I18N ════════ */
 const I18N={vi:{
  'brand.sub':'Máy rang cà phê','um.lang':'Ngôn ngữ','um.web':'Web điện thoại','um.logout':'Đăng xuất','tab.tongquan':'Tổng quan',
- 'sub.oplog':'Log kỹ thuật','oplog.lead':'Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.','oplog.all':'Tất cả','oplog.warn':'Cảnh báo','oplog.err':'Lỗi','oplog.refresh':'Làm mới','um.exit':'Thoát ứng dụng','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.caidat':'Cài đặt',
+ 'sub.oplog':'Log kỹ thuật','oplog.lead':'Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.','oplog.all':'Tất cả','oplog.warn':'Cảnh báo','oplog.err':'Lỗi','oplog.refresh':'Làm mới','oplog.copy':'Copy','um.exit':'Thoát ứng dụng','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.caidat':'Cài đặt',
  'user.guest':'Khách','user.locked':'Chưa đăng nhập',
  'ph.tongquan':'Bảng tổng quan mẻ đang rang, trạng thái thiết bị, cảnh báo.','ph.hoso':'Nạp, xem và so sánh hồ sơ rang.','ph.lichsu':'Danh sách mẻ đã rang, xuất CSV.',
  'rang.mode':'Chế độ','rang.time':'Thời gian','phase.dry':'Sấy','phase.mai':'Maillard','phase.dev':'Phát triển',
@@ -2291,7 +2292,7 @@ const I18N={vi:{
  'btn.cancel':'Hủy','btn.apply':'Áp dụng','btn.save':'Lưu','btn.ok':'OK'},
  en:{
  'brand.sub':'Coffee Roaster HMI','um.lang':'Language','um.web':'Phone web','um.logout':'Sign out','tab.tongquan':'Overview',
- 'sub.oplog':'Tech log','oplog.lead':'Operation timeline: machine commands + ACK latency, relay confirms, link, batches, app errors.','oplog.all':'All','oplog.warn':'Warnings','oplog.err':'Errors','oplog.refresh':'Refresh','um.exit':'Exit app','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.caidat':'Settings',
+ 'sub.oplog':'Tech log','oplog.lead':'Operation timeline: machine commands + ACK latency, relay confirms, link, batches, app errors.','oplog.all':'All','oplog.warn':'Warnings','oplog.err':'Errors','oplog.refresh':'Refresh','oplog.copy':'Copy','um.exit':'Exit app','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.caidat':'Settings',
  'user.guest':'Guest','user.locked':'Not signed in',
  'ph.tongquan':'Live batch overview, device status, alarms.','ph.hoso':'Load, view and compare roast profiles.','ph.lichsu':'List of past roasts, CSV export.',
  'rang.mode':'Mode','rang.time':'Time','phase.dry':'Drying','phase.mai':'Maillard','phase.dev':'Development',
@@ -3810,7 +3811,21 @@ function accDel(i){const users=loadUsers();const s=users.list[i];if(s.role==='ma
 
 /* ── nhật ký ── */
 /* ── Viewer Log kỹ thuật: đọc đuôi app.log qua bridge, lọc mức, mới nhất cuối ── */
-let OP_FILTER='ALL';
+let OP_FILTER='ALL', OP_LINES=[];   // OP_LINES = bản ĐANG XEM (đã lọc) — copy đúng cái này
+function copyOpLog(){
+  const txt=OP_LINES.map(l=>l.trimEnd()).join('\n');
+  if(!txt){toast(LANG==='vi'?'Log trống':'Log is empty');return;}
+  const done=()=>toast(LANG==='vi'?`Đã copy ${OP_LINES.length} dòng log`:`Copied ${OP_LINES.length} log lines`,true);
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(txt).then(done).catch(()=>copyOpFallback(txt,done));
+  else copyOpFallback(txt,done);
+}
+function copyOpFallback(txt,done){
+  const t=document.createElement('textarea');t.value=txt;
+  document.body.appendChild(t);t.select();
+  try{document.execCommand('copy');done();}catch(e){toast('Không copy được');}
+  t.remove();
+}
 function opFilter(f){OP_FILTER=f;
   document.querySelectorAll('#opSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f===f));
   renderOpLog();}
@@ -3823,6 +3838,7 @@ async function renderOpLog(){
   catch(e){box.textContent='Không đọc được log: '+e;return;}
   if(OP_FILTER==='WARN')lines=lines.filter(l=>l.includes(' WARN')||l.includes(' ERROR '));
   if(OP_FILTER==='ERROR')lines=lines.filter(l=>l.includes(' ERROR '));
+  OP_LINES=lines;
   const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
   box.innerHTML=lines.map(l=>{
     const c=l.includes(' ERROR ')?'le':l.includes(' WARN')?'lw':'';
