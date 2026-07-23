@@ -1410,6 +1410,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         </div>
         <div class="umsep"></div>
         <button class="umrow danger" onclick="document.getElementById('usermenu').classList.remove('on');logout()"><span class="k"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> <span data-i18n="um.logout">Đăng xuất</span></span></button>
+        <button class="umrow danger" id="umExit" style="display:none" onclick="appExit(this)"><span class="k">⏻ <span id="umExitLbl" data-i18n="um.exit">Thoát ứng dụng</span></span></button>
       </div>
       </div>
     </header>
@@ -2271,7 +2272,7 @@ document.addEventListener('click',()=>{
 /* ════════ I18N ════════ */
 const I18N={vi:{
  'brand.sub':'Máy rang cà phê','um.lang':'Ngôn ngữ','um.web':'Web điện thoại','um.logout':'Đăng xuất','tab.tongquan':'Tổng quan',
- 'sub.oplog':'Log kỹ thuật','oplog.lead':'Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.','oplog.all':'Tất cả','oplog.warn':'Cảnh báo','oplog.err':'Lỗi','oplog.refresh':'Làm mới','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.caidat':'Cài đặt',
+ 'sub.oplog':'Log kỹ thuật','oplog.lead':'Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.','oplog.all':'Tất cả','oplog.warn':'Cảnh báo','oplog.err':'Lỗi','oplog.refresh':'Làm mới','um.exit':'Thoát ứng dụng','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.caidat':'Cài đặt',
  'user.guest':'Khách','user.locked':'Chưa đăng nhập',
  'ph.tongquan':'Bảng tổng quan mẻ đang rang, trạng thái thiết bị, cảnh báo.','ph.hoso':'Nạp, xem và so sánh hồ sơ rang.','ph.lichsu':'Danh sách mẻ đã rang, xuất CSV.',
  'rang.mode':'Chế độ','rang.time':'Thời gian','phase.dry':'Sấy','phase.mai':'Maillard','phase.dev':'Phát triển',
@@ -2290,7 +2291,7 @@ const I18N={vi:{
  'btn.cancel':'Hủy','btn.apply':'Áp dụng','btn.save':'Lưu','btn.ok':'OK'},
  en:{
  'brand.sub':'Coffee Roaster HMI','um.lang':'Language','um.web':'Phone web','um.logout':'Sign out','tab.tongquan':'Overview',
- 'sub.oplog':'Tech log','oplog.lead':'Operation timeline: machine commands + ACK latency, relay confirms, link, batches, app errors.','oplog.all':'All','oplog.warn':'Warnings','oplog.err':'Errors','oplog.refresh':'Refresh','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.caidat':'Settings',
+ 'sub.oplog':'Tech log','oplog.lead':'Operation timeline: machine commands + ACK latency, relay confirms, link, batches, app errors.','oplog.all':'All','oplog.warn':'Warnings','oplog.err':'Errors','oplog.refresh':'Refresh','um.exit':'Exit app','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.caidat':'Settings',
  'user.guest':'Guest','user.locked':'Not signed in',
  'ph.tongquan':'Live batch overview, device status, alarms.','ph.hoso':'Load, view and compare roast profiles.','ph.lichsu':'List of past roasts, CSV export.',
  'rang.mode':'Mode','rang.time':'Time','phase.dry':'Drying','phase.mai':'Maillard','phase.dev':'Development',
@@ -2399,6 +2400,27 @@ function opLog(tag,msg,lv){
     if(a&&a.op_log)a.op_log(lv||'INFO',tag,msg);
   }catch(e){}
 }
+/* ── Thoát app (kiosk cảm ứng không có Alt+F4) — xác nhận INLINE 2 chạm,
+   không popup. Chỉ hiện khi chạy trong vỏ pywebview; web/điện thoại không có. ── */
+let _exitArm=0;
+function appExit(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.app_exit))return;
+  const running=R.phase==='RUNNING', lbl=document.getElementById('umExitLbl');
+  if(Date.now()-_exitArm>2500){                       // chạm 1: đổi chữ tại chỗ chờ chạm 2
+    _exitArm=Date.now();
+    if(lbl)lbl.textContent=running?(LANG==='vi'?'ĐANG RANG! Bấm lần nữa':'ROASTING! Tap again')
+                                  :(LANG==='vi'?'Bấm lần nữa để thoát':'Tap again to exit');
+    setTimeout(()=>{if(lbl)lbl.textContent=I18N[LANG]['um.exit']||'Thoát ứng dụng';},2500);
+    return;
+  }
+  opLog('APP','thoát app theo lệnh người dùng'+(running?' (ĐANG RANG)':''),running?'WARN':'INFO');
+  a.app_exit();
+}
+window.addEventListener('pywebviewready',()=>{        // vỏ thật mới bắn event này
+  const a=window.pywebview&&window.pywebview.api;
+  if(a&&a.app_exit){const b=document.getElementById('umExit');if(b)b.style.display='';}
+});
 /* Lỗi JS bất kỳ → vào log kèm file:dòng — app đơ là biết vì đâu */
 window.addEventListener('error',e=>{
   opLog('JS',`${e.message} @${(e.filename||'').split('/').pop()}:${e.lineno}`,'ERROR');});

@@ -102,6 +102,13 @@ class Api:
         if self._window:
             self._window.toggle_fullscreen()
 
+    def app_exit(self):
+        """Nút Thoát trong menu người dùng — kiosk cảm ứng không có Alt+F4."""
+        log.info("[APP] thoát theo lệnh người dùng")
+        if self._window:
+            self._window.destroy()
+        return True
+
     def link_snapshot(self):
         """Gói dữ liệu mới nhất + trạng thái kết nối. JS gọi mỗi giây."""
         s = self._link.snapshot()
