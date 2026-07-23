@@ -2479,6 +2479,11 @@ function showLinkInfo(){
       ? `${DS.port} · máy chưa nạp PC_Link → RoR, đồng hồ và mốc rang do app tự tính`
       : `${DS.port} · dữ liệu lấy thẳng từ firmware`, true);
   }
+  if(window._WEBSHIM){                         // web: chỉ báo trạng thái, không mở hộp COM
+    toast(DS.state==='connected'?`Máy nối qua ${DS.port} (trên máy tính chạy app)`:
+      'Máy tính chạy app chưa nối máy rang',DS.state==='connected');
+    return;
+  }
   ppRefresh().then(()=>{
     if(DS.state==='connected')ppSet(`Đang dùng ${DS.port}. Chạm cổng khác nếu muốn đổi.`,'ok');
     ppShow(true);
@@ -2771,6 +2776,8 @@ function ppSkip(){ ppShow(false); toast('Chưa nối máy — vào Cài đặt �
 /* Cổng vào chính: gọi ngay sau đăng nhập */
 async function portGateAfterLogin(){
   if(!dsBridge())return;                       // mở HTML trong trình duyệt → bỏ qua
+  if(window._WEBSHIM)return;                   // web clone: cổng COM là chuyện của MÁY TÍNH
+                                               // chạy app — dữ liệu tự về qua SSE, khỏi hỏi
   let cfg=null, ports=[];
   try{
     cfg=await window.pywebview.api.link_config();
