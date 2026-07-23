@@ -2378,10 +2378,15 @@ if(location.protocol==='http:'||location.protocol==='https:'){
     link_config:()=>_wapi('config'),
     /* mấy việc thuộc về MÁY TÍNH (chọn cổng COM, thư mục hồ sơ, xuất file) —
        trên điện thoại trả im lặng, giao diện tự ẩn/vô hiệu phần đó */
-    op_log:(lv,tag,msg)=>_wcmd('oplog',{level:lv,tag,msg}),
+    /* op_log trên web: CÓ token mới gửi, không thì nuốt im — tuyệt đối không
+       để dòng log (lỗi JS, thao tác) bật hộp hỏi PIN giữa chừng */
+    op_log:async(lv,tag,msg)=>{if(!_wtok.v)return{ok:false};
+      return _wapi('oplog',{level:lv,tag,msg,token:_wtok.v});},
     op_tail:async n=>{const r=await _wapi('oplog');return (r&&r.lines)||[];},
     link_set_config:async c=>c, link_ports:async()=>[],
-    prof_load:async()=>null, prof_save:async()=>({ok:false,err:'chưa chọn thư mục'}),
+    /* hồ sơ: web đọc/ghi CHUNG profiles.json với app qua server — đồng bộ thật */
+    prof_load:async()=>{const r=await _wapi('profiles');return (r&&r.profiles)||null;},
+    prof_save:async p=>_wcmd('profiles',{profiles:p}),
     prof_write_files:async()=>({ok:false,err:'web'}), prof_export_pdf:async()=>({ok:false,err:'web'}),
     prof_dir:async()=>'', prof_dir_pick:async()=>'', toggle_fullscreen:()=>{},
     web_info:async()=>({on:false})   /* điện thoại khỏi hiện chip IP của chính nó */
@@ -2700,13 +2705,14 @@ async function machCmd(name,value){
   if(!dsBridge()){toast('Chế độ mô phỏng — chưa nối máy');return false;}
   if(DS.state!=='connected'){toast('Chưa nối được máy — không gửi lệnh được');
     opLog('CMD',`${lbl} = ${v} — KHÔNG GỬI (chưa nối máy)`,'WARN');return false;}
-  const t0=performance.now();                    // đo độ trễ app → máy ACK Modbus
+  const t0=performance.now();   // thời gian XẾP LỆNH vào cầu (cầu được đánh thức phát ngay);
+                                // xác nhận THẬT từ máy xem dòng [MÁY] phía sau
   try{
     const r=await window.pywebview.api.link_write(name,v);
     const ms=Math.round(performance.now()-t0);
     if(!r||!r.ok){toast((r&&r.err)||'Máy từ chối lệnh');
-      opLog('CMD',`${lbl} = ${v} — máy TỪ CHỐI sau ${ms}ms (${(r&&r.err)||'?'})`,'WARN');return false;}
-    opLog('CMD',`${lbl} = ${v} — máy ACK ${ms}ms`);
+      opLog('CMD',`${lbl} = ${v} — cầu nối từ chối sau ${ms}ms (${(r&&r.err)||'?'})`,'WARN');return false;}
+    opLog('CMD',`${lbl} = ${v} — xếp lệnh ${ms}ms`);
     toast(`Đã gửi: ${CMD_LBL[name]||name}`+(value!==undefined&&value!==1?` = ${value}`:''),true);
     return true;
   }catch(e){toast('Lỗi gửi lệnh: '+e);

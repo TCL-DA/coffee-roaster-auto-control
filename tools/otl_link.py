@@ -155,6 +155,7 @@ class RoasterLink:
         self._lock = threading.Lock()
         self._pending: list[tuple[int, list[int]]] = []
         self._stop = threading.Event()
+        self._kick = threading.Event()      # write() đánh thức vòng poll — lệnh phát ngay, khỏi đợi hết chu kỳ
         self._thread: threading.Thread | None = None
         self._snap: dict | None = None      # gói dữ liệu mới nhất đã quy đổi
         self._snap_ts = 0.0
@@ -243,6 +244,7 @@ class RoasterLink:
 
         with self._lock:
             self._pending.append((addr, [v]))
+        self._kick.set()                    # dậy ngay — trước đây lệnh nằm đợi tới 0.5s
         return {"ok": True, "name": name, "value": v, "reg": addr, "kind": kind,
                 "mode": self._mode}
 
@@ -450,7 +452,9 @@ class RoasterLink:
                     self._close()
                     self._mode = None        # máy có thể đã được nạp firmware mới
                     fails = 0
-            self._stop.wait(period)
+            # Ngủ hết chu kỳ HOẶC dậy sớm khi write() gõ chuông (lệnh mới cần phát ngay)
+            if self._kick.wait(period):
+                self._kick.clear()
 
 
 # ── CLI kiểm tra tay ────────────────────────────────────────────────────────

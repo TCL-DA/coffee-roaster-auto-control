@@ -435,6 +435,10 @@ def start_webserver(api):
                 self._json({"port": api._link.cfg.get("port"), "baud": api._link.cfg.get("baud")})
             elif self.path == "/api/oplog":
                 self._json({"lines": api.op_tail(400)})
+            elif self.path == "/api/profiles":
+                # web đọc CHUNG profiles.json với app — Legion/điện thoại thấy đúng
+                # hồ sơ thật, không xài bản localStorage riêng của trình duyệt
+                self._json({"profiles": api.prof_load()})
             else:
                 self._json({"err": "not found"}, 404)
 
@@ -461,6 +465,8 @@ def start_webserver(api):
             if self.path == "/api/oplog":
                 self._json({"ok": api.op_log(req.get("level"), req.get("tag") or "WEB",
                                              req.get("msg") or "")})
+            elif self.path == "/api/profiles":
+                self._json(api.prof_save(req.get("profiles") or []))
             elif self.path == "/api/write":
                 self._json(api.link_write(req.get("name"), req.get("value")))
             elif self.path == "/api/new_batch":
