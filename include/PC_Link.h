@@ -288,36 +288,57 @@ void handle_PC_Link(){
     }
 
     // — Nút ảo: ghi coil HMI (charge/drop/escape kèm timer tự đóng + buzzer) —
-    if (pclChanged(5, v))
+    // TỐI ƯU ĐỘ TRỄ (2026-07-23): set *_BTN_R/_CP NGAY khi nhận lệnh app — relay
+    // (IOConfig.h, lái theo MỨC mỗi vòng loop) đóng trong vài chục ms thay vì đợi
+    // vòng ghi-HMI-rồi-đọc-lại (~0.3–0.7s). Cùng pattern với setpoint gas/gió ở
+    // trên. Vẫn ghi HMI để hiển thị; nếu ghi HMI hụt, read-back Modbus_Master kéo
+    // *_BTN_R về sự thật của HMI như cũ (máy là chân lý).
+    // KHÔNG áp cho DRUM_FAN/MIXER — relay ngoài (nodeIORelay) đóng theo CẠNH đổi
+    // *_R_CP ở Modbus_Master.h:497-511, set CP trước là NUỐT mất cú đóng relay.
+    // KHÔNG áp cho START (AUTO) — vào state machine rang, đi đường chuẩn cho chắc.
+    if (pclChanged(5, v)) {
+        START_GAS_BTN_R = v; START_GAS_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, v);
+    }
     if (pclChanged(6, v)) {
+        CHARGE_BTN_R = v; CHARGE_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(CHARGE_BTN_W - 1, v);
         chargeTimerEn = 1; buzzerTimerEn = 1;
     }
     if (pclChanged(7, v)) {
+        DROP_BTN_R = v; DROP_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(DROP_BTN_W - 1, v);
         dropTimerEn = 1; buzzerTimerEn = 1;
     }
     if (pclChanged(8, v)) {
+        ESCAPE_BTN_R = v; ESCAPE_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(ESCAPE_BTN_W - 1, v);
         escapeTimerEn = 1; buzzerTimerEn = 1;
     }
-    if (pclChanged(9, v))
+    if (pclChanged(9, v)) {
+        COOLING_BTN_R = v; COOLING_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(COOLING_BTN_W - 1, v);
+    }
     if (pclChanged(10, v))
         nodeHMI.writeSingleRegister(START_BTN_W - 1, v);
 
     // — Thiết bị phụ: mức BẬT/TẮT thuần, ghi coil HMI, relay theo IOConfig.h —
     if (pclChanged(12, v))
-        nodeHMI.writeSingleRegister(DRUM_FAN_BTN_W - 1, v);
+        nodeHMI.writeSingleRegister(DRUM_FAN_BTN_W - 1, v);   // relay CẠNH — đừng set CP
     if (pclChanged(13, v))
-        nodeHMI.writeSingleRegister(MIXER_BTN_W - 1, v);
-    if (pclChanged(14, v))
+        nodeHMI.writeSingleRegister(MIXER_BTN_W - 1, v);      // relay CẠNH — đừng set CP
+    if (pclChanged(14, v)) {
+        AB_BTN_R = v; AB_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(AB_BTN_W - 1, v);
-    if (pclChanged(15, v))
+    }
+    if (pclChanged(15, v)) {
+        FEEDER_BTN_R = v; FEEDER_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(FEEDER_BTN_W - 1, v);
-    if (pclChanged(16, v))
+    }
+    if (pclChanged(16, v)) {
+        DESTONER_BTN_R = v; DESTONER_BTN_R_CP = v;
         nodeHMI.writeSingleRegister(DESTONER_BTN_W - 1, v);
+    }
 
     // — RANG AUTO TỪ APP —
     // Chọn profile SD (slot 1-30): làm đúng việc handler HMI làm (Modbus_Master.h:564)

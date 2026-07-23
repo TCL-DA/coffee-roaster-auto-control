@@ -56,7 +56,7 @@ DEFAULT_CFG = {
     "port": "",
     "baud": pc_link_map.BAUD_DEFAULT,    # đổi nếu HMI set modbusBaud_R
     "slave": pc_link_map.SLAVE_DEFAULT,  # đổi nếu HMI set modbusID_R
-    "poll_hz": 4,   # 250ms/vòng — vừa sức 9600 baud, dữ liệu tươi gấp đôi bản cũ
+    "poll_hz": 8,   # 125ms/vòng — máy chạy 57600 baud, khung đọc ~20ms, dư sức
     "enabled": True,
 }
 
@@ -405,7 +405,7 @@ class RoasterLink:
         return d.snapshot(raw)
 
     def _run(self):
-        period = 1.0 / max(0.5, float(self.cfg.get("poll_hz", 4)))
+        period = 1.0 / max(0.5, float(self.cfg.get("poll_hz", 8)))
         fails = 0
         while not self._stop.is_set():
             if not self.cfg.get("enabled", True) or not self.cfg.get("port"):
