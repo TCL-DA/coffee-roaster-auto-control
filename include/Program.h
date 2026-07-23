@@ -396,12 +396,20 @@ void sdRead(){
     //Lọc data từ profile
     static bool sdProfileLoadOK = false;
     static uint16_t sdProfileLoadFailStatus = STT_SD_LOAD_FAIL;
+    static bool sdShowCleared = false;   // đã xoá LOADING_SHOW/FA_SUC trên HMI chưa
     sdReadStt = true;
     if (SELECT_FILE_R < 1 || SELECT_FILE_R > 30) {
-        nodeHMI.writeSingleRegister(LOADING_SHOW_W-1, 0); delay(5);
-        nodeHMI.writeSingleRegister(FA_SUC_W-1, 0); delay(5);
+        // Change-gate (2026-07-23): trước đây ghi 2 reg này + 2×delay(5) MỖI vòng
+        // loop khi chưa chọn slot (trạng thái thường trực) → ~24ms rác/vòng, đo
+        // được bằng profiler loop. Chỉ ghi 1 lần khi vừa mất slot hợp lệ.
+        if (!sdShowCleared) {
+            nodeHMI.writeSingleRegister(LOADING_SHOW_W-1, 0); delay(1);
+            nodeHMI.writeSingleRegister(FA_SUC_W-1, 0); delay(1);
+            sdShowCleared = true;
+        }
         return;
     }
+    sdShowCleared = false;   // slot hợp lệ — lần sau mất slot sẽ xoá màn hình lại
     //pclSdReadReq: app chọn profile qua PC_Link — không bắt HMI phải đứng màn 6/12/13
     if((SCRNUM_R==6||SCRNUM_R==12||SCRNUM_R==13||pclSdReadReq) && SELECT_FILE_R>0){
         bool isCsv = true;

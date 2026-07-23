@@ -669,7 +669,7 @@ void rwHMI_1(){
         if(enDebug) SerialComputer.println("ERRO HMI DELTA 0 46");
         BUZZ_ON; delay(100); BUZZ_OFF;  delay(100);
     }
-    delay(10);
+    delay(2);   // guard khung HMI @115200 — siết từ 10ms (2026-07-23)
 }
 
 void rwHMI_2(){
@@ -854,7 +854,7 @@ void rwHMI_2(){
         BUZZ_ON; delay(100); BUZZ_OFF;  delay(100);
     }
     flushMachineStatus();  // Flush one status code to HMI (queue-based, non-blocking)
-    delay(10);
+    delay(2);   // guard khung HMI @115200 — siết từ 10ms (2026-07-23)
 }
 
 void readTempBT(){
@@ -874,7 +874,8 @@ void readTempBT(){
         if(enDebug) SerialComputer.println(" ERROR READ BT");
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
-    delay(10);
+    delay(10);  // GIỮ 10ms: đồng hồ nhiệt nhả bus chậm — siết 2ms là khung kế bị nuốt
+                // (đo 2026-07-23: guard 2ms sau ET → BT timeout 2205ms MỌI vòng)
 }
 
 void readTempET(){
@@ -897,7 +898,9 @@ void readTempET(){
         if(enDebug) SerialComputer.println(" ERROR READ ET");
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
-    delay(10);
+    delay(10);  // GIỮ 10ms: sau ET là hỏi BT ngay — đồng hồ nhiệt cần ~10ms nhả bus,
+                // 2ms là BT timeout 2205ms mọi vòng (đo 2026-07-23). Biến tần/HMI
+                // nhanh hơn nên các guard 1-2ms chỗ khác vẫn giữ.
 }
 
 void readAirflowINV(){
@@ -921,7 +924,7 @@ void readAirflowINV(){
 void readWriteDrumINV(){
     uint8_t   result = 0;
     result = nodeDrum.readHoldingRegisters(DRUM_INV_FREQ_READ_REGISTER, 1);// Data trá» Ä‘á»‹a chá»‰ á»Ÿ Ä‘Ã¢y theo parem (Äá»‹a Chá»‰, Chiá»u DÃ i)
-    delay(5);
+    delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)
     if (result == nodeDrum.ku8MBSuccess){
         modbusNoteSuccess(MB_DEV_DRUM);
         Drum_Freq_CP = nodeDrum.getResponseBuffer(0);//
@@ -939,13 +942,13 @@ void readWriteDrumINV(){
         if(enDebug) SerialComputer.println(" ERROR READ DRUM INV");
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
-    delay(5);
+    delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)
 }
 
 void readWriteAirINV_PID(){
     uint8_t   result = 0;
     result = nodeAir.readHoldingRegisters(AIR_INV_PID_0800_REGISTER, 1);// Data trá» Ä‘á»‹a chá»‰ á»Ÿ Ä‘Ã¢y theo parem (Äá»‹a Chá»‰, Chiá»u DÃ i)
-    delay(5);
+    delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)
     if (result == nodeAir.ku8MBSuccess){
         modbusNoteSuccess(MB_DEV_AIR);
         PID_0800_R_CP = nodeAir.getResponseBuffer(0);//
@@ -956,7 +959,7 @@ void readWriteAirINV_PID(){
         if(enDebug) SerialComputer.println(" ERROR READ DRUM INV PID");
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
-    delay(5);
+    delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)
 }
 
 // Äá»c tÃ­n hiá»‡u Ã¡p suáº¥t Ã¢m (underpressure)
@@ -975,7 +978,7 @@ void readUnder(){
     // Äá»c thanh ghi 8716 cá»§a biáº¿n táº§n quáº¡t giÃ³ qua Modbus
     // Thanh ghi 8716 chá»©a giÃ¡ trá»‹ tÃ­n hiá»‡u analog ACI (0~10000)
     result = nodeVacuum.readHoldingRegisters(AIR_INV_ACI_RAW_REGISTER, 1);
-    delay(5);
+    delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)
 
     if (result == nodeVacuum.ku8MBSuccess){
         modbusNoteSuccess(MB_DEV_VACUUM);
@@ -1051,7 +1054,7 @@ void readUnder(){
         if(enDebug) SerialComputer.println(" ERROR READ UNDER");
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
-    delay(5);
+    delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)
 }
 
 void rwIORelayCoil(){

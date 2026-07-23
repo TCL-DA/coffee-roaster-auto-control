@@ -129,8 +129,9 @@ static void pclSafety(){
     }
 }
 
-void handle_PC_Link(){
-    // ── 1) Khối ĐỌC — luôn cập nhật để app vẽ curve ─────────────────────────
+// ── Khối ĐỌC — luôn cập nhật để app vẽ curve ────────────────────────────────
+// Gọi SAU pclWriteBlock() trong handle_PC_Link — xem chú thích ở đó.
+static void pclReadBlock(){
     static uint16_t hb = 0;
     mbs.Hreg(PCL_R_BT,     Temperature_BT);
     mbs.Hreg(PCL_R_ET,     Temperature_ET);
@@ -179,10 +180,10 @@ void handle_PC_Link(){
     if (autoLoader_R == 1)      fl |= PCLF_AUTOLOADER;
     mbs.Hreg(PCL_R_FLAGS, fl);
     mbs.Hreg(PCL_R_HB, ++hb);
+}
 
-    pclSafety();   // 2 chốt an toàn — chạy MỌI vòng, kể cả khi app đã im
-
-    // ── 2) Khối GHI — chỉ khi bật nút PC control ────────────────────────────
+// ── Khối GHI — chỉ khi bật nút PC control ───────────────────────────────────
+static void pclWriteBlock(){
     // Khi TẮT: phản chiếu setpoint máy vào khối ghi + chốt pclLastW để lúc bật
     //          control không bắn lệnh cũ. App vẫn thấy đúng số thực.
     if (PC_CONTROL_BTN_R != 1) {
@@ -373,6 +374,16 @@ void handle_PC_Link(){
         autoLoader_R = v; autoLoader_R_CP = v;
         nodeHMI.writeSingleRegister(autoLoader_W + 2000, v);
     }
+}
+
+void handle_PC_Link(){
+    // ĐẢO THỨ TỰ (2026-07-23, đo bằng profiler vòng loop): áp KHỐI GHI trước
+    // rồi mới dựng KHỐI ĐỌC — lệnh app vừa áp vào *_BTN_R được phản ánh vào
+    // PCL_R_FLAGS ngay trong CÙNG vòng loop. Thứ tự cũ (đọc trước, ghi sau)
+    // bắt app đợi thêm đúng 1 chu kỳ loop mới thấy cờ xác nhận.
+    pclWriteBlock();
+    pclReadBlock();
+    pclSafety();   // 2 chốt an toàn — chạy MỌI vòng, kể cả khi app đã im
 }
 
 #else   // PC_LINK_EN == 0 — vô hiệu, không tốn gì
