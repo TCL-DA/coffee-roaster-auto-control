@@ -609,6 +609,10 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 .umrow.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,transparent)}
 .umrow b{color:var(--accent)}
 .umsep{height:1px;background:var(--hair);margin:2px 0}
+/* nút gạt web LAN trong hàng Web điện thoại */
+.umrow .wtog{margin-left:10px;padding:4px 14px;border-radius:var(--r-sm);font-size:var(--fs-16);
+  font-weight:700;background:var(--btn);border:1px solid var(--hair-2);color:var(--mute);cursor:pointer}
+.umrow .wtog.on{background:color-mix(in srgb,var(--ok) 18%,transparent);border-color:var(--ok);color:var(--ok)}
 /* thememenu nhúng thẳng trong usermenu — không còn là popover riêng */
 .thememenu.inline{position:static;display:flex;border:0;background:transparent;box-shadow:none;padding:0;width:auto}
 #hueRange{width:100%;height:44px;-webkit-appearance:none;appearance:none;border-radius:var(--r-sm);outline:none;cursor:pointer;
@@ -1384,8 +1388,10 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
       <div class="usermenu" id="usermenu" onclick="event.stopPropagation()">
         <button class="umrow" onclick="toggleLang()"><span class="k">🌐 <span data-i18n="um.lang">Ngôn ngữ</span></span><span id="langLbl"><b>VI</b>/EN</span></button>
         <button class="umrow num" id="ipChip" style="display:none" onclick="copyWebIp()"
-          data-help="Địa chỉ để điện thoại cùng WiFi vào xem/điều khiển. Chạm để copy.">
-          <span class="k">📶 <span data-i18n="um.web">Web điện thoại</span></span><span id="ipChipV">—</span></button>
+          data-help="Bật/tắt web LAN bằng nút gạt. Đang bật thì chạm hàng này để copy địa chỉ cho điện thoại.">
+          <span class="k">📶 <span data-i18n="um.web">Web điện thoại</span>
+            <span class="wtog" id="webTog" onclick="webToggle(event)">TẮT</span></span>
+          <span id="ipChipV">—</span></button>
         <div class="umsep"></div>
         <div class="thememenu inline" id="thememenu" onclick="event.stopPropagation()">
           <div class="tmt">Màu chủ đạo</div>
@@ -2665,14 +2671,30 @@ function dsStart(){ dsTick(); setInterval(dsTick,1000);
 let WEB_URL='';
 async function webIpInit(){
   try{
+    if(window._WEBSHIM)return;                 // web clone không có nút gạt của chính nó
     if(!pywebview.api.web_info)return;
-    const w=await pywebview.api.web_info();
-    if(!w||!w.on)return;
-    WEB_URL=`http://${w.ip}:${w.port}`;
-    const c=document.getElementById('ipChip');
-    document.getElementById('ipChipV').textContent=`${w.ip}:${w.port}`;
-    c.style.display='';
+    renderWebRow(await pywebview.api.web_info());
   }catch(e){}
+}
+function renderWebRow(w){
+  const c=document.getElementById('ipChip'),t=document.getElementById('webTog'),
+        v=document.getElementById('ipChipV');
+  if(!c||!w)return;
+  c.style.display='';                          // hàng luôn hiện trong app — kể cả đang tắt
+  const on=!!w.on;
+  if(t){t.textContent=on?(LANG==='vi'?'BẬT':'ON'):(LANG==='vi'?'TẮT':'OFF');t.classList.toggle('on',on);}
+  WEB_URL=on?`http://${w.ip}:${w.port}`:'';
+  if(v)v.textContent=on?`${w.ip}:${w.port}`:(LANG==='vi'?'đang tắt':'off');
+}
+async function webToggle(ev){
+  ev.stopPropagation();                        // đừng để lan ra hàng copy IP
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.web_toggle))return;
+  const r=await a.web_toggle();
+  if(r.err)toast('Không bật được web: '+r.err);
+  else toast(r.on?'Web LAN đã BẬT':'Web LAN đã TẮT — điện thoại/laptop không vào được nữa',r.on);
+  opLog('WEB',r.on?'bật web LAN (nút gạt)':'tắt web LAN (nút gạt)');
+  webIpInit();                                 // vẽ lại hàng theo trạng thái mới
 }
 function copyWebIp(){
   if(!WEB_URL)return;

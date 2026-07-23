@@ -122,6 +122,7 @@ class Api:
         self._window = None
         self._link = otl_link.RoasterLink()
         self._lk_state = None    # trạng thái link lần trước — đổi mới ghi log, khỏi spam
+        self._websrv = None      # server web LAN đang chạy (nút gạt bật/tắt trong menu)
         self.web_cfg = {"bat": True, "cong": 8555, "pin": "1108"}  # [WebServer] trong settings.ini
         self.web_tokens = {}     # token → thời điểm cấp (điện thoại đã nhập đúng PIN web)
 
@@ -222,6 +223,28 @@ class Api:
     def link_begin_batch(self):
         """Thợ bấm Bắt đầu rang — mở đồng hồ mẻ + chấm mốc từ giây này."""
         return self._link.begin_batch()
+
+    def web_toggle(self):
+        """Nút gạt web LAN trong menu người dùng — bật/tắt ngay lúc chạy, lưu INI."""
+        if self._websrv is not None:                      # đang chạy → TẮT
+            srv, self._websrv = self._websrv, None
+            def _stop(s):
+                try:
+                    s.shutdown(); s.server_close()
+                except Exception:
+                    pass
+            threading.Thread(target=_stop, args=(srv,), daemon=True).start()
+            self.web_cfg["bat"] = False
+            self.ini_write()
+            log.info("[WEB] TẮT web LAN theo lệnh người dùng")
+            return {"on": False}
+        self.web_cfg["bat"] = True                        # đang tắt → BẬT
+        self.ini_write()
+        start_webserver(self)
+        ok = self._websrv is not None
+        log.info("[WEB] BẬT web LAN theo lệnh người dùng%s",
+                 "" if ok else " — MỞ CỔNG THẤT BẠI")
+        return {"on": ok, "err": "" if ok else "không mở được cổng — xem Log kỹ thuật"}
 
     def web_info(self):
         """IP LAN + cổng web server — app hiện trên thanh trên, chạm để copy."""
@@ -599,6 +622,7 @@ def start_webserver(api):
         print(f"[web] không mở được cổng {port}: {e}")
         log.warning("[WEB] không mở được cổng %s: %s", port, e)
         return
+    api._websrv = srv            # giữ tham chiếu cho nút gạt bật/tắt
     threading.Thread(target=srv.serve_forever, name="otl-web", daemon=True).start()
     print(f"[web] điện thoại cùng WiFi vào: http://<ip-máy-này>:{port}")
     log.info("[WEB] server LAN chạy — cổng %s", port)
