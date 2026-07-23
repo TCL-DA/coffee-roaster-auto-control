@@ -56,7 +56,7 @@ DEFAULT_CFG = {
     "port": "",
     "baud": pc_link_map.BAUD_DEFAULT,    # đổi nếu HMI set modbusBaud_R
     "slave": pc_link_map.SLAVE_DEFAULT,  # đổi nếu HMI set modbusID_R
-    "poll_hz": 2,
+    "poll_hz": 4,   # 250ms/vòng — vừa sức 9600 baud, dữ liệu tươi gấp đôi bản cũ
     "enabled": True,
 }
 
@@ -159,6 +159,8 @@ class RoasterLink:
         self._thread: threading.Thread | None = None
         self._snap: dict | None = None      # gói dữ liệu mới nhất đã quy đổi
         self._snap_ts = 0.0
+        self._snap_cond = threading.Condition()   # báo "có snapshot mới" cho kênh push
+        self._snap_gen = 0                        # số thứ tự snapshot — client so để biết mới/cũ
         self._state = "off"                 # off|connecting|connected|stalled|error
         self._err = ""
         self._hb = -1
@@ -192,6 +194,15 @@ class RoasterLink:
         self._close()
 
     # ── giao diện cho UI ────────────────────────────────────────────────────
+    def wait_snapshot(self, after_gen: int, timeout: float = 15.0):
+        """Chặn tới khi có snapshot MỚI hơn after_gen (cho kênh push app/web).
+
+        Trả (gen, snapshot()) — snapshot None nếu hết timeout mà chưa có gì mới."""
+        with self._snap_cond:
+            ok = self._snap_cond.wait_for(lambda: self._snap_gen > after_gen, timeout)
+            gen = self._snap_gen
+        return gen, (self.snapshot() if ok else None)
+
     def snapshot(self) -> dict:
         with self._lock:
             snap, ts, state, err = self._snap, self._snap_ts, self._state, self._err
@@ -394,7 +405,7 @@ class RoasterLink:
         return d.snapshot(raw)
 
     def _run(self):
-        period = 1.0 / max(0.5, float(self.cfg.get("poll_hz", 2)))
+        period = 1.0 / max(0.5, float(self.cfg.get("poll_hz", 4)))
         fails = 0
         while not self._stop.is_set():
             if not self.cfg.get("enabled", True) or not self.cfg.get("port"):
@@ -444,6 +455,9 @@ class RoasterLink:
                     self._snap, self._snap_ts = snap, now
                     self._state = "stalled" if stalled else "connected"
                     self._err = "heartbeat đứng yên" if stalled else ""
+                with self._snap_cond:              # đánh thức kênh push (app + web SSE)
+                    self._snap_gen += 1
+                    self._snap_cond.notify_all()
                 fails = 0
             except Exception as e:
                 fails += 1

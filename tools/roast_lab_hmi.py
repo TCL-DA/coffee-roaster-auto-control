@@ -79,6 +79,34 @@ def html_path():
     return os.path.abspath(os.path.join(here, "..", HTML_NAME))
 
 
+# ── BUS SỰ KIỆN — trái tim đồng bộ app ↔ web ────────────────────────────────
+# Một dòng sự kiện chung: snapshot máy ({'t':'snap'}) + thao tác UI ({'t':'ui'}).
+# App nhận qua evaluate_js, web nhận qua SSE /api/stream — cả hai màn cùng ăn
+# một nguồn nên lệch nhau chỉ vài ms trên LAN.
+class _Bus:
+    def __init__(self):
+        self._cond = threading.Condition()
+        self._q: list[tuple[int, dict]] = []
+        self._gen = 0
+
+    def publish(self, evt: dict):
+        with self._cond:
+            self._gen += 1
+            self._q.append((self._gen, evt))
+            if len(self._q) > 200:                  # giữ đuôi gần nhất là đủ
+                del self._q[:len(self._q) - 200]
+            self._cond.notify_all()
+
+    def wait(self, after: int, timeout: float = 15.0):
+        """Trả (gen, [sự kiện mới hơn after]) — rỗng nếu hết timeout."""
+        with self._cond:
+            self._cond.wait_for(lambda: self._gen > after, timeout)
+            return self._gen, [e for g, e in self._q if g > after]
+
+
+BUS = _Bus()
+
+
 class Api:
     """Cầu nối JS → Python: cửa sổ + dữ liệu live từ máy rang (otl_link).
 
@@ -120,6 +148,14 @@ class Api:
                     " (" + s["err"] + ")" if s.get("err") else "")
             self._lk_state = st
         return s
+
+    def ui_event(self, evt):
+        """Thao tác UI (chuyển tab, theme, nạp hồ sơ…) từ MỘT màn → phát cho MỌI màn."""
+        if not isinstance(evt, dict):
+            return {"ok": False}
+        BUS.publish({"t": "ui", "cid": str(evt.get("cid", ""))[:24],
+                     "fn": str(evt.get("fn", ""))[:32], "args": evt.get("args") or []})
+        return {"ok": True}
 
     def op_log(self, level, tag, msg):
         """JS đẩy sự kiện vận hành vào file log chung (Cài đặt → Log kỹ thuật)."""
@@ -439,6 +475,28 @@ def start_webserver(api):
                 # web đọc CHUNG profiles.json với app — Legion/điện thoại thấy đúng
                 # hồ sơ thật, không xài bản localStorage riêng của trình duyệt
                 self._json({"profiles": api.prof_load()})
+            elif self.path == "/api/stream":
+                # SSE: đẩy snapshot máy + thao tác UI xuống trình duyệt — web nhận
+                # cùng nhịp với app, lệch nhau chỉ vài ms
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                after = BUS._gen                    # chỉ nhận từ BÂY GIỜ trở đi
+                try:
+                    while True:
+                        gen, evts = BUS.wait(after, 15.0)
+                        if gen == after:            # im ắng → ping giữ kết nối
+                            self.wfile.write(b": ping\n\n"); self.wfile.flush()
+                            continue
+                        after = gen
+                        for e in evts:
+                            self.wfile.write(
+                                ("data: " + json.dumps(e, ensure_ascii=False) + "\n\n")
+                                .encode("utf-8"))
+                        self.wfile.flush()
+                except Exception:
+                    return                          # trình duyệt đóng tab — thường thôi
             else:
                 self._json({"err": "not found"}, 404)
 
@@ -467,6 +525,8 @@ def start_webserver(api):
                                              req.get("msg") or "")})
             elif self.path == "/api/profiles":
                 self._json(api.prof_save(req.get("profiles") or []))
+            elif self.path == "/api/uievent":
+                self._json(api.ui_event(req))
             elif self.path == "/api/write":
                 self._json(api.link_write(req.get("name"), req.get("value")))
             elif self.path == "/api/new_batch":
@@ -508,6 +568,34 @@ def main():
     api.ini_write()           # bảo đảm INI có đủ section mới ([WebServer]…) cho người dùng thấy
     api._link.start()         # luồng nền tự dò cổng, tự kết nối lại — không chặn UI
     start_webserver(api)      # điện thoại cùng WiFi vào xem/điều khiển (PIN web)
+
+    # ── Kênh đồng bộ app ↔ web ──────────────────────────────────────────────
+    # 1) cầu: snapshot máy mới → đăng lên BUS (chung với sự kiện UI)
+    def _snap_bridge():
+        gen = 0
+        while True:
+            gen, snap = api._link.wait_snapshot(gen)
+            if snap:
+                BUS.publish({"t": "snap", "data": api.link_snapshot()})
+    threading.Thread(target=_snap_bridge, name="otl-snapbridge", daemon=True).start()
+
+    # 2) đẩy BUS vào cửa sổ app (web tự nhận qua SSE /api/stream)
+    _push_started = []
+    def _app_push():
+        after = 0
+        while True:
+            after, evts = BUS.wait(after)
+            for e in evts:
+                try:
+                    window.evaluate_js(
+                        "window._rxPush&&_rxPush(" + json.dumps(e, ensure_ascii=False) + ")")
+                except Exception:
+                    pass                      # cửa sổ đang đóng — bỏ qua
+    def _start_push():
+        if not _push_started:
+            _push_started.append(1)
+            threading.Thread(target=_app_push, name="otl-apppush", daemon=True).start()
+    window.events.loaded += _start_push
     # QUAN TRỌNG: pywebview mặc định private_mode=True (ẩn danh) → localStorage bị
     # xoá mỗi lần đóng. App lưu PIN/tài khoản/config/nhật ký trong localStorage nên
     # phải TẮT ẩn danh + trỏ thư mục dữ liệu bền trong %LOCALAPPDATA%.

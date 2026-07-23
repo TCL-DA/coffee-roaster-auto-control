@@ -2378,10 +2378,12 @@ if(location.protocol==='http:'||location.protocol==='https:'){
     link_config:()=>_wapi('config'),
     /* mấy việc thuộc về MÁY TÍNH (chọn cổng COM, thư mục hồ sơ, xuất file) —
        trên điện thoại trả im lặng, giao diện tự ẩn/vô hiệu phần đó */
-    /* op_log trên web: CÓ token mới gửi, không thì nuốt im — tuyệt đối không
-       để dòng log (lỗi JS, thao tác) bật hộp hỏi PIN giữa chừng */
+    /* op_log/ui_event trên web: CÓ token mới gửi, không thì nuốt im — tuyệt đối
+       không để dòng log hay cú chuyển tab bật hộp hỏi PIN giữa chừng */
     op_log:async(lv,tag,msg)=>{if(!_wtok.v)return{ok:false};
       return _wapi('oplog',{level:lv,tag,msg,token:_wtok.v});},
+    ui_event:async evt=>{if(!_wtok.v)return{ok:false};
+      return _wapi('uievent',Object.assign({},evt,{token:_wtok.v}));},
     op_tail:async n=>{const r=await _wapi('oplog');return (r&&r.lines)||[];},
     link_set_config:async c=>c, link_ports:async()=>[],
     /* hồ sơ: web đọc/ghi CHUNG profiles.json với app qua server — đồng bộ thật */
@@ -2391,6 +2393,13 @@ if(location.protocol==='http:'||location.protocol==='https:'){
     prof_dir:async()=>'', prof_dir_pick:async()=>'', toggle_fullscreen:()=>{},
     web_info:async()=>({on:false})   /* điện thoại khỏi hiện chip IP của chính nó */
   }};
+  window._WEBSHIM=true;
+  /* Kênh push: nhận snapshot máy + thao tác UI cùng nhịp với app (lệch vài ms).
+     EventSource tự nối lại khi rớt — poll 1s vẫn còn làm lưới dự phòng. */
+  try{
+    const es=new EventSource('/api/stream');
+    es.onmessage=e=>{try{window._rxPush&&window._rxPush(JSON.parse(e.data));}catch(err){}};
+  }catch(e){}
 }
 /* chuỗi thời gian mẻ đang chạy: 1 mẫu/giây, dùng để vẽ curve thật */
 const SERIES={t:[],bt:[],et:[],ror:[],gas:[],air:[],drum:[]};
@@ -2402,6 +2411,7 @@ function dsBridge(){return !!(window.pywebview&&window.pywebview.api&&window.pyw
    Mở trình duyệt thuần (không cầu, không web) thì im lặng, không lỗi. ── */
 function opLog(tag,msg,lv){
   try{
+    if(window._mirRx)return;   // thao tác do màn KHÁC mirror sang — bên gốc đã ghi log rồi
     const a=window.pywebview&&window.pywebview.api;
     if(a&&a.op_log)a.op_log(lv||'INFO',tag,msg);
   }catch(e){}
@@ -2462,15 +2472,69 @@ function showLinkInfo(){
   });
 }
 
-async function dsTick(){
-  if(!dsBridge()){DS.state='nobridge';renderLinkChip();return;}
-  let s;
-  try{s=await window.pywebview.api.link_snapshot();}
-  catch(e){DS.state='error';DS.err=String(e);renderLinkChip();return;}
+/* Đổ 1 gói trạng thái link+máy vào app — dùng chung cho cả poll lẫn push */
+function dsApply(s){
   DS.state=s.state;DS.err=s.err||'';DS.port=s.port||'';DS.snap=s.data;DS.mode=s.mode||null;
+  DS._pushTs=Date.now();
   renderLinkChip();
   if(dsLive()){applyMachine(DS.snap);chkConfirms();}
 }
+async function dsTick(){
+  if(!dsBridge()){DS.state='nobridge';renderLinkChip();return;}
+  if(DS._pushTs&&Date.now()-DS._pushTs<1500)return;   // kênh push đang sống — poll chỉ là lưới dự phòng
+  let s;
+  try{s=await window.pywebview.api.link_snapshot();}
+  catch(e){DS.state='error';DS.err=String(e);renderLinkChip();return;}
+  dsApply(s);
+}
+
+/* ══════════ GƯƠNG SOI APP ↔ WEB — mọi màn là MỘT app ══════════
+   Thao tác UI thuần (chuyển tab, theme, ngôn ngữ, nạp hồ sơ…) phát lên bus
+   Python → mọi màn khác áp lại trong vài ms. KHÔNG mirror hàm có lệnh máy
+   (charge/gas…) — trạng thái máy tự đồng bộ qua snapshot, mirror là bắn đúp. */
+const MIR_CID=Math.random().toString(36).slice(2,10);   // id màn này — bỏ tiếng vọng
+/* CHỈ mirror trạng thái TUYỆT ĐỐI (setTheme('dark')…) — toggle tương-đối như
+   toggleLang sẽ lật ngược nhau khi 2 màn đang khác trạng thái → bọc thành setLang */
+const MIR_FNS=['gotoTab','gotoSub','setTheme','setAccent','setLang','loadProfile','opFilter'];
+let _rxApplying=false;
+function setLang(l){if(typeof LANG!=='undefined'&&LANG!==l)toggleLang();}
+function mirrorInit(){
+  const tl=window.toggleLang;
+  if(typeof tl==='function')window.toggleLang=function(){tl();if(!_rxApplying)uiPublish('setLang',[LANG]);};
+  MIR_FNS.filter(n=>n!=='setLang').forEach(n=>{
+    const f=window[n]; if(typeof f!=='function')return;
+    window[n]=function(...a){
+      const r=f.apply(this,a);
+      if(!_rxApplying){
+        // chỉ gửi arg đơn giản (chuỗi/số) — object/event thì thôi, không mirror nổi
+        const args=a.filter(x=>['string','number','boolean'].includes(typeof x));
+        if(args.length===a.length)uiPublish(n,args);
+        else if(a.length===0)uiPublish(n,[]);
+      }
+      return r;
+    };
+  });
+}
+function uiPublish(fn,args){
+  try{
+    const api=window.pywebview&&window.pywebview.api;
+    if(api&&api.ui_event)api.ui_event({cid:MIR_CID,fn,args});
+  }catch(e){}
+}
+function _rxPush(e){
+  if(!e)return;
+  if(e.t==='snap'){dsApply(e.data);return;}
+  if(e.t==='ui'){
+    if(e.cid===MIR_CID)return;                       // tiếng vọng của chính mình
+    if(!MIR_FNS.includes(e.fn))return;               // chỉ chạy hàm trong danh sách trắng
+    const f=window[e.fn]; if(typeof f!=='function')return;
+    _rxApplying=true;window._mirRx=true;
+    try{f.apply(null,e.args||[]);}catch(err){}
+    _rxApplying=false;window._mirRx=false;
+  }
+}
+window._rxPush=_rxPush;
+document.addEventListener('DOMContentLoaded',mirrorInit);
 /* Đổ 1 gói dữ liệu máy vào trạng thái app */
 /* Chống nảy số khi thợ vừa bấm ±: giữ số VỪA ĐẶT tối đa 3s — máy báo về đúng số
    thì nhả (máy là sự thật), quá hạn mà máy vẫn khác thì cũng nhả (lệnh bị lơ). */
