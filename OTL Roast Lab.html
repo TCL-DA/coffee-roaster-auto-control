@@ -1974,8 +1974,13 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
    tỉ lệ (không méo). Bắt MỌI thay đổi kích thước để không lệ thuộc 1 sự kiện. */
 let _fitJob=null;
 function fit(){
+  // Stage cao chuẩn 1440, chiều NGANG tự nở theo tỷ lệ màn thật (kẹp 2260–3440
+  // ≈ 16:10 → 21:9) — layout flex tự dãn, chữ không méo, hết dải trống 2 bên.
+  // Màn hẹp/dài hơn khung kẹp thì mới letterbox như cũ.
   const s=document.getElementById('stage');
-  const k=Math.min(window.innerWidth/2560, window.innerHeight/1440);
+  const W=Math.max(2260,Math.min(3440,Math.round(1440*window.innerWidth/window.innerHeight)));
+  s.style.width=W+'px';
+  const k=Math.min(window.innerWidth/W, window.innerHeight/1440);
   s.style.transform='scale('+k+')';
 }
 function refit(){ fit(); clearTimeout(_fitJob); _fitJob=setTimeout(drawChart,60); }
