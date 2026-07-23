@@ -149,6 +149,34 @@ class Api:
             self._lk_state = st
         return s
 
+    # ── "Linh hồn" app (localStorage: tài khoản/theme/lịch sử/cấu hình) ─────
+    # App đẩy xuống file state.json; web mở lên MƯỢN nguyên hồn — cùng tài
+    # khoản, cùng theme, không còn cảnh trình duyệt đòi "tạo master" riêng.
+    def _state_path(self):
+        base = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+                            "OTL Roast Lab HMI")
+        os.makedirs(base, exist_ok=True)
+        return os.path.join(base, "state.json")
+
+    def state_save(self, data):
+        if not isinstance(data, dict):
+            return {"ok": False}
+        try:
+            path = self._state_path(); tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+            os.replace(tmp, path)
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "err": str(e)}
+
+    def state_load(self):
+        try:
+            with open(self._state_path(), encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+
     def ui_event(self, evt):
         """Thao tác UI (chuyển tab, theme, nạp hồ sơ…) từ MỘT màn → phát cho MỌI màn."""
         if not isinstance(evt, dict):
@@ -458,6 +486,10 @@ def start_webserver(api):
                 try:
                     with open(html_path(), "rb") as f:
                         body = f.read()
+                    # ĐÓNG DẤU web clone — shim trong HTML chỉ bật khi có dấu này
+                    body = body.replace(
+                        b"<head>",
+                        b"<head><script>window._OTL_WEBCLONE=1</script>", 1)
                 except Exception as e:
                     self._json({"err": str(e)}, 500); return
                 self.send_response(200)
@@ -471,6 +503,10 @@ def start_webserver(api):
                 self._json({"port": api._link.cfg.get("port"), "baud": api._link.cfg.get("baud")})
             elif self.path == "/api/oplog":
                 self._json({"lines": api.op_tail(400)})
+            elif self.path == "/api/state":
+                # web mượn "linh hồn" app (tài khoản/theme/…) — LAN nội bộ,
+                # PIN trong đó là hash PBKDF2 chứ không phải số trần
+                self._json({"state": api.state_load()})
             elif self.path == "/api/profiles":
                 # web đọc CHUNG profiles.json với app — Legion/điện thoại thấy đúng
                 # hồ sơ thật, không xài bản localStorage riêng của trình duyệt
@@ -554,6 +590,10 @@ def main():
     api = Api()
     # Tự mở FULLSCREEN đúng độ phân giải màn hình hiện tại — hoàn toàn tự động.
     # Phần HTML tự co khung 2560×1440 vừa khít mọi phân giải (fit()).
+    # CHỐNG CACHE: WebView2 nhận cờ Chromium qua biến môi trường — tắt hẳn
+    # http/disk cache (?v= trên file:// KHÔNG dùng được: ERR_FILE_NOT_FOUND).
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = \
+        "--disable-http-cache --disk-cache-size=1"
     window = webview.create_window(
         APP_TITLE,
         url=html_path(),

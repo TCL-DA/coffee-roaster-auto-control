@@ -69,7 +69,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 #stage{touch-action:none}
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
-#viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--letter)}
+#viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg)}
 #stage{width:2560px;height:1440px;flex:none;transform-origin:center center;position:relative;
   background:var(--bg);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 0 1px var(--hair)}
 
@@ -2350,7 +2350,20 @@ const PCL_FAILSAFE={"app_timeout_s": 3, "on_app_lost": "release_to_hmi", "flame_
    App desktop nạp file:// và có pywebview thật. Qua web server thì KHÔNG có
    pywebview → shim này giả lập pywebview.api bằng fetch về /api/* của Python.
    Xem tự do; lệnh ĐỘNG VÀO MÁY đòi PIN web (settings.ini [WebServer]) 1 lần/12h. */
-if(location.protocol==='http:'||location.protocol==='https:'){
+/* Nhận diện web clone bằng DẤU server đóng vào HTML (window._OTL_WEBCLONE) —
+   KHÔNG đoán theo location.protocol nữa: pywebview đời mới cũng nạp qua http
+   nội bộ nên app từng tự nhận nhầm là web, stateSync chết im (bug 2026-07-23). */
+if(window._OTL_WEBCLONE){
+  /* MƯỢN "LINH HỒN" APP trước khi boot đọc localStorage: tài khoản, theme,
+     ngôn ngữ, lịch sử… — web mở lên là GIỐNG HỆT app, đăng nhập cùng PIN.
+     XHR đồng bộ chủ ý: phải xong TRƯỚC khi phần boot phía dưới chạy. */
+  try{
+    const _sx=new XMLHttpRequest();_sx.open('GET','/api/state',false);_sx.send();
+    if(_sx.status===200){
+      const st=(JSON.parse(_sx.responseText||'{}')||{}).state;
+      if(st)for(const k in st)localStorage.setItem(k,st[k]);
+    }
+  }catch(e){}
   const _wtok={v:sessionStorage.getItem('otl_webtok')||''};
   async function _wapi(p,body){
     const r=await fetch('/api/'+p,body?{method:'POST',headers:{'Content-Type':'application/json'},
@@ -2480,6 +2493,7 @@ function dsApply(s){
   if(dsLive()){applyMachine(DS.snap);chkConfirms();}
 }
 async function dsTick(){
+  window._dsTickCount=(window._dsTickCount|0)+1;   // đếm nhịp — soi timer có bị bóp không
   if(!dsBridge()){DS.state='nobridge';renderLinkChip();return;}
   if(DS._pushTs&&Date.now()-DS._pushTs<1500)return;   // kênh push đang sống — poll chỉ là lưới dự phòng
   let s;
@@ -2535,6 +2549,25 @@ function _rxPush(e){
 }
 window._rxPush=_rxPush;
 document.addEventListener('DOMContentLoaded',mirrorInit);
+
+/* ── "LINH HỒN" APP → PYTHON — web mượn làm trạng thái khởi động ──
+   App (vỏ pywebview) là nguồn sự thật: đẩy localStorage (tài khoản, theme,
+   lịch sử, cấu hình…) xuống state.json mỗi khi có thay đổi. Web KHÔNG đẩy
+   ngược (tránh 2 nguồn đá nhau) — thay đổi trên web chỉ sống trong phiên. */
+const STATE_KEYS=['otl_users2','otl_cfg2','otl_audit2','otl_theme','otl_accent','otl_hue',
+  'otl_lang','otl_profiles','otl_history','otl_roasts','otl_locks','otl_milset'];
+let _stLast='';
+function stateSync(){
+  if(window._WEBSHIM)return;                        // chỉ APP đẩy — web là bản mượn
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.state_save))return;
+  const o={};STATE_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!=null)o[k]=v;});
+  const s=JSON.stringify(o);
+  if(s===_stLast)return;                            // không đổi thì im — khỏi ghi đĩa vô ích
+  _stLast=s;a.state_save(o);
+}
+setInterval(stateSync,3000);
+window.addEventListener('pywebviewready',()=>setTimeout(stateSync,1200));
 /* Đổ 1 gói dữ liệu máy vào trạng thái app */
 /* Chống nảy số khi thợ vừa bấm ±: giữ số VỪA ĐẶT tối đa 3s — máy báo về đúng số
    thì nhả (máy là sự thật), quá hạn mà máy vẫn khác thì cũng nhả (lệnh bị lơ). */
