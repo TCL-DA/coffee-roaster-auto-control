@@ -173,6 +173,10 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
   padding:10px 16px;border-radius:var(--r-sm);border:1px solid var(--hair)}
 .chartleg .lg{display:flex;align-items:center;gap:8px;font-size:var(--fs-16);color:var(--dim);font-weight:600}
 .chartleg .lg i{width:22px;height:5px;border-radius:var(--r-xs);display:inline-block}
+/* vạch legend NỀN MỜ MỤC TIÊU: đứt khúc + mờ — khớp nét vẽ trên canvas */
+.chartleg .lg i.dash{opacity:.5;
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 10px);
+          mask:repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 10px)}
 /* timeline 3 pha */
 .phasetl{height:70px;flex:none;display:flex;gap:4px}
 .phasetl .ph{border-radius:var(--r-sm);display:flex;flex-direction:column;justify-content:center;padding:0 20px;color:#fff}
@@ -254,6 +258,11 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
   background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md);min-width:96px}
 .rd-m .mn{font-size:var(--fs-16);letter-spacing:1px;color:var(--mute);font-weight:700}
 .rd-m .mt{font-size:var(--fs-26);font-weight:800;color:var(--txt)}
+/* dòng MỤC TIÊU dưới số thực tế (bảng DONE Thực tế/Mục tiêu §18.5):
+   xám khi trong dung sai, hổ phách khi lệch đáng kể — đỏ chỉ dành cho lỗi */
+.rd-s .tg{font-size:var(--fs-16);font-weight:600;color:var(--dim);margin-top:4px;min-height:1.2em}
+.rd-m .mtg{font-size:var(--fs-14);font-weight:600;color:var(--dim);min-height:1.1em}
+.rd-s .tg.off,.rd-m .mtg.off{color:var(--amber-ink)}
 .rd-actions{display:flex;gap:16px;margin-top:6px}
 .rd-ov,.rd-new{padding:18px 44px;border:none;border-radius:var(--r-md);cursor:pointer;font-size:var(--fs-26);font-weight:800}
 .rd-ov{background:var(--btn);color:var(--txt);border:1px solid var(--hair)}
@@ -435,6 +444,18 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .audit .chg{font-family:var(--f-mono);color:var(--accent)}
 .audit .old{color:var(--mute);text-decoration:line-through;margin-right:8px}
 .audit .empty{padding:50px;text-align:center;color:var(--mute)}
+/* huy hiệu toàn vẹn nhật ký (hash-chain GĐ2): xanh=nguyên vẹn, đỏ=bị sửa */
+.audit-vfy{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-16);font-weight:700;
+  padding:8px 16px;border-radius:var(--r-sm);margin-bottom:16px}
+.audit-vfy.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent)}
+.audit-vfy.bad{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent);border:1px solid var(--danger)}
+/* Bản quyền (GĐ2) */
+.licbox{background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md);padding:18px 22px;font-size:var(--fs-18)}
+.lic-row{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.lic-ok{color:var(--ok);font-weight:700} .lic-bad{color:var(--danger);font-weight:700} .lic-off{color:var(--dim);font-weight:600}
+.lic-k{color:var(--mute);font-size:var(--fs-16);min-width:88px}
+.lic-mid{font-family:var(--f-mono);background:var(--btn);padding:6px 12px;border-radius:var(--r-sm);cursor:pointer;letter-spacing:1px}
+.lic-hint{color:var(--mute);font-size:var(--fs-14);line-height:1.5;margin-top:6px}
 
 /* ══════════ OVERLAY: LOGIN / NUMPAD / KEYBOARD / PICKER ══════════ */
 /* Nền overlay = KÍNH MỜ: phải có độ TRONG (transparent) thì blur mới thấy nội dung
@@ -549,6 +570,24 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
   border:1px solid var(--hair-2);border-radius:var(--r-md);padding:18px 30px;font-size:var(--fs-22);color:var(--txt);
   box-shadow:0 20px 60px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:.25s;z-index:200}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)} #toast.ok{border-color:var(--accent)}
+
+/* ── BANNER FAULT (§19 mức GĐ1): sự cố nghiêm trọng đập vào mắt trên MỌI tab.
+   Đỏ = mất kết nối giữa mẻ / máy treo / sensor chết; hổ phách = nhiễu thoáng qua.
+   Đặt DƯỚI thanh trên (không che số live), pointer-events none — không chặn thao tác. ── */
+#faultBanner{position:absolute;top:118px;left:50%;transform:translateX(-50%);z-index:210;
+  display:none;align-items:center;gap:16px;padding:18px 34px;border-radius:var(--r-md);
+  background:color-mix(in srgb,var(--danger) 16%,var(--panel));
+  border:1.5px solid var(--danger);color:var(--danger);
+  font-size:var(--fs-26);font-weight:800;letter-spacing:.5px;pointer-events:none;
+  box-shadow:0 22px 60px -12px color-mix(in srgb,var(--danger) 55%,transparent);
+  animation:fbPulse 1.3s ease-in-out infinite}
+#faultBanner.show{display:flex}
+#faultBanner.warn{background:color-mix(in srgb,var(--warn) 14%,var(--panel));
+  border-color:var(--warn);color:var(--amber-ink);
+  box-shadow:0 22px 60px -12px color-mix(in srgb,var(--warn) 45%,transparent)}
+#faultBanner .fb-ic{font-size:var(--fs-32)}
+@keyframes fbPulse{0%,100%{opacity:1}50%{opacity:.72}}
+@media (prefers-reduced-motion:reduce){#faultBanner{animation:none}}
 
 /* ── Polish: chiều sâu, easing, ambient, giảm chuyển động ── */
 :root{--ease:cubic-bezier(.16,1,.3,1)}
@@ -724,6 +763,37 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 .histtable .temp{font-family:var(--f-num);font-weight:700;color:var(--c-et);font-size:var(--fs-28)}
 .histtable .dev{font-family:var(--f-num);font-weight:700;color:var(--amber-ink);font-size:var(--fs-26)}
 .histtable .date{color:var(--mute);font-family:var(--f-mono)}
+/* nhãn nhỏ cạnh tên hồ sơ: mẻ mô phỏng / mẻ đứt giữa chừng (chớp điện, kill app) */
+.histtag{font-size:var(--fs-14);font-weight:700;letter-spacing:1px;color:var(--dim);
+  border:1px solid var(--hair);border-radius:var(--r-xs);padding:2px 8px;white-space:nowrap}
+.histtag.intr{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+/* ── Lịch sử: hàng click được + ô chọn so sánh (GĐ3) ── */
+.histrow{cursor:pointer} .histrow.sel td{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.histtable .hsel{width:60px}
+/* 44×44 tối thiểu cho cảm ứng (thợ đeo găng, tay bẩn) — chuẩn Apple HIG/Material */
+.hcbx{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-sm);
+  border:2px solid var(--hair-2);color:transparent;font-weight:900;font-size:var(--fs-22);cursor:pointer;user-select:none}
+.hcbx.on{background:var(--accent);border-color:var(--accent);color:#fff}
+/* ── Modal chi tiết / so sánh mẻ ── */
+.bdbox{width:1100px;max-width:94%;max-height:88vh;overflow:auto}
+.bd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px}
+.bd-title{font-family:var(--f-num);font-weight:800;font-size:var(--fs-32)}
+.bd-sub{color:var(--dim);font-size:var(--fs-18);margin-top:4px}
+.bd-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px}
+.bd-stat{background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md);padding:16px 18px}
+.bd-stat .k{font-size:var(--fs-14);letter-spacing:1px;text-transform:uppercase;color:var(--mute);font-weight:700}
+.bd-stat .v{font-family:var(--f-num);font-weight:800;font-size:var(--fs-32);margin-top:6px}
+.bd-stat .u{font-size:var(--fs-18);color:var(--dim);font-weight:600}
+.bd-chart{position:relative;height:360px;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-lg);overflow:hidden}
+.bd-chart canvas{width:100%;height:100%;display:block}
+.cmp-legend{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0}
+.cmp-legend .cl{display:flex;align-items:center;gap:8px;font-size:var(--fs-18);font-weight:600}
+.cmp-legend .cl i{width:20px;height:5px;border-radius:var(--r-xs)}
+.bd-tablewrap{overflow-x:auto}
+.cmp-table{width:100%;border-collapse:collapse;font-size:var(--fs-18)}
+.cmp-table th,.cmp-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--hair);white-space:nowrap;font-family:var(--f-num)}
+.cmp-table th:first-child,.cmp-table td:first-child{text-align:left;font-family:var(--f-ui)}
+.cmp-table thead th{font-size:var(--fs-14);letter-spacing:1px;text-transform:uppercase;color:var(--mute)}
 /* Rang: nút Loop khoá khi không AUTO + màu Drum */
 .tbtn.dis{opacity:.34;pointer-events:none}
 .outrow.drum .ov{color:var(--c-abt)}
@@ -1516,16 +1586,16 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <div class="rd-badge">✓ <span data-i18n="rang.done">Mẻ hoàn tất</span></div>
           <div class="rd-prof"><span class="rd-code" id="doneCode">#B-0419</span> · <span id="doneName">Colombia Huila</span></div>
           <div class="rd-stats">
-            <div class="rd-s"><div class="k" data-i18n="rang.total">Tổng thời gian</div><div class="v num" id="doneTime">10:42</div></div>
-            <div class="rd-s"><div class="k" data-i18n="rang.dropt">Nhiệt xả</div><div class="v num temp" id="doneTemp">198°C</div></div>
-            <div class="rd-s"><div class="k" data-i18n="phase.dev">Phát triển</div><div class="v num" id="doneDev">14%</div></div>
+            <div class="rd-s"><div class="k" data-i18n="rang.total">Tổng thời gian</div><div class="v num" id="doneTime">10:42</div><div class="tg num" id="doneTimeTg"></div></div>
+            <div class="rd-s"><div class="k" data-i18n="rang.dropt">Nhiệt xả</div><div class="v num temp" id="doneTemp">198°C</div><div class="tg num" id="doneTempTg"></div></div>
+            <div class="rd-s"><div class="k" data-i18n="phase.dev">Phát triển</div><div class="v num" id="doneDev">14%</div><div class="tg num" id="doneDevTg"></div></div>
           </div>
           <div class="rd-miles">
-            <div class="rd-m"><span class="mn">TP</span><span class="mt num" id="done_TP">—</span></div>
-            <div class="rd-m"><span class="mn">DE</span><span class="mt num" id="done_DE">—</span></div>
-            <div class="rd-m"><span class="mn">FCs</span><span class="mt num" id="done_FCs">—</span></div>
-            <div class="rd-m"><span class="mn">DEV</span><span class="mt num" id="done_DEV">—</span></div>
-            <div class="rd-m"><span class="mn">DROP</span><span class="mt num" id="done_DROP">—</span></div>
+            <div class="rd-m"><span class="mn">TP</span><span class="mt num" id="done_TP">—</span><span class="mtg num" id="doneTg_TP"></span></div>
+            <div class="rd-m"><span class="mn">DE</span><span class="mt num" id="done_DE">—</span><span class="mtg num" id="doneTg_DE"></span></div>
+            <div class="rd-m"><span class="mn">FCs</span><span class="mt num" id="done_FCs">—</span><span class="mtg num" id="doneTg_FCs"></span></div>
+            <div class="rd-m"><span class="mn">DEV</span><span class="mt num" id="done_DEV">—</span><span class="mtg num" id="doneTg_DEV"></span></div>
+            <div class="rd-m"><span class="mn">DROP</span><span class="mt num" id="done_DROP">—</span><span class="mtg num" id="doneTg_DROP"></span></div>
           </div>
           <div class="rd-actions">
             <button class="rd-ov" onclick="gotoTab('tongquan')"><span data-i18n="rang.toov">Về Tổng quan</span></button>
@@ -1547,6 +1617,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <div class="chartcol">
             <div class="chartwrap"><canvas id="chart"></canvas>
               <div class="chartleg">
+                <div class="lg" id="lgTarget" style="display:none"><i class="dash" style="background:var(--c-bt)"></i><span data-i18n="chart.target">Mục tiêu</span></div>
                 <div class="lg"><i style="background:var(--c-bt)"></i>BT</div>
                 <div class="lg"><i style="background:var(--c-et)"></i>ET</div>
                 <div class="lg"><i style="background:var(--c-abt)"></i>ABT</div>
@@ -1683,10 +1754,16 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
       </section>
       <section class="pane" id="pane-lichsu">
         <div class="pgwrap">
-          <div class="pgtitle" data-i18n="tab.lichsu">Lịch sử</div>
-          <div class="pgsub">Các mẻ rang gần đây</div>
+          <div class="pghead">
+            <div><div class="pgtitle" data-i18n="tab.lichsu">Lịch sử</div>
+              <div class="pgsub" id="histSub">Các mẻ rang gần đây</div></div>
+            <div class="pgctrls">
+              <button class="sortbtn" id="histCmpBtn" onclick="openCompare()" style="display:none">⊞ <span data-i18n="hist.compare">So sánh</span> (<span id="cmpCount">0</span>)</button>
+              <button class="sortbtn" id="histCsvBtn" onclick="histExportCsv()" title="Xuất bảng lịch sử ra lich-su-me.csv trong thư mục hồ sơ">⬇ <span data-i18n="hist.csv">Xuất CSV</span></button>
+            </div>
+          </div>
           <table class="histtable">
-            <thead><tr><th>Mã mẻ</th><th>Hồ sơ</th><th>Thời gian</th><th>Nhiệt xả</th><th>Phát triển</th><th>Ngày</th></tr></thead>
+            <thead><tr><th></th><th>Mã mẻ</th><th>Hồ sơ</th><th>Thời gian</th><th>Nhiệt xả</th><th>Phát triển</th><th>Ngày</th></tr></thead>
             <tbody id="histBody"></tbody>
           </table>
         </div>
@@ -1969,7 +2046,27 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         <button class="bigbtn primary" onclick="addRoast()">+ Thêm mức</button></div>
     </div></div>
 
+    <!-- Chi tiết 1 mẻ (GĐ3): thống kê pha + đồ thị curve đã lưu -->
+    <div class="overlay" id="batchDetail" onclick="if(event.target.id==='batchDetail')closeBatch()">
+      <div class="pebox bdbox">
+        <div class="bd-head"><div><div class="bd-title" id="bdTitle">Mẻ</div><div class="bd-sub" id="bdSub"></div></div>
+          <button class="bigbtn ghost" onclick="closeBatch()">✕</button></div>
+        <div class="bd-stats" id="bdStats"></div>
+        <div class="bd-chart"><canvas id="bdCanvas"></canvas></div>
+      </div>
+    </div>
+    <!-- So sánh nhiều mẻ (GĐ3): chồng curve + bảng chỉ số -->
+    <div class="overlay" id="batchCompare" onclick="if(event.target.id==='batchCompare')closeCompare()">
+      <div class="pebox bdbox">
+        <div class="bd-head"><div><div class="bd-title" data-i18n="hist.compare">So sánh mẻ</div><div class="bd-sub" id="cmpSub"></div></div>
+          <button class="bigbtn ghost" onclick="closeCompare()">✕</button></div>
+        <div class="bd-chart"><canvas id="cmpCanvas"></canvas></div>
+        <div class="cmp-legend" id="cmpLegend"></div>
+        <div class="bd-tablewrap"><table class="cmp-table" id="cmpTable"></table></div>
+      </div>
+    </div>
     <div id="toast"></div>
+    <div id="faultBanner" role="alert" aria-live="assertive"><span class="fb-ic" aria-hidden="true">⚠</span><span id="faultMsg"></span></div>
   </div>
 </div>
 <div id="helptip"></div>
@@ -2144,10 +2241,146 @@ const DEF_HIST=[
 ];
 function loadHist(){try{const h=JSON.parse(localStorage.getItem(LS_HIST));return Array.isArray(h)?h:DEF_HIST;}catch(e){return DEF_HIST;}}
 function saveHist(h){localStorage.setItem(LS_HIST,JSON.stringify(h));}
-function renderHistory(){const b=document.getElementById('histBody');if(!b)return;
-  b.innerHTML=loadHist().map(r=>`<tr><td class="code">${esc(r.code)}</td>
+/* Tab Lịch sử: NGUỒN THẬT là kho SQLite bên Python (không mất mẻ, giữ cả mẻ
+   INTERRUPTED do chớp điện). Không có cầu (mở file trần) → localStorage như cũ. */
+let HIST_ROWS=[];                          // mẻ từ DB lần vẽ gần nhất
+const HIST_SEL=new Set();                  // id mẻ đang chọn để so sánh (tối đa 6)
+async function renderHistory(){const b=document.getElementById('histBody');if(!b)return;
+  let rows=null;
+  const a=window.pywebview&&window.pywebview.api;
+  if(a&&a.db_batch_list){try{rows=await a.db_batch_list(50);}catch(e){}}
+  const cmpBtn=document.getElementById('histCmpBtn');
+  if(Array.isArray(rows)&&rows.length){
+    HIST_ROWS=rows;
+    b.innerHTML=rows.map(r=>{
+      const intr=r.status==='INTERRUPTED';
+      const date=(r.started_at||'').slice(0,10).split('-').reverse().slice(0,2).join('/');
+      const sel=HIST_SEL.has(r.id);
+      const canCmp=r.live;                 // chỉ mẻ THẬT có curve mới so được
+      return `<tr class="histrow${sel?' sel':''}" onclick="openBatch(${r.id})">
+      <td class="hsel">${canCmp?`<span class="hcbx${sel?' on':''}" onclick="event.stopPropagation();toggleCmp(${r.id})">✓</span>`:''}</td>
+      <td class="code">${esc(r.code||('#'+r.id))}</td>
+      <td><span class="prof"><span class="dot" style="background:${esc(r.color||'#8a7a66')}"></span>${esc(r.prof_name||'—')}${
+        r.live?'':' <span class="histtag">MÔ PHỎNG</span>'}${
+        intr?' <span class="histtag intr">⚡ GIÁN ĐOẠN</span>':''}</span></td>
+      <td class="num">${r.drop_sec!=null?fmtMMSS(r.drop_sec):'—'}</td>
+      <td class="temp">${r.drop_temp!=null?Math.round(r.drop_temp)+'°C':'—'}</td>
+      <td class="dev">${r.dev_pct!=null?r.dev_pct+'%':'—'}</td>
+      <td class="date">${esc(date)}</td></tr>`;}).join('');
+    if(cmpBtn){cmpBtn.style.display=HIST_SEL.size>=2?'':'none';
+      const c=document.getElementById('cmpCount');if(c)c.textContent=HIST_SEL.size;}
+    return;
+  }
+  if(cmpBtn)cmpBtn.style.display='none';
+  b.innerHTML=loadHist().map(r=>`<tr><td></td><td class="code">${esc(r.code)}</td>
     <td><span class="prof"><span class="dot" style="background:${r.color}"></span>${esc(r.name)}</span></td>
     <td class="num">${esc(r.time)}</td><td class="temp">${r.temp}°C</td><td class="dev">${r.dev}%</td><td class="date">${esc(r.date)}</td></tr>`).join('');}
+function toggleCmp(id){
+  if(HIST_SEL.has(id))HIST_SEL.delete(id);
+  else{if(HIST_SEL.size>=6){toast(LANG==='vi'?'So tối đa 6 mẻ':'Max 6 batches');return;}HIST_SEL.add(id);}
+  renderHistory();
+}
+/* ── Chi tiết 1 mẻ: thống kê pha (DTR/AUC/RoR đỉnh) + đồ thị curve (GĐ3 §18.7) ── */
+const CMP_COLORS=['#2563eb','#e11d2f','#16a34a','#db2777','#d98a1a','#7c3aed'];
+async function openBatch(id){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.db_batch_stats)){toast(LANG==='vi'?'Chỉ xem chi tiết trong app':'Detail in app only');return;}
+  const row=HIST_ROWS.find(r=>r.id===id);
+  const vi=LANG==='vi';
+  document.getElementById('bdTitle').textContent=(row&&(row.code||('#'+id)))||('#'+id);
+  document.getElementById('bdSub').textContent=(row&&row.prof_name||'')+(row&&row.status==='INTERRUPTED'?(vi?' · ⚡ mẻ gián đoạn':' · ⚡ interrupted'):'');
+  const box=document.getElementById('bdStats');box.innerHTML=vi?'Đang tính…':'Computing…';
+  document.getElementById('batchDetail').classList.add('on');
+  let st=null,cv=null;
+  try{st=await a.db_batch_stats(id);cv=await a.db_batch_curve(id);}catch(e){}
+  if(!st){box.innerHTML=`<div class="bd-stat"><div class="k">—</div><div class="v">${vi?'Mẻ mô phỏng (không có curve)':'No curve'}</div></div>`;
+    drawBatchCurve('bdCanvas',cv?[{cv,color:CMP_COLORS[0]}]:[]);return;}
+  const stat=(k,v,u)=>`<div class="bd-stat"><div class="k">${k}</div><div class="v">${v}${u?`<span class="u"> ${u}</span>`:''}</div></div>`;
+  box.innerHTML=[
+    stat(vi?'Tổng thời gian':'Total',st.total_sec!=null?fmtMMSS(st.total_sec):'—'),
+    stat(vi?'Nhiệt xả':'Drop temp',st.drop_temp!=null?Math.round(st.drop_temp):'—','°C'),
+    stat('DTR',st.dtr_pct!=null?st.dtr_pct:'—','%'),
+    stat(vi?'RoR đỉnh':'Peak RoR',st.ror_max!=null?st.ror_max:'—','°/ph'),
+    stat('AUC',st.auc!=null?st.auc:'—','°·ph'),
+    stat('TP',st.tp_sec!=null?fmtMMSS(st.tp_sec):'—'),
+    stat('FCs',st.fcs_sec!=null?fmtMMSS(st.fcs_sec):'—'),
+  ].join('');
+  drawBatchCurve('bdCanvas',cv?[{cv,color:CMP_COLORS[0],name:row&&row.prof_name}]:[]);
+}
+function closeBatch(){document.getElementById('batchDetail').classList.remove('on');}
+/* Vẽ curve BT (+ET mờ) của 1..n mẻ lên canvas — trục thời gian chung, tự scale */
+function drawBatchCurve(canvasId,series){
+  const cv=document.getElementById(canvasId);if(!cv)return;
+  // modal vừa hiện, layout chưa xong → clientWidth=0; đợi khung hình kế rồi vẽ lại
+  if(!cv.clientWidth){requestAnimationFrame(()=>drawBatchCurve(canvasId,series));return;}
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  cv.width=W*dpr;cv.height=H*dpr;const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+  const L=70,Rp=24,T=20,B=44;
+  const valid=series.filter(s=>s.cv&&s.cv.t&&s.cv.t.length);
+  if(!valid.length){g.fillStyle=css('--mute');g.font='600 20px '+css('--f-ui');g.textAlign='center';
+    g.fillText(LANG==='vi'?'Không có dữ liệu curve':'No curve data',W/2,H/2);return;}
+  let tMax=0,vMax=0;
+  valid.forEach(s=>{tMax=Math.max(tMax,s.cv.t[s.cv.t.length-1]||0);
+    s.cv.bt.forEach(v=>{if(v!=null)vMax=Math.max(vMax,v);});
+    (s.cv.et||[]).forEach(v=>{if(v!=null)vMax=Math.max(vMax,v);});});
+  tMax=Math.max(60,tMax);vMax=Math.max(100,Math.ceil((vMax+12)/50)*50);
+  const x=t=>L+(W-L-Rp)*t/tMax, y=v=>H-B-(H-B-T)*v/vMax;
+  const hair=css('--hair'),dim=css('--dim');
+  g.strokeStyle=hair;g.fillStyle=dim;g.font='600 14px '+css('--f-num');g.lineWidth=1;
+  for(let v=0;v<=vMax;v+=50){const Y=y(v);g.beginPath();g.moveTo(L,Y);g.lineTo(W-Rp,Y);g.stroke();
+    g.textAlign='right';g.fillText(v,L-8,Y+5);}
+  const tStep=tMax<=600?120:300;
+  for(let t=0;t<=tMax;t+=tStep){const X=x(t);g.textAlign='center';g.fillText(fmtMMSS(t),X,H-B+22);}
+  valid.forEach(s=>{
+    const et=s.cv.et||[];
+    if(et.length){g.save();g.globalAlpha=.4;g.beginPath();let pen=false;
+      s.cv.t.forEach((t,i)=>{const v=et[i];if(v==null){pen=false;return;}const X=x(t),Y=y(v);pen?g.lineTo(X,Y):g.moveTo(X,Y);pen=true;});
+      g.strokeStyle=s.color;g.lineWidth=2;g.setLineDash([4,4]);g.stroke();g.restore();}
+    g.beginPath();let pen=false;
+    s.cv.t.forEach((t,i)=>{const v=s.cv.bt[i];if(v==null){pen=false;return;}const X=x(t),Y=y(v);pen?g.lineTo(X,Y):g.moveTo(X,Y);pen=true;});
+    g.strokeStyle=s.color;g.lineWidth=3.5;g.lineJoin='round';g.stroke();
+  });
+}
+/* ── So sánh nhiều mẻ: chồng curve + bảng chỉ số cạnh nhau ── */
+async function openCompare(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.db_batches_curves)){toast(LANG==='vi'?'Chỉ so sánh trong app':'Compare in app only');return;}
+  const ids=[...HIST_SEL];if(ids.length<2){toast(LANG==='vi'?'Chọn ≥2 mẻ để so':'Select ≥2 batches');return;}
+  const vi=LANG==='vi';
+  document.getElementById('cmpSub').textContent=ids.length+(vi?' mẻ':' batches');
+  document.getElementById('batchCompare').classList.add('on');
+  let curves={},statsArr=[];
+  try{curves=await a.db_batches_curves(ids)||{};
+    statsArr=await Promise.all(ids.map(id=>a.db_batch_stats(id).catch(()=>null)));}catch(e){}
+  const series=ids.map((id,i)=>{const row=HIST_ROWS.find(r=>r.id===id);
+    return {id,cv:curves[String(id)],color:CMP_COLORS[i%CMP_COLORS.length],name:(row&&(row.code||row.prof_name))||('#'+id)};});
+  drawBatchCurve('cmpCanvas',series);
+  document.getElementById('cmpLegend').innerHTML=series.map(s=>
+    `<div class="cl"><i style="background:${s.color}"></i>${esc(s.name)}</div>`).join('');
+  // bảng chỉ số
+  const rowsD=[['',(s,i)=>`<span style="color:${series[i].color};font-weight:700">${esc(series[i].name)}</span>`],
+    [vi?'Tổng thời gian':'Total',s=>s&&s.total_sec!=null?fmtMMSS(s.total_sec):'—'],
+    [vi?'Nhiệt xả':'Drop °C',s=>s&&s.drop_temp!=null?Math.round(s.drop_temp):'—'],
+    ['DTR %',s=>s&&s.dtr_pct!=null?s.dtr_pct:'—'],
+    [vi?'RoR đỉnh':'Peak RoR',s=>s&&s.ror_max!=null?s.ror_max:'—'],
+    ['AUC',s=>s&&s.auc!=null?s.auc:'—'],
+    ['TP',s=>s&&s.tp_sec!=null?fmtMMSS(s.tp_sec):'—'],
+    ['FCs',s=>s&&s.fcs_sec!=null?fmtMMSS(s.fcs_sec):'—']];
+  const head=`<thead><tr><th>${vi?'Chỉ số':'Metric'}</th>${series.map((s,i)=>`<th style="color:${s.color}">${i+1}</th>`).join('')}</tr></thead>`;
+  const body=rowsD.slice(1).map(([lbl,fn])=>`<tr><td>${lbl}</td>${statsArr.map(s=>`<td>${fn(s)}</td>`).join('')}</tr>`).join('');
+  document.getElementById('cmpTable').innerHTML=head+'<tbody>'+body+'</tbody>';
+}
+function closeCompare(){document.getElementById('batchCompare').classList.remove('on');}
+/* Nút Xuất CSV: bảng tổng lich-su-me.csv vào thư mục hồ sơ (Python ghi) */
+async function histExportCsv(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.db_export_csv)){toast('Chỉ dùng được trong app desktop');return;}
+  try{
+    const r=await a.db_export_csv(null);
+    if(r&&r.ok){toast('Đã xuất: '+r.path,true);opLog('MẺ','xuất CSV lịch sử → '+r.path);}
+    else toast('Xuất CSV lỗi: '+((r&&r.err)||'?'));
+  }catch(e){toast('Xuất CSV lỗi: '+e);}
+}
 function nextBatchCode(){const h=loadHist();let mx=0;
   h.forEach(r=>{const m=/#B-(\d+)/.exec(r.code||'');if(m)mx=Math.max(mx,+m[1]);});
   return '#B-'+String(mx+1).padStart(4,'0');}
@@ -2291,6 +2524,7 @@ const I18N={vi:{
  'rang.start':'BẮT ĐẦU','rang.starthint':'Nạp hạt để bắt đầu mẻ rang','rang.done':'Mẻ hoàn tất','rang.total':'Tổng thời gian','rang.dropt':'Nhiệt xả','rang.new':'Mẻ mới','rang.toov':'Về Tổng quan',
  'rang.nosel':'Chưa chọn hồ sơ rang','rang.noselhint':'Chọn một hồ sơ để nạp và bắt đầu mẻ rang','rang.pickprof':'Chọn hồ sơ rang','rang.change':'Đổi hồ sơ',
  'ph.title':'Làm nóng máy','ph.idle':'Sẵn sàng','ph.heating':'Đang làm nóng','ph.reached':'Đã đạt nhiệt','ph.drum':'Nhiệt trống','ph.target':'Mục tiêu','ph.settemp':'Nhiệt đích','ph.settime':'Thời gian','ph.min':'phút','ph.start':'LÀM NÓNG','ph.stop':'DỪNG',
+ 'chart.target':'Mục tiêu','hist.csv':'Xuất CSV','hist.compare':'So sánh mẻ',
  'prof.new':'Hồ sơ mới','prof.empty':'Chưa có hồ sơ rang nào','prof.emptyhint':'Tạo hồ sơ đầu tiên để bắt đầu rang','prof.nofilter':'Không có hồ sơ phù hợp bộ lọc.',
  'tb.settings':'Cài đặt','tb.ignite':'Đánh lửa','tb.charge':'Nạp hạt','tb.eject':'Xả liệu','tb.pause':'Tạm dừng','tb.drop':'Kết thúc mẻ','tb.prof':'Prof No.','tb.profile':'Hồ sơ','tb.view':'Đổi view',
  'set.locked':'Cài đặt đang khoá','set.needlogin':'Đăng nhập tài khoản có quyền để mở khoá.','set.note':'Thay đổi chưa áp dụng vào máy đang chạy',
@@ -2310,6 +2544,7 @@ const I18N={vi:{
  'rang.start':'START','rang.starthint':'Charge beans to begin the roast','rang.done':'Roast complete','rang.total':'Total time','rang.dropt':'Drop temp','rang.new':'New batch','rang.toov':'Overview',
  'rang.nosel':'No profile selected','rang.noselhint':'Pick a profile to load and start a roast','rang.pickprof':'Choose a profile','rang.change':'Change profile',
  'ph.title':'Preheat','ph.idle':'Ready','ph.heating':'Heating','ph.reached':'Target reached','ph.drum':'Drum temp','ph.target':'Target','ph.settemp':'Set temp','ph.settime':'Time','ph.min':'min','ph.start':'PREHEAT','ph.stop':'STOP',
+ 'chart.target':'Target','hist.csv':'Export CSV','hist.compare':'Compare',
  'prof.new':'New profile','prof.empty':'No roast profiles yet','prof.emptyhint':'Create your first profile to start roasting','prof.nofilter':'No profiles match the filter.',
  'tb.settings':'Settings','tb.ignite':'Ignite','tb.charge':'Charge','tb.eject':'Eject','tb.pause':'Pause','tb.drop':'Drop','tb.prof':'Prof No.','tb.profile':'Profiles','tb.view':'Toggle view',
  'set.locked':'Settings locked','set.needlogin':'Sign in with a permitted account to unlock.','set.note':'Changes not yet applied to the running machine',
@@ -2398,7 +2633,28 @@ if(window._OTL_WEBCLONE){
     link_snapshot:()=>_wapi('snapshot'),
     link_write:(name,value)=>_wcmd('write',{name,value}),
     link_new_batch:()=>_wcmd('new_batch',{}),
-    link_begin_batch:()=>_wcmd('begin_batch',{}),
+    link_begin_batch:meta=>_wcmd('begin_batch',{meta}),
+    /* kho mẻ SQLite: web ĐỌC chung với app; CHỐT mẻ là việc của app
+       (trả ok:false để finishRoast trên điện thoại không chốt đúp) */
+    db_batch_list:async n=>{const r=await _wapi('batches');return (r&&r.batches)||null;},
+    db_batch_curve:async id=>{const r=await _wapi('batch_curve?id='+(+id||0));return (r&&r.curve)||null;},
+    db_batch_stats:async id=>{const r=await _wapi('batch_stats?id='+(+id||0));return (r&&r.stats)||null;},
+    db_batches_curves:async ids=>{const r=await _wapi('batches_curves?ids='+(ids||[]).join(','));return (r&&r.curves)||{};},
+    db_batch_finish:async()=>({ok:false,err:'web'}),
+    db_export_csv:async()=>({ok:false,err:'web'}),
+    /* AUTH (GĐ2): web đọc danh sách + đăng nhập (lockout tính ở Python, không
+       chiếm phiên kiosk). Quản lý tài khoản là việc của MÁY — web trả 'web'. */
+    auth_state:async()=>{const r=await _wapi('auth_state');return r||{setup:false,users:[]};},
+    auth_login:async(name,pin)=>_wapi('auth_login',{name,pin}),
+    auth_setup_master:async pin=>_wapi('auth_setup_master',{pin}),
+    auth_logout:async()=>({ok:true}),
+    auth_add_operator:async()=>({ok:false,err:'web'}),
+    auth_set_operator:async()=>({ok:false,err:'web'}),
+    auth_del_operator:async()=>({ok:false,err:'web'}),
+    auth_migrate:async()=>({ok:false,err:'web'}),
+    audit_tail:async n=>{const r=await _wapi('audit');return (r&&r.tail)||[];},
+    audit_verify:async()=>{const r=await _wapi('audit');return (r&&r.verify)||{ok:true,total:0,broken_at:null};},
+    audit_add:async()=>({ok:true}),   /* web không tự ghi nhật ký — máy là nguồn */
     link_config:()=>_wapi('config'),
     /* mấy việc thuộc về MÁY TÍNH (chọn cổng COM, thư mục hồ sơ, xuất file) —
        trên điện thoại trả im lặng, giao diện tự ẩn/vô hiệu phần đó */
@@ -2504,7 +2760,47 @@ function dsApply(s){
   DS.state=s.state;DS.err=s.err||'';DS.port=s.port||'';DS.snap=s.data;DS.mode=s.mode||null;
   DS._pushTs=Date.now();
   renderLinkChip();
+  faultCheck(DS.snap);              // banner FAULT — chạy CẢ khi mất kết nối
   if(dsLive()){applyMachine(DS.snap);chkConfirms();}
+}
+/* ── BANNER FAULT (§19 mức GĐ1) — 3 sự cố phải la lớn, đặt theo mức nguy:
+   1. mất kết nối GIỮA MẺ (firmware vẫn tự rang — nhưng thợ phải biết ngay)
+   2. máy không phản hồi (heartbeat firmware đứng — nghi treo)
+   3. sensor bệnh (sens_warn từ SensorGuard bên Python): range/frozen đỏ, spike hổ phách
+   Đổi trạng thái mới ghi log — không spam. Toast vẫn dùng cho việc nhẹ. ── */
+let _fault={key:'',sensN:0};
+function faultCheck(d){
+  const el=document.getElementById('faultBanner'),msg=document.getElementById('faultMsg');
+  if(!el)return;
+  const vi=LANG==='vi';
+  let key='',text='',warn=false;
+  const inBatch=R.phase==='RUNNING'&&R._machRun;
+  if(inBatch&&DS.state!=='connected'&&DS.state!=='nobridge'){
+    key='link';
+    text=vi?'MẤT KẾT NỐI GIỮA MẺ — máy vẫn tự rang theo firmware, kiểm tra cáp!'
+           :'LINK LOST MID-BATCH — machine still roasting on firmware, check cable!';
+  }else if(DS.state==='stalled'){
+    key='stall';
+    text=vi?'MÁY KHÔNG PHẢN HỒI — heartbeat đứng yên, kiểm tra máy!'
+           :'MACHINE NOT RESPONDING — heartbeat frozen, check machine!';
+  }else if(d&&d.sens_warn){
+    _fault.sensN++;
+    if(_fault.sensN>=2){                       // nhiễu đúng 1 nhịp thì nhịn, đứng 2 nhịp mới la
+      const M=vi?{range:'ngoài dải đo',spike:'nhiễu vọt',frozen:'đứng hình'}
+                :{range:'out of range',spike:'spike noise',frozen:'frozen'};
+      const parts=Object.keys(d.sens_warn).map(k=>k.toUpperCase()+' '+(M[d.sens_warn[k]]||d.sens_warn[k]));
+      key='sens:'+parts.join('|');
+      text=(vi?'CẢM BIẾN: ':'SENSOR: ')+parts.join(' · ');
+      warn=Object.values(d.sens_warn).every(v=>v==='spike');   // chỉ toàn spike → hổ phách
+    }
+  }
+  if(!(d&&d.sens_warn))_fault.sensN=0;
+  if(!key){
+    if(_fault.key){el.classList.remove('show');opLog('FAULT','hết sự cố ('+_fault.key+')');_fault.key='';}
+    return;
+  }
+  el.classList.add('show');el.classList.toggle('warn',warn);msg.textContent=text;
+  if(key!==_fault.key){opLog('FAULT',text,warn?'WARN':'ERROR');_fault.key=key;}
 }
 async function dsTick(){
   window._dsTickCount=(window._dsTickCount|0)+1;   // đếm nhịp — soi timer có bị bóp không
@@ -2512,7 +2808,7 @@ async function dsTick(){
   if(DS._pushTs&&Date.now()-DS._pushTs<1500)return;   // kênh push đang sống — poll chỉ là lưới dự phòng
   let s;
   try{s=await window.pywebview.api.link_snapshot();}
-  catch(e){DS.state='error';DS.err=String(e);renderLinkChip();return;}
+  catch(e){DS.state='error';DS.err=String(e);renderLinkChip();faultCheck(null);return;}
   dsApply(s);
 }
 
@@ -2831,6 +3127,8 @@ const CMD_LBL={ignite:'Đánh lửa',charge:'Nạp hạt',drop:'Kết thúc mẻ
   drumfan:'Quạt trống',mixer:'Cánh khuấy',afterburner:'Afterburner',loader:'Nạp liệu',destoner:'Tách đá'};
 async function machCmd(name,value){
   const lbl=CMD_LBL[name]||name, v=value===undefined?1:value;
+  if(LIC_BLOCK){toast(LANG==='vi'?'Chế độ XEM — máy này chưa kích hoạt bản quyền, không điều khiển được':'VIEW mode — this machine is not licensed');
+    opLog('LIC',`chặn lệnh ${lbl} (chưa kích hoạt bản quyền)`,'WARN');return false;}
   if(!dsBridge()){toast('Chế độ mô phỏng — chưa nối máy');return false;}
   if(DS.state!=='connected'){toast('Chưa nối được máy — không gửi lệnh được');
     opLog('CMD',`${lbl} = ${v} — KHÔNG GỬI (chưa nối máy)`,'WARN');return false;}
@@ -3094,8 +3392,11 @@ function startRoast(){
     cmdCharge(); return;
   }
   R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};R._dropFired=false;seriesReset();
-  // nối máy: đồng hồ + mốc do Python giữ, phải báo cho nó biết mẻ mở từ giây này
-  if(dsBridge()&&window.pywebview.api.link_begin_batch)window.pywebview.api.link_begin_batch();
+  // nối máy: đồng hồ + mốc do Python giữ, phải báo cho nó biết mẻ mở từ giây này.
+  // Kèm meta hồ sơ → Python mở luôn bản ghi mẻ trong kho SQLite (không mất mẻ).
+  if(dsBridge()&&window.pywebview.api.link_begin_batch)
+    window.pywebview.api.link_begin_batch({no:R.profNo||0,name:R.profName||'',
+      color:R.profColor||'',roaster:(typeof session!=='undefined'&&session&&session.name)||''});
   opLog('MẺ',`bắt đầu rang — hồ sơ "${R.profName||'?'}"${dsLive()?' (máy thật)':' (mô phỏng)'}`);
   setRoastPhase('RUNNING');
   roastTimer=setInterval(roastTick,1000);
@@ -3137,6 +3438,8 @@ function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết th�
       p.curve={t:SERIES.t.slice(),bt:SERIES.bt.slice(),et:SERIES.et.slice(),
         gas:SERIES.gas.slice(),air:SERIES.air.slice(),drum:SERIES.drum.slice(),
         mile:{TP:R.mileT.TP??null,DE:R.mileT.DE??null,FCs:R.mileT.FCs??null,DROP:dropSec}};
+      // R.bgCurve/R.target GIỮ NGUYÊN bản lúc nạp hồ sơ — mục tiêu không được
+      // trôi theo từng mẻ (mẻ sau vẫn so với hồ sơ chuẩn, không so với mẻ trước)
       p.temp=dropT; p.time=fmtMMSS(dropSec);
       p.date=new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
       if(session)p.roaster=p.roaster||session.name;
@@ -3144,14 +3447,49 @@ function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết th�
       toast('Đã lưu curve mẻ này vào hồ sơ "'+p.name+'"',true);
     }
   }
+  // Chốt mẻ trong kho SQLite (Python) — mã mẻ + tổng kết + mốc. Chỉ APP chốt,
+  // web clone là bản mượn (shim trả ok:false), khỏi chốt đúp.
+  if(dsBridge()&&window.pywebview.api.db_batch_finish){
+    const mile={};MILES.forEach(m=>{const s=mileSec(m);
+      if(s!=null)mile[m.id]={t:s,bt:R.mileD[m.id]!=null?R.mileD[m.id]:null};});
+    Promise.resolve(window.pywebview.api.db_batch_finish(
+      {code:rec.code,drop_sec:dropSec,drop_temp:dropT,dev_pct:devPct,mile})).catch(()=>{});
+  }
   if(typeof pushAudit==='function'&&session)pushAudit('Hoàn tất','Mẻ rang',R.profName,rec.code);
   // ── đổ vào banner tổng kết ──
   txt('doneCode',rec.code); txt('doneName',R.profName);
   txt('doneTime',fmtMMSS(dropSec)); txt('doneTemp',dropT+'°C'); txt('doneDev',devPct+'%');
   MILES.forEach(m=>{const s=mileSec(m); txt('done_'+m.id, s!=null?fmtMMSS(s):'—');});
+  renderDoneTargets(dropSec,dropT,devPct);
   setRoastPhase('DONE');
   document.getElementById('pane-rang').classList.remove('paused');
   updateRoastLive();
+}
+/* Bảng DONE Thực tế/Mục tiêu (§18.5): dòng nhỏ dưới mỗi số = mục tiêu hồ sơ
+   (đóng băng lúc nạp) + lệch. Trong dung sai → xám; lệch đáng kể → hổ phách. */
+function renderDoneTargets(dropSec,dropT,devPct){
+  const tg=R.target||{}, m=tg.mile||{};
+  const put=(id,s,off)=>{const el=document.getElementById(id);if(!el)return;
+    el.textContent=s||'';el.classList.toggle('off',!!off);};
+  const lbl=LANG==='vi'?'mục tiêu ':'target ';
+  const dTxt=(d,fmt)=>' ('+(d>0?'+':'−')+fmt(Math.abs(d))+')';
+  if(tg.timeS!=null){const d=dropSec-tg.timeS;
+    put('doneTimeTg',lbl+fmtMMSS(tg.timeS)+dTxt(d,fmtMMSS),Math.abs(d)>30);}
+  else put('doneTimeTg','');
+  if(tg.temp!=null){const d=dropT-tg.temp;
+    put('doneTempTg',lbl+tg.temp+'°C'+dTxt(d,v=>Math.round(v)+'°'),Math.abs(d)>3);}
+  else put('doneTempTg','');
+  if(m.DROP&&m.FCs!=null){                       // % phát triển mục tiêu suy từ mốc hồ sơ
+    const tDev=Math.round((m.DROP-m.FCs)/m.DROP*100), d=devPct-tDev;
+    put('doneDevTg',lbl+tDev+'%'+dTxt(d,v=>Math.round(v)+'%'),Math.abs(d)>3);}
+  else put('doneDevTg','');
+  MILES.forEach(mm=>{                            // mốc: giây mục tiêu + lệch
+    const s=mm.id==='DROP'?(tg.timeS!=null?tg.timeS:(m.DROP!=null?m.DROP:null))
+                          :(m[mm.id]!=null?m[mm.id]:null);
+    if(s==null){put('doneTg_'+mm.id,'');return;}
+    const a=mileSec(mm), d=a!=null?a-s:null;
+    put('doneTg_'+mm.id,fmtMMSS(s)+(d!=null?dTxt(d,fmtMMSS):''),d!=null&&Math.abs(d)>20);
+  });
 }
 function newRoast(){             // "Mẻ mới" → về IDLE
   clearInterval(roastTimer);roastTimer=null;
@@ -3220,6 +3558,13 @@ function loadProfile(idx){
   const ps=loadProfiles(); const p=ps[idx]; if(!p)return;
   opLog('MẺ',`nạp hồ sơ "${p.name}" (No.${idx+1})`);
   R.profName=p.name; R.profColor=p.color||'#c97a1a'; R.profNo=idx+1; R.profRoast=p.roast||'';
+  // NỀN MỜ MỤC TIÊU (§18.3): curve mẻ chuẩn đã lưu trong hồ sơ → vẽ đứt khúc sau
+  // đường thật khi rang máy. Hồ sơ chưa có curve thì thôi, không vẽ đường bịa.
+  R.bgCurve=(p.curve&&p.curve.t&&p.curve.t.length>5)?{t:p.curve.t,bt:p.curve.bt}:null;
+  const lgT=document.getElementById('lgTarget');if(lgT)lgT.style.display=R.bgCurve?'':'none';
+  // MỤC TIÊU cho bảng DONE (§18.5) — đóng băng tại lúc nạp: giờ xả, nhiệt xả, mốc
+  R.target={timeS:(m=>m?(+m[1])*60+(+m[2]):null)(/^(\d+):(\d\d)$/.exec(p.time||'')),
+            temp:+p.temp||null, mile:(p.curve&&p.curve.mile)||null};
   // ── ngưỡng THẬT lấy từ hồ sơ ──
   // Nhiệt xả → ngưỡng DROP tự động (BT chạm là gửi lệnh xả, y hệt thợ cài chip)
   if(p.temp){R.mileSet.DROP=Math.max(100,Math.min(260,p.temp));
@@ -3545,7 +3890,7 @@ function drawChart(){
   // trục thời gian phải chốt TRƯỚC khi lấy mẫu (i ↔ thời gian), mẻ dài thì tự nới
   let tiMax = auto ? (liveChart?Math.max(15,up(R.elapsed/60+1,5)):15) : (+CFG.ch_time||15);
   // sinh đường cong TRƯỚC để tự-scale theo dữ liệu
-  let bt=[],et=[],abt=[],ror=[],burner=[],drop,i0=0;
+  let bt=[],et=[],abt=[],ror=[],burner=[],tbt=[],drop,i0=0;
   if(liveChart){
     const span=tiMax*60;                             // giây trên toàn bề rộng
     drop=Math.round(N*Math.min(1,R.elapsed/span));
@@ -3556,14 +3901,27 @@ function drawChart(){
       while(k+1<SERIES.t.length&&SERIES.t[k+1]<=tt)k++;
       bt.push(SERIES.bt[k]);et.push(SERIES.et[k]);ror.push(SERIES.ror[k]);burner.push(SERIES.gas[k]);
     }
+    // NỀN MỜ MỤC TIÊU: BT của curve hồ sơ trải lên cùng lưới thời gian — vẽ TOÀN
+    // bề rộng (thợ thấy đường phải đi tiếp), quá cuối curve hồ sơ thì null
+    if(R.bgCurve){
+      const bg=R.bgCurve, bgEnd=bg.t[bg.t.length-1];
+      let k2=0;
+      for(let i=0;i<=N;i++){
+        const tt=i/N*span;
+        if(tt>bgEnd){tbt.push(null);continue;}
+        while(k2+1<bg.t.length&&bg.t[k2+1]<=tt)k2++;
+        tbt.push(bg.bt[k2]);
+      }
+    }
   }else{
     drop=Math.round(N*Math.max(0,Math.min(1,R.prog)));   // now-line theo tiến độ mẻ mẫu
     for(let i=0;i<=N;i++){const c=curveAt(i/N);
       bt.push(c.bt);et.push(c.et);abt.push(c.abt);ror.push(c.ror);burner.push(c.burner);}
   }
   let tMax,rMin,rMax;
+  const tbtReal=tbt.filter(v=>v!=null);   // nền mờ cũng phải nằm trong khung
   if(auto){
-    tMax=Math.max(100,up(Math.max(...et,...bt)+12,50));
+    tMax=Math.max(100,up(Math.max(...et,...bt,...tbtReal)+12,50));
     rMax=up(Math.max(...ror,10),10); rMin=Math.min(-10,dn(Math.min(...ror),10));
   }else{ tMax=+CFG.ch_tmax||300; rMax=+CFG.ch_rmax||40; rMin=-10; }
   ror=ror.map(v=>Math.max(rMin,Math.min(rMax,v)));
@@ -3595,6 +3953,15 @@ function drawChart(){
   const plot=(arr,mapy,col,w,glow)=>{g.save();if(glow){g.shadowColor=col;g.shadowBlur=14;}g.beginPath();arr.forEach((v,i)=>{const X=x(i+i0),Y=mapy(v);i?g.lineTo(X,Y):g.moveTo(X,Y);});
     g.strokeStyle=col;g.lineWidth=w;g.lineJoin='round';g.lineCap='round';g.stroke();g.restore();};
   const stepPlot=(arr,mapy,col,w)=>{g.beginPath();arr.forEach((v,i)=>{const X=x(i+i0),Y=mapy(v);if(!i)g.moveTo(X,Y);else{g.lineTo(X,Y);}if(i<arr.length-1)g.lineTo(x(i+i0+1),Y);});g.strokeStyle=col;g.lineWidth=w;g.stroke();};
+  // NỀN MỜ MỤC TIÊU — vẽ TRƯỚC mọi đường thật để nằm phía sau; đứt khúc + mờ,
+  // toàn bề rộng chứ không cắt ở now-line (mục tiêu là đường phải đi tiếp)
+  if(liveChart&&tbtReal.length){
+    g.save();g.setLineDash([9,8]);g.globalAlpha=.45;
+    g.beginPath();let pen=false;
+    tbt.forEach((v,i)=>{if(v==null){pen=false;return;}
+      const X=x(i),Y=yT(v);pen?g.lineTo(X,Y):g.moveTo(X,Y);pen=true;});
+    g.strokeStyle=css('--c-bt');g.lineWidth=3;g.lineJoin='round';g.stroke();g.restore();
+  }
   if(hasData){
     // vùng nền dưới đường BT — gradient xanh mờ dần (tăng chiều sâu)
     const bc=cut(bt);const grad=g.createLinearGradient(0,T,0,H-B);
@@ -3635,7 +4002,11 @@ function loadAudit(){try{return JSON.parse(localStorage.getItem(LS_AUDIT))||[];}
 function pushAudit(action,field,ov,nv){
   // tee sang operation log — nhật ký thao tác và log kỹ thuật chung dòng thời gian
   opLog('THAO TÁC',`${action} ${field}${ov?`: ${ov}`:''}${nv?` → ${nv}`:''} (${session?session.name:'?'})`);
-  const a=loadAudit();a.unshift({ts:Date.now(),user:session?session.name:'?',action,field,old:ov,'new':nv});
+  const user=session?session.name:'?';
+  // GĐ2: có cầu → ghi vào nhật ký hash-chain Python (chống sửa); web mượn thì thôi
+  const a2=window.pywebview&&window.pywebview.api;
+  if(a2&&a2.audit_add&&!window._mirRx){try{a2.audit_add(user,action,field,ov||'',nv||'');}catch(e){}}
+  const a=loadAudit();a.unshift({ts:Date.now(),user,action,field,old:ov,'new':nv});
   localStorage.setItem(LS_AUDIT,JSON.stringify(a.slice(0,500)));}
 
 /* ── config ── */
@@ -3779,23 +4150,61 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 });
 
+/* ════════ AUTH BACKEND (GĐ2) ════════
+   Có cầu pywebview + auth_* → kiểm PIN Ở PYTHON (băm+pepper DPAPI, lockout bền,
+   không tin trình duyệt). Mở browser trần (dev) → giữ nguyên đường localStorage
+   cũ. Web LAN đi qua server (shim map auth_* → /api/auth_*). */
+// PY_AUTH_OK: Python auth CÓ method VÀ chạy được (module init OK). Nếu auth_otl
+// init lỗi (_auth=None), method vẫn tồn tại nhưng trả 'chưa sẵn sàng' → phải rơi
+// về localStorage, không được kẹt ở đường Python. Cờ này do authState() cập nhật.
+let PY_AUTH_OK=null;    // null = chưa biết; true/false sau lần authState đầu
+function pyAuth(){const a=window.pywebview&&window.pywebview.api;
+  return (a&&a.auth_login&&PY_AUTH_OK!==false)?a:null;}
+let AUTH_USERS=[];      // danh sách user LẦN VẼ GẦN NHẤT (pickUser/loginSubmit trỏ theo index)
+/* Trạng thái đăng nhập chuẩn hoá {setup, list:[{name,role,enabled,perms}]} */
+async function authState(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(a&&a.auth_state){try{const s=await a.auth_state();
+    if(s&&!s.nopy){PY_AUTH_OK=true;return {setup:!!s.setup,list:s.users||[]};}
+    PY_AUTH_OK=false;                          // module Python báo không sẵn sàng
+  }catch(e){PY_AUTH_OK=false;}}
+  const u=loadUsers();return {setup:!!u,list:(u&&u.list)||[]};
+}
+/* Di cư 1 lần: Python chưa có user mà localStorage có → đẩy sang Python */
+/* Cầu pywebview sẵn sàng SAU lần vẽ login đầu → vẽ lại để di cư + lấy danh sách
+   từ Python. Chỉ vẽ lại khi còn ở màn login và thợ CHƯA gõ số nào (khỏi xoá PIN
+   đang gõ dở); gõ rồi thì loginSubmit đã có đường tự di cư trước khi kiểm. */
+window.addEventListener('pywebviewready',()=>{
+  const lg=document.getElementById('login');
+  if(lg&&lg.classList.contains('on')&&!loginPin)renderLogin();
+});
+async function authMigrateOnce(){
+  const a=pyAuth();if(!a||!a.auth_migrate)return;
+  try{const s=await a.auth_state();if(s&&!s.nopy&&!s.setup){
+    const u=loadUsers();
+    if(u&&u.list&&u.list.length){const r=await a.auth_migrate(u);
+      if(r&&r.ok)opLog('AUTH','di cư '+r.count+' tài khoản từ localStorage sang Python (có pepper)');}
+  }}catch(e){}
+}
+
 /* ════════ LOGIN + PHÂN QUYỀN ════════ */
 let loginMode='login',loginUserId=null,loginPin='',loginPin1='';
-function renderLogin(){
-  const users=loadUsers();loginPin='';loginPin1='';loginUserId=null;
+async function renderLogin(){
+  await authMigrateOnce();                    // localStorage cũ → Python (1 lần)
+  const st=await authState();AUTH_USERS=st.list;loginPin='';loginPin1='';loginUserId=null;
   document.getElementById('loginErr').textContent='';
   const tiles=document.getElementById('userTiles');
-  if(!users){loginMode='setup';
+  if(!st.setup){loginMode='setup';
     document.getElementById('loginTitle').textContent=LANG==='vi'?'Tạo tài khoản master':'Create master account';
     document.getElementById('loginSub').textContent=LANG==='vi'?'Lần đầu chạy — đặt mã PIN 4 số, nhập lại để xác nhận':'First run — set a 4-digit PIN, confirm it';
     tiles.innerHTML='';
   }else{loginMode='login';
     document.getElementById('loginTitle').textContent=I18N[LANG]['login.title'];
     document.getElementById('loginSub').textContent=I18N[LANG]['login.sub'];
-    tiles.innerHTML=users.list.map((u,i)=>`<div class="utile" data-i="${i}" onclick="pickUser(${i})">
+    tiles.innerHTML=st.list.map((u,i)=>`<div class="utile" data-i="${i}" onclick="pickUser(${i})">
       <div class="ua">${u.name[0].toUpperCase()}</div><div class="un">${u.name}</div>
       <div class="ur">${u.role==='master'?'Master':(LANG==='vi'?'Thợ':'Operator')}</div></div>`).join('');
-    if(users.list.length===1) pickUser(0);   // 1 tài khoản → tự chọn, nhập PIN vào luôn
+    if(st.list.length===1) pickUser(0);   // 1 tài khoản → tự chọn, nhập PIN vào luôn
   }
   renderPinDots();buildNumPad('loginPad',loginKey);
   // phím '.' đổi thành C (xoá hết); không cần OK vì đủ 4 số là vào
@@ -3807,7 +4216,10 @@ function setLoginLang(l){LANG=l;localStorage.setItem('otl_lang',l);applyLang();u
   document.getElementById('llEN').classList.toggle('on',l==='en');renderLogin();}
 function pickUser(i){loginUserId=i;loginPin='';renderPinDots();
   document.querySelectorAll('#userTiles .utile').forEach(t=>t.classList.toggle('sel',+t.dataset.i===i));
-  const u=loadUsers().list[i];clearTimeout(_lockTimer);
+  clearTimeout(_lockTimer);
+  // Lockout do Python giữ (bền) — không tự showLock trước; sai PIN mới hiện đếm ngược
+  if(pyAuth()){document.getElementById('loginErr').textContent='';return;}
+  const u=(loadUsers().list||[])[i];
   if(u&&getLock(u.name).until>Date.now())showLock(u.name);else document.getElementById('loginErr').textContent='';}
 const PIN_LEN=4;   // PIN 4 số — đủ số là tự đăng nhập, không cần Enter
 function renderPinDots(){let h='';for(let i=0;i<PIN_LEN;i++)h+=`<i class="${i<loginPin.length?'f':''}"></i>`;
@@ -3835,30 +4247,65 @@ function showLock(n){clearTimeout(_lockTimer);const rem=getLock(n).until-Date.no
   err.textContent=(LANG==='vi'?'🔒 Khoá — chờ ':'🔒 Locked — wait ')+`${m}:${String(s).padStart(2,'0')}`;
   _lockTimer=setTimeout(()=>showLock(n),1000);}
 async function loginSubmit(){const err=document.getElementById('loginErr');
+  // ⚠ Cầu pywebview nạp CHẬM hơn lần vẽ màn login đầu tiên: lúc boot chưa có
+  // window.pywebview nên authMigrateOnce() bị bỏ qua, danh sách lấy từ
+  // localStorage. Tới lúc bấm PIN thì cầu đã sẵn sàng → đi đường Python trong
+  // khi Python CHƯA có tài khoản ⇒ không ai đăng nhập được. Vì vậy: nếu chưa
+  // từng chốt được nguồn auth, di cư + lấy lại danh sách NGAY TRƯỚC khi kiểm PIN.
+  if(PY_AUTH_OK===null&&window.pywebview&&window.pywebview.api&&window.pywebview.api.auth_state){
+    const keep=(loginUserId!=null&&AUTH_USERS[loginUserId])?AUTH_USERS[loginUserId].name:null;
+    await authMigrateOnce();
+    const st=await authState(); AUTH_USERS=st.list;
+    if(keep){const i=AUTH_USERS.findIndex(u=>u.name===keep); if(i>=0)loginUserId=i;}
+  }
+  const a=pyAuth();
   if(loginMode==='setup'){
     if(loginPin.length!==PIN_LEN)return;
     if(!loginPin1){loginPin1=loginPin;loginPin='';renderPinDots();
       document.getElementById('loginSub').textContent=LANG==='vi'?'Nhập lại mã PIN để xác nhận':'Re-enter PIN to confirm';return;}
     if(loginPin!==loginPin1){err.textContent=LANG==='vi'?'PIN nhập lại không khớp':'PIN did not match';loginPin='';loginPin1='';renderPinDots();
       document.getElementById('loginSub').textContent=LANG==='vi'?'Đặt lại mã PIN 4 số':'Set 4-digit PIN again';return;}
+    if(a){const r=await a.auth_setup_master(loginPin);
+      if(r&&r.ok){session={name:r.user.name,role:r.user.role,perms:r.user.perms||{}};finishLogin();return;}
+      err.textContent=(LANG==='vi'?'Tạo master lỗi: ':'Setup failed: ')+((r&&r.err)||'?');loginPin='';loginPin1='';renderPinDots();return;}
     const salt=hex(crypto.getRandomValues(new Uint8Array(16)));
     const master={name:'Master',role:'master',salt,pin:await pbkdf2(loginPin,salt),perms:{},enabled:true};
     saveUsers({list:[master]});session={name:'Master',role:'master',perms:{}};
     pushAudit('Tạo','Tài khoản master','','Master');finishLogin();return;
   }
   if(loginUserId==null){err.textContent=LANG==='vi'?'Chọn tài khoản trước':'Select an account first';loginPin='';renderPinDots();return;}
-  const u=loadUsers().list[loginUserId];
-  if(!u.enabled){err.textContent=LANG==='vi'?'Tài khoản đang bị khoá':'Account disabled';loginPin='';renderPinDots();return;}
-  if(getLock(u.name).until>Date.now()){showLock(u.name);loginPin='';renderPinDots();return;}
-  if(await pbkdf2(loginPin,u.salt)===u.pin){clearLock(u.name);session={name:u.name,role:u.role,perms:u.perms||{}};
-    pushAudit('Đăng nhập','Phiên','',u.name);finishLogin();}
-  else{const s=registerFail(u.name);loginPin='';renderPinDots();
-    if(s.until>Date.now())showLock(u.name);
+  const u=AUTH_USERS[loginUserId];if(!u){err.textContent=LANG==='vi'?'Chọn tài khoản trước':'Select an account first';return;}
+  if(u.enabled===false){err.textContent=LANG==='vi'?'Tài khoản đang bị khoá':'Account disabled';loginPin='';renderPinDots();return;}
+  // ── đường PYTHON: mọi phép kiểm (băm+pepper, lockout) ở server-side ──
+  if(a){const r=await a.auth_login(u.name,loginPin);loginPin='';renderPinDots();
+    if(r&&r.ok){session={name:r.user.name,role:r.user.role,perms:r.user.perms||{}};finishLogin();return;}
+    if(r&&r.err==='locked'){const m=Math.floor(r.left/60),s=r.left%60;
+      err.textContent=(LANG==='vi'?'🔒 Khoá — chờ ':'🔒 Locked — wait ')+`${m}:${String(s).padStart(2,'0')}`;return;}
+    if(r&&r.err==='sai_pin')err.textContent=(LANG==='vi'?'Sai PIN — còn ':'Wrong PIN — ')+Math.max(0,r.left_tries)+(LANG==='vi'?' lần':' left');
+    else err.textContent=LANG==='vi'?'Sai PIN':'Wrong PIN';return;}
+  // ── đường localStorage (browser trần) ──
+  const lu=(loadUsers().list||[])[loginUserId];if(!lu)return;
+  if(getLock(lu.name).until>Date.now()){showLock(lu.name);loginPin='';renderPinDots();return;}
+  if(await pbkdf2(loginPin,lu.salt)===lu.pin){clearLock(lu.name);session={name:lu.name,role:lu.role,perms:lu.perms||{}};
+    pushAudit('Đăng nhập','Phiên','',lu.name);finishLogin();}
+  else{const s=registerFail(lu.name);loginPin='';renderPinDots();
+    if(s.until>Date.now())showLock(lu.name);
     else err.textContent=(LANG==='vi'?'Sai PIN — còn ':'Wrong PIN — ')+(7-s.fails)+(LANG==='vi'?' lần':' left');}
 }
+let LIC_BLOCK=false;   // true = license cưỡng chế bật + máy chưa kích hoạt → CHỈ XEM
+async function licGateAfterLogin(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.license_status)){LIC_BLOCK=false;return;}
+  try{const s=await a.license_status();LIC_BLOCK=!!(s.cuong_che&&!s.ok);
+    if(LIC_BLOCK)toast(LANG==='vi'?'Chế độ XEM — máy chưa kích hoạt bản quyền (Cài đặt → Tài khoản → Bản quyền)':'VIEW mode — machine not licensed');
+  }catch(e){LIC_BLOCK=false;}
+}
 function finishLogin(){document.getElementById('login').classList.remove('on');updateBadge();gotoTab('rang');
+  licGateAfterLogin();     // license cưỡng chế (mặc định tắt) → có thể vào chế độ xem
   portGateAfterLogin();}   // nhớ cổng cũ → tự nối; không nối được mới hỏi
-function logout(){if(session)pushAudit('Đăng xuất','Phiên','',session.name);session=null;updateBadge();
+function logout(){const a=pyAuth();
+  if(a){a.auth_logout();}else if(session)pushAudit('Đăng xuất','Phiên','',session.name);
+  session=null;updateBadge();
   document.getElementById('setwrap').classList.remove('on');document.getElementById('setgate').style.display='flex';
   renderLogin();document.getElementById('login').classList.add('on');}
 function updateBadge(){
@@ -3902,16 +4349,17 @@ function gotoSub(name){document.querySelectorAll('.subpane').forEach(p=>p.classL
   }catch(e){}})();}
 
 /* ── tài khoản ── */
-function renderAccounts(){const body=document.getElementById('accBody');if(!body)return;
-  const u=loadUsers();const slaves=((u&&u.list)||[]).map((x,i)=>({x,i})).filter(o=>o.x.role==='slave');
+async function renderAccounts(){const body=document.getElementById('accBody');if(!body)return;
+  const st=await authState();AUTH_USERS=st.list;
+  const slaves=st.list.map((x,i)=>({x,i})).filter(o=>o.x.role==='slave');
   const pill=(on,t)=>`<span class="pill ${on?'':'off'}">${t}</span>`;
-  const rows=slaves.length?slaves.map(({x,i})=>{const p=x.perms||{};return `<tr>
-    <td><span class="uicon">${x.name[0].toUpperCase()}</span>${x.name}</td>
+  const rows=slaves.length?slaves.map(({x})=>{const p=x.perms||{};return `<tr>
+    <td><span class="uicon">${x.name[0].toUpperCase()}</span>${esc(x.name)}</td>
     <td>${pill(p.ket_noi,'Kết nối')}${pill(p.calib_gas,'Calib')}${pill(p.model_nhiet,'Model')}</td>
-    <td>${x.enabled?pill(1,LANG==='vi'?'Bật':'On'):pill(0,LANG==='vi'?'Khoá':'Off')}</td>
+    <td>${x.enabled!==false?pill(1,LANG==='vi'?'Bật':'On'):pill(0,LANG==='vi'?'Khoá':'Off')}</td>
     <td style="text-align:right;white-space:nowrap">
-      <button class="linkbtn" onclick="accToggle(${i})">${x.enabled?(LANG==='vi'?'Khoá':'Off'):(LANG==='vi'?'Mở':'On')}</button>
-      <button class="linkbtn del" onclick="accDel(${i})">${LANG==='vi'?'Xoá':'Del'}</button></td></tr>`;}).join('')
+      <button class="linkbtn" onclick="accToggle('${encodeURIComponent(x.name)}',${x.enabled!==false?1:0})">${x.enabled!==false?(LANG==='vi'?'Khoá':'Off'):(LANG==='vi'?'Mở':'On')}</button>
+      <button class="linkbtn del" onclick="accDel('${encodeURIComponent(x.name)}')">${LANG==='vi'?'Xoá':'Del'}</button></td></tr>`;}).join('')
     :`<tr><td colspan="4" style="color:var(--mute);padding:24px">${LANG==='vi'?'Chưa có thợ vận hành nào.':'No operators yet.'}</td></tr>`;
   body.innerHTML=`<table class="utable"><thead><tr><th>${LANG==='vi'?'Thợ':'Operator'}</th><th>${LANG==='vi'?'Quyền':'Permissions'}</th><th>${LANG==='vi'?'Trạng thái':'Status'}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     <div class="section-t" style="margin-top:26px">${LANG==='vi'?'Thêm thợ vận hành':'Add operator'}</div>
@@ -3924,8 +4372,33 @@ function renderAccounts(){const body=document.getElementById('accBody');if(!body
       <div class="permchk" data-perm="calib_gas" onclick="this.classList.toggle('on')"><span class="bx">✓</span>Calib gas</div>
       <div class="permchk" data-perm="model_nhiet" onclick="this.classList.toggle('on')"><span class="bx">✓</span>Model nhiệt</div>
     </div>
-    <div style="margin-top:16px"><button class="bigbtn primary" onclick="accAdd()">${LANG==='vi'?'Thêm thợ':'Add'}</button></div>`;
+    <div style="margin-top:16px"><button class="bigbtn primary" onclick="accAdd()">${LANG==='vi'?'Thêm thợ':'Add'}</button></div>
+    <div class="section-t" style="margin-top:30px">${LANG==='vi'?'Bản quyền':'License'}</div>
+    <div id="licBox" class="licbox">${LANG==='vi'?'Đang kiểm…':'Checking…'}</div>`;
   nsNameVal='';nsPinVal='';
+  renderLicense();
+}
+/* Bản quyền (GĐ2): hiện machine_id để khách gửi người bán + trạng thái license.
+   Mặc định KHÔNG cưỡng chế (triết lý GĐ1 — xưởng mình tự dùng không tự chặn mình). */
+async function renderLicense(){
+  const box=document.getElementById('licBox');if(!box)return;
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.license_status)){box.textContent=LANG==='vi'?'Chỉ xem được trong app desktop.':'Desktop app only.';return;}
+  let s;try{s=await a.license_status();}catch(e){box.textContent='—';return;}
+  const vi=LANG==='vi';
+  const st=s.ok?`<span class="lic-ok">✓ ${vi?'Có bản quyền':'Licensed'}${s.ten?' · '+esc(s.ten):''}${s.het_han?' · '+(vi?'đến ':'until ')+esc(s.het_han):''}</span>`
+    :(s.cuong_che?`<span class="lic-bad">⚠ ${vi?'Chưa kích hoạt':'Not activated'} — ${esc(s.ly_do||'')}</span>`
+                 :`<span class="lic-off">${vi?'Chưa kích hoạt (không bắt buộc)':'Not activated (not enforced)'}</span>`);
+  box.innerHTML=`<div class="lic-row">${st}</div>
+    <div class="lic-row"><span class="lic-k">${vi?'Mã máy':'Machine ID'}</span>
+      <code class="lic-mid" onclick="copyText('${s.may}','${vi?'Đã copy mã máy':'Machine ID copied'}')">${esc(s.may||'—')}</code>
+      <button class="linkbtn" onclick="copyText('${s.may}','${vi?'Đã copy mã máy':'Machine ID copied'}')">${vi?'Copy':'Copy'}</button></div>
+    <div class="lic-hint">${vi?'Gửi mã máy này cho OTL để nhận file bản quyền (otl.lic). Không có bản quyền, app vẫn chạy — chỉ khoá khi bản bán bật cưỡng chế.':'Send this Machine ID to OTL to receive your license file (otl.lic).'}</div>`;
+}
+function copyText(t,msg){if(!t)return;
+  const done=()=>toast(msg||'Đã copy',true);
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done).catch(()=>{
+    const e=document.createElement('textarea');e.value=t;document.body.appendChild(e);e.select();try{document.execCommand('copy');done();}catch(x){}e.remove();});
 }
 let nsNameVal='',nsPinVal='';
 async function pickName(){const v=await openKb(nsNameVal);if(v!=null){nsNameVal=v;
@@ -3941,16 +4414,26 @@ okNumpad=function(){if(npTarget==='__pin'){nsPinVal=npStr;document.querySelector
   document.querySelector('#nsPin .pv').style.color=npStr?'var(--txt)':'var(--mute)';closeNumpad();return;}_okNumpad();};
 async function accAdd(){if(!nsNameVal){toast(LANG==='vi'?'Nhập tên':'Enter a name');return;}
   if(nsPinVal.length<4){toast(LANG==='vi'?'PIN tối thiểu 4 số':'PIN ≥4 digits');return;}
-  const users=loadUsers();if(users.list.some(x=>x.name.toLowerCase()===nsNameVal.toLowerCase())){toast(LANG==='vi'?'Tên đã tồn tại':'Name exists');return;}
   const perms={};document.querySelectorAll('#accBody .permchk.on').forEach(el=>perms[el.dataset.perm]=true);
+  const a=pyAuth();
+  if(a){const r=await a.auth_add_operator(nsNameVal,nsPinVal,perms);
+    if(r&&r.ok){await renderAccounts();toast((LANG==='vi'?'Đã thêm ':'Added ')+nsNameVal,true);}
+    else toast((LANG==='vi'?'Không thêm được: ':'Failed: ')+((r&&r.err)||'?'));return;}
+  const users=loadUsers();if(users.list.some(x=>x.name.toLowerCase()===nsNameVal.toLowerCase())){toast(LANG==='vi'?'Tên đã tồn tại':'Name exists');return;}
   const salt=hex(crypto.getRandomValues(new Uint8Array(16)));
   users.list.push({name:nsNameVal,role:'slave',salt,pin:await pbkdf2(nsPinVal,salt),perms,enabled:true});
   saveUsers(users);pushAudit('Thêm','Thợ vận hành','',nsNameVal);renderAccounts();toast((LANG==='vi'?'Đã thêm ':'Added ')+nsNameVal,true);}
-function accToggle(i){const users=loadUsers();const s=users.list[i];const was=s.enabled;s.enabled=!s.enabled;saveUsers(users);
+async function accToggle(nameEnc,wasOn){const name=decodeURIComponent(nameEnc);const a=pyAuth();
+  if(a){await a.auth_set_operator(name,null,!wasOn);await renderAccounts();return;}
+  const users=loadUsers();const s=users.list.find(x=>x.name===name);if(!s)return;const was=s.enabled;s.enabled=!s.enabled;saveUsers(users);
   pushAudit('Sửa','Trạng thái '+s.name,was?'Bật':'Khoá',s.enabled?'Bật':'Khoá');renderAccounts();}
-function accDel(i){const users=loadUsers();const s=users.list[i];if(s.role==='master'){toast('Không xoá được master');return;}
-  if(!confirm((LANG==='vi'?'Xoá thợ ':'Delete ')+'"'+s.name+'"?'))return;users.list.splice(i,1);saveUsers(users);
-  pushAudit('Xoá','Thợ vận hành',s.name,'');renderAccounts();toast((LANG==='vi'?'Đã xoá ':'Deleted ')+s.name,true);}
+async function accDel(nameEnc){const name=decodeURIComponent(nameEnc);
+  if(!confirm((LANG==='vi'?'Xoá thợ ':'Delete ')+'"'+name+'"?'))return;
+  const a=pyAuth();
+  if(a){const r=await a.auth_del_operator(name);if(r&&r.ok){await renderAccounts();toast((LANG==='vi'?'Đã xoá ':'Deleted ')+name,true);}
+    else toast((LANG==='vi'?'Không xoá được: ':'Failed: ')+((r&&r.err)||'?'));return;}
+  const users=loadUsers();const i=users.list.findIndex(x=>x.name===name);if(i<0)return;if(users.list[i].role==='master'){toast('Không xoá được master');return;}
+  users.list.splice(i,1);saveUsers(users);pushAudit('Xoá','Thợ vận hành',name,'');renderAccounts();toast((LANG==='vi'?'Đã xoá ':'Deleted ')+name,true);}
 
 /* ── nhật ký ── */
 /* ── Viewer Log kỹ thuật: đọc đuôi app.log qua bridge, lọc mức, mới nhất cuối ── */
@@ -3989,12 +4472,21 @@ async function renderOpLog(){
   }).join('\n')||(LANG==='vi'?'(log trống)':'(empty)');
   box.scrollTop=box.scrollHeight;   // dòng mới nhất nằm cuối — cuộn xuống sẵn
 }
-function renderAudit(){const body=document.getElementById('auditBody');if(!body)return;const a=loadAudit();
-  if(!a.length){body.innerHTML=`<div class="audit"><div class="empty">${LANG==='vi'?'Chưa có thay đổi nào được ghi.':'No changes logged yet.'}</div></div>`;return;}
+async function renderAudit(){const body=document.getElementById('auditBody');if(!body)return;
+  const py=window.pywebview&&window.pywebview.api;
+  let a=null,vfy=null;
+  if(py&&py.audit_tail){try{a=await py.audit_tail(300);vfy=py.audit_verify?await py.audit_verify():null;}catch(e){}}
+  if(!Array.isArray(a))a=loadAudit();            // browser trần → localStorage cũ
   const z=n=>String(n).padStart(2,'0');const fmt=ts=>{const d=new Date(ts);return `${z(d.getDate())}/${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`;};
-  body.innerHTML=`<table class="audit"><thead><tr><th>${LANG==='vi'?'Thời gian':'Time'}</th><th>${LANG==='vi'?'Người':'User'}</th><th>${LANG==='vi'?'Thao tác':'Action'}</th><th>${LANG==='vi'?'Mục':'Field'}</th><th>${LANG==='vi'?'Giá trị':'Value'}</th></tr></thead>
-    <tbody>${a.map(e=>`<tr><td>${fmt(e.ts)}</td><td>${e.user}</td><td>${e.action}</td><td class="f">${e.field}</td>
-      <td>${e.old?`<span class="old">${e.old}</span>`:''}<span class="chg">${e['new']||''}</span></td></tr>`).join('')}</tbody></table>`;}
+  // huy hiệu toàn vẹn hash-chain (chỉ khi có nhật ký Python)
+  let badge='';
+  if(vfy){badge=vfy.ok
+    ?`<div class="audit-vfy ok">✓ ${LANG==='vi'?'Nhật ký nguyên vẹn':'Log intact'} · ${vfy.total} ${LANG==='vi'?'dòng':'entries'}</div>`
+    :`<div class="audit-vfy bad">⚠ ${LANG==='vi'?'Nhật ký ĐÃ BỊ SỬA ở dòng ':'Log TAMPERED at entry '}${vfy.broken_at}</div>`;}
+  if(!a.length){body.innerHTML=badge+`<div class="audit"><div class="empty">${LANG==='vi'?'Chưa có thay đổi nào được ghi.':'No changes logged yet.'}</div></div>`;return;}
+  body.innerHTML=badge+`<table class="audit"><thead><tr><th>${LANG==='vi'?'Thời gian':'Time'}</th><th>${LANG==='vi'?'Người':'User'}</th><th>${LANG==='vi'?'Thao tác':'Action'}</th><th>${LANG==='vi'?'Mục':'Field'}</th><th>${LANG==='vi'?'Giá trị':'Value'}</th></tr></thead>
+    <tbody>${a.map(e=>`<tr><td>${fmt(e.ts)}</td><td>${esc(e.user)}</td><td>${esc(e.action)}</td><td class="f">${esc(e.field)}</td>
+      <td>${e.old?`<span class="old">${esc(e.old)}</span>`:''}<span class="chg">${esc(e['new']||'')}</span></td></tr>`).join('')}</tbody></table>`;}
 
 /* ── toast ── */
 let toastTmr;function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(ok?' ok':'');

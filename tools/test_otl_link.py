@@ -40,6 +40,8 @@ def make_regs():
     vals = [2153, 2310, 1234, -560, 1100, 35, 18, 60, 2200, -120, 7, 642, 0x07, 0x43, 1]
     for i, v in enumerate(vals):
         r[L.R_BASE + i] = v & 0xFFFF
+    for i in range(len(vals), L.R_COUNT):
+        r[L.R_BASE + i] = 0        # ô mới (prof_*/scale/…) — bản đồ nới thì test tự nới
     for i in range(L.W_COUNT):
         r[L.W_BASE + i] = 0
     return r
@@ -82,7 +84,8 @@ def main():
     chk("lệnh lạ bị chặn", link.write("nuke", 1)["ok"] is False)
     for addr, vals in link._pending:
         link.write_regs(addr, vals)
-    chk("ghi tới đúng reg gas(120)", link._ser.log[0] == (120, [100]), link._ser.log)
+    chk("ghi tới đúng reg gas (W_BASE)",
+        link._ser.log[0] == (L.W_BASE + L.W_INDEX["gas"], [100]), link._ser.log)
 
     print("5) vòng poll + heartbeat")
     link2 = L.RoasterLink({"port": "FAKE", "baud": 9600, "slave": 1, "enabled": True, "poll_hz": 20})

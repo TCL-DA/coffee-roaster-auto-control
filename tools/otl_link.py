@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pc_link_map                                             # noqa: E402
 from pc_link_map import (                                      # noqa: E402
     R_BASE, R_COUNT, W_BASE, W_COUNT, W_INDEX, W_RANGE, W_SCALE, decode,
-    A_BASE, A_COUNT, decode_artisan, AW_INDEX,
+    A_BASE, A_COUNT, decode_artisan, AW_INDEX, STP,
 )
 from roast_derive import RoastDeriver                           # noqa: E402
 
@@ -142,6 +142,57 @@ MB_EXC = {
 }
 
 
+class SensorGuard:
+    """Sensor sanity (§16.9) cho MỘT kênh nhiệt (BT hoặc ET) — chặn số rác
+    TRƯỚC khi vào app/DB/luật tự động (ngưỡng DROP tự xả ăn theo BT!).
+
+    3 luật, đúng vật lý cặp nhiệt trên máy rang:
+      range  — ngoài −20..400°C chắc chắn là rác (hở cặp nhiệt đọc max, chập đọc
+               0/âm sâu): GIỮ giá trị tốt gần nhất, cắm cờ.
+      spike  — nhảy >25°C giữa 2 lần poll (~125ms): nhiễu RS485 cạnh biến tần.
+               Giữ giá trị tốt; mức mới mà ĐỨNG VỮNG quá 3s thì chấp nhận
+               (sự kiện thật — nhiễu không bao giờ đứng yên 3 giây).
+      frozen — đứng hình y nguyên >120s TRONG LÚC RANG: nghi sensor/module chết
+               đơ. Chỉ cắm cờ, không đổi số (số "đứng" vẫn là số đo cuối).
+    """
+
+    RANGE_LO, RANGE_HI = -20.0, 400.0
+    SPIKE_C = 25.0          # °C giữa 2 lần poll — vật lý trống rang không cho phép
+    SPIKE_HOLD_S = 3.0      # mức mới đứng vững quá ngưỡng này = thật, hết nghi nhiễu
+    FROZEN_S = 120.0        # đang rang mà BT bất động 2 phút = có chuyện
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        """Gọi khi mở lại cổng — quá khứ trước lúc đứt cáp không còn ý nghĩa."""
+        self.good = None          # giá trị tốt gần nhất
+        self._spike_t0 = None     # lúc bắt đầu chuỗi giá trị nhảy vọt
+        self._ref = None          # giá trị so đứng hình
+        self._ref_ts = 0.0        # lần cuối giá trị ĐỔI
+
+    def feed(self, v, now, roasting):
+        """Trả (giá_trị_nên_dùng, cảnh_báo 'range'/'spike'/'frozen'/None)."""
+        if v is None:
+            return v, None
+        if not (self.RANGE_LO <= v <= self.RANGE_HI):
+            self._spike_t0 = None
+            return (self.good if self.good is not None else v), "range"
+        if self.good is not None and abs(v - self.good) > self.SPIKE_C:
+            if self._spike_t0 is None:
+                self._spike_t0 = now
+            if now - self._spike_t0 < self.SPIKE_HOLD_S:
+                return self.good, "spike"
+            # đứng vững quá 3s → sự kiện thật, nhận mức mới (rơi xuống dưới)
+        self._spike_t0 = None
+        if self._ref is None or v != self._ref:
+            self._ref, self._ref_ts = v, now
+        warn = ("frozen" if roasting and (now - self._ref_ts) > self.FROZEN_S
+                else None)
+        self.good = v
+        return v, warn
+
+
 class ModbusError(Exception):
     pass
 
@@ -171,6 +222,8 @@ class RoasterLink:
         self._r_count = R_COUNT             # firmware CŨ có ít ô đọc hơn → tự lùi (xem _read_pclink)
         self._deriver = RoastDeriver()      # chỉ dùng ở chế độ tương thích
         self._last_charge = 0               # cạnh lên nút charge/drop của HMI
+        self._sg_bt = SensorGuard()         # sensor sanity §16.9 — lọc BT/ET rác
+        self._sg_et = SensorGuard()         #   ngay tại nguồn: app/DB/web đều hưởng
 
     # ── vòng đời ────────────────────────────────────────────────────────────
     def start(self):
@@ -294,6 +347,8 @@ class RoasterLink:
             )
             time.sleep(0.15)                 # PL2303/FT232 cần chút thời gian ổn định
             self._ser.reset_input_buffer()
+            self._sg_bt.reset()              # quá khứ trước lúc đứt cáp hết ý nghĩa —
+            self._sg_et.reset()              #   không được so spike với số cũ cả phút trước
             return True
         except Exception as e:
             self._set_state("error", str(e))
@@ -351,6 +406,20 @@ class RoasterLink:
         """Quy đổi do bản đồ dùng chung lo (pc_link_map.decode)."""
         return decode(r)
 
+    def _sanity(self, snap: dict, roasting: bool) -> dict:
+        """Sensor sanity §16.9: BT/ET đi qua SensorGuard, cắm snap['sens_warn']
+        = {'bt':'spike',...} hoặc None. Ngưỡng DROP tự xả ăn theo BT nên số rác
+        1 khung cũng đủ xả nhầm nguyên mẻ — phải chặn ở đây, tầng thấp nhất."""
+        now = time.time()
+        warns = {}
+        for key, sg in (("bt", self._sg_bt), ("et", self._sg_et)):
+            v, w = sg.feed(snap.get(key), now, roasting)
+            snap[key] = v
+            if w:
+                warns[key] = w
+        snap["sens_warn"] = warns or None
+        return snap
+
     def _read_pclink(self) -> dict:
         """Đọc khối PC_Link, TỰ LÙI số ô khi máy chạy firmware cũ (ít register hơn).
 
@@ -393,6 +462,8 @@ class RoasterLink:
         """
         raw = decode_artisan(self.read_regs(A_BASE, A_COUNT))
         d = self._deriver
+        # lọc rác TRƯỚC khi deriver ăn — RoR/mốc không được tính trên số nhiễu
+        raw = self._sanity(raw, d.charged and not d.dropped)
         d.feed(raw["bt"], raw["et"])
 
         started = bool(raw.get("charge")) or bool(raw.get("auto"))
@@ -402,7 +473,9 @@ class RoasterLink:
                                               (self._last_charge and not started)):
             d.drop(raw["bt"])
         self._last_charge = 1 if started else 0
-        return d.snapshot(raw)
+        snap = d.snapshot(raw)
+        snap["sens_warn"] = raw.get("sens_warn")   # d.snapshot chỉ lấy ô nó biết
+        return snap
 
     def _run(self):
         period = 1.0 / max(0.5, float(self.cfg.get("poll_hz", 8)))
@@ -439,8 +512,12 @@ class RoasterLink:
 
                 if self._mode == MODE_PCLINK:
                     snap = self._read_pclink()
+                    # "đang rang" theo progStep (t_roast có thể KHÔNG reset sau DROP
+                    # — dựa vào nó là máy nằm im qua đêm cũng bị báo frozen oan)
+                    roasting = STP["CHARGE"] <= (snap.get("step") or 0) < STP["DROP"]
+                    snap = self._sanity(snap, roasting)
                 else:
-                    snap = self._poll_compat()
+                    snap = self._poll_compat()   # sanity đã chạy bên trong (trước deriver)
 
                 now = time.time()
                 # heartbeat đứng yên = firmware treo / cáp còn nhưng máy không chạy.

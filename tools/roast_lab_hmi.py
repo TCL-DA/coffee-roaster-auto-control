@@ -26,6 +26,10 @@ import webview
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import otl_link                                  # noqa: E402  (cầu Modbus tới máy rang)
+import roast_db                                  # noqa: E402  (kho mẻ SQLite — không mất mẻ)
+import auth_otl                                  # noqa: E402  (GĐ2: kiểm PIN phía Python + pepper)
+import audit_otl                                 # noqa: E402  (GĐ2: nhật ký hash-chain)
+import license_otl                               # noqa: E402  (GĐ2: license Ed25519 khoá theo máy)
 
 # Console của exe (PyInstaller) mặc định codec cp1252 → print tiếng Việt là
 # UnicodeEncodeError chết app ngay lúc mở. Ép UTF-8, lỗi thì thay ? — không chết.
@@ -125,6 +129,28 @@ class Api:
         self._websrv = None      # server web LAN đang chạy (nút gạt bật/tắt trong menu)
         self.web_cfg = {"bat": True, "cong": 8555, "pin": "1108"}  # [WebServer] trong settings.ini
         self.web_tokens = {}     # token → thời điểm cấp (điện thoại đã nhập đúng PIN web)
+        # Kho mẻ SQLite (không mất mẻ) — DB hỏng cũng KHÔNG được chặn app mở
+        self._db = None          # RoastDb — None nếu mở thất bại (app vẫn chạy)
+        self._db_bid = None      # id mẻ đang RUNNING trong DB
+        self._db_t0 = 0.0        # lúc mở mẻ — chặn begin_batch gọi đúp (app + web)
+        try:
+            self._db = roast_db.RoastDb(os.path.dirname(self._state_path()), log=log.info)
+            self._db.backup_daily()
+        except Exception:
+            log.error("[DB] không mở được kho mẻ — app chạy tiếp KHÔNG ghi mẻ",
+                      exc_info=True)
+        # GĐ2 — auth phía Python + nhật ký hash-chain. Lỗi cũng không chặn app.
+        base = os.path.dirname(self._state_path())
+        try:
+            self._auth = auth_otl.Auth(base, log=log.info)
+        except Exception:
+            self._auth = None
+            log.error("[AUTH] không khởi tạo được — quay về auth localStorage", exc_info=True)
+        try:
+            self._audit = audit_otl.AuditLog(base, log=log.info)
+        except Exception:
+            self._audit = None
+        self._session = None      # user đã đăng nhập ở tiến trình Python (nguồn quyền thật)
 
     # ── chỉ những method dưới đây mới phơi sang JS ──────────────────────────
     def toggle_fullscreen(self):
@@ -217,12 +243,233 @@ class Api:
         return self._link.write(name, value)
 
     def link_new_batch(self):
-        """Về mẻ trống — xoá đồng hồ/mốc bên Python."""
+        """Về mẻ trống — xoá đồng hồ/mốc bên Python. Mẻ DB chưa chốt (bấm Mẻ mới
+        giữa chừng) thì đóng INTERRUPTED, không để RUNNING mồ côi."""
+        if self._db and self._db_bid is not None:
+            try:
+                self._db.close_running()
+            except Exception:
+                log.error("[DB] đóng mẻ dở thất bại", exc_info=True)
+            self._db_bid = None
         return self._link.new_batch()
 
-    def link_begin_batch(self):
-        """Thợ bấm Bắt đầu rang — mở đồng hồ mẻ + chấm mốc từ giây này."""
-        return self._link.begin_batch()
+    def link_begin_batch(self, meta=None):
+        """Thợ bấm Bắt đầu rang — mở đồng hồ mẻ + chấm mốc từ giây này.
+
+        Mở luôn mẻ mới trong kho SQLite (meta = hồ sơ từ JS). App và web clone
+        CÙNG gọi hàm này khi máy vào mẻ (mỗi màn tự phát hiện qua snapshot) →
+        trong 20s chỉ nhận lần đầu, các lần sau dùng lại mẻ đang mở."""
+        r = self._link.begin_batch()
+        if self._db:
+            try:
+                if self._db_bid is not None and (time.time() - self._db_t0) < 20:
+                    pass                          # gọi đúp (màn thứ hai) — dùng mẻ đang mở
+                else:
+                    self._db_bid = self._db.begin(meta)
+                    self._db_t0 = time.time()
+                    log.info("[DB] mở mẻ #%s — hồ sơ %s", self._db_bid,
+                             (meta or {}).get("name") or "?")
+            except Exception:
+                log.error("[DB] mở mẻ thất bại — rang vẫn chạy tiếp", exc_info=True)
+        return r
+
+    # ── Kho mẻ SQLite (không mất mẻ) — JS gọi qua cầu, web qua /api/* ───────
+    def db_batch_finish(self, summary=None):
+        """JS chốt mẻ (finishRoast): mã mẻ + tổng kết + mốc. Xong thì backup ngày
+        (chạy 16h/ngày nên lúc app mở có thể chưa sang ngày mới)."""
+        if not (self._db and self._db_bid is not None):
+            return {"ok": False, "err": "không có mẻ đang mở"}
+        try:
+            r = self._db.finish(self._db_bid, summary)
+            log.info("[DB] chốt mẻ #%s %s", self._db_bid,
+                     (summary or {}).get("code") or "")
+            self._db_bid = None
+            self._db.backup_daily()
+            return r
+        except Exception as e:
+            log.error("[DB] chốt mẻ thất bại", exc_info=True)
+            return {"ok": False, "err": str(e)}
+
+    def db_batch_list(self, n=50):
+        """Danh sách mẻ mới nhất cho tab Lịch sử (app + web đọc chung)."""
+        if not self._db:
+            return None
+        try:
+            return self._db.latest(n)
+        except Exception:
+            log.error("[DB] đọc lịch sử thất bại", exc_info=True)
+            return None
+
+    def db_batch_curve(self, bid):
+        """Curve 1 mẻ (mảng cột như p.curve) — xem lại / xuất."""
+        if not self._db:
+            return None
+        try:
+            return self._db.curve(bid)
+        except Exception:
+            return None
+
+    def db_batch_stats(self, bid):
+        """Thống kê pha 1 mẻ (DTR, dev%, AUC, RoR đỉnh) — GĐ3."""
+        if not self._db:
+            return None
+        try:
+            return self._db.stats(bid)
+        except Exception:
+            log.error("[DB] tính stats thất bại", exc_info=True)
+            return None
+
+    def db_batches_curves(self, ids):
+        """Curve NHIỀU mẻ để so chồng (GĐ3). Nhận list id, trả {id: curve}."""
+        if not self._db:
+            return {}
+        out = {}
+        for bid in (ids or [])[:6]:            # so tối đa 6 mẻ — quá thì rối hình
+            try:
+                out[str(int(bid))] = self._db.curve(int(bid))
+            except Exception:
+                pass
+        return out
+
+    def db_export_csv(self, bid=None):
+        """Xuất CSV vào thư mục hồ sơ (chưa chọn thì cạnh DB): bid=None → bảng
+        tổng lich-su-me.csv, bid=N → curve mẻ đó."""
+        if not self._db:
+            return {"ok": False, "err": "kho mẻ chưa mở"}
+        out_dir = self.prof_dir() or os.path.dirname(self._state_path())
+        try:
+            return self._db.export_csv(out_dir, bid)
+        except Exception as e:
+            log.error("[DB] xuất CSV thất bại", exc_info=True)
+            return {"ok": False, "err": str(e)}
+
+    # ── AUTH (GĐ2 §16.1/16.3) — kiểm PIN phía Python, không tin trình duyệt ──
+    def auth_state(self):
+        """UI vẽ màn đăng nhập: đã setup master chưa + danh sách user (không hash)."""
+        return self._auth.state() if self._auth else {"setup": False, "users": [], "nopy": True}
+
+    def auth_setup_master(self, pin):
+        if not self._auth:
+            return {"ok": False, "err": "auth Python chưa sẵn sàng"}
+        r = self._auth.setup_master(str(pin))
+        if r.get("ok"):
+            self._session = r["user"]
+            self.audit_add("Master", "Tạo", "Tài khoản master", "", "Master")
+        return r
+
+    def auth_login(self, name, pin):
+        if not self._auth:
+            return {"ok": False, "err": "auth Python chưa sẵn sàng"}
+        r = self._auth.login(str(name), str(pin))
+        if r.get("ok"):
+            self._session = r["user"]
+            self.audit_add(name, "Đăng nhập", "Phiên", "", name)
+        return r
+
+    def auth_verify(self, name, pin):
+        """Kiểm PIN cho WEB (điện thoại) — lockout vẫn tính ở Python, nhưng KHÔNG
+        chiếm phiên kiosk của app. Web giữ hồ sơ user trong phiên trình duyệt."""
+        if not self._auth:
+            return {"ok": False, "err": "auth Python chưa sẵn sàng"}
+        r = self._auth.login(str(name), str(pin))
+        if r.get("ok"):
+            self.audit_add(name, "Đăng nhập (web)", "Phiên", "", str(name))
+        return r
+
+    def auth_logout(self):
+        if self._session:
+            self.audit_add(self._session["name"], "Đăng xuất", "Phiên", "", self._session["name"])
+        self._session = None
+        return {"ok": True}
+
+    def auth_add_operator(self, name, pin, perms=None):
+        if not self._is_master():
+            return {"ok": False, "err": "chỉ master"}
+        r = self._auth.add_operator(name, str(pin), perms or {})
+        if r.get("ok"):
+            self.audit_add(self._session["name"], "Tạo", "Tài khoản thợ", "", str(name))
+        return r
+
+    def auth_set_operator(self, name, perms=None, enabled=None):
+        if not self._is_master():
+            return {"ok": False, "err": "chỉ master"}
+        r = self._auth.set_operator(name, perms, enabled)
+        if r.get("ok"):
+            self.audit_add(self._session["name"], "Sửa quyền", str(name), "",
+                           json.dumps(perms, ensure_ascii=False) if perms is not None
+                           else ("bật" if enabled else "khoá"))
+        return r
+
+    def auth_del_operator(self, name):
+        if not self._is_master():
+            return {"ok": False, "err": "chỉ master"}
+        r = self._auth.del_operator(name)
+        if r.get("ok"):
+            self.audit_add(self._session["name"], "Xoá", "Tài khoản thợ", str(name), "")
+        return r
+
+    def auth_change_pin(self, name, old_pin, new_pin):
+        if not self._auth:
+            return {"ok": False, "err": "auth Python chưa sẵn sàng"}
+        # thợ chỉ đổi PIN của chính mình; master đổi được của bất kỳ ai (bỏ qua old)
+        if self._is_master() and self._session["name"] != name:
+            u = self._auth._find(name)
+            if u:
+                with self._auth._lock:
+                    import secrets as _sec
+                    u["salt"] = _sec.token_hex(16)
+                    u["hash"] = self._auth._hash(str(new_pin), u["salt"])
+                    u.pop("legacy", None)
+                    self._auth._save()
+                self.audit_add(self._session["name"], "Đặt lại PIN", str(name), "", "")
+                return {"ok": True}
+        r = self._auth.change_pin(str(name), str(old_pin), str(new_pin))
+        if r.get("ok"):
+            self.audit_add(name, "Đổi PIN", "Tài khoản", "", str(name))
+        return r
+
+    def auth_migrate(self, js_users):
+        """Di cư tài khoản từ localStorage bản cũ (chỉ khi Python chưa có user)."""
+        if not self._auth:
+            return {"ok": False, "err": "auth Python chưa sẵn sàng"}
+        return self._auth.migrate_from_js(js_users or {})
+
+    def _is_master(self):
+        return bool(self._auth and self._session and self._session.get("role") == "master")
+
+    # ── AUDIT hash-chain (GĐ2 §16.3) ───────────────────────────────────────
+    def audit_add(self, user, action, field="", old="", new=""):
+        if self._audit:
+            self._audit.append(user, action, field, old, new)
+        return {"ok": True}
+
+    def audit_tail(self, n=200):
+        return self._audit.tail(n) if self._audit else []
+
+    def audit_verify(self):
+        """Kiểm tính toàn vẹn nhật ký — UI hiện 'nguyên vẹn' / 'đã bị sửa ở dòng N'."""
+        return self._audit.verify() if self._audit else {"ok": True, "total": 0, "broken_at": None}
+
+    # ── LICENSE (GĐ2 §16.4) — khoá theo máy, mặc định KHÔNG cưỡng chế ───────
+    def license_status(self):
+        """Trạng thái license + machine_id (UI hiện ở Cài đặt → Bản quyền)."""
+        base = os.path.dirname(self._state_path())
+        info = license_otl.verify_file(license_otl.lic_path(base))
+        info["may"] = license_otl.machine_id()          # để khách copy gửi người bán
+        info["cuong_che"] = bool(self.web_cfg.get("license_enforce"))
+        return info
+
+    def _db_point(self, snap):
+        """Luồng _snap_bridge gọi mỗi snapshot: đang có mẻ mở + máy nối thật thì
+        ghi điểm curve. UI treo cỡ nào điểm vẫn vào DB — đây là chốt 'không mất mẻ'."""
+        if not (self._db and self._db_bid is not None):
+            return
+        if snap.get("state") != "connected" or not snap.get("data"):
+            return
+        try:
+            self._db.point(self._db_bid, snap["data"])
+        except Exception:
+            log.error("[DB] ghi điểm curve thất bại", exc_info=True)
 
     def web_toggle(self):
         """Nút gạt web LAN trong menu người dùng — bật/tắt ngay lúc chạy, lưu INI."""
@@ -304,6 +551,11 @@ class Api:
             "cong": str(self.web_cfg.get("cong", 8555)),
             "pin_dieu_khien": str(self.web_cfg.get("pin", "1108")),
         }
+        # [BanQuyen] cuong_che: 0 (mặc định) = xưởng mình tự dùng, KHÔNG tự chặn.
+        # Bản build BÁN cho khách mới đặt 1 để bắt buộc có license đúng máy.
+        c["BanQuyen"] = {
+            "cuong_che": "1" if self.web_cfg.get("license_enforce") else "0",
+        }
         try:
             with open(self._ini_path(), "w", encoding="utf-8") as f:
                 f.write("; OTL Roast Lab — file cấu hình. Sửa xong lưu lại rồi mở app.\n")
@@ -344,6 +596,8 @@ class Api:
                 "cong": int(w.get("cong", "8555") or 8555),
                 "pin":  w.get("pin_dieu_khien", "1108") or "1108",
             }
+        if c.has_section("BanQuyen"):
+            self.web_cfg["license_enforce"] = c["BanQuyen"].get("cuong_che", "0") != "0"
 
     def prof_dir(self):
         """Thư mục lưu hồ sơ hiện tại ('' = chưa chọn)."""
@@ -537,6 +791,36 @@ def start_webserver(api):
                 # web đọc CHUNG profiles.json với app — Legion/điện thoại thấy đúng
                 # hồ sơ thật, không xài bản localStorage riêng của trình duyệt
                 self._json({"profiles": api.prof_load()})
+            elif self.path == "/api/batches":
+                # lịch sử mẻ từ kho SQLite — web xem chung với app (xem tự do)
+                self._json({"batches": api.db_batch_list(50)})
+            elif self.path == "/api/auth_state":
+                # màn đăng nhập web: danh sách user (KHÔNG kèm hash) — xem tự do
+                self._json(api.auth_state())
+            elif self.path == "/api/audit":
+                # nhật ký hash-chain + huy hiệu toàn vẹn (xem tự do)
+                self._json({"tail": api.audit_tail(300), "verify": api.audit_verify()})
+            elif self.path.startswith("/api/batch_curve?"):
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query)
+                try:
+                    bid = int(q.get("id", ["0"])[0])
+                except ValueError:
+                    bid = 0
+                self._json({"curve": api.db_batch_curve(bid)})
+            elif self.path.startswith("/api/batch_stats?"):
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query)
+                try:
+                    bid = int(q.get("id", ["0"])[0])
+                except ValueError:
+                    bid = 0
+                self._json({"stats": api.db_batch_stats(bid)})
+            elif self.path.startswith("/api/batches_curves?"):
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query)
+                ids = [x for x in q.get("ids", [""])[0].split(",") if x]
+                self._json({"curves": api.db_batches_curves(ids)})
             elif self.path == "/api/stream":
                 # SSE: đẩy snapshot máy + thao tác UI xuống trình duyệt — web nhận
                 # cùng nhịp với app, lệch nhau chỉ vài ms
@@ -568,6 +852,15 @@ def start_webserver(api):
                 req = json.loads(self.rfile.read(n) or b"{}")
             except Exception:
                 self._json({"ok": False, "err": "bad json"}, 400); return
+
+            if self.path == "/api/auth_login":
+                # đăng nhập từ web — lockout tính ở Python, KHÔNG chiếm phiên kiosk;
+                # đứng TRƯỚC cổng token vì đây chính là bước để có quyền
+                self._json(api.auth_verify(req.get("name"), req.get("pin")))
+                return
+            if self.path == "/api/auth_setup_master":
+                self._json(api.auth_setup_master(req.get("pin")))
+                return
 
             if self.path == "/api/pbkdf2":
                 # Băm PIN giùm web LAN (trình duyệt cấm crypto.subtle ngoài HTTPS).
@@ -611,7 +904,7 @@ def start_webserver(api):
             elif self.path == "/api/new_batch":
                 self._json(api.link_new_batch())
             elif self.path == "/api/begin_batch":
-                self._json(api.link_begin_batch())
+                self._json(api.link_begin_batch(req.get("meta")))
             else:
                 self._json({"err": "not found"}, 404)
 
@@ -660,6 +953,7 @@ def main():
         while True:
             gen, snap = api._link.wait_snapshot(gen)
             if snap:
+                api._db_point(snap)               # điểm curve vào SQLite (không mất mẻ)
                 BUS.publish({"t": "snap", "data": api.link_snapshot()})
     threading.Thread(target=_snap_bridge, name="otl-snapbridge", daemon=True).start()
 
