@@ -97,6 +97,24 @@ def gen_h(s: dict) -> str:
           + ", ".join(str(f["max"]) for f in wr["fields"]) + "};",
           ""]
 
+    cfg = s.get("config")
+    if cfg:
+        n = len(cfg["regs"])
+        L += [f"// ── Khối CẤU HÌNH $M (handshake app↔máy) — {cfg['base']}..{cfg['base'] + n - 1} ──",
+              f"// {cfg['comment']}",
+              f"#define PCL_CFG_BASE   {cfg['base']}"]
+        cw = max(len(r["c"]) for r in cfg["regs"]) + 9
+        for i, r in enumerate(cfg["regs"]):
+            nm = f"PCL_CFG_{r['c']}".ljust(cw)
+            L.append(f"#define {nm} (PCL_CFG_BASE + {i})  // {r['desc']}")
+        L += [f"#define PCL_CFG_COUNT  {n}",
+              f"#define PCL_CFG_MAXIDX {cfg['count']}   // số $M lớn nhất (idx hợp lệ 1..MAXIDX)",
+              f"#define PCL_CFG_IDLE   {cfg['cmd_idle']}",
+              f"#define PCL_CFG_READ   {cfg['cmd_read']}",
+              f"#define PCL_CFG_WRITE  {cfg['cmd_write']}",
+              f"#define PCL_CFG_ST_OK  {cfg['status_ok']}",
+              f"#define PCL_CFG_ST_ERR {cfg['status_err']}", ""]
+
     fs = s["failsafe"]
     L += ["// ── Chốt an toàn khi APP là bộ điều khiển ──────────────────────────────",
           f"#define PCL_APP_TMO_S    {fs['app_timeout_s']}   "
@@ -207,6 +225,19 @@ def gen_py(s: dict) -> str:
             L.append(f"    \"{k}\": {v!r},")
     L += ["}", ""]
 
+    cfg = s.get("config")
+    if cfg:
+        L += ["# Handshake cấu hình $M — đọc/ghi 1 tham số (idx = số $M 1..MAXIDX)",
+              f"CFG_BASE = {cfg['base']}",
+              "CFG_REG = {"]
+        for i, r in enumerate(cfg["regs"]):
+            L.append(f'    "{r["key"]}": {cfg["base"] + i},   # {r["desc"]}')
+        L += ["}",
+              f"CFG_MAXIDX = {cfg['count']}",
+              f"CFG_CMD = {{'idle': {cfg['cmd_idle']}, 'read': {cfg['cmd_read']}, 'write': {cfg['cmd_write']}}}",
+              f"CFG_STATUS = {{'busy': {cfg['status_busy']}, 'ok': {cfg['status_ok']}, 'err': {cfg['status_err']}}}",
+              ""]
+
     fs = s["failsafe"]
     L += ["# Chốt an toàn khi app là bộ điều khiển",
           "FAILSAFE = {"]
@@ -247,7 +278,18 @@ def gen_js(s: dict) -> str:
     phase = [b["key"] for b in s["bitmaps"]["phase"]["bits"]]
     dv = {k: v for k, v in s["derive"].items() if not k.startswith("_")}
     fs = {k: v for k, v in s["failsafe"].items() if not k.startswith("_")}
-    return "\n".join([
+    cfg = s.get("config")
+    cfg_js = ""
+    if cfg:
+        cfg_obj = {
+            "base": cfg["base"],
+            "reg": {r["key"]: cfg["base"] + i for i, r in enumerate(cfg["regs"])},
+            "maxIdx": cfg["count"],
+            "cmd": {"idle": cfg["cmd_idle"], "read": cfg["cmd_read"], "write": cfg["cmd_write"]},
+            "status": {"busy": cfg["status_busy"], "ok": cfg["status_ok"], "err": cfg["status_err"]},
+        }
+        cfg_js = "const PCL_CFG=" + json.dumps(cfg_obj, ensure_ascii=False) + ";"
+    lines = [
         MARK_A,
         f"const PCL_VERSION={s['version']};",
         "/* progStep của firmware */",
@@ -262,8 +304,12 @@ def gen_js(s: dict) -> str:
         "/* Ngưỡng/hệ số app dùng khi TỰ TÍNH (máy chưa có PC_Link, hoặc app tự lái) */",
         "const PCL_DERIVE=" + json.dumps(dv, ensure_ascii=False) + ";",
         "const PCL_FAILSAFE=" + json.dumps(fs, ensure_ascii=False) + ";",
-        MARK_B,
-    ])
+    ]
+    if cfg_js:
+        lines.append("/* Handshake cấu hình $M — đọc/ghi 1 tham số qua PC_Link (Bước E) */")
+        lines.append(cfg_js)
+    lines.append(MARK_B)
+    return "\n".join(lines)
 
 
 def html_with(block: str) -> str:

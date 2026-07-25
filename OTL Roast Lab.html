@@ -163,6 +163,11 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .modebtn .ml{font-size:var(--fs-14);letter-spacing:2px;text-transform:uppercase;color:var(--mute)}
 .modebtn .mmode{font-family:var(--f-num);font-weight:700;font-size:var(--fs-36);color:var(--accent);line-height:1}
 .modebtn.manual .mmode{color:var(--c-gas)}
+.modebtn.ap{min-width:150px}
+.modebtn.ap .mmode{color:var(--mute)}                    /* tắt: xám */
+.modebtn.ap.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--glass))}
+.modebtn.ap.on .mmode{color:var(--accent)}               /* bật: nổi accent */
+.modebtn.ap.on .ml{color:var(--accent)}
 
 /* body rang */
 .rangbody{flex:1;min-height:0;overflow:hidden;display:grid;grid-template-columns:1fr 540px;gap:22px;padding:6px 28px 0}
@@ -209,7 +214,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 #pane-rang:not(.simple) .roast-nosel{top:110px;right:590px;bottom:298px}
 /* Thanh công cụ luôn nổi trên overlay và luôn bấm được */
 #pane-rang .toolbar{position:relative;z-index:30}
-.ri-inner{display:flex;flex-direction:column;align-items:center;gap:34px}
+.ri-inner{display:flex;flex-direction:column;align-items:center;gap:20px;max-height:100%;overflow-y:auto;padding:8px 0}
 .ri-prof{font-size:var(--fs-26);font-weight:700;color:var(--dim)}
 .ri-prof .ri-pfn{color:var(--accent);font-weight:800}
 /* NOSEL: biểu tượng + nút chọn hồ sơ */
@@ -235,6 +240,13 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .ri-charge{margin-top:10px;cursor:pointer;user-select:none}
 .ri-charge b{color:var(--accent);font-size:var(--fs-26)}
 .ri-charge:active{opacity:.7}
+/* Bảng thông số mẻ trên màn chờ (Bước F) */
+.ri-plan{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:600px}
+.rp-c{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 13px;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md)}
+.rp-k{font-size:var(--fs-18);color:var(--dim)}
+.rp-v{font-size:var(--fs-22);color:var(--txt);font-weight:700}
+.rp-v .est{color:var(--dim);opacity:.65;font-weight:400}
+.ri-btnrow{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .ri-sdauto{margin-top:10px}
 .ri-sdauto.running{border-color:var(--accent);color:var(--accent)}
 /* bảng cân phễu */
@@ -305,6 +317,21 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 /* Màu theo nghĩa: Burner = NHIỆT (đỏ lửa), Airflow = GIÓ NÓNG (cam), Drum = tốc độ trống (xanh) */
 .outrow.burner .ov{color:var(--c-warn)} .outrow.air .ov{color:var(--c-gas)}
 .outrow .oinfo .ov small{font-size:var(--fs-26);color:var(--mute)}
+/* Chỉ báo ĐẦU ĐỐT — cảm biến lửa thật (gasSignal → cờ flame). KHÁC gas% (mức ra lệnh).
+   3 trạng thái: có lửa (xanh) · gas bật mà không lửa / mồi hụt (đỏ nháy) · tắt (mờ). */
+.flamebadge{display:none;align-items:center;gap:7px;margin:6px auto 0;padding:4px 12px;
+  border-radius:var(--r-lg);font-size:var(--fs-16);font-weight:800;letter-spacing:.5px;
+  border:1px solid transparent;width:fit-content}
+.flamebadge.show{display:inline-flex}
+.flamebadge .fic{width:22px;height:22px}
+.flamebadge.on{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent);
+  border-color:color-mix(in srgb,var(--ok) 42%,transparent)}
+.flamebadge.alert{color:var(--danger);background:color-mix(in srgb,var(--danger) 15%,transparent);
+  border-color:color-mix(in srgb,var(--danger) 48%,transparent);animation:flameblink 1s infinite}
+.flamebadge.idle{color:var(--dim);background:var(--btn);opacity:.8}
+@keyframes flameblink{0%,100%{opacity:1}50%{opacity:.5}}
+/* Tôn trọng người tắt hiệu ứng — vẫn đỏ + chữ "Không lửa"/"Mồi hụt" nên không mất thông tin */
+@media (prefers-reduced-motion:reduce){.flamebadge.alert{animation:none}}
 /* Cỡ nút ± theo chuẩn chạm công nghiệp: 140×104 ở khung 2560 → ~8.5mm trên màn 7"
    (96×88 cũ chỉ ~5.8mm — thợ đeo găng bấm trượt) */
 .pm{width:140px;height:100px;border-radius:var(--r-lg);border:1px solid var(--hair-2);background:var(--btn);
@@ -848,9 +875,10 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
   font-size:var(--fs-28);font-weight:800;color:#fff;background:var(--accent);
   box-shadow:0 16px 38px -10px color-mix(in srgb,var(--accent) 70%,transparent)}
 .profempty .pe-new:active{transform:scale(.97)}
-.pebox{width:700px;max-width:92%;background:var(--panel);border:1px solid var(--hair-2);border-radius:var(--r-xl);padding:34px}
+.pebox{width:700px;max-width:92%;max-height:92vh;overflow-y:auto;background:var(--panel);border:1px solid var(--hair-2);border-radius:var(--r-xl);padding:34px}
 .petitle{font-family:var(--f-num);font-weight:700;font-size:var(--fs-36);text-align:center;margin-bottom:24px}
 .pefield{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.pehint{font-size:var(--fs-20);color:var(--dim);opacity:.72;margin:20px 0 10px;padding-top:14px;border-top:1px solid var(--hair)}
 .pefield .pel{width:170px;font-size:var(--fs-24);color:var(--dim)}
 .peval{flex:1;min-height:70px;padding:14px 20px;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md);
   color:var(--txt);font-size:var(--fs-26);text-align:left;cursor:pointer}
@@ -1435,6 +1463,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         <button class="tab" data-tab="rang" onclick="gotoTab('rang')"><span data-i18n="tab.rang">Rang</span></button>
         <button class="tab" data-tab="hoso" onclick="gotoTab('hoso')"><span data-i18n="tab.hoso">Hồ sơ</span></button>
         <button class="tab" data-tab="lichsu" onclick="gotoTab('lichsu')"><span data-i18n="tab.lichsu">Lịch sử</span></button>
+        <button class="tab" data-tab="kho" onclick="gotoTab('kho')"><span data-i18n="tab.kho">Kho &amp; Kinh doanh</span></button>
         <button class="tab" data-tab="caidat" onclick="gotoTab('caidat')"><span data-i18n="tab.caidat">Cài đặt</span> <span class="lk" id="lkIco">🔒</span></button>
       </nav>
       <div class="spacer"></div>
@@ -1457,6 +1486,10 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         <span class="chev">▾</span></div>
       <div class="usermenu" id="usermenu" onclick="event.stopPropagation()">
         <button class="umrow" onclick="toggleLang()"><span class="k">🌐 <span data-i18n="um.lang">Ngôn ngữ</span></span><span id="langLbl"><b>VI</b>/EN</span></button>
+        <button class="umrow" id="sndRow" onclick="soundToggle(event)"
+          data-help="Bật/tắt tiếng chạm kim loại khi bấm nút — xưởng ồn thì nghe rõ, muốn im thì tắt.">
+          <span class="k">🔔 <span data-i18n="um.sound">Âm chạm</span></span>
+          <span class="wtog" id="sndTog">BẬT</span></button>
         <button class="umrow num" id="ipChip" style="display:none" onclick="copyWebIp()"
           data-help="Bật/tắt web LAN bằng nút gạt. Đang bật thì chạm hàng này để copy địa chỉ cho điện thoại.">
           <span class="k">📶 <span data-i18n="um.web">Web điện thoại</span>
@@ -1515,6 +1548,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           </div>
           <div class="statuspanel preheat" id="preheatPanel">
             <div class="sph"><span class="t" data-i18n="ph.title">Làm nóng máy</span>
+              <span class="flamebadge" id="phFlame"><svg class="fic ot" aria-hidden="true"><use href="#i-ignite"/></svg><span class="ft">—</span></span>
               <span class="st" id="phStatus"><span class="d"></span><span data-i18n="ph.idle">Sẵn sàng</span></span></div>
             <!-- Nhiệt hiện tại + mục tiêu -->
             <div class="phhero">
@@ -1574,7 +1608,13 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
             <!-- Nhiệt charge theo hồ sơ — chạm vào số là gõ đổi ngay (như chip DROP) -->
             <div class="ri-hint ri-charge" id="riChargeRow" onclick="chargeTEdit()">
               🌡 Nạp hạt tại <b class="num" id="riChargeT">—</b> · chạm để đổi</div>
-            <button class="ri-change" onclick="gotoTab('hoso')" data-i18n="rang.change">Đổi hồ sơ</button>
+            <!-- Bảng thông số mẻ (Bước F): xem trước công thức trước khi bấm rang;
+                 ~ = app tự ước (hồ sơ chưa đặt setpoint đó) -->
+            <div class="ri-plan" id="riPlan"></div>
+            <div class="ri-btnrow">
+              <button class="ri-change" onclick="editCurrentProfile()">✎ Sửa thông số mẻ</button>
+              <button class="ri-change" onclick="gotoTab('hoso')" data-i18n="rang.change">Đổi hồ sơ</button>
+            </div>
             <!-- RANG AUTO thật: chọn profile trên thẻ SD của máy → firmware phát lại
                  (calibProgram). Chỉ hiện khi nối máy PC_Link. -->
             <button class="ri-change ri-sdauto" id="sdAutoBtn" onclick="sdAutoRoast()" style="display:none">
@@ -1611,6 +1651,9 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <div class="mchip todo" onclick="mileSetEdit('DROP')"><div class="mn">DROP</div><div class="mv"><span class="tm num">—</span><span class="dg num">—</span></div></div>
           <button class="modebtn manual" id="modeBtn" onclick="toggleMode()">
             <span class="ml" data-i18n="rang.mode">Chế độ</span><span class="mmode" id="modeVal">MANUAL</span></button>
+          <!-- APP LÁI (Bước C): app tự chỉnh gas bám mục tiêu — chỉ khi nối máy + PC control -->
+          <button class="modebtn ap" id="apBtn" onclick="toggleAutopilot()" title="App tự lái gas bám đường mục tiêu hồ sơ">
+            <span class="ml">🤖 App</span><span class="mmode">LÁI</span></button>
         </div>
 
         <div class="rangbody detail-only">
@@ -1652,7 +1695,8 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
             <div class="rcard outcard">
               <div class="outrow burner">
                 <button class="pm" data-out="burner" data-d="-1" onclick="stepOut(this)">−</button>
-                <div class="oinfo" onclick="outEdit('burner')"><div class="cap">Burner</div><div class="ov num"><span id="ovBurner">40</span><small>%</small></div></div>
+                <div class="oinfo" onclick="outEdit('burner')"><div class="cap">Burner</div><div class="ov num"><span id="ovBurner">40</span><small>%</small></div>
+                  <span class="flamebadge" id="burnerFlame"><svg class="fic ot" aria-hidden="true"><use href="#i-ignite"/></svg><span class="ft">—</span></span></div>
                 <button class="pm" data-out="burner" data-d="1" onclick="stepOut(this)">+</button>
               </div>
               <div class="outrow air">
@@ -1769,6 +1813,106 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         </div>
       </section>
 
+      <!-- ═══ TAB KHO & KINH DOANH (GĐ4) ═══ -->
+      <section class="pane" id="pane-kho">
+        <style>
+          #pane-kho .khosub{display:flex;gap:14px;flex-wrap:wrap}
+          #pane-kho .khosub .sortbtn.on{background:color-mix(in srgb,var(--accent) 14%,transparent);
+            color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+          #pane-kho .khoview{display:none} #pane-kho .khoview.on{display:block}
+          .khohero{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+            padding:24px 28px;margin-bottom:22px;background:var(--card);border:1px solid var(--hair);border-radius:var(--r-lg)}
+          .khohero .lab{font-size:var(--fs-14);letter-spacing:1.5px;text-transform:uppercase;color:var(--mute);font-weight:700}
+          .khohero .nm{font-family:var(--f-num);font-weight:800;font-size:var(--fs-32);margin-top:4px}
+          .khohero .nm.empty{color:var(--dim)}
+          .lotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+          .lotcard{background:var(--card);border:1px solid var(--hair);border-radius:var(--r-lg);padding:20px 22px;position:relative;
+            transition:transform .16s var(--ease),border-color .2s var(--ease),box-shadow .2s var(--ease)}
+          .lotcard:active{transform:scale(.99)}
+          .lotcard.open{border-color:color-mix(in srgb,var(--accent) 60%,transparent);
+            box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+          .lotcard .lc-nm{font-family:var(--f-num);font-weight:800;font-size:var(--fs-26)}
+          .lotcard .lc-code{font-size:var(--fs-16);color:var(--dim);font-weight:600}
+          .lotcard .lc-me{font-family:var(--f-num);font-weight:800;font-size:var(--fs-40);margin:12px 0 2px}
+          .lotcard .lc-kg{font-size:var(--fs-16);color:var(--mute)}
+          .lotcard .lc-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+          .lotcard .lc-row .sortbtn{height:56px;padding:0 18px;font-size:var(--fs-18)}
+          .khotable{width:100%;border-collapse:collapse}
+          .khotable th{text-align:left;font-size:var(--fs-16);color:var(--mute);font-weight:700;
+            text-transform:uppercase;letter-spacing:1px;padding:12px 14px;border-bottom:1px solid var(--hair)}
+          .khotable td{padding:16px 14px;border-bottom:1px solid var(--hair);font-size:var(--fs-20)}
+          .khotable td.num{font-family:var(--f-num);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+          #pane-kho .bd-stat .v,.khohero .nm,.lotcard .lc-me,.lotcard .lc-kg{font-variant-numeric:tabular-nums}
+          .khoscroll{overflow-x:auto}
+          .khodanger{color:var(--danger)!important;border-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
+          .khoform-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;max-width:820px}
+          .khoform-grid .full{grid-column:1/-1}
+          .costgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px 20px;max-width:900px}
+        </style>
+        <div class="pgwrap">
+          <div class="pghead">
+            <div><div class="pgtitle" data-i18n="tab.kho">Kho &amp; Kinh doanh</div>
+              <div class="pgsub" id="khoSub">Lô nhân · đơn hàng · chi phí — tính bằng mẻ</div></div>
+            <div class="pgctrls khosub">
+              <button class="sortbtn on" data-khosub="bc" onclick="khoView('bc')"><span>Báo cáo</span></button>
+              <button class="sortbtn" data-khosub="kho" onclick="khoView('kho')"><span>Kho nhân</span></button>
+              <button class="sortbtn" data-khosub="don" onclick="khoView('don')"><span>Đơn hàng</span></button>
+              <button class="sortbtn" data-khosub="cp" onclick="khoView('cp')"><span>Chi phí &amp; lãi</span></button>
+            </div>
+          </div>
+
+          <!-- ── BÁO CÁO ĐIỀU HÀNH XƯỞNG (GĐ5) ── -->
+          <div class="khoview on" id="khoview-bc">
+            <div class="pghead" style="margin-bottom:16px">
+              <div class="pgsub" style="margin:0" id="khoRepSub">Ảnh chụp xưởng 7 ngày gần nhất</div>
+              <div class="khosub">
+                <button class="sortbtn on" data-repd="7" onclick="khoReport(7)">7 ngày</button>
+                <button class="sortbtn" data-repd="30" onclick="khoReport(30)">30 ngày</button>
+              </div>
+            </div>
+            <div class="bd-stats" id="khoRepStats"></div>
+            <div class="lotgrid" id="khoRepLow" style="margin-top:8px"></div>
+          </div>
+
+          <!-- ── KHO NHÂN ── -->
+          <div class="khoview" id="khoview-kho">
+            <div class="khohero">
+              <div>
+                <div class="lab">Lô đang mở — phễu 1</div>
+                <div class="nm empty" id="khoOpenLot">Chưa gán lô</div>
+              </div>
+              <button class="sortbtn" onclick="khoPickOpenLot()">Đổi lô đang mở</button>
+            </div>
+            <div class="pghead" style="margin-bottom:16px">
+              <div class="pgsub" id="khoLotCount" style="margin:0">—</div>
+              <button class="sortbtn addprof" onclick="khoLotForm()">＋ Nhập lô</button>
+            </div>
+            <div class="lotgrid" id="khoLotGrid"></div>
+          </div>
+
+          <!-- ── ĐƠN HÀNG ── -->
+          <div class="khoview" id="khoview-don">
+            <div class="pghead" style="margin-bottom:16px">
+              <div class="pgsub" style="margin:0">Kế hoạch rang theo đơn — tiến độ tự cộng khi chốt mẻ</div>
+              <button class="sortbtn addprof" onclick="khoOrderForm()">＋ Thêm đơn</button>
+            </div>
+            <div class="khoscroll"><table class="khotable"><thead><tr>
+              <th>Đơn</th><th>Khách</th><th>Hồ sơ</th><th>Hạn</th>
+              <th style="text-align:right">Tiến độ</th><th>Trạng thái</th><th></th>
+            </tr></thead><tbody id="khoOrderBody"></tbody></table></div>
+          </div>
+
+          <!-- ── CHI PHÍ & LÃI ── -->
+          <div class="khoview" id="khoview-cp">
+            <div class="pgsub" style="margin:0 0 20px">Đơn giá để tính giá thành · hao hụt · lợi nhuận mỗi mẻ (đơn vị: <span id="khoTienTe">VND</span>). Để 0 nếu chưa dùng.</div>
+            <div class="costgrid" id="khoCostGrid"></div>
+            <div class="perow" style="max-width:900px;margin-top:26px">
+              <button class="bigbtn primary" onclick="khoCostSave()">Lưu đơn giá</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ═══ TAB CÀI ĐẶT ═══ -->
       <section class="pane" id="pane-caidat">
         <div class="setgate" id="setgate">
@@ -1781,6 +1925,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
               <button data-sub="ketnoi" class="on" onclick="gotoSub('ketnoi')"><svg class="ic ot" aria-hidden="true"><use href="#i-usb"/></svg><span data-i18n="sub.ketnoi">Kết nối</span></button>
               <button data-sub="calib" onclick="gotoSub('calib')"><svg class="ic ot" aria-hidden="true"><use href="#i-edit"/></svg><span data-i18n="sub.calib">Calib gas</span></button>
               <button data-sub="model" onclick="gotoSub('model')"><svg class="ic ot" aria-hidden="true"><use href="#i-ignite"/></svg><span data-i18n="sub.model">Model nhiệt</span></button>
+              <button data-sub="maycfg" onclick="gotoSub('maycfg')"><svg class="ic ot" aria-hidden="true"><use href="#i-config"/></svg><span data-i18n="sub.maycfg">Cài đặt máy</span></button>
               <button data-sub="oplog" onclick="gotoSub('oplog')"><svg class="ic ot" aria-hidden="true"><use href="#i-trend"/></svg><span data-i18n="sub.oplog">Log kỹ thuật</span></button>
               <div class="navsep" data-master></div>
               <button data-sub="nhatky" data-master onclick="gotoSub('nhatky')"><svg class="ic ot" aria-hidden="true"><use href="#i-list"/></svg><span data-i18n="sub.nhatky">Nhật ký</span></button>
@@ -1856,6 +2001,44 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                     <div class="field" data-num="ch_time" data-label="Thời gian tối đa" data-unit="phút" data-min="5" data-max="60" data-step="1" data-dec="0"></div></div>
                 </div>
               </div>
+              <!-- Cài đặt máy (tham số firmware $M) -->
+              <div class="subpane" id="sub-maycfg">
+                <style>
+                  #sub-maycfg .mctoolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+                  #sub-maycfg .mcgroup{margin:8px 0 22px}
+                  #sub-maycfg .mcgt{font-family:var(--f-num);font-weight:800;font-size:var(--fs-24);
+                    margin:18px 0 12px;color:var(--accent);border-bottom:1px solid var(--hair);padding-bottom:8px}
+                  #sub-maycfg .mcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px 18px}
+                  #sub-maycfg .mcrow{display:flex;flex-direction:column;gap:6px}
+                  #sub-maycfg .mcrow label{font-size:var(--fs-18);font-weight:600;color:var(--dim)}
+                  #sub-maycfg .mcrow .mcin{display:flex;align-items:center;gap:8px}
+                  #sub-maycfg .mcrow input{flex:1;min-height:64px;padding:10px 16px;background:var(--inset);
+                    border:1px solid var(--hair);border-radius:var(--r-md);color:var(--txt);
+                    font-family:var(--f-num);font-weight:700;font-size:var(--fs-24);font-variant-numeric:tabular-nums;
+                    text-align:right;outline:none}
+                  #sub-maycfg .mcrow input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+                  #sub-maycfg .mcrow .mcu{min-width:52px;font-size:var(--fs-18);color:var(--mute);font-weight:600}
+                  #sub-maycfg .mcrow.dirty input{border-color:var(--warn)}
+                  #sub-maycfg .mcnote{font-size:var(--fs-16);color:var(--mute);margin-top:2px}
+                  #sub-maycfg .mcmodel{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+                  #sub-maycfg .mcmlbl{font-size:var(--fs-18);color:var(--dim);margin-right:6px}
+                  #sub-maycfg .mcmbtn{min-height:60px;padding:0 26px;border:1px solid var(--hair);border-radius:var(--r-md);
+                    background:var(--btn);color:var(--txt);font-family:var(--f-num);font-weight:800;font-size:var(--fs-22);cursor:pointer}
+                  #sub-maycfg .mcmbtn:active{transform:scale(.96)}
+                  #sub-maycfg .mcmbtn.on{background:color-mix(in srgb,var(--accent) 26%,var(--btn));border-color:var(--accent);color:var(--accent)}
+                </style>
+                <h3 data-i18n="sub.maycfg">Cài đặt máy</h3>
+                <div class="lead" data-i18n="maycfg.lead">Tham số vận hành của máy (timer, gas, pha rang, cân, hút, làm nóng…). Lưu ra file để backup / chuyển sang máy khác. Đọc/ghi trực tiếp máy cần firmware hỗ trợ khối cấu hình.</div>
+                <div class="mctoolbar">
+                  <button class="sortbtn" onclick="mcReadMachine()">Đọc từ máy</button>
+                  <button class="sortbtn addprof" onclick="mcWriteMachine()">Ghi xuống máy</button>
+                  <button class="sortbtn" onclick="mcSaveFile()"><svg class="ic ot" style="width:22px;height:22px;margin-right:6px" aria-hidden="true"><use href="#i-file"/></svg>Lưu ra file</button>
+                  <button class="sortbtn" onclick="mcLoadFile()"><svg class="ic ot" style="width:22px;height:22px;margin-right:6px" aria-hidden="true"><use href="#i-file"/></svg>Mở file</button>
+                  <button class="sortbtn khodanger" onclick="mcResetDefault()">Về mặc định</button>
+                </div>
+                <div class="mcnote" id="mcCount" style="margin-bottom:14px"></div>
+                <div id="machineCfgBody"></div>
+              </div>
               <!-- Tài khoản -->
               <div class="subpane" id="sub-taikhoan">
                 <h3 data-i18n="sub.taikhoan">Tài khoản</h3>
@@ -1885,7 +2068,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
               </div>
             </div>
           </div>
-          <div class="setfoot">
+          <div class="setfoot" id="setfoot">
             <span class="note" id="setNote" data-i18n="set.note">Thay đổi chưa áp dụng vào máy đang chạy</span>
             <button class="bigbtn ghost" onclick="settingsCancel()" data-i18n="btn.cancel">Hủy</button>
             <button class="bigbtn ghost" onclick="settingsSave(false)" data-i18n="btn.apply">Áp dụng</button>
@@ -2018,6 +2201,15 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
       <div class="pefield"><span class="pel">Nhiệt charge (°C)</span><input class="peval" id="pe_charge" type="text" inputmode="numeric" autocomplete="off" onblur="peNumClamp(this,'chargeT',160)" oninput="peTmp.chargeT=parseInt(this.value,10)||0"></div>
       <div class="pefield"><span class="pel">Nhiệt xả (°C)</span><input class="peval" id="pe_temp" type="text" inputmode="numeric" autocomplete="off" onblur="peNumClamp(this,'temp',200)" oninput="peTmp.temp=parseInt(this.value,10)||0"></div>
       <div class="pefield"><span class="pel">Thời gian</span><input class="peval" id="pe_time" type="text" autocomplete="off" oninput="peTmp.time=this.value"></div>
+      <!-- ── Mục tiêu rang (TUỲ CHỌN) — trống thì app tự ước từ charge/xả/thời gian ──
+           Điền vào thì đường mục tiêu + mốc (Bước B) bám sát công thức thật hơn. -->
+      <div class="pehint">Mục tiêu rang (tuỳ chọn — để trống app tự ước)</div>
+      <div class="pefield"><span class="pel">Nhiệt DE / hạt vàng (°C)</span><input class="peval" id="pe_deT" type="text" inputmode="numeric" autocomplete="off" placeholder="tự ước" onblur="peOpt(this,'deT',100,260)" oninput="peOptIn(this,'deT')"></div>
+      <div class="pefield"><span class="pel">Nhiệt FCs / nổ 1 (°C)</span><input class="peval" id="pe_fcsT" type="text" inputmode="numeric" autocomplete="off" placeholder="tự ước" onblur="peOpt(this,'fcsT',100,260)" oninput="peOptIn(this,'fcsT')"></div>
+      <div class="pefield"><span class="pel">Phát triển mục tiêu (%)</span><input class="peval" id="pe_dev" type="text" inputmode="numeric" autocomplete="off" placeholder="tự ước" onblur="peOpt(this,'devTarget',5,40)" oninput="peOptIn(this,'devTarget')"></div>
+      <div class="pefield"><span class="pel">Gas mồi đầu (%)</span><input class="peval" id="pe_pregas" type="text" inputmode="numeric" autocomplete="off" placeholder="—" onblur="peOpt(this,'preGas',0,100)" oninput="peOptIn(this,'preGas')"></div>
+      <div class="pefield"><span class="pel">Mẻ nạp (kg)</span><input class="peval" id="pe_kg" type="text" inputmode="decimal" autocomplete="off" placeholder="tự theo máy" oninput="const v=this.value.trim();if(v==='')delete peTmp.kg;else peTmp.kg=parseFloat(v)||undefined"></div>
+      <div class="pefield"><span class="pel">Loại cà</span><input class="peval" id="pe_bean" type="text" spellcheck="false" autocomplete="off" placeholder="chọn sau được" oninput="peTmp.bean=this.value"></div>
       <div class="pefield"><span class="pel">Ngày rang</span><input class="peval" id="pe_date" type="date" autocomplete="off" oninput="peTmp.date=peDateFromISO(this.value)"></div>
       <div class="pefield"><span class="pel">Thợ rang</span><input class="peval" id="pe_roaster" type="text" readonly tabindex="-1"></div>
       <div class="perow"><button class="bigbtn ghost" onclick="closeProfEdit()">Hủy</button>
@@ -2053,6 +2245,31 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <button class="bigbtn ghost" onclick="closeBatch()">✕</button></div>
         <div class="bd-stats" id="bdStats"></div>
         <div class="bd-chart"><canvas id="bdCanvas"></canvas></div>
+        <!-- Cupping nối RANG↔CUP (§3.2#5) — điểm QC nhanh gắn với curve của mẻ -->
+        <div id="bdCup" style="margin-top:22px;border-top:1px solid var(--hair);padding-top:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div class="bd-title" style="font-size:var(--fs-24)" id="bdCupTitle">Nếm QC</div>
+            <div id="bdCupStars" style="display:flex;gap:6px"></div>
+          </div>
+          <div id="bdCupList" style="margin-top:14px"></div>
+          <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
+            <input class="peval" id="bdCupNote" style="flex:1;min-width:240px" type="text" spellcheck="false" autocomplete="off" placeholder="Ghi chú hương vị (chocolate, hạt, ngọt hậu…)">
+            <button class="bigbtn primary" style="height:70px" onclick="bdCupSave()" id="bdCupSaveBtn">Lưu điểm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Form dùng chung GĐ4 (nhập lô / thêm đơn / chọn lô đang mở) -->
+    <div class="overlay" id="khoForm" onclick="if(event.target.id==='khoForm')khoFormClose()">
+      <div class="pebox">
+        <div class="bd-head"><div><div class="bd-title" id="khoFormTitle">—</div>
+          <div class="bd-sub" id="khoFormSub"></div></div>
+          <button class="bigbtn ghost" onclick="khoFormClose()">✕</button></div>
+        <div id="khoFormBody" style="margin-top:22px"></div>
+        <div class="perow" style="margin-top:26px">
+          <button class="bigbtn ghost" onclick="khoFormClose()" data-i18n="btn.cancel">Huỷ</button>
+          <button class="bigbtn primary" id="khoFormOk" onclick="khoFormSubmit()">Lưu</button>
+        </div>
       </div>
     </div>
     <!-- So sánh nhiều mẻ (GĐ3): chồng curve + bảng chỉ số -->
@@ -2117,6 +2334,7 @@ function gotoTab(name){
   if(name==='rang'){ updateRoastLive(); }
   if(name==='hoso') renderProfiles();
   if(name==='lichsu') renderHistory();
+  if(name==='kho') khoRender();
 }
 
 /* ════════ HỒ SƠ RANG — sửa được + filter/sắp xếp ════════ */
@@ -2186,35 +2404,50 @@ function profCsvMachine(p){
          `${r.air.toFixed(1)}\t${r.gas.toFixed(1)}\t${r.drum.toFixed(1)}\t0\t0\r\n`;
   return out;
 }
-/* CSV cho Artisan — 5 cột chuẩn, không MaxGas/cột riêng của máy */
-function profCsvArtisan(p){
-  const cv=p.curve, g=_curveGrid(cv);
-  let out=_csvHead(p,cv,null);
-  out+='Time1\tTime2\tET\tBT\tEvent\r\n';
-  for(const r of g)
-    out+=`${_mmss(r.t)}\t${_mmss(r.t)}\t${r.et.toFixed(1)}\t${r.bt.toFixed(1)}\t${_evAt(cv,r.t)}\r\n`;
-  return out;
+/* Profile Artisan NATIVE (.alog) — Python dict repr, Artisan mở & lưu lại thẳng.
+   timex/temp1(ET)/temp2(BT) mỗi giây 1 mẫu; timeindex trỏ mốc CHARGE/DRYe/FCs/DROP. */
+function profAlog(p){
+  const cv=p.curve, g=_curveGrid(cv), m=cv.mile||{};
+  const last=g.length-1;
+  const idx=v=>(v==null?0:Math.min(Math.max(0,Math.round(v)),last));
+  const timex=g.map(r=>r.t.toFixed(1)).join(', ');
+  const t1=g.map(r=>r.et.toFixed(1)).join(', ');   // ET
+  const t2=g.map(r=>r.bt.toFixed(1)).join(', ');   // BT
+  // [CHARGE, DRYe, FCs, FCe, SCs, SCe, DROP, COOL] — 0 = mốc chưa có
+  const ti=[0, m.DE!=null?idx(m.DE):0, m.FCs!=null?idx(m.FCs):0, 0, 0, 0,
+            m.DROP!=null?idx(m.DROP):last, 0].join(', ');
+  const dm=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(p.date||'');
+  const iso=dm?`${dm[3]}-${_p2(dm[2])}-${_p2(dm[1])}`:'2026-01-01';
+  const q=s=>String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  return "{'version': '3.0.0', 'mode': 'C', 'title': '"+q(p.name)+"', "+
+    "'beans': '"+q(p.notes)+"', 'operator': '"+q(p.roaster)+"', "+
+    "'roastdate': '"+q(p.date)+"', 'roastisodate': '"+iso+"', "+
+    "'timex': ["+timex+"], 'temp1': ["+t1+"], 'temp2': ["+t2+"], "+
+    "'timeindex': ["+ti+"]}";
 }
 function _csvQ(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
 function profCsvIndex(ps){
-  let out='﻿slot,ten,ghichu,mucrang,nhietcharge,nhietxa,thoigian,ngayrang,thorang,curve\r\n';
+  let out='﻿slot,name,notes,roast,chargeT,dropT,time,date,roaster,curve\r\n';
   ps.forEach((p,i)=>{out+=[i+1,_csvQ(p.name),_csvQ(p.notes),_csvQ(p.roast),p.chargeT||'',p.temp||'',
-    _csvQ(p.time),_csvQ(p.date),_csvQ(p.roaster),(p.curve&&p.curve.t&&p.curve.t.length)?'CO':'CHUA'].join(',')+'\r\n';});
+    _csvQ(p.time),_csvQ(p.date),_csvQ(p.roaster),(p.curve&&p.curve.t&&p.curve.t.length)?'YES':'NO'].join(',')+'\r\n';});
   return out;
 }
 function profDiskWrite(ps){
   if(!(window.pywebview&&pywebview.api.prof_write_files))return;
-  const files={'profiles.csv':profCsvIndex(ps)};
+  // Danh sách hồ sơ = ho-so.csv do Python ghi (nguồn sự thật, round-trip). Ở đây
+  // chỉ ghi file CHI TIẾT từng mẻ đã rang: .csv chương trình máy + .alog Artisan.
+  const files={};
   ps.forEach((p,i)=>{
     if(p.curve&&p.curve.t&&p.curve.t.length){
-      files[`${i+1}.csv`]=profCsvMachine(p);
-      files[`${i+1} - ${_safeFn(p.name)} - Artisan.csv`]=profCsvArtisan(p);
+      files[`${i+1} - ${_safeFn(p.name)}.csv`]=profCsvMachine(p);   // chương trình máy + rang
+      files[`${i+1} - ${_safeFn(p.name)}.alog`]=profAlog(p);        // profile Artisan native
     }
   });
   pywebview.api.prof_write_files(files).catch(()=>{});
   pywebview.api.prof_export_pdf(ps).catch(()=>{});   // pdf/ — chạy nền phía Python
 }
-/* Lúc mở app: nếu đã chọn thư mục và có profiles.json → file là SỰ THẬT, đè cache */
+/* Lúc mở app: nếu đã chọn thư mục và có ho-so.csv (hoặc di trú từ profiles.json cũ)
+   → file là SỰ THẬT, đè cache localStorage */
 async function profDiskInit(){
   if(!(window.pywebview&&pywebview.api.prof_load))return;
   try{
@@ -2227,7 +2460,7 @@ async function profDirPick(){
   if(!(window.pywebview&&pywebview.api.prof_dir_pick)){toast('Chỉ dùng được trong app desktop');return;}
   const d=await pywebview.api.prof_dir_pick();
   if(d){const ps=loadProfiles();await pywebview.api.prof_save(ps);profDiskWrite(ps);
-    toast('Hồ sơ lưu tại: '+d+' (CSV máy + Artisan + pdf/)',true);}
+    toast('Hồ sơ lưu tại: '+d+' (mỗi hồ sơ: .csv máy + .alog Artisan + pdf/)',true);}
 }
 
 /* ── Lịch sử mẻ rang (localStorage) ── */
@@ -2306,8 +2539,280 @@ async function openBatch(id){
     stat('FCs',st.fcs_sec!=null?fmtMMSS(st.fcs_sec):'—'),
   ].join('');
   drawBatchCurve('bdCanvas',cv?[{cv,color:CMP_COLORS[0],name:row&&row.prof_name}]:[]);
+  bdCupInit(id);
 }
 function closeBatch(){document.getElementById('batchDetail').classList.remove('on');}
+
+/* Cupping cho MẺ đang mở trong modal chi tiết (§3.2 — nối rang↔cup) */
+let BD_CUP={id:null,stars:0};
+function bdCupInit(id){
+  BD_CUP={id:id,stars:0};
+  const vi=LANG==='vi';
+  document.getElementById('bdCupTitle').textContent=vi?'Nếm QC nhanh':'Quick QC';
+  document.getElementById('bdCupNote').value='';
+  document.getElementById('bdCupNote').placeholder=vi?'Ghi chú hương vị (chocolate, hạt, ngọt hậu…)':'Flavor notes';
+  document.getElementById('bdCupSaveBtn').textContent=vi?'Lưu điểm':'Save';
+  bdCupStars(0);
+  bdCupList();
+}
+function bdCupStars(n){
+  BD_CUP.stars=n;
+  const box=document.getElementById('bdCupStars');
+  box.innerHTML=[1,2,3,4,5].map(i=>`<button class="bigbtn ghost" style="width:56px;height:56px;padding:0;font-size:var(--fs-28);color:${i<=n?'var(--warn)':'var(--mute)'}" onclick="bdCupStars(${i})">${i<=n?'★':'☆'}</button>`).join('');
+}
+async function bdCupList(){
+  const a=window.pywebview&&window.pywebview.api,vi=LANG==='vi';
+  const box=document.getElementById('bdCupList');
+  if(!(a&&a.inv_cup_list)){box.innerHTML='';return;}
+  let cs=null;try{cs=await a.inv_cup_list('batch',BD_CUP.id);}catch(e){}
+  cs=cs||[];
+  if(!cs.length){box.innerHTML=`<div class="pgsub" style="margin:0;font-size:var(--fs-18)">${vi?'Chưa có điểm nếm nào':'No cupping yet'}</div>`;return;}
+  box.innerHTML=cs.map(c=>`<div style="display:flex;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--hair)">
+    <b style="color:var(--warn);font-size:var(--fs-20)">${'★'.repeat(Math.round(c.stars))||'—'}</b>
+    <span style="flex:1">${esc(c.notes||'')}${(c.flavors&&c.flavors.length)?' · '+c.flavors.map(esc).join(', '):''}</span>
+    <span style="color:var(--dim);font-size:var(--fs-16)">${esc((c.cupper||'')+' · '+(c.cupped_at||'').slice(5,16))}</span>
+  </div>`).join('');
+}
+async function bdCupSave(){
+  const a=window.pywebview&&window.pywebview.api,vi=LANG==='vi';
+  if(!(a&&a.inv_cup_add)){toast(vi?'Chỉ chấm điểm trong app':'App only');return;}
+  const note=document.getElementById('bdCupNote').value.trim();
+  if(!BD_CUP.stars&&!note){toast(vi?'Chọn sao hoặc ghi chú':'Pick stars or note');return;}
+  const flavors=note?note.split(/[,·]/).map(s=>s.trim()).filter(Boolean).slice(0,8):[];
+  const r=await a.inv_cup_add({target:'batch',target_id:BD_CUP.id,tier:1,stars:BD_CUP.stars,notes:note,flavors:flavors,cupper:(typeof session!=='undefined'&&session&&session.name)||''});
+  if(r&&r.ok){toast(vi?'Đã lưu điểm nếm':'Saved',true);document.getElementById('bdCupNote').value='';bdCupStars(0);bdCupList();}
+  else toast((r&&r.err)||'Lỗi');
+}
+
+/* ════════ GĐ4 — KHO NHÂN · ĐƠN HÀNG · CHI PHÍ (§3 plan) ════════
+   Panel HIỆN + thao tác ít chạm (đổi lô đang mở); nhập liệu nặng làm được cả
+   trên web/điện thoại (§3 khuyến nghị). Mọi lệnh ghi qua cầu Python; lỗi kho
+   KHÔNG chặn việc rang. */
+const KHO={view:'bc',lots:[],openLot:null,cost:{},me_kg:6,repDays:7};
+function _khoApi(){return window.pywebview&&window.pywebview.api;}
+function khoRender(){khoReport(KHO.repDays);khoRenderLots();khoRenderOrders();khoRenderCost();}
+function _vnd(n,cur){if(n==null)return '—';
+  return new Intl.NumberFormat(LANG==='vi'?'vi-VN':'en-US').format(Math.round(n))+' '+(cur||'VND');}
+async function khoReport(days){
+  KHO.repDays=days;const a=_khoApi(),vi=LANG==='vi';
+  document.querySelectorAll('#khoview-bc .khosub .sortbtn').forEach(b=>b.classList.toggle('on',+b.dataset.repd===days));
+  const box=document.getElementById('khoRepStats'),low=document.getElementById('khoRepLow');
+  if(!(a&&a.inv_report)){box.innerHTML='';low.innerHTML=`<div class="pgsub">${vi?'Chỉ xem trong app':'App only'}</div>`;return;}
+  document.getElementById('khoRepSub').textContent=vi?`Ảnh chụp xưởng ${days} ngày gần nhất`:`Workshop snapshot · last ${days} days`;
+  box.innerHTML=vi?'Đang tổng hợp…':'Computing…';low.innerHTML='';
+  let r=null;try{r=await a.inv_report(days);}catch(e){}
+  if(!r){box.innerHTML=`<div class="bd-stat"><div class="k">—</div><div class="v">${vi?'Chưa có dữ liệu':'No data'}</div></div>`;return;}
+  const st=(k,v,u)=>`<div class="bd-stat"><div class="k">${k}</div><div class="v">${v}${u?`<span class="u"> ${u}</span>`:''}</div></div>`;
+  box.innerHTML=[
+    st(vi?'Mẻ đã rang':'Batches',r.batches_done),
+    st(vi?'Nhân đã dùng':'Green used',r.green_kg,'kg'),
+    st(vi?'Thành phẩm ước':'Roasted est',r.kg_out_est,'kg'),
+    st(vi?'Tồn kho':'On hand',r.ton_kho_me!=null?r.ton_kho_me:'—',vi?'mẻ':'batches'),
+    st(vi?'Tồn (kg)':'On hand kg',r.ton_kho_kg,'kg'),
+    st(vi?'Đơn đang mở':'Open orders',r.orders_open),
+    st(vi?'Đơn tới hạn':'Due soon',r.orders_due),
+    st(vi?'Lãi gộp ước':'Gross est',r.profit_est!=null?`<span style="font-size:var(--fs-24)">${_vnd(r.profit_est,r.tien_te)}</span>`:'—'),
+  ].join('');
+  if(r.lots_low&&r.lots_low.length){
+    low.innerHTML=`<div class="pgsub" style="grid-column:1/-1;margin:10px 0 0;color:var(--warn)">⚠ ${vi?'Lô sắp hết (≤2 mẻ)':'Low lots (≤2 batches)'}</div>`+
+      r.lots_low.map(l=>`<div class="lotcard" style="border-color:color-mix(in srgb,var(--warn) 55%,transparent)">
+        <div class="lc-nm">${esc(l.name)}</div>
+        <div class="lc-me" style="color:var(--warn)">${l.con_me} <span style="font-size:var(--fs-20);color:var(--mute)">${vi?'mẻ':'batches'}</span></div>
+        <div class="lc-kg">${l.so_du_kg} kg</div></div>`).join('');
+  }else low.innerHTML='';
+}
+function khoView(which){
+  KHO.view=which;
+  document.querySelectorAll('#pane-kho .khoview').forEach(v=>v.classList.toggle('on',v.id==='khoview-'+which));
+  document.querySelectorAll('#pane-kho .khosub .sortbtn').forEach(b=>b.classList.toggle('on',b.dataset.khosub===which));
+}
+async function khoRenderLots(){
+  const a=_khoApi(),vi=LANG==='vi';
+  const grid=document.getElementById('khoLotGrid');
+  if(!(a&&a.inv_lots)){grid.innerHTML='';document.getElementById('khoLotCount').textContent=vi?'Chỉ xem trong app':'App only';return;}
+  let lots=null,cost=null;
+  try{lots=await a.inv_lots();cost=await a.inv_cost_config();}catch(e){}
+  KHO.lots=lots||[];KHO.cost=cost||{};KHO.me_kg=parseFloat((cost||{}).me_kg_dinh_muc)||6;
+  KHO.openLot=(KHO.lots.find(l=>l.dang_mo)||{}).id||null;
+  // hero lô đang mở
+  const ol=KHO.lots.find(l=>l.dang_mo);
+  const heroEl=document.getElementById('khoOpenLot');
+  if(ol){heroEl.textContent=(ol.name||'')+(ol.code?' · '+ol.code:'');heroEl.classList.remove('empty');}
+  else{heroEl.textContent=vi?'Chưa gán lô':'No lot assigned';heroEl.classList.add('empty');}
+  document.getElementById('khoLotCount').textContent=vi
+    ?`${KHO.lots.length} lô đang dùng · 1 mẻ ≈ ${KHO.me_kg}kg`
+    :`${KHO.lots.length} active lots · batch ≈ ${KHO.me_kg}kg`;
+  if(!KHO.lots.length){grid.innerHTML=`<div class="pgsub">${vi?'Chưa có lô nào. Bấm “＋ Nhập lô”.':'No lots yet. Tap “＋ Add lot”.'}</div>`;return;}
+  grid.innerHTML=KHO.lots.map(l=>{
+    const cm=l.con_me!=null?l.con_me:'—';
+    const cmCls=(l.con_me!=null&&l.con_me<=2)?'warn':'';
+    const age=l.tuoi_ngay!=null?l.tuoi_ngay+(vi?' ngày':'d'):'';
+    return `<div class="lotcard${l.dang_mo?' open':''}">
+      <div class="lc-nm">${esc(l.name)}</div>
+      <div class="lc-code">${esc(l.code||'')}${l.code&&age?' · ':''}${age}${l.canh_bao_cu?' · ⚠ '+(vi?'nhân cũ':'old'):''}</div>
+      <div class="lc-me" ${cmCls?'style="color:var(--warn)"':''}>${cm} <span style="font-size:var(--fs-20);color:var(--mute)">${vi?'mẻ':'batches'}</span></div>
+      <div class="lc-kg">${l.so_du_kg} kg${l.dang_mo?' · <b style="color:var(--accent)">'+(vi?'đang mở':'open')+'</b>':''}</div>
+      <div class="lc-row">
+        ${l.dang_mo?'':`<button class="sortbtn" onclick="khoSetOpen(${l.id})">${vi?'Mở lô này':'Open'}</button>`}
+        <button class="sortbtn" onclick="khoLotForm(${l.id})">${vi?'Sửa':'Edit'}</button>
+        <button class="sortbtn" onclick="khoAdjustForm(${l.id})">${vi?'Kiểm kho':'Adjust'}</button>
+      </div></div>`;
+  }).join('');
+}
+async function khoSetOpen(id){
+  const a=_khoApi();if(!(a&&a.inv_hopper_set))return;
+  const r=await a.inv_hopper_set(id,1);
+  if(r&&r.ok){toast(LANG==='vi'?'Đã đổi lô đang mở':'Open lot changed',true);khoRenderLots();}
+  else toast((r&&r.err)||'Lỗi');
+}
+function khoPickOpenLot(){
+  const vi=LANG==='vi';
+  if(!KHO.lots.length){toast(vi?'Chưa có lô để chọn':'No lots');return;}
+  const body=`<div class="lotgrid">${KHO.lots.map(l=>`
+    <button class="lotcard" style="text-align:left;cursor:pointer;border-color:${l.dang_mo?'var(--accent)':'var(--hair)'}" onclick="khoSetOpen(${l.id});khoFormClose()">
+      <div class="lc-nm">${esc(l.name)}</div>
+      <div class="lc-kg">${l.so_du_kg} kg · ${l.con_me!=null?l.con_me+(vi?' mẻ':' batches'):''}</div>
+    </button>`).join('')}</div>`;
+  khoFormOpen(vi?'Chọn lô đang mở':'Pick open lot',vi?'Phễu 1 — chạm để chọn':'Hopper 1',body,null);
+  document.getElementById('khoFormOk').style.display='none';
+}
+async function khoRenderOrders(){
+  const a=_khoApi(),vi=LANG==='vi';
+  const body=document.getElementById('khoOrderBody');
+  if(!(a&&a.inv_orders)){body.innerHTML=`<tr><td colspan="7">${vi?'Chỉ xem trong app':'App only'}</td></tr>`;return;}
+  let os=null;try{os=await a.inv_orders();}catch(e){}
+  os=os||[];KHO.orders=os;
+  if(!os.length){body.innerHTML=`<tr><td colspan="7" style="color:var(--dim)">${vi?'Chưa có đơn nào':'No orders'}</td></tr>`;return;}
+  body.innerHTML=os.map(o=>{
+    const pct=o.qty_kg>0?Math.min(100,Math.round(o.roasted_kg/o.qty_kg*100)):0;
+    const stTxt={open:vi?'Đang rang':'Open',done:vi?'Xong':'Done',cancel:vi?'Huỷ':'Cancel'}[o.status]||o.status;
+    const stCol=o.status==='done'?'var(--ok)':(o.status==='cancel'?'var(--mute)':'var(--accent)');
+    return `<tr>
+      <td>${esc(o.code||'#'+o.id)}</td><td>${esc(o.customer||'')}</td>
+      <td>${esc(o.product||'')}</td><td>${esc(o.due_date||'—')}</td>
+      <td class="num">${o.roasted_kg}/${o.qty_kg} kg · ${pct}%</td>
+      <td><span class="pill" style="background:color-mix(in srgb,${stCol} 18%,transparent);color:${stCol}">${stTxt}</span></td>
+      <td style="text-align:right"><button class="sortbtn" style="height:52px;padding:0 16px" onclick="khoOrderForm(${o.id})">${vi?'Sửa':'Edit'}</button></td>
+    </tr>`;
+  }).join('');
+}
+async function khoRenderCost(){
+  const a=_khoApi(),vi=LANG==='vi';
+  const grid=document.getElementById('khoCostGrid');
+  if(!(a&&a.inv_cost_config)){grid.innerHTML=vi?'Chỉ xem trong app':'App only';return;}
+  let c=null;try{c=await a.inv_cost_config();}catch(e){}
+  c=c||{};KHO.cost=c;document.getElementById('khoTienTe').textContent=c.tien_te||'VND';
+  const F=[
+    ['gas_vnd_gio',vi?'Gas / giờ đốt':'Gas / hour'],
+    ['cong_vnd_me',vi?'Nhân công / mẻ':'Labor / batch'],
+    ['dien_vnd_me',vi?'Điện + khấu hao / mẻ':'Power+overhead / batch'],
+    ['gia_ban_vnd_kg',vi?'Giá bán / kg thành phẩm':'Sell price / kg'],
+    ['me_kg_dinh_muc',vi?'KL 1 mẻ danh định (kg)':'Nominal batch (kg)'],
+    ['hao_hut_dinh_muc_pct',vi?'Hao hụt định mức (%)':'Nominal shrinkage (%)'],
+  ];
+  grid.innerHTML=F.map(([k,lab])=>`<div class="pefield" style="display:block">
+    <span class="pel" style="display:block;margin-bottom:8px">${lab}</span>
+    <input class="peval" style="width:100%" type="text" inputmode="decimal" data-costk="${k}"
+      value="${esc(c[k]||'0')}" autocomplete="off">
+  </div>`).join('');
+}
+async function khoCostSave(){
+  const a=_khoApi();if(!(a&&a.inv_cost_config_set))return;
+  const cfg={};document.querySelectorAll('#khoCostGrid input[data-costk]').forEach(i=>{cfg[i.dataset.costk]=i.value.trim()||'0';});
+  const r=await a.inv_cost_config_set(cfg);
+  if(r&&r.ok){toast(LANG==='vi'?'Đã lưu đơn giá':'Saved',true);khoRenderLots();}
+  else toast((r&&r.err)||'Lỗi');
+}
+/* ── Form modal dùng chung ── */
+let _khoSubmit=null;
+function khoFormOpen(title,sub,bodyHtml,submitFn){
+  document.getElementById('khoFormTitle').textContent=title;
+  document.getElementById('khoFormSub').textContent=sub||'';
+  document.getElementById('khoFormBody').innerHTML=bodyHtml;
+  document.getElementById('khoFormOk').style.display='';
+  _khoSubmit=submitFn;
+  document.getElementById('khoForm').classList.add('on');
+}
+function khoFormClose(){document.getElementById('khoForm').classList.remove('on');_khoSubmit=null;}
+function khoFormSubmit(){if(_khoSubmit)_khoSubmit();}
+function _khoField(id,lab,opt){opt=opt||{};
+  return `<div class="pefield" style="display:block;margin-bottom:14px">
+    <span class="pel" style="display:block;margin-bottom:8px">${lab}</span>
+    <input class="peval" style="width:100%" id="kf_${id}" type="${opt.type||'text'}"
+      ${opt.mode?`inputmode="${opt.mode}"`:''} value="${esc(opt.val!=null?opt.val:'')}"
+      placeholder="${esc(opt.ph||'')}" autocomplete="off" spellcheck="false"></div>`;
+}
+function _kfv(id){const e=document.getElementById('kf_'+id);return e?e.value.trim():'';}
+function khoLotForm(id){
+  const vi=LANG==='vi';const l=id?KHO.lots.find(x=>x.id===id):null;
+  const body=`<div class="khoform-grid">
+    ${_khoField('name',vi?'Tên lô *':'Name *',{val:l&&l.name})}
+    ${_khoField('code',vi?'Mã lô':'Code',{val:l&&l.code,ph:'DL-07'})}
+    ${l?'':_khoField('bag_kg',vi?'KL 1 bao (kg)':'Bag (kg)',{mode:'decimal',ph:'60'})}
+    ${l?'':_khoField('bags',vi?'Số bao':'Bags',{mode:'numeric',ph:'20'})}
+    ${l?'':_khoField('kg',vi?'HOẶC nhập thẳng kg':'OR total kg',{mode:'decimal'})}
+    ${_khoField('cost_per_kg',vi?'Giá vốn / kg':'Cost / kg',{mode:'decimal',val:l&&l.cost_per_kg})}
+    ${_khoField('farm',vi?'Nông trại':'Farm',{val:l&&l.farm})}
+    ${_khoField('variety',vi?'Giống':'Variety',{val:l&&l.variety})}
+    ${_khoField('received_at',vi?'Ngày nhập':'Received',{type:'date',val:(l&&l.received_at)||new Date().toISOString().slice(0,10)})}
+    <div class="full">${_khoField('note',vi?'Ghi chú':'Note',{val:l&&l.note})}</div>
+  </div>`;
+  khoFormOpen(l?(vi?'Sửa lô':'Edit lot'):(vi?'Nhập lô mới':'New lot'),
+    vi?'Nhập theo bao (bao×kg) hoặc kg trực tiếp':'By bags or total kg',body,async()=>{
+    const a=_khoApi();
+    const d={name:_kfv('name'),code:_kfv('code'),cost_per_kg:_kfv('cost_per_kg'),
+      farm:_kfv('farm'),variety:_kfv('variety'),received_at:_kfv('received_at'),note:_kfv('note')};
+    let r;
+    if(l){r=await a.inv_lot_edit(l.id,d);}
+    else{d.bag_kg=_kfv('bag_kg');d.bags=_kfv('bags');d.kg=_kfv('kg');r=await a.inv_lot_add(d);}
+    if(r&&r.ok){toast(vi?'Đã lưu lô':'Lot saved',true);khoFormClose();khoRenderLots();}
+    else toast((r&&r.err)||'Lỗi');
+  });
+}
+function khoAdjustForm(id){
+  const vi=LANG==='vi';const l=KHO.lots.find(x=>x.id===id);if(!l)return;
+  const body=`<div class="pgsub" style="margin:0 0 16px">${vi?'Số dư hiện tại':'Current'}: <b>${l.so_du_kg} kg</b>. ${vi?'Nhập lượng CỘNG THÊM (âm = giảm), ví dụ hao ẩm −0.5':'Delta kg (negative = decrease)'}.</div>
+    ${_khoField('adj',vi?'Chênh lệch (kg)':'Delta (kg)',{mode:'decimal',ph:'-0.5'})}
+    ${_khoField('note',vi?'Lý do':'Reason',{ph:vi?'hao ẩm / rơi vãi':'moisture loss'})}`;
+  khoFormOpen(vi?'Kiểm kho — '+l.name:'Adjust — '+l.name,vi?'Ghi vào sổ biến động, không phá lịch sử':'Ledger entry',body,async()=>{
+    const a=_khoApi();const kg=parseFloat(_kfv('adj'));
+    if(!kg){toast(vi?'Nhập lượng chênh lệch':'Enter delta');return;}
+    const r=await a.inv_lot_adjust(id,kg,_kfv('note'));
+    if(r&&r.ok){toast(vi?'Đã kiểm kho':'Adjusted',true);khoFormClose();khoRenderLots();}
+    else toast((r&&r.err)||'Lỗi');
+  });
+}
+function khoOrderForm(id){
+  const vi=LANG==='vi';const o=id?(KHO.orders||[]).find(x=>x.id===id):null;
+  const body=`<div class="khoform-grid">
+    ${_khoField('code',vi?'Mã đơn':'Code',{ph:'DH-01',val:o&&o.code})}
+    ${_khoField('customer',vi?'Khách':'Customer',{val:o&&o.customer})}
+    ${_khoField('product',vi?'Hồ sơ / blend':'Product',{val:o&&o.product})}
+    ${_khoField('prof_no',vi?'Số hồ sơ (để tự cộng tiến độ)':'Profile no.',{mode:'numeric',val:o&&o.prof_no})}
+    ${_khoField('qty_kg',vi?'Cần giao (kg)':'Qty (kg)',{mode:'decimal',val:o&&o.qty_kg})}
+    ${_khoField('due_date',vi?'Hạn giao':'Due',{type:'date',val:o&&o.due_date})}
+    <div class="full">${_khoField('note',vi?'Ghi chú':'Note',{val:o&&o.note})}</div>
+  </div>${o?`<div class="lc-row" style="margin-top:16px">
+    <button class="sortbtn" onclick="khoOrderStatus(${id},'done')">✓ ${vi?'Đánh dấu xong':'Mark done'}</button>
+    <button class="sortbtn khodanger" onclick="khoOrderStatus(${id},'cancel')">${vi?'Huỷ đơn':'Cancel order'}</button>
+    <button class="sortbtn" onclick="khoOrderStatus(${id},'open')">↺ ${vi?'Mở lại':'Reopen'}</button>
+  </div>`:''}`;
+  khoFormOpen(id?(vi?'Sửa đơn':'Edit order'):(vi?'Thêm đơn hàng':'New order'),
+    vi?'Tiến độ tự cộng khi chốt mẻ cùng số hồ sơ':'Progress auto-updates on batch finish',body,async()=>{
+    const a=_khoApi();
+    const d={code:_kfv('code'),customer:_kfv('customer'),product:_kfv('product'),
+      prof_no:_kfv('prof_no'),qty_kg:_kfv('qty_kg'),due_date:_kfv('due_date'),note:_kfv('note')};
+    const r=id?await a.inv_order_set(id,d):await a.inv_order_add(d);
+    if(r&&r.ok){toast(vi?'Đã lưu đơn':'Order saved',true);khoFormClose();khoRenderOrders();}
+    else toast((r&&r.err)||'Lỗi');
+  });
+}
+async function khoOrderStatus(id,status){
+  const a=_khoApi(),vi=LANG==='vi';if(!(a&&a.inv_order_set))return;
+  const r=await a.inv_order_set(id,{status});
+  if(r&&r.ok){toast(vi?'Đã cập nhật đơn':'Order updated',true);khoFormClose();khoRenderOrders();}
+  else toast((r&&r.err)||'Lỗi');
+}
 /* Vẽ curve BT (+ET mờ) của 1..n mẻ lên canvas — trục thời gian chung, tự scale */
 function drawBatchCurve(canvasId,series){
   const cv=document.getElementById(canvasId);if(!cv)return;
@@ -2430,6 +2935,13 @@ function refreshPE(){document.getElementById('pe_name').value=peTmp.name||'';
   document.getElementById('pe_charge').value=peTmp.chargeT||160;
   document.getElementById('pe_temp').value=peTmp.temp||0;
   document.getElementById('pe_time').value=peTmp.time||'';
+  // ── setpoint tuỳ chọn (Bước A): trống nếu hồ sơ chưa đặt (thẻ mỏng) ──
+  document.getElementById('pe_deT').value=peTmp.deT||'';
+  document.getElementById('pe_fcsT').value=peTmp.fcsT||'';
+  document.getElementById('pe_dev').value=peTmp.devTarget||'';
+  document.getElementById('pe_pregas').value=peTmp.preGas||'';
+  document.getElementById('pe_kg').value=peTmp.kg||'';
+  document.getElementById('pe_bean').value=peTmp.bean||'';
   document.getElementById('pe_date').value=peDateToISO(peTmp.date);
   // Thợ rang = user đang đăng nhập (chỉ đọc); hồ sơ cũ đã có tên thì giữ nguyên
   if(!peTmp.roaster && session) peTmp.roaster=session.name;
@@ -2442,6 +2954,15 @@ function peDateFromISO(v){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');
 /* Kẹp số nhiệt (charge/xả) về khoảng an toàn 100–260°C */
 function peNumClamp(el,key,def){let n=parseInt(el.value,10);if(isNaN(n))n=def;
   n=Math.max(100,Math.min(260,n));peTmp[key]=n;el.value=n;}
+/* Ô setpoint TUỲ CHỌN: trống = bỏ (app tự ước lượng); có số thì kẹp [min,max].
+   onblur chuẩn hoá hiển thị; oninput cập nhật live để bấm Lưu là dính. */
+function peOpt(el,key,min,max){const raw=el.value.trim();
+  if(raw===''){delete peTmp[key];el.value='';return;}
+  let n=parseInt(raw,10);
+  if(isNaN(n)){delete peTmp[key];el.value='';return;}
+  n=Math.max(min,Math.min(max,n));peTmp[key]=n;el.value=n;}
+function peOptIn(el,key){const raw=el.value.trim();
+  if(raw==='')delete peTmp[key]; else{const n=parseInt(raw,10);if(!isNaN(n))peTmp[key]=n;}}
 /* Mức rang: XỔ LIST chọn (trước là bấm xoay vòng — khó hiểu, thợ tưởng hỏng) */
 function peRoast(){
   const o=loadRoasts();
@@ -2465,7 +2986,9 @@ function saveProfEdit(){const ps=loadProfiles();
   if(isNew) ps.push(peTmp); else ps[peIdx]=peTmp;
   saveProfiles(ps);
   if(typeof pushAudit==='function'&&session)pushAudit(isNew?'Tạo':'Sửa','Hồ sơ',old,peTmp.name);
-  closeProfEdit();renderProfiles();if(typeof toast==='function')toast(isNew?'Đã tạo hồ sơ':'Đã lưu hồ sơ',true);}
+  closeProfEdit();renderProfiles();if(typeof toast==='function')toast(isNew?'Đã tạo hồ sơ':'Đã lưu hồ sơ',true);
+  // Sửa từ màn chờ (Bước F) → nạp lại hồ sơ vừa sửa/clone để mô hình mục tiêu cập nhật
+  if(R._editFromIdle){R._editFromIdle=false; loadProfile(isNew?ps.length-1:peIdx);}}
 /* Tạo hồ sơ mới → mở modal sửa (chỉ ghi vào storage khi bấm Lưu) */
 function newProfile(){
   const colors=['#c9a227','#c97a1a','#b8621a','#8a4a1a','#7a9e3a','#3a7a9e'];
@@ -2516,8 +3039,8 @@ document.addEventListener('click',()=>{
 
 /* ════════ I18N ════════ */
 const I18N={vi:{
- 'brand.sub':'Máy rang cà phê','um.lang':'Ngôn ngữ','um.web':'Web điện thoại','um.logout':'Đăng xuất','tab.tongquan':'Tổng quan',
- 'sub.oplog':'Log kỹ thuật','oplog.lead':'Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.','oplog.all':'Tất cả','oplog.warn':'Cảnh báo','oplog.err':'Lỗi','oplog.refresh':'Làm mới','oplog.copy':'Copy','um.exit':'Thoát ứng dụng','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.caidat':'Cài đặt',
+ 'brand.sub':'Máy rang cà phê','um.lang':'Ngôn ngữ','um.web':'Web điện thoại','um.sound':'Âm chạm','um.logout':'Đăng xuất','tab.tongquan':'Tổng quan',
+ 'sub.oplog':'Log kỹ thuật','oplog.lead':'Dòng thời gian vận hành: lệnh máy + độ trễ ACK, xác nhận relay, kết nối, mẻ rang, lỗi app.','oplog.all':'Tất cả','oplog.warn':'Cảnh báo','oplog.err':'Lỗi','oplog.refresh':'Làm mới','oplog.copy':'Copy','um.exit':'Thoát ứng dụng','tab.rang':'Rang','tab.hoso':'Hồ sơ','tab.lichsu':'Lịch sử','tab.kho':'Kho & Kinh doanh','tab.caidat':'Cài đặt',
  'user.guest':'Khách','user.locked':'Chưa đăng nhập',
  'ph.tongquan':'Bảng tổng quan mẻ đang rang, trạng thái thiết bị, cảnh báo.','ph.hoso':'Nạp, xem và so sánh hồ sơ rang.','ph.lichsu':'Danh sách mẻ đã rang, xuất CSV.',
  'rang.mode':'Chế độ','rang.time':'Thời gian','phase.dry':'Sấy','phase.mai':'Maillard','phase.dev':'Phát triển',
@@ -2528,7 +3051,7 @@ const I18N={vi:{
  'prof.new':'Hồ sơ mới','prof.empty':'Chưa có hồ sơ rang nào','prof.emptyhint':'Tạo hồ sơ đầu tiên để bắt đầu rang','prof.nofilter':'Không có hồ sơ phù hợp bộ lọc.',
  'tb.settings':'Cài đặt','tb.ignite':'Đánh lửa','tb.charge':'Nạp hạt','tb.eject':'Xả liệu','tb.pause':'Tạm dừng','tb.drop':'Kết thúc mẻ','tb.prof':'Prof No.','tb.profile':'Hồ sơ','tb.view':'Đổi view',
  'set.locked':'Cài đặt đang khoá','set.needlogin':'Đăng nhập tài khoản có quyền để mở khoá.','set.note':'Thay đổi chưa áp dụng vào máy đang chạy',
- 'sub.ketnoi':'Kết nối','sub.calib':'Calib gas','sub.model':'Model nhiệt','sub.taikhoan':'Tài khoản','sub.nhatky':'Nhật ký',
+ 'sub.ketnoi':'Kết nối','sub.calib':'Calib gas','sub.model':'Model nhiệt','sub.maycfg':'Cài đặt máy','sub.taikhoan':'Tài khoản','sub.nhatky':'Nhật ký',
  'ketnoi.lead':'Cổng RS485 tới Artisan / module cảm biến. Trạng thái kết nối thời gian thực.','ketnoi.artisan':'Cổng Modbus (Artisan)','ketnoi.bt':'Module BT (CP210x)','ketnoi.dup':'Hai cổng đang trùng nhau — Artisan và ET không thể dùng chung một COM.',
  'calib.lead':'Bù gas tự động sau TP để BT bám hồ sơ. Sai deadband có thể cháy mẻ.','calib.dbpre':'Deadband trước FCs','calib.dbfcs':'Deadband từ FCs','calib.step':'Bước gas mỗi bậc','calib.period':'Chu kỳ tính bậc','calib.cap':'Cấp bù pha Development',
  'model.lead':'Đặc tính nhiệt của máy — dùng cho mô phỏng và bù gas.','model.preset':'Preset máy','model.gasbal':'Gas cân bằng','model.sens':'Độ nhạy gas','model.loss':'Hệ số mất nhiệt',
@@ -2536,8 +3059,8 @@ const I18N={vi:{
  'login.title':'Đăng nhập','login.sub':'Chọn tài khoản và nhập mã PIN',
  'btn.cancel':'Hủy','btn.apply':'Áp dụng','btn.save':'Lưu','btn.ok':'OK'},
  en:{
- 'brand.sub':'Coffee Roaster HMI','um.lang':'Language','um.web':'Phone web','um.logout':'Sign out','tab.tongquan':'Overview',
- 'sub.oplog':'Tech log','oplog.lead':'Operation timeline: machine commands + ACK latency, relay confirms, link, batches, app errors.','oplog.all':'All','oplog.warn':'Warnings','oplog.err':'Errors','oplog.refresh':'Refresh','oplog.copy':'Copy','um.exit':'Exit app','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.caidat':'Settings',
+ 'brand.sub':'Coffee Roaster HMI','um.lang':'Language','um.web':'Phone web','um.sound':'Tap sound','um.logout':'Sign out','tab.tongquan':'Overview',
+ 'sub.oplog':'Tech log','oplog.lead':'Operation timeline: machine commands + ACK latency, relay confirms, link, batches, app errors.','oplog.all':'All','oplog.warn':'Warnings','oplog.err':'Errors','oplog.refresh':'Refresh','oplog.copy':'Copy','um.exit':'Exit app','tab.rang':'Roast','tab.hoso':'Profiles','tab.lichsu':'History','tab.kho':'Inventory & Business','tab.caidat':'Settings',
  'user.guest':'Guest','user.locked':'Not signed in',
  'ph.tongquan':'Live batch overview, device status, alarms.','ph.hoso':'Load, view and compare roast profiles.','ph.lichsu':'List of past roasts, CSV export.',
  'rang.mode':'Mode','rang.time':'Time','phase.dry':'Drying','phase.mai':'Maillard','phase.dev':'Development',
@@ -2548,7 +3071,7 @@ const I18N={vi:{
  'prof.new':'New profile','prof.empty':'No roast profiles yet','prof.emptyhint':'Create your first profile to start roasting','prof.nofilter':'No profiles match the filter.',
  'tb.settings':'Settings','tb.ignite':'Ignite','tb.charge':'Charge','tb.eject':'Eject','tb.pause':'Pause','tb.drop':'Drop','tb.prof':'Prof No.','tb.profile':'Profiles','tb.view':'Toggle view',
  'set.locked':'Settings locked','set.needlogin':'Sign in with a permitted account to unlock.','set.note':'Changes not yet applied to the running machine',
- 'sub.ketnoi':'Connection','sub.calib':'Gas calib','sub.model':'Thermal model','sub.taikhoan':'Accounts','sub.nhatky':'Audit log',
+ 'sub.ketnoi':'Connection','sub.calib':'Gas calib','sub.model':'Thermal model','sub.maycfg':'Machine setup','sub.taikhoan':'Accounts','sub.nhatky':'Audit log',
  'ketnoi.lead':'RS485 ports to Artisan / sensor module. Real-time connection status.','ketnoi.artisan':'Modbus port (Artisan)','ketnoi.bt':'BT module (CP210x)','ketnoi.dup':'Both ports are the same — Artisan and ET cannot share one COM.',
  'calib.lead':'Auto gas trim after TP to track profile. Wrong deadband can scorch the batch.','calib.dbpre':'Deadband before FCs','calib.dbfcs':'Deadband from FCs','calib.step':'Gas step size','calib.period':'Step interval','calib.cap':'Development phase cap',
  'model.lead':'Machine thermal characteristics — used for simulation and gas trim.','model.preset':'Machine preset','model.gasbal':'Balance gas','model.sens':'Gas sensitivity','model.loss':'Heat loss factor',
@@ -2591,6 +3114,8 @@ const PCL_PHASES=["dry", "mai", "dev"];
 /* Ngưỡng/hệ số app dùng khi TỰ TÍNH (máy chưa có PC_Link, hoặc app tự lái) */
 const PCL_DERIVE={"ror_window_s": 3, "ror_gain": 20, "ror_bt_clamp": 95.0, "ror_et_clamp": 20.0, "kalman_bt": [1.0, 1.0, 0.005], "kalman_et": [1.0, 1.0, 0.01], "tp_min_time_s": 20, "tp_max_temp": 150.0, "de_temp_default": 150.0, "fcs_temp_default": 196.0, "charge_drop_bt": 8.0};
 const PCL_FAILSAFE={"app_timeout_s": 3, "on_app_lost": "release_to_hmi", "flame_timeout_s": 75};
+/* Handshake cấu hình $M — đọc/ghi 1 tham số qua PC_Link (Bước E) */
+const PCL_CFG={"base": 170, "reg": {"cmd": 170, "idx": 171, "val": 172, "status": 173}, "maxIdx": 52, "cmd": {"idle": 0, "read": 1, "write": 2}, "status": {"busy": 0, "ok": 1, "err": 2}};
 /* PC_LINK MAP >>> */
 /* ══════════ WEB MODE — mở qua http:// (điện thoại/tablet cùng WiFi) ══════════
    App desktop nạp file:// và có pywebview thật. Qua web server thì KHÔNG có
@@ -2674,6 +3199,26 @@ if(window._OTL_WEBCLONE){
     prof_save:async p=>_wcmd('profiles',{profiles:p}),
     prof_write_files:async()=>({ok:false,err:'web'}), prof_export_pdf:async()=>({ok:false,err:'web'}),
     prof_dir:async()=>'', prof_dir_pick:async()=>'', toggle_fullscreen:()=>{},
+    /* GĐ4 — KHO/ĐƠN/CHI PHÍ/CUPPING: web ĐỌC tự do; GHI cần token (PIN web) */
+    inv_lots:async()=>{const r=await _wapi('inv_lots');return (r&&r.lots)||null;},
+    inv_orders:async()=>{const r=await _wapi('inv_orders');return (r&&r.orders)||null;},
+    inv_cost_config:async()=>{const r=await _wapi('inv_cost');return (r&&r.cfg)||null;},
+    inv_report:async d=>{const r=await _wapi('inv_report?days='+(+d||7));return (r&&r.report)||null;},
+    machine_cfg_load:async()=>_wapi('machine_cfg'),
+    machine_cfg_save:async cfg=>_wcmd('machine_cfg_save',{cfg}),
+    mc_read:async()=>_wapi('mc_read'),
+    mc_write:async cfg=>_wcmd('mc_write',{cfg}),
+    inv_lot_movements:async(id,n)=>{const r=await _wapi('inv_movements?lot='+(+id||0));return (r&&r.movements)||null;},
+    inv_batch_econ:async(id,ds,ko)=>{const r=await _wapi('inv_econ?id='+(+id||0)+(ds!=null?'&drop_sec='+ds:'')+(ko!=null?'&kg_out='+ko:''));return (r&&r.econ)||null;},
+    inv_cup_list:async(t,tid)=>{const r=await _wapi('inv_cup?'+(t?'target='+t:'')+(tid!=null?'&target_id='+tid:''));return (r&&r.cuppings)||null;},
+    inv_lot_add:async d=>_wcmd('inv_lot_add',{lot:d}),
+    inv_lot_edit:async(id,d)=>_wcmd('inv_lot_edit',{id,lot:d}),
+    inv_lot_adjust:async(id,kg,note)=>_wcmd('inv_lot_adjust',{id,kg,note}),
+    inv_hopper_set:async(lot_id,hopper)=>_wcmd('inv_hopper_set',{lot_id,hopper:hopper||1}),
+    inv_order_add:async d=>_wcmd('inv_order_add',{order:d}),
+    inv_order_set:async(id,d)=>_wcmd('inv_order_set',{id,order:d}),
+    inv_cost_config_set:async cfg=>_wcmd('inv_cost_set',{cfg}),
+    inv_cup_add:async d=>_wcmd('inv_cup_add',{cup:d}),
     web_info:async()=>({on:false})   /* điện thoại khỏi hiện chip IP của chính nó */
   }};
   window._WEBSHIM=true;
@@ -2888,6 +3433,26 @@ function outShow(k,mv){
   if(Math.round(mv)===Math.round(h.v)||Date.now()>h.until){delete OUT_HOLD[k];return mv;}
   return h.v;
 }
+/* ĐẦU ĐỐT — trạng thái cảm biến LỬA THẬT (gasSignal → cờ 'flame' của PC_Link).
+   Khác hẳn gas% (mức ra lệnh): gas 100% mà mất lửa = nguy hiểm, khách phải THẤY.
+   Chỉ có nghĩa khi nối PC_Link (có d.flags); demo/tương thích → ẩn badge.
+   Cập nhật cả badge tab Rang (#burnerFlame) lẫn panel Preheat (#phFlame). */
+function flameShow(){
+  const d=DS.snap||{},vi=LANG==='vi',f=d.flags;
+  let cls=null,t='';
+  if(f){
+    const flame=!!f.flame, gasOn=!!f.gas||(d.gas||0)>0, fail=!!f.flame_fail;
+    if(fail){cls='alert';t=vi?'Mồi hụt!':'Ignite fail!';}
+    else if(flame){cls='on';t=vi?'Có lửa':'Flame';}
+    else if(gasOn){cls='alert';t=vi?'Không lửa':'No flame';}
+    else{cls='idle';t=vi?'Tắt':'Off';}
+  }
+  ['burnerFlame','phFlame'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.classList.remove('show','on','alert','idle');
+    if(cls){el.classList.add('show',cls);const s=el.querySelector('.ft');if(s)s.textContent=t;}
+  });
+}
 function applyMachine(d){
   txt('ltBT',d.bt.toFixed(1)+'°'); txt('ltET',d.et.toFixed(1)+'°');   // 2 số đỉnh luôn theo máy
   R.burner=d.gas; R.air=d.air; R.drum=d.drum;
@@ -2911,6 +3476,7 @@ function applyMachine(d){
    ['loader','btnLoader'],['destoner','btnDestoner']].forEach(([n,id])=>{
     const b=document.getElementById(id);if(b)b.classList.toggle('on',flagShow(n));
   });
+  flameShow();           // trạng thái đầu đốt (có lửa/không lửa) — Rang + Preheat
   checkMileSets(d.bt);   // ngưỡng DE/FCs/DROP thợ cài — DROP chạm là tự xả
   chkChargeReady(d.bt);  // nhiệt charge hồ sơ — máy nóng tới là báo nạp hạt
   scaleRender();         // bảng cân + nhãn ⚖ theo số cân live
@@ -2935,6 +3501,7 @@ function applyMachine(d){
 
   R.elapsed=d.t_roast; R.prog=Math.min(1,R.elapsed/ROAST_SECS);
   machSample(d);
+  autopilotTick(d);      // APP LÁI (Bước C): tự chỉnh gas bám mục tiêu, nếu đang bật
   updateRoastLive();
 }
 /* Chốt 1 mẫu của máy: mốc + điểm cho curve (1 mẫu/giây).
@@ -3268,19 +3835,84 @@ const R={mode:'MANUAL',burner:40,air:80,drum:55,view:'detail',
          phase:'NOSEL',prog:0,elapsed:0,paused:false,
          profName:'',profColor:'#c97a1a',profNo:0,
          mileT:{},mileD:{}};   // phase: NOSEL→IDLE→RUNNING→DONE; mileT/mileD = giờ+nhiệt các mốc THẬT
-const ROAST_SECS=642;   // tổng thời gian mẻ mẫu (10:42) — prog = elapsed/ROAST_SECS
-/* Mốc theo giây (khớp curve trong drawChart): TP DE FCs DROP */
-/* 5 mốc khớp 5 chip milestrip (TP DE FCs DEV DROP) */
-const MILES=[
+/* Mốc + tổng-giây MẶC ĐỊNH (mẻ mẫu 10:42) — dùng khi CHƯA nạp hồ sơ nào.
+   Khi nạp hồ sơ, buildTarget() thay MILES/ROAST_SECS/TGT theo setpoint hồ sơ. */
+const DEMO_MILES=[
   {id:'TP',  s:94,  t:'01:34', d:'91°'},
   {id:'DE',  s:372, t:'06:12', d:'150°'},
   {id:'FCs', s:580, t:'09:40', d:'196°'},
   {id:'DEV', s:610, t:'10:10', d:'197°'},   // vào giai đoạn phát triển
   {id:'DROP',s:642, t:'10:42', d:'198°'},   // điểm xả (hết mẻ)
 ];
-/* Giá trị curve tại tiến độ m∈[0,1] — DÙNG CHUNG cho chart & số live (giữ khớp hình) */
+const DEMO_SECS=642;
+let MILES=DEMO_MILES.slice();     // mốc mục tiêu ĐANG dùng (theo hồ sơ đang nạp)
+let ROAST_SECS=DEMO_SECS;         // tổng-giây mục tiêu — prog = elapsed/ROAST_SECS
+let TGT=null;                     // mô hình mục tiêu hồ sơ đang nạp (null → curve demo cứng)
+
+/* ══ MÔ HÌNH MỤC TIÊU (Bước B): suy đường BT + 5 mốc TỪ SETPOINT hồ sơ ══
+   Đầu vào tối thiểu: chargeT, temp(drop), time(tổng). Hồ sơ dày (Bước A) có
+   thêm deT/fcsT/devTarget → mốc bám sát hơn; thẻ mỏng thì ƯỚC LƯỢNG từ
+   charge/drop/time (vẫn tốt hơn hằng số demo). Đây là đường DỰ KIẾN (nét đứt),
+   KHÔNG phải curve thật đã rang. Dùng chung: nền mờ chart · chip milestrip ·
+   đếm ngược mốc (GĐ6) · giọng nói (GĐ5). */
+function buildTarget(p){
+  if(!p) return null;
+  const mt=/^(\d+):(\d\d)$/.exec(p.time||'');
+  const total = mt ? (+mt[1])*60+(+mt[2]) : 0;
+  if(!total) return null;                                  // thiếu thời gian → không dựng (đừng vẽ bịa)
+  const charge=+p.chargeT||160, drop=+p.temp||200;
+  // Setpoint nhiệt: dùng của hồ sơ nếu có, không thì ước từ charge/drop. ÉP đơn điệu
+  // DE < FCs < xả để đường mục tiêu luôn tăng sau TP (tránh "vọt lên rồi tụt" khi
+  // charge cao hoặc hồ sơ nhập lệch).
+  let fcsT = +p.fcsT || Math.max(charge+10, drop-8);       // FCs ~ dưới nhiệt xả ~8°
+  fcsT = Math.max(110, Math.min(fcsT, drop-2));            // FCs phải dưới nhiệt xả
+  let deT  = +p.deT  || (fcsT-46);                          // DE  ~ dưới FCs ~46°
+  deT = Math.max(100, Math.min(deT, fcsT-5));             // DE phải dưới FCs
+  // % phát triển mục tiêu (dev% = (drop−fcs)/drop) → suy giây FCs; không có thì FCs ~90% mẻ
+  const dev  = (+p.devTarget>0 && +p.devTarget<60) ? +p.devTarget/100 : null;
+  const fcsS = dev ? Math.round(total*(1-dev)) : Math.round(total*0.90);
+  const deS  = Math.round(fcsS*0.64);                      // DE ~64% quãng đường tới FCs
+  const tpS  = Math.max(30, Math.round(fcsS*0.16));        // đáy turning point
+  const devS = Math.round(fcsS + (total-fcsS)*0.5);        // mốc DEV ~ giữa FCs→DROP
+  const tpBT = Math.max(80, Math.min(deT-5, Math.round(deT*0.6)));   // đáy TP dưới DE
+  const devBT= Math.round(fcsT + (drop-fcsT)*0.5);
+  const anchors=[[0,charge],[tpS,tpBT],[deS,deT],[fcsS,fcsT],[total,drop]];
+  const btAt=sec=>{                                        // nội suy tuyến tính qua các neo
+    sec=Math.max(0,Math.min(total,sec));
+    for(let i=1;i<anchors.length;i++){
+      const a=anchors[i-1], b=anchors[i];
+      if(sec<=b[0]){const f=b[0]>a[0]?(sec-a[0])/(b[0]-a[0]):0;return a[1]+(b[1]-a[1])*f;}
+    }
+    return drop;
+  };
+  const miles=[
+    {id:'TP',  s:tpS,  t:fmtMMSS(tpS),  d:tpBT+'°'},
+    {id:'DE',  s:deS,  t:fmtMMSS(deS),  d:deT+'°'},
+    {id:'FCs', s:fcsS, t:fmtMMSS(fcsS), d:fcsT+'°'},
+    {id:'DEV', s:devS, t:fmtMMSS(devS), d:devBT+'°'},
+    {id:'DROP',s:total,t:fmtMMSS(total),d:drop+'°'},
+  ];
+  const preGas=+p.preGas||0;
+  return {totalS:total, miles, btAt, anchors, preGas,
+          deT, fcsT, drop, tpBT, devBT, tpS, deS, fcsS, devS};
+}
+
+/* Giá trị curve tại tiến độ m∈[0,1] — DÙNG CHUNG cho chart & số live (giữ khớp hình).
+   Có TGT (đã nạp hồ sơ) → mô phỏng bám ĐÚNG đường mục tiêu hồ sơ; không thì curve demo. */
 function curveAt(m){
   m=Math.max(0,Math.min(1,m));
+  if(TGT){
+    const total=TGT.totalS, sec=m*total;
+    const bt=TGT.btAt(sec);
+    const nb=TGT.btAt(Math.min(total,sec+5));
+    const ror=(nb-bt)/5*60;                                // °C/phút qua cửa sổ 5s
+    const et=Math.min(260, bt+(sec<TGT.tpS?-8:16)+4*Math.sin(m*9));
+    const abt=bt-6+3*Math.sin(m*7);
+    const pg=TGT.preGas||38;                               // lịch gas demo bám preGas hồ sơ
+    const burner= sec<TGT.tpS?pg : sec<TGT.deS?Math.round(pg*0.95)
+                : sec<TGT.fcsS?Math.round(pg*0.8) : Math.round(pg*0.55);
+    return {bt,et,abt,ror,burner};
+  }
   let bt; if(m<0.09)bt=200-(200-90)*(m/0.09);
   else{const p=(m-0.09)/0.91; bt=90+(210-90)*Math.pow(p,0.82);}
   const et=Math.min(245,bt+(m<0.09?-8:16)+6*Math.sin(m*9));
@@ -3339,6 +3971,47 @@ function stepOut(btn){if(R.mode!=='MANUAL')return;
     machCmd(k==='burner'?'gas':k,v);               // gửi thẳng xuống máy, live đọc về sẽ tự khớp
   }
 }
+/* ════════ APP LÁI (Bước C) — app tự chỉnh gas bám đường mục tiêu hồ sơ ════════
+   App là bộ điều khiển: mỗi ~10s so BT thật với đường mục tiêu (TGT.btAt) → nhích
+   gas về phía mục tiêu (bậc nhỏ, có deadband, kẹp maxGas). Buồng đốt khói bật theo
+   nhiệt. Firmware GIỮ 2 chốt an toàn (watchdog mất-app + mồi-hụt) — xem PC_Link.h.
+   Choreography xi-lanh (charge/drop/escape/destoner) vẫn do firmware tự đóng theo
+   timer + lệnh app; đây lo phần LÁI GAS liên tục. Thợ tắt được bất cứ lúc nào. */
+const AP={on:false,lastMs:0};
+function toggleAutopilot(){
+  if(!AP.on){
+    if(!dsLive()){toast('APP LÁI chỉ chạy khi nối máy thật');return;}
+    if(!(DS.snap&&DS.snap.flags&&DS.snap.flags.pc_control)){toast('Bật "PC control" trên HMI trước đã');return;}
+    if(!TGT){toast('Chưa có đường mục tiêu — chọn hồ sơ có thời gian');return;}
+    if(!confirm('Để APP TỰ LÁI GAS bám đường mục tiêu hồ sơ?\nApp chỉnh gas mỗi ~10s; firmware vẫn giữ chốt an toàn (watchdog + mồi hụt). Thợ luôn tắt được.'))return;
+    AP.on=true;AP.lastMs=0;
+    opLog('AUTO','APP LÁI: BẬT — app tự chỉnh gas bám mục tiêu');
+    toast('🤖 APP LÁI: BẬT',true);
+  }else{
+    AP.on=false;opLog('AUTO','APP LÁI: TẮT — thợ chỉnh tay');toast('APP LÁI: TẮT',true);
+  }
+  const b=document.getElementById('apBtn');if(b)b.classList.toggle('on',AP.on);
+}
+function autopilotTick(d){
+  if(!AP.on||!TGT||R.phase!=='RUNNING'||!dsLive())return;
+  const fl=d.flags||{};
+  if(!fl.pc_control){                              // mất quyền điều khiển → nhả lái ngay
+    AP.on=false;const b=document.getElementById('apBtn');if(b)b.classList.remove('on');
+    opLog('AUTO','APP LÁI: tự tắt (mất PC control)','WARN');toast('Mất PC control — APP LÁI tự tắt');return;
+  }
+  const abT=+MC.cur.afterburnerSet||350;           // buồng đốt khói theo nhiệt
+  if(d.bt>=abT && !fl.afterburner) machCmd('afterburner',1);
+  const now=Date.now();
+  if(now-AP.lastMs<10000)return;                    // chu kỳ gas ~10s (như calib)
+  if(!fl.flame){AP.lastMs=now;return;}              // CHƯA CÓ LỬA → không đổ thêm gas sống (chốt mồi-hụt firmware lo)
+  AP.lastMs=now;
+  const tgtBT=TGT.btAt(d.t_roast), err=tgtBT-d.bt;
+  if(Math.abs(err)<=3)return;                       // trong deadband 3°C → giữ nguyên
+  const maxGas=Math.max(0,Math.min(100,+MC.cur.maxGasSet||100));
+  const cur=d.gas, g=Math.max(0,Math.min(maxGas, cur+(err>0?2:-2)));   // bậc 2%/chu kỳ (bảo thủ)
+  if(g!==cur){OUT_HOLD.burner={v:g,until:now+3000};machCmd('gas',g);
+    opLog('AUTO',`APP LÁI: BT ${d.bt.toFixed(1)}° / mục tiêu ${tgtBT.toFixed(1)}° → gas ${cur}→${g}%`);}
+}
 function toggleView(){R.view=R.view==='detail'?'simple':'detail';
   document.getElementById('pane-rang').classList.toggle('simple',R.view==='simple');drawChart();}
 const DEV={};   // trạng thái thiết bị phụ (chỉ dùng cho demo trình duyệt)
@@ -3355,6 +4028,45 @@ function fmtMMSS(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).
 function setRoastPhase(p){
   R.phase=p;
   document.getElementById('pane-rang').setAttribute('data-phase',p);
+  if(p==='IDLE')renderIdlePlan();     // màn chờ: cập nhật bảng thông số mẻ (Bước F)
+}
+/* Bảng thông số mẻ trên màn chờ — suy từ hồ sơ + mô hình mục tiêu (TGT).
+   Trường hồ sơ chưa đặt (thẻ mỏng) hiện kèm "~" = app tự ước. */
+function renderIdlePlan(){
+  const el=document.getElementById('riPlan'); if(!el)return;
+  const p=(loadProfiles()[R.profNo-1])||null;
+  if(!p){el.innerHTML='';return;}
+  const t=TGT, est='<span class="est"> ~</span>';
+  const cell=(k,v)=>`<div class="rp-c"><span class="rp-k">${k}</span><span class="rp-v num">${v}</span></div>`;
+  let h='';
+  h+=cell('Charge',(p.chargeT||'—')+'°');
+  h+=cell('DE',   t?(t.deT +'°'+(p.deT?'':est)):'—');
+  h+=cell('FCs',  t?(t.fcsT+'°'+(p.fcsT?'':est)):'—');
+  h+=cell('Xả',   (p.temp||'—')+'°');
+  h+=cell('Thời gian', p.time||'—');
+  const devPct = p.devTarget ? p.devTarget+'%'
+               : (t ? Math.round((t.totalS-t.fcsS)/t.totalS*100)+'%'+est : '—');
+  h+=cell('Phát triển', devPct);
+  h+=cell('Gas mồi', p.preGas?p.preGas+'%':'—');
+  const mkg=currentModelKg();
+  h+=cell('Mẻ', p.kg?p.kg+'kg':(mkg?mkg+'kg'+est:'<span class="est">auto</span>'));
+  if(p.bean)h+=cell('Cà', esc(p.bean));
+  el.innerHTML=h;
+}
+/* Sửa thông số mẻ ngay từ màn chờ. CLONE-KHI-ĐÃ-RANG (Bước F): hồ sơ đã có curve
+   thật (đã rang) → KHÔNG đè bản gốc, mở BẢN MỚI giữ setpoint; hồ sơ chưa rang → sửa thẳng. */
+function editCurrentProfile(){
+  const idx=R.profNo-1, ps=loadProfiles(), p=ps[idx];
+  if(!p){toast('Chưa nạp hồ sơ');return;}
+  const roasted = p.curve && p.curve.t && p.curve.t.length>5;
+  if(roasted){
+    peIdx=-1; peTmp=Object.assign({},p); delete peTmp.curve;
+    peTmp.name=(p.name||'Hồ sơ')+' (bản mới)';
+    peTmp.date=new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/-/g,'/');
+    toast('Hồ sơ đã rang — mở BẢN MỚI để sửa (không đè bản gốc)',true);
+  }else{ peIdx=idx; peTmp=Object.assign({},p); }
+  R._editFromIdle=true;
+  refreshPE(); document.getElementById('profedit').classList.add('on');
 }
 function startRoast(){
   if(R.phase==='RUNNING')return;
@@ -3418,6 +4130,7 @@ function togglePause(){
 }
 function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết thời gian
   if(R.phase!=='RUNNING')return;
+  if(AP.on){AP.on=false;const b=document.getElementById('apBtn');if(b)b.classList.remove('on');}  // xong mẻ → nhả APP LÁI
   clearInterval(roastTimer);roastTimer=null;R.paused=false;
   const dropSec=R.elapsed;      // giây xả thật (có thể xả sớm)
   R.prog=dropSec/ROAST_SECS;R.elapsed=dropSec;
@@ -3521,6 +4234,7 @@ function phRender(){
   const pct=Math.max(0,Math.min(100,Math.round((PH.cur-PH.start)/span*100)));
   document.getElementById('phBarFill').style.width=pct+'%';
   txt('phPct',pct+'%');
+  flameShow();                 // badge lửa hiện ngay cả khi panel Preheat mới vẽ
 }
 function phToggle(){ PH.run ? phStop(false) : phStart(); }
 function phStart(){
@@ -3558,13 +4272,24 @@ function loadProfile(idx){
   const ps=loadProfiles(); const p=ps[idx]; if(!p)return;
   opLog('MẺ',`nạp hồ sơ "${p.name}" (No.${idx+1})`);
   R.profName=p.name; R.profColor=p.color||'#c97a1a'; R.profNo=idx+1; R.profRoast=p.roast||'';
-  // NỀN MỜ MỤC TIÊU (§18.3): curve mẻ chuẩn đã lưu trong hồ sơ → vẽ đứt khúc sau
-  // đường thật khi rang máy. Hồ sơ chưa có curve thì thôi, không vẽ đường bịa.
-  R.bgCurve=(p.curve&&p.curve.t&&p.curve.t.length>5)?{t:p.curve.t,bt:p.curve.bt}:null;
+  // ── MÔ HÌNH MỤC TIÊU (Bước B): suy đường + mốc TỪ SETPOINT hồ sơ đang nạp ──
+  TGT=buildTarget(p);
+  if(TGT){
+    MILES=TGT.miles; ROAST_SECS=TGT.totalS;
+    // NỀN MỜ MỤC TIÊU: lấy mẫu đường BT dự kiến mỗi 5s (vẽ nét đứt/mờ — dự kiến,
+    // KHÔNG phải curve thật). target:true để chart biết đây là đường mục tiêu.
+    const t=[],bt=[]; for(let s=0;s<=TGT.totalS;s+=5){t.push(s);bt.push(Math.round(TGT.btAt(s)));}
+    R.bgCurve={t,bt,target:true};
+    // MỤC TIÊU cho bảng DONE — đóng băng tại lúc nạp: giờ xả, nhiệt xả, mốc dự kiến
+    R.target={timeS:TGT.totalS, temp:TGT.drop,
+              mile:{TP:TGT.tpS,DE:TGT.deS,FCs:TGT.fcsS,DEV:TGT.devS,DROP:TGT.totalS}};
+  }else{
+    // thiếu dữ liệu (không có thời gian) → KHÔNG vẽ đường bịa; quay về mốc demo
+    MILES=DEMO_MILES.slice(); ROAST_SECS=DEMO_SECS; R.bgCurve=null;
+    R.target={timeS:(m=>m?(+m[1])*60+(+m[2]):null)(/^(\d+):(\d\d)$/.exec(p.time||'')),
+              temp:+p.temp||null, mile:(p.curve&&p.curve.mile)||null};
+  }
   const lgT=document.getElementById('lgTarget');if(lgT)lgT.style.display=R.bgCurve?'':'none';
-  // MỤC TIÊU cho bảng DONE (§18.5) — đóng băng tại lúc nạp: giờ xả, nhiệt xả, mốc
-  R.target={timeS:(m=>m?(+m[1])*60+(+m[2]):null)(/^(\d+):(\d\d)$/.exec(p.time||'')),
-            temp:+p.temp||null, mile:(p.curve&&p.curve.mile)||null};
   // ── ngưỡng THẬT lấy từ hồ sơ ──
   // Nhiệt xả → ngưỡng DROP tự động (BT chạm là gửi lệnh xả, y hệt thợ cài chip)
   if(p.temp){R.mileSet.DROP=Math.max(100,Math.min(260,p.temp));
@@ -4330,10 +5055,210 @@ function enterSettings(){
   document.getElementById('setgate').style.display='none';document.getElementById('setwrap').classList.add('on');
   renderAccounts();renderAudit();gotoSub(first);
 }
+/* ════════ CÀI ĐẶT MÁY — tham số firmware ($M1..$M52) ════════
+   Đồng bộ 2 chiều với máy CẦN firmware mở khối cấu hình trong PC_Link (hiện chỉ
+   chở dữ liệu live). Nên: app lưu/mở FILE cấu hình (backup/khôi phục/chuyển máy)
+   chạy độc lập; nút Đọc/Ghi máy nối sẵn, firmware chưa hỗ trợ thì báo rõ.
+   Mỗi param: [key, addr($M), nhãn, đơn vị, min, max, dec, mặc định]. */
+const MACHINE_GROUPS=[
+  {name:'Xi-lanh & thời gian', ps:[
+    ['chargeDuration',1,'Thời gian xi-lanh nạp','giây',0,60,0,5],
+    ['dropDuration',2,'Thời gian xi-lanh xả','giây',0,60,0,5],
+    ['escapeDuration',3,'Thời gian xi-lanh thoát liệu','giây',0,60,0,5],
+    ['feederSet',14,'Thời gian thổi nạp liệu','giây',0,60,0,3],
+    ['destonerSet',19,'Thời gian tách đá','giây',0,120,0,10],
+    ['coolTimer',22,'Thời gian làm nguội & khuấy','giây',0,600,0,180],
+    ['destonerPre',26,'Offset bật tách đá','giây',0,60,0,2],
+    ['afterburnerNext',27,'Trễ bật buồng đốt khói','giây',0,120,0,5],
+    ['autoFill_Time',46,'Thời gian tự đổ tách đá → silo','giây',0,120,0,10],
+  ]},
+  {name:'Gas & mồi lửa', ps:[
+    ['turnGasPoint',9,'Nhiệt bật gas','°C',0,300,0,90],
+    ['preGas',8,'Gas mồi (BBP)','%',0,100,0,30],
+    ['burnerValue',36,'Đặt gas','%',0,100,0,40],
+    ['maxGasSet',28,'Giới hạn gas tối đa','%',0,100,0,100],
+    ['TpCalib',4,'Giới hạn gas auto trước DE','%',0,100,0,40],
+    ['DeCalib',5,'Giới hạn gas auto trước FCs','%',0,100,0,35],
+    ['FcsCalib',31,'Giới hạn gas auto sau FCs','%',0,100,0,25],
+    ['autoOff',37,'Tự cắt lửa khi xong (0/1)','',0,1,0,0],
+    ['burnerPremix',29,'Đầu đốt (0=thường · 1=premix)','',0,1,0,0],
+    ['autoLoader',33,'Bật auto-loader (nạp tự động, 0/1)','',0,1,0,0],
+    ['afterburnerSet',7,'Nhiệt chạy buồng đốt khói','°C',0,600,0,350],
+  ]},
+  {name:'Nhiệt & pha rang', ps:[
+    ['chargeTemp',23,'Nhiệt nạp (charge)','°C',0,300,0,200],
+    ['chTolerange',10,'Dung sai charge','°C',0,30,0,3],
+    ['yellowPhase',20,'Nhiệt chuyển vàng (yellow)','°C',0,300,0,150],
+    ['fcsPhase',21,'Nhiệt crack đầu (FCs)','°C',0,300,0,196],
+    ['btSV',24,'Đặt SV nhiệt hạt (BT)','°C',0,300,0,210],
+    ['preCool',30,'Nhiệt bật nguội sớm (offset dưới xả, ×10)','°C',0,100,0,0],
+    ['tempRegister',6,'Địa chỉ đọc bộ điều khiển Delta','reg',0,65535,0,0],
+    ['btSVReg',25,'Địa chỉ ghi SV','reg',0,65535,0,0],
+  ]},
+  {name:'Cân & nạp liệu', ps:[
+    ['netWTG',32,'Khối lượng hút lên','kg',0,100,1,6],
+    ['wThresholdHigh',38,'Ngưỡng cân — cao','',0,100000,0,0],
+    ['wThresholdMedium',39,'Ngưỡng cân — vừa','',0,100000,0,0],
+    ['wThresholdLow',40,'Ngưỡng cân — thấp','',0,100000,0,0],
+    ['difHigh',41,'Dung sai cân — cao','',0,10000,0,0],
+    ['difMedium',42,'Dung sai cân — vừa','',0,10000,0,0],
+    ['difLow',43,'Dung sai cân — thấp','',0,10000,0,0],
+    ['autoFill',45,'Tự đổ tách đá → silo (0/1)','',0,1,0,0],
+  ]},
+  {name:'Hút chân không', ps:[
+    ['vacuumSetFlag',47,'Bật PID hút (0/1)','',0,1,0,0],
+    ['vacuumSetpoint',48,'Setpoint hút','Pa',0,300,0,120],
+    ['vacuumTraction',44,'Lực kéo hút','',0,100,0,0],
+    ['minPT',49,'Giới hạn dưới cảm biến áp','',0,1000,0,0],
+    ['maxPT',50,'Giới hạn trên cảm biến áp','',0,1000,0,250],
+  ]},
+  {name:'Làm nóng máy', ps:[
+    ['wuTemp',52,'Nhiệt làm nóng','°C',0,300,0,150],
+    ['wuTime',51,'Thời gian làm nóng','phút',0,60,0,12],
+  ]},
+  {name:'Biến tần & hệ thống', ps:[
+    ['drumSpeed',34,'Tốc độ biến tần trống','%',0,100,0,50],
+    ['airSpeed',35,'Tốc độ biến tần gió','%',0,100,0,80],
+    ['idDrum',15,'Modbus ID biến tần trống','',1,247,0,1],
+    ['regDrum',16,'Register biến tần trống','reg',0,65535,0,0],
+    ['loop',11,'Số mẻ rang lặp lại','mẻ',1,99,0,1],
+    ['modbusID',12,'Modbus slave ID','',1,247,0,1],
+    ['modbusBaud',13,'Chỉ số baudrate Modbus','',0,7,0,3],
+  ]},
+];
+const MC_ALL=(()=>{const m={};MACHINE_GROUPS.forEach(g=>g.ps.forEach(p=>m[p[0]]=p));return m;})();
+const MC_DEFAULTS=(()=>{const d={};for(const k in MC_ALL)d[k]=MC_ALL[k][7];return d;})();
+const LS_MC='otl_machine_cfg';
+const LS_MODEL='otl_machine_model';
+/* ── Model máy → bộ timer cơ cấu + kg mặc định (Bước G) ──
+   Chọn model là app ĐIỀN sẵn timer chuẩn vào form Cài đặt máy (thợ vẫn sửa được;
+   phải bấm "Ghi xuống máy" mới áp thật qua PC_Link — Bước E). Giá trị ước theo cỡ
+   máy (escape 5-6kg~55s, 12kg~65s… theo đề xuất chủ máy). */
+const MACHINE_MODELS={
+  '3kg':  {kg:3,  chargeDuration:4, dropDuration:4, escapeDuration:45, destonerSet:8,  coolTimer:150, feederSet:2},
+  '6kg':  {kg:6,  chargeDuration:5, dropDuration:5, escapeDuration:55, destonerSet:10, coolTimer:180, feederSet:3},
+  '12kg': {kg:12, chargeDuration:6, dropDuration:6, escapeDuration:65, destonerSet:12, coolTimer:210, feederSet:4},
+  '30kg': {kg:30, chargeDuration:8, dropDuration:8, escapeDuration:80, destonerSet:16, coolTimer:300, feederSet:6},
+};
+/* kg mặc định của model đang chọn — dùng khi hồ sơ để trống kg (Bước A/F) */
+function currentModelKg(){const m=localStorage.getItem(LS_MODEL);
+  return (m&&MACHINE_MODELS[m])?MACHINE_MODELS[m].kg:null;}
+function applyModel(key){
+  const md=MACHINE_MODELS[key]; if(!md)return;
+  localStorage.setItem(LS_MODEL,key);
+  if(!Object.keys(MC.cur).length)mcLoad();
+  for(const k in md){ if(k==='kg')continue; if(MC_ALL[k]) MC.cur[k]=_mcClamp(k,md[k]); }
+  renderMachineCfg();
+  toast(`Đã điền timer + kg mặc định cho máy ${key} — bấm “Ghi xuống máy” để áp thật`,true);
+}
+const MC={cur:{},saved:{}};
+function mcLoad(){
+  let v=null;try{v=JSON.parse(localStorage.getItem(LS_MC));}catch(e){}
+  MC.saved=Object.assign({},MC_DEFAULTS,v||{});
+  MC.cur=Object.assign({},MC.saved);
+}
+function _mcClamp(k,val){const p=MC_ALL[k];let n=parseFloat(val);if(!isFinite(n))n=p[7];
+  n=Math.max(p[4],Math.min(p[5],n));return p[6]?+n.toFixed(p[6]):Math.round(n);}
+function renderMachineCfg(){
+  if(!Object.keys(MC.cur).length)mcLoad();
+  const body=document.getElementById('machineCfgBody');
+  const curModel=localStorage.getItem(LS_MODEL)||'';
+  const modelBlock=`<div class="mcgroup"><div class="mcgt">Model máy</div>
+    <div class="mcmodel"><span class="mcmlbl">Chọn cỡ máy → điền sẵn timer cơ cấu + kg mặc định:</span>
+      ${Object.keys(MACHINE_MODELS).map(k=>`<button class="mcmbtn${curModel===k?' on':''}" onclick="applyModel('${k}')">${k}</button>`).join('')}
+    </div></div>`;
+  body.innerHTML=modelBlock+MACHINE_GROUPS.map(g=>`<div class="mcgroup">
+    <div class="mcgt">${g.name}</div>
+    <div class="mcgrid">${g.ps.map(p=>{const k=p[0];
+      return `<div class="mcrow" data-mck="${k}">
+        <label>${p[2]} <span style="color:var(--mute);font-weight:400">·$M${p[1]}</span></label>
+        <div class="mcin">
+          <input type="text" inputmode="decimal" value="${MC.cur[k]}" onchange="mcEdit('${k}',this)" onfocus="this.select()">
+          <span class="mcu">${p[3]||''}</span>
+        </div>
+        <div class="mcnote">${p[4]}–${p[5]}${p[3]?' '+p[3]:''}</div>
+      </div>`;}).join('')}</div></div>`).join('');
+  mcMarkDirty();
+}
+function mcEdit(k,el){
+  const v=_mcClamp(k,el.value);MC.cur[k]=v;el.value=v;mcMarkDirty();
+  mcCellAutoWrite(k);   // nối máy + không rang → tự ghi ô này xuống máy sau ~1s
+}
+function mcMarkDirty(){
+  document.querySelectorAll('#machineCfgBody .mcrow').forEach(r=>{
+    const k=r.dataset.mck;r.classList.toggle('dirty',MC.cur[k]!==MC.saved[k]);});
+}
+async function mcSaveFile(){
+  const a=window.pywebview&&window.pywebview.api;
+  localStorage.setItem(LS_MC,JSON.stringify(MC.cur));
+  MC.saved=Object.assign({},MC.cur);mcMarkDirty();
+  if(a&&a.machine_cfg_save){const r=await a.machine_cfg_save(MC.cur);
+    toast(r&&r.ok?'Đã lưu cấu hình máy ra file':'Đã lưu (localStorage); '+((r&&r.err)||'chưa chọn thư mục hồ sơ'),r&&r.ok);
+  }else toast('Đã lưu cấu hình (trong máy tính này)',true);
+}
+async function mcLoadFile(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.machine_cfg_load)){toast('Chỉ mở file được trong app');return;}
+  const r=await a.machine_cfg_load();
+  if(!r||!r.cfg){toast((r&&r.err)||'Không có file cấu hình máy');return;}
+  MC.cur=Object.assign({},MC_DEFAULTS,r.cfg);MC.saved=Object.assign({},MC.cur);
+  localStorage.setItem(LS_MC,JSON.stringify(MC.cur));
+  renderMachineCfg();toast('Đã nạp cấu hình máy từ file',true);
+}
+function mcResetDefault(){
+  if(!confirm('Đưa mọi tham số về MẶC ĐỊNH gợi ý? (chỉ điền vào form, KHÔNG tự ghi xuống máy — bấm “Ghi xuống máy” mới áp dụng)'))return;
+  MC.cur=Object.assign({},MC_DEFAULTS);renderMachineCfg();toast('Đã đưa về mặc định gợi ý',true);
+}
+/* Danh sách [key, $M-addr] cho handshake — idx = số $M trong MACHINE_GROUPS */
+function mcItems(){return MACHINE_GROUPS.flatMap(g=>g.ps.map(p=>[p[0],p[1]]));}
+/* Đang rang thì KHÔNG cho ghi $M (firmware cũng khoá — đây là chốt phía app) */
+function mcRoasting(){return !!R._machRun || (dsLive()&&DS.snap&&DS.snap.step>=STP.CHARGE&&DS.snap.step<STP.COOLING);}
+async function mcReadMachine(auto){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.mc_read)){if(!auto)toast('Chỉ đọc máy được trong app');return;}
+  const r=await a.mc_read(mcItems());
+  if(r&&r.ok&&r.cfg){MC.cur=Object.assign({},MC_DEFAULTS,MC.cur,r.cfg);MC.saved=Object.assign({},MC.cur);
+    renderMachineCfg();
+    const nf=(r.failed&&r.failed.length)?` (${r.failed.length} ô lỗi)`:'';
+    toast('Đã đọc cấu hình từ máy'+nf,true);}
+  else if(!auto)toast((r&&r.err)||'Không đọc được cấu hình từ máy');
+}
+async function mcWriteMachine(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.mc_write)){toast('Chỉ ghi máy được trong app');return;}
+  if(mcRoasting()){toast('Đang rang — không ghi cấu hình máy');return;}
+  const items=Object.keys(MC.cur).filter(k=>MC_ALL[k]).map(k=>[k,MC_ALL[k][1],MC.cur[k]]);
+  if(!confirm('GHI '+items.length+' tham số xuống MÁY? Sai tham số có thể ảnh hưởng vận hành. Chỉ ghi khi chắc chắn.'))return;
+  const r=await a.mc_write(items);
+  if(r&&r.ok){const nf=(r.failed&&r.failed.length)?` (${r.failed.length} ô lỗi)`:'';
+    toast('Đã ghi '+r.count+' tham số xuống máy'+nf,r.failed&&r.failed.length?false:true);
+    MC.saved=Object.assign({},MC.cur);mcMarkDirty();}
+  else toast((r&&r.err)||'Không ghi được cấu hình xuống máy');
+}
+/* Ghi AUTO từng ô (Bước E): sửa 1 ô lúc máy rảnh → debounce ~1s → ghi RIÊNG ô đó.
+   Chặn khi đang rang (giữ viền vàng để ghi sau). Chỉ khi nối máy PC_Link. */
+const _mcWTimers={};
+function mcCellAutoWrite(k){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.mc_write)||!dsLive()||!MC_ALL[k])return;   // demo/không nối máy → chỉ điền form
+  if(mcRoasting()){toast('Đang rang — sẽ không ghi $M'+MC_ALL[k][1]+' (giữ vàng, ghi sau)');return;}
+  clearTimeout(_mcWTimers[k]);
+  _mcWTimers[k]=setTimeout(async()=>{
+    if(mcRoasting())return;
+    const r=await a.mc_write([[k,MC_ALL[k][1],MC.cur[k]]]);
+    if(r&&r.ok){MC.saved[k]=MC.cur[k];mcMarkDirty();toast('Đã ghi $M'+MC_ALL[k][1]+' = '+MC.cur[k],true);}
+    else toast((r&&r.err)||('Không ghi được $M'+MC_ALL[k][1]));
+  },1000);
+}
 function gotoSub(name){document.querySelectorAll('.subpane').forEach(p=>p.classList.remove('on'));
   document.getElementById('sub-'+name).classList.add('on');
   document.querySelectorAll('#subnav button').forEach(b=>b.classList.toggle('on',b.dataset.sub===name));
   if(name==='nhatky')renderAudit();if(name==='taikhoan')renderAccounts();if(name==='oplog')renderOpLog();
+  if(name==='maycfg'){renderMachineCfg();
+    // Đọc TỰ ĐỘNG cấu hình từ máy khi mở tab (chỉ khi nối máy PC_Link, im nếu không)
+    if(dsLive())mcReadMachine(true);}
+  // Trang Cài đặt máy có toolbar lưu-file RIÊNG → ẩn thanh Lưu/Áp dụng chung cho khỏi nhầm
+  const sf=document.getElementById('setfoot');if(sf)sf.style.display=(name==='maycfg')?'none':'';
   // Mở tab Kết nối: hiện đúng cổng/baud THẬT cầu Modbus đang dùng (link.json)
   // — quan trọng: CFG_EDIT phải khớp cổng thật, không thì Lưu sẽ đẩy nhầm cổng cũ
   if(name==='ketnoi'&&dsBridge())(async()=>{try{
@@ -4487,6 +5412,63 @@ async function renderAudit(){const body=document.getElementById('auditBody');if(
   body.innerHTML=badge+`<table class="audit"><thead><tr><th>${LANG==='vi'?'Thời gian':'Time'}</th><th>${LANG==='vi'?'Người':'User'}</th><th>${LANG==='vi'?'Thao tác':'Action'}</th><th>${LANG==='vi'?'Mục':'Field'}</th><th>${LANG==='vi'?'Giá trị':'Value'}</th></tr></thead>
     <tbody>${a.map(e=>`<tr><td>${fmt(e.ts)}</td><td>${esc(e.user)}</td><td>${esc(e.action)}</td><td class="f">${esc(e.field)}</td>
       <td>${e.old?`<span class="old">${esc(e.old)}</span>`:''}<span class="chg">${esc(e['new']||'')}</span></td></tr>`).join('')}</tbody></table>`;}
+
+/* ════════ ÂM CHẠM KIM LOẠI — tổng hợp Web Audio, KHÔNG file ngoài ════════
+   Panel cạnh máy rang, xưởng ồn (burner + quạt hút) → tiếng "clink" ngắn xác nhận
+   chạm nút. Kim loại = vài sóng sin tỉ lệ PHI HÀI + decay mũ nhanh (như gõ thanh
+   thép). Lazy-init AudioContext trong cử chỉ chạm đầu tiên (trình duyệt bắt buộc).
+   Tắt/bật ở menu avatar, nhớ trong localStorage. */
+const SND={ctx:null,on:localStorage.getItem('otl_sound')!=='0'};
+function _sndCtx(){
+  try{
+    if(!SND.ctx)SND.ctx=new (window.AudioContext||window.webkitAudioContext)();
+    if(SND.ctx.state==='suspended')SND.ctx.resume();
+  }catch(e){SND.ctx=null;}
+  return SND.ctx;
+}
+/* một tiếng gõ kim loại: tổng sóng sin theo tỉ lệ tần số phi hài, biên giảm dần,
+   bọc trong envelope tấn công cực nhanh (4ms) + tắt mũ → nghe đanh, gọn, "leng keng" */
+function _metal(freq,dur,gain,ratios){
+  const c=_sndCtx();if(!c)return;
+  const t=c.currentTime,out=c.createGain();
+  out.gain.setValueAtTime(0.0001,t);
+  out.gain.exponentialRampToValueAtTime(gain,t+0.004);
+  out.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  const hp=c.createBiquadFilter();hp.type='highpass';hp.frequency.value=280; // bỏ ù trầm
+  out.connect(hp).connect(c.destination);
+  (ratios||[1,2.76,5.4,8.93]).forEach((r,i)=>{
+    const o=c.createOscillator();o.type='sine';o.frequency.value=freq*r;
+    const g=c.createGain();g.gain.value=1/(i+1.7);   // hài càng cao càng nhỏ
+    o.connect(g).connect(out);o.start(t);o.stop(t+dur+0.02);
+  });
+}
+function snd(kind){
+  if(!SND.on)return;
+  if(kind==='confirm')_metal(680,0.32,0.15,[1,2.01,3.0,4.7]);   // "ding" sáng — lưu/bắt đầu
+  else if(kind==='warn')_metal(150,0.30,0.16,[1,1.5,2.42,3.35]); // "thunk" trầm — huỷ/nguy
+  else _metal(1200,0.10,0.085,[1,2.76,5.2]);                     // "tick" gọn — mặc định
+}
+function soundToggle(ev){
+  if(ev)ev.stopPropagation();
+  SND.on=!SND.on;localStorage.setItem('otl_sound',SND.on?'1':'0');
+  sndSyncLabel();
+  if(SND.on)snd('confirm');           // nghe thử ngay khi bật
+}
+function sndSyncLabel(){
+  const el=document.getElementById('sndTog');
+  if(el){el.textContent=SND.on?'BẬT':'TẮT';el.classList.toggle('on',SND.on);}
+}
+/* Uỷ quyền click TOÀN CỤC (capture) — chạm bất kỳ nút tương tác nào cũng kêu, phân
+   loại theo class. Capture để phát tiếng kể cả khi onclick nút đó chặn propagation. */
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('button, .tbtn, .padkey, .sw, .pkopt, .pick, .modebtn, .mchip, .utile');
+  if(!b||b.disabled||b.id==='sndRow'||b.classList.contains('wtog'))return; // 2 nút này tự phát riêng
+  let kind='tap';
+  if(b.matches('.primary, .addprof, .bigbtn.primary'))kind='confirm';
+  else if(b.matches('.danger, .khodanger'))kind='warn';
+  snd(kind);
+},true);
+document.addEventListener('DOMContentLoaded',sndSyncLabel);
 
 /* ── toast ── */
 let toastTmr;function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(ok?' ok':'');

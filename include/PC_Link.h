@@ -56,7 +56,10 @@ static bool    pclInited = false;
 void pcLinkInit(){
     for (int i = 0; i < PCL_R_COUNT; i++) mbs.addHreg(PCL_R_BASE + i);
     for (int i = 0; i < PCL_W_COUNT; i++) mbs.addHreg(PCL_W_BASE + i);
-    SerialComputer.println("=> PC_Link OK (reg 100-130)");
+#ifdef PCL_CFG_BASE
+    for (int i = 0; i < PCL_CFG_COUNT; i++) mbs.addHreg(PCL_CFG_BASE + i);   // handshake $M
+#endif
+    SerialComputer.println("=> PC_Link OK (R 100+, W 140+, CFG 170+)");
 }
 
 // ── Khối GHI: đọc 1 ô, nếu app đổi thì trả về true (kèm giá trị đã kẹp) ──────
@@ -129,15 +132,55 @@ static void pclSafety(){
     }
 }
 
-// ── Khối ĐỌC — luôn cập nhật để app vẽ curve ────────────────────────────────
-// Gọi SAU pclWriteBlock() trong handle_PC_Link — xem chú thích ở đó.
-static void pclReadBlock(){
+#ifdef PCL_CFG_BASE
+// ── Handshake CẤU HÌNH $M (đọc/ghi 1 tham số) ───────────────────────────────
+// App đặt CFG_IDX (và CFG_VAL nếu ghi) rồi CFG_CMD = 1(đọc)/2(ghi). Firmware xử
+// ĐÚNG 1 tham số, điền CFG_VAL/CFG_STATUS rồi set CFG_CMD = 0 báo xong.
+//   • idx = SỐ $M (1..52) = chính chỉ số iMemHMI[] → đọc/ghi thẳng.
+//   • GHI bị CHẶN khi đang rang (đổi tham số vận hành giữa mẻ = nguy hiểm).
+//   • Ghi = set iMemHMI[idx] + writeSingleRegister(idx+2000). KHÔNG đụng _CP →
+//     để change-detect ở Modbus_Master.h tự chạy (tính lại _CV, side-effect chuẩn
+//     y như khi thợ sửa số trên HMI).
+//   • cmd == 0 (rảnh) → return NGAY, per-loop ≈ 0.
+static void pcLinkConfigTask(){
+    const uint16_t cmd = mbs.Hreg(PCL_CFG_CMD);
+    if (cmd == PCL_CFG_IDLE) return;
+
+    const uint16_t idx = mbs.Hreg(PCL_CFG_IDX);
+    if (idx < 1 || idx > PCL_CFG_MAXIDX) {
+        mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_ERR);
+        mbs.Hreg(PCL_CFG_CMD, PCL_CFG_IDLE);
+        return;
+    }
+    if (cmd == PCL_CFG_READ) {
+        mbs.Hreg(PCL_CFG_VAL, iMemHMI[idx]);
+        mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_OK);
+    } else if (cmd == PCL_CFG_WRITE) {
+        const bool roasting = (START_BTN_R == 1) ||
+                              (progStep >= STP_CHARGE && progStep <= STP_ESCAPE);
+        if (roasting) {
+            mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_ERR);    // khoá ghi khi đang rang
+        } else {
+            const uint16_t v = mbs.Hreg(PCL_CFG_VAL);
+            iMemHMI[idx] = v;                            // = xxx_R (change-detect tự lo _CV/_CP)
+            nodeHMI.writeSingleRegister(idx + 2000, v);  // HMI giữ đúng số, Modbus_Master đọc lại khớp
+            mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_OK);
+        }
+    } else {
+        mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_ERR);        // cmd lạ
+    }
+    mbs.Hreg(PCL_CFG_CMD, PCL_CFG_IDLE);                 // báo xong
+}
+#endif  // PCL_CFG_BASE
+
+void handle_PC_Link(){
+    // ── 1) Khối ĐỌC — luôn cập nhật để app vẽ curve ─────────────────────────
     static uint16_t hb = 0;
     mbs.Hreg(PCL_R_BT,     Temperature_BT);
     mbs.Hreg(PCL_R_ET,     Temperature_ET);
     mbs.Hreg(PCL_R_RORBT,  (uint16_t)rorBT);
     mbs.Hreg(PCL_R_RORET,  (uint16_t)rorET);
-    mbs.Hreg(PCL_R_RORPRO, (uint16_t)rorBT_pro);
+    mbs.Hreg(PCL_R_RORPRO, (uint16_t)rorBT_pro);   // RoR hồ sơ mẫu tại giây hiện tại ×100
     mbs.Hreg(PCL_R_GAS,    (uint16_t)gasPercent);
     mbs.Hreg(PCL_R_AIR,    (uint16_t)airflowPercent);
     mbs.Hreg(PCL_R_DRUM,   (uint16_t)drumPercent);
@@ -180,10 +223,13 @@ static void pclReadBlock(){
     if (autoLoader_R == 1)      fl |= PCLF_AUTOLOADER;
     mbs.Hreg(PCL_R_FLAGS, fl);
     mbs.Hreg(PCL_R_HB, ++hb);
-}
 
-// ── Khối GHI — chỉ khi bật nút PC control ───────────────────────────────────
-static void pclWriteBlock(){
+    pclSafety();   // 2 chốt an toàn — chạy MỌI vòng, kể cả khi app đã im
+#ifdef PCL_CFG_BASE
+    pcLinkConfigTask();   // handshake $M — chạy mọi vòng, độc lập PC control (cmd=0 → ~0)
+#endif
+
+    // ── 2) Khối GHI — chỉ khi bật nút PC control ────────────────────────────
     // Khi TẮT: phản chiếu setpoint máy vào khối ghi + chốt pclLastW để lúc bật
     //          control không bắn lệnh cũ. App vẫn thấy đúng số thực.
     if (PC_CONTROL_BTN_R != 1) {
@@ -374,16 +420,6 @@ static void pclWriteBlock(){
         autoLoader_R = v; autoLoader_R_CP = v;
         nodeHMI.writeSingleRegister(autoLoader_W + 2000, v);
     }
-}
-
-void handle_PC_Link(){
-    // ĐẢO THỨ TỰ (2026-07-23, đo bằng profiler vòng loop): áp KHỐI GHI trước
-    // rồi mới dựng KHỐI ĐỌC — lệnh app vừa áp vào *_BTN_R được phản ánh vào
-    // PCL_R_FLAGS ngay trong CÙNG vòng loop. Thứ tự cũ (đọc trước, ghi sau)
-    // bắt app đợi thêm đúng 1 chu kỳ loop mới thấy cờ xác nhận.
-    pclWriteBlock();
-    pclReadBlock();
-    pclSafety();   // 2 chốt an toàn — chạy MỌI vòng, kể cả khi app đã im
 }
 
 #else   // PC_LINK_EN == 0 — vô hiệu, không tốn gì

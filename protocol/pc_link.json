@@ -124,8 +124,8 @@
   },
 
   "write": {
-    "base": 120,
-    "comment": "App → máy. CHỈ áp dụng khi PC_CONTROL_BTN_R == 1 (cờ pc_control).",
+    "base": 140,
+    "comment": "App → máy. CHỈ áp dụng khi PC_CONTROL_BTN_R == 1 (cờ pc_control). Base 140 vì khối ĐỌC đã lấn tới 121 — base 120 cũ làm RORKG/SCALETG đè nát ô lệnh gas/gió mỗi vòng loop (bug 2026-07-23).",
     "fields": [
       {"key": "gas",    "c": "GAS",    "min": 0,  "max": 100,  "scale": 1,  "desc": "gas %"},
       {"key": "air",    "c": "AIR",    "min": 0,  "max": 100,  "scale": 1,  "desc": "gió %"},
@@ -149,6 +149,20 @@
       {"key": "scale_tg",  "c": "SCALETG",  "min": 0, "max": 990, "scale": 10, "desc": "cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R)"},
       {"key": "autoloader","c": "AUTOLOADER","min": 0, "max": 1,  "scale": 1, "desc": "bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)"}
     ]
+  },
+
+  "config": {
+    "base": 170,
+    "count": 52,
+    "comment": "Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi đang rang. Xem khối config trong PC_Link.h.",
+    "regs": [
+      {"key": "cmd",    "c": "CMD",    "desc": "0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)"},
+      {"key": "idx",    "c": "IDX",    "desc": "số $M cần đọc/ghi (1..52)"},
+      {"key": "val",    "c": "VAL",    "desc": "giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)"},
+      {"key": "status", "c": "STATUS", "desc": "0=đang xử/chưa · 1=OK · 2=lỗi (idx sai hoặc đang rang → khoá ghi)"}
+    ],
+    "cmd_idle": 0, "cmd_read": 1, "cmd_write": 2,
+    "status_busy": 0, "status_ok": 1, "status_err": 2
   },
 
   "failsafe": {

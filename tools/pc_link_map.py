@@ -10,7 +10,7 @@ BAUD_DEFAULT = 9600
 SLAVE_DEFAULT = 1
 
 R_BASE, R_COUNT = 100, 22
-W_BASE, W_COUNT = 120, 21
+W_BASE, W_COUNT = 140, 21
 
 # tên → chỉ số trong khối GHI (offset từ W_BASE)
 W_INDEX = {
@@ -173,6 +173,18 @@ DERIVE = {
     "fcs_temp_default": 196.0,
     "charge_drop_bt": 8.0,
 }
+
+# Handshake cấu hình $M — đọc/ghi 1 tham số (idx = số $M 1..MAXIDX)
+CFG_BASE = 170
+CFG_REG = {
+    "cmd": 170,   # 0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)
+    "idx": 171,   # số $M cần đọc/ghi (1..52)
+    "val": 172,   # giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)
+    "status": 173,   # 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai hoặc đang rang → khoá ghi)
+}
+CFG_MAXIDX = 52
+CFG_CMD = {'idle': 0, 'read': 1, 'write': 2}
+CFG_STATUS = {'busy': 0, 'ok': 1, 'err': 2}
 
 # Chốt an toàn khi app là bộ điều khiển
 FAILSAFE = {

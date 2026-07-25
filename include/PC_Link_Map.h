@@ -58,9 +58,9 @@
 #define PCLF_DESTONER    0x4000   // DESTONER_BTN_R — tách đá đang bật
 #define PCLF_AUTOLOADER  0x8000   // autoLoader_R — chế độ tự cân đang bật
 
-// ── Khối GHI (app → máy) — 120..140 ──
-// App → máy. CHỈ áp dụng khi PC_CONTROL_BTN_R == 1 (cờ pc_control).
-#define PCL_W_BASE     120
+// ── Khối GHI (app → máy) — 140..160 ──
+// App → máy. CHỈ áp dụng khi PC_CONTROL_BTN_R == 1 (cờ pc_control). Base 140 vì khối ĐỌC đã lấn tới 121 — base 120 cũ làm RORKG/SCALETG đè nát ô lệnh gas/gió mỗi vòng loop (bug 2026-07-23).
+#define PCL_W_BASE     140
 #define PCL_W_GAS          (PCL_W_BASE + 0 )  // gas %  [0..100]
 #define PCL_W_AIR          (PCL_W_BASE + 1 )  // gió %  [0..100]
 #define PCL_W_DRUM         (PCL_W_BASE + 2 )  // trống %  [0..100]
@@ -87,6 +87,21 @@
 // Giới hạn kẹp phía firmware — tầng 2 của clamp 2 tầng (app kẹp tầng 1)
 static const int16_t PCL_W_MIN[PCL_W_COUNT] = {0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1, 1, 1, 1, 32767, 1, 1, 1, 1, 1, 30, 2, 990, 1};
+
+// ── Khối CẤU HÌNH $M (handshake app↔máy) — 170..173 ──
+// Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi đang rang. Xem khối config trong PC_Link.h.
+#define PCL_CFG_BASE   170
+#define PCL_CFG_CMD     (PCL_CFG_BASE + 0)  // 0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)
+#define PCL_CFG_IDX     (PCL_CFG_BASE + 1)  // số $M cần đọc/ghi (1..52)
+#define PCL_CFG_VAL     (PCL_CFG_BASE + 2)  // giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)
+#define PCL_CFG_STATUS  (PCL_CFG_BASE + 3)  // 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai hoặc đang rang → khoá ghi)
+#define PCL_CFG_COUNT  4
+#define PCL_CFG_MAXIDX 52   // số $M lớn nhất (idx hợp lệ 1..MAXIDX)
+#define PCL_CFG_IDLE   0
+#define PCL_CFG_READ   1
+#define PCL_CFG_WRITE  2
+#define PCL_CFG_ST_OK  1
+#define PCL_CFG_ST_ERR 2
 
 // ── Chốt an toàn khi APP là bộ điều khiển ──────────────────────────────
 #define PCL_APP_TMO_S    3   // app không nhấp heartbeat quá ngần này giây → nhả quyền về HMI + còi

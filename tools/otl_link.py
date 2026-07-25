@@ -39,6 +39,7 @@ import pc_link_map                                             # noqa: E402
 from pc_link_map import (                                      # noqa: E402
     R_BASE, R_COUNT, W_BASE, W_COUNT, W_INDEX, W_RANGE, W_SCALE, decode,
     A_BASE, A_COUNT, decode_artisan, AW_INDEX, STP,
+    CFG_BASE, CFG_MAXIDX, CFG_CMD, CFG_STATUS,
 )
 from roast_derive import RoastDeriver                           # noqa: E402
 
@@ -224,6 +225,11 @@ class RoasterLink:
         self._last_charge = 0               # cạnh lên nút charge/drop của HMI
         self._sg_bt = SensorGuard()         # sensor sanity §16.9 — lọc BT/ET rác
         self._sg_et = SensorGuard()         #   ngay tại nguồn: app/DB/web đều hưởng
+        # ── Handshake cấu hình $M (đọc/ghi 1 tham số) — chỉ chế độ PC_Link ──
+        self._cfg_gate = threading.Lock()   # 1 handshake tại 1 thời điểm
+        self._cfg_req: tuple | None = None  # (cmd, idx, val) chờ luồng _run xử
+        self._cfg_res: dict | None = None   # kết quả handshake gần nhất
+        self._cfg_done = threading.Event()
 
     # ── vòng đời ────────────────────────────────────────────────────────────
     def start(self):
@@ -311,6 +317,43 @@ class RoasterLink:
         self._kick.set()                    # dậy ngay — trước đây lệnh nằm đợi tới 0.5s
         return {"ok": True, "name": name, "value": v, "reg": addr, "kind": kind,
                 "mode": self._mode}
+
+    def cfg_op(self, cmd: int, idx: int, val: int = 0, timeout: float = 2.5) -> dict:
+        """Handshake cấu hình $M: cmd 1=đọc / 2=ghi tham số $M số `idx` (1..MAXIDX).
+        CHẶN tới khi luồng _run xử xong (nó sở hữu cổng serial). Chỉ chạy được ở
+        chế độ PC_Link. Trả {ok, val, status} hoặc {ok:False, err}."""
+        if self._mode != MODE_PCLINK:
+            return {"ok": False, "err": "máy chưa nạp PC_Link (khối tương thích không có khối config)"}
+        if not (1 <= int(idx) <= CFG_MAXIDX):
+            return {"ok": False, "err": f"idx $M ngoài khoảng 1..{CFG_MAXIDX}"}
+        with self._cfg_gate:                       # 1 handshake tại 1 thời điểm
+            self._cfg_done.clear()
+            self._cfg_res = None
+            self._cfg_req = (int(cmd), int(idx), int(val) & 0xFFFF)
+            self._kick.set()                       # đánh thức _run xử ngay
+            if not self._cfg_done.wait(timeout):
+                self._cfg_req = None
+                return {"ok": False, "err": "máy không phản hồi handshake $M (timeout)"}
+            return self._cfg_res or {"ok": False, "err": "không có kết quả"}
+
+    def _do_cfg(self, cmd: int, idx: int, val: int):
+        """Thực thi 1 handshake trong luồng _run (đang giữ cổng serial).
+        Ghi [cmd,idx,val,status=0] xuống khối CFG rồi poll tới khi firmware set
+        CMD về 0 (báo xong), đọc STATUS/VAL. Không ngủ quá vài trăm ms."""
+        try:
+            self.write_regs(CFG_BASE, [cmd & 0xFFFF, idx & 0xFFFF, val & 0xFFFF, 0])
+            deadline = time.time() + 1.5
+            while time.time() < deadline:
+                time.sleep(0.03)                   # cho firmware 1-2 vòng loop (~141ms)
+                regs = self.read_regs(CFG_BASE, 4)  # [cmd, idx, val, status]
+                if regs[0] == CFG_CMD["idle"]:      # firmware đã xử xong
+                    ok = regs[3] == CFG_STATUS["ok"]
+                    self._cfg_res = {"ok": ok, "val": regs[2], "status": regs[3],
+                                     "err": "" if ok else "máy từ chối (idx sai / đang rang)"}
+                    return
+            self._cfg_res = {"ok": False, "err": "firmware không set CMD về 0 (treo handshake)"}
+        except Exception as e:
+            self._cfg_res = {"ok": False, "err": str(e)}
 
     def new_batch(self):
         """Mẻ mới — xoá đồng hồ và mốc của bộ suy diễn."""
@@ -502,6 +545,17 @@ class RoasterLink:
 
                 if self._mode is None:
                     self._mode = self._probe()
+
+                # Handshake cấu hình $M (nếu có yêu cầu) — luồng này sở hữu cổng serial
+                if self._cfg_req is not None and self._mode == MODE_PCLINK:
+                    c, i, v = self._cfg_req
+                    self._cfg_req = None
+                    self._do_cfg(c, i, v)
+                    self._cfg_done.set()
+                elif self._cfg_req is not None:
+                    self._cfg_req = None
+                    self._cfg_res = {"ok": False, "err": "máy chưa nạp PC_Link"}
+                    self._cfg_done.set()
 
                 # Heartbeat app → máy (chỉ khối PC_Link có ô này): nhấp MỖI CHU KỲ
                 # poll để watchdog firmware biết app còn sống — thưa hơn là dễ rớt

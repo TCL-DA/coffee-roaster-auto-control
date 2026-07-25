@@ -11,6 +11,7 @@ Phụ thuộc: pip install pywebview   (Windows cần WebView2 runtime — Win10
 """
 
 import configparser
+import csv
 import http.server
 import json
 import logging
@@ -27,6 +28,7 @@ import webview
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import otl_link                                  # noqa: E402  (cầu Modbus tới máy rang)
 import roast_db                                  # noqa: E402  (kho mẻ SQLite — không mất mẻ)
+import inventory_db                              # noqa: E402  (GĐ4: kho nhân/đơn hàng/cupping/chi phí)
 import auth_otl                                  # noqa: E402  (GĐ2: kiểm PIN phía Python + pepper)
 import audit_otl                                 # noqa: E402  (GĐ2: nhật ký hash-chain)
 import license_otl                               # noqa: E402  (GĐ2: license Ed25519 khoá theo máy)
@@ -131,11 +133,15 @@ class Api:
         self.web_tokens = {}     # token → thời điểm cấp (điện thoại đã nhập đúng PIN web)
         # Kho mẻ SQLite (không mất mẻ) — DB hỏng cũng KHÔNG được chặn app mở
         self._db = None          # RoastDb — None nếu mở thất bại (app vẫn chạy)
+        self._inv = None         # GĐ4 InventoryDb (kho/đơn/cupping) — chung DB với _db
         self._db_bid = None      # id mẻ đang RUNNING trong DB
         self._db_t0 = 0.0        # lúc mở mẻ — chặn begin_batch gọi đúp (app + web)
+        self._db_meta = {}       # meta hồ sơ mẻ đang mở (prof_no… — để trừ kho/đơn khi chốt)
         try:
             self._db = roast_db.RoastDb(os.path.dirname(self._state_path()), log=log.info)
             self._db.backup_daily()
+            # GĐ4 dùng CHUNG kết nối/khoá/backup với kho mẻ — lỗi cũng không chặn app
+            self._inv = inventory_db.InventoryDb(self._db, log=log.info)
         except Exception:
             log.error("[DB] không mở được kho mẻ — app chạy tiếp KHÔNG ghi mẻ",
                       exc_info=True)
@@ -267,6 +273,7 @@ class Api:
                 else:
                     self._db_bid = self._db.begin(meta)
                     self._db_t0 = time.time()
+                    self._db_meta = meta or {}       # giữ hồ sơ để trừ kho/đơn lúc chốt
                     log.info("[DB] mở mẻ #%s — hồ sơ %s", self._db_bid,
                              (meta or {}).get("name") or "?")
             except Exception:
@@ -279,16 +286,205 @@ class Api:
         (chạy 16h/ngày nên lúc app mở có thể chưa sang ngày mới)."""
         if not (self._db and self._db_bid is not None):
             return {"ok": False, "err": "không có mẻ đang mở"}
+        bid = self._db_bid
         try:
-            r = self._db.finish(self._db_bid, summary)
-            log.info("[DB] chốt mẻ #%s %s", self._db_bid,
-                     (summary or {}).get("code") or "")
+            r = self._db.finish(bid, summary)
+            log.info("[DB] chốt mẻ #%s %s", bid, (summary or {}).get("code") or "")
+            self._inv_on_finish(bid, summary or {})    # GĐ4: trừ kho + tiến độ đơn
             self._db_bid = None
+            self._db_meta = {}
             self._db.backup_daily()
             return r
         except Exception as e:
             log.error("[DB] chốt mẻ thất bại", exc_info=True)
             return {"ok": False, "err": str(e)}
+
+    def _inv_on_finish(self, bid, summary):
+        """GĐ4 — mẻ chốt xong thì (1) TRỪ KHO lô đang mở, (2) cộng tiến độ ĐƠN.
+
+        Lượng trừ = charge_kg cân thật (JS gửi trong summary nếu có) → không có thì
+        định mức mẻ cấu hình (§3.1#1 fallback). Không có lô đang mở / DB lỗi thì
+        LẶNG bỏ qua — chuyện kho KHÔNG được cản việc chốt mẻ (§0 an toàn-first)."""
+        if not self._inv:
+            return
+        try:
+            cfg = self._inv.cost_config()
+            batch_kg = float(cfg.get("me_kg_dinh_muc") or 6.0) or 6.0
+            charge = summary.get("charge_kg")
+            kg_in = float(charge) if charge not in (None, "") else batch_kg
+            if self._inv.hopper_lot(1):              # chỉ trừ khi đã gán lô đang mở
+                self._inv.consume_batch(bid, kg_in, user=self._session_name())
+            # tiến độ đơn: sản lượng ước lượng = kg vào × (1 − hao hụt định mức)
+            pno = int(self._db_meta.get("no") or 0)
+            if pno > 0:
+                shrink = float(cfg.get("hao_hut_dinh_muc_pct") or 15.0)
+                kg_out = round(kg_in * (1.0 - shrink / 100.0), 2)
+                self._inv.order_progress(pno, kg_out)
+        except Exception:
+            log.error("[KHO] móc trừ kho/đơn lúc chốt mẻ lỗi (mẻ vẫn chốt)", exc_info=True)
+
+    def _session_name(self):
+        return (self._session or {}).get("name", "") if self._session else ""
+
+    # ── GĐ4: KHO NHÂN · ĐƠN HÀNG · CHI PHÍ · CUPPING (§3) ───────────────────
+    # Đọc: xem tự do (web GET). Ghi: app trực tiếp / web cần token. Lỗi kho KHÔNG
+    # bao giờ nổ ra ngoài — luôn trả dict {"ok":...}/None để UI xử nhẹ nhàng.
+    def _machine_batch_kg(self):
+        """Định mức kg 1 mẻ (quy số dư lô ra 'còn N mẻ')."""
+        if not self._inv:
+            return 6.0
+        try:
+            return float(self._inv.cost_config().get("me_kg_dinh_muc") or 6.0) or 6.0
+        except Exception:
+            return 6.0
+
+    def inv_lots(self):
+        return self._inv.lots_overview(self._machine_batch_kg()) if self._inv else None
+
+    def inv_lot_add(self, d):
+        if not self._inv:
+            return {"ok": False, "err": "kho chưa mở"}
+        d = dict(d or {}); d["user"] = self._session_name()
+        r = self._inv.lot_add(d)
+        if r.get("ok"):
+            self.audit_add(self._session_name(), "Nhập lô", "Kho nhân", "",
+                           f"{d.get('name')} {r.get('kg')}kg")
+        return r
+
+    def inv_lot_edit(self, lot_id, d):
+        return self._inv.lot_edit(lot_id, d) if self._inv else {"ok": False, "err": "kho chưa mở"}
+
+    def inv_lot_adjust(self, lot_id, kg, note=""):
+        if not self._inv:
+            return {"ok": False, "err": "kho chưa mở"}
+        r = self._inv.lot_adjust(lot_id, kg, note, user=self._session_name())
+        if r.get("ok"):
+            self.audit_add(self._session_name(), "Kiểm kho", f"Lô #{lot_id}", "", f"{kg}kg — {note}")
+        return r
+
+    def inv_lot_movements(self, lot_id, n=200):
+        return self._inv.lot_movements(lot_id, n) if self._inv else None
+
+    def inv_hopper_lot(self, hopper=1):
+        return self._inv.hopper_lot(hopper) if self._inv else None
+
+    def inv_hopper_set(self, lot_id, hopper=1):
+        if not self._inv:
+            return {"ok": False, "err": "kho chưa mở"}
+        r = self._inv.hopper_set(lot_id, hopper, user=self._session_name())
+        if r.get("ok"):
+            self.audit_add(self._session_name(), "Đổi lô đang mở", f"Phễu {hopper}", "", str(lot_id))
+        return r
+
+    def inv_orders(self, status=None, n=100):
+        return self._inv.orders_list(status, n) if self._inv else None
+
+    def inv_order_add(self, d):
+        return self._inv.order_add(d) if self._inv else {"ok": False, "err": "kho chưa mở"}
+
+    def inv_order_set(self, order_id, d):
+        return self._inv.order_set(order_id, d) if self._inv else {"ok": False, "err": "kho chưa mở"}
+
+    def inv_cost_config(self):
+        return self._inv.cost_config() if self._inv else None
+
+    def inv_cost_config_set(self, cfg):
+        if not self._inv:
+            return {"ok": False, "err": "kho chưa mở"}
+        r = self._inv.cost_config_set(cfg)
+        if r.get("ok"):
+            self.audit_add(self._session_name(), "Sửa cấu hình chi phí", "Kinh doanh", "",
+                           json.dumps(cfg, ensure_ascii=False)[:120])
+        return r
+
+    def inv_batch_econ(self, batch_id, drop_sec=None, kg_out=None):
+        return self._inv.batch_economics(batch_id, drop_sec, kg_out) if self._inv else None
+
+    def inv_cup_add(self, d):
+        return self._inv.cup_add(d) if self._inv else {"ok": False, "err": "kho chưa mở"}
+
+    def inv_cup_list(self, target=None, target_id=None, n=100):
+        return self._inv.cup_list(target, target_id, n) if self._inv else None
+
+    def inv_report(self, days=7):
+        """GĐ5 — báo cáo điều hành xưởng N ngày (sản lượng/tồn/lô sắp hết/đơn/lãi)."""
+        return self._inv.workshop_report(days) if self._inv else None
+
+    # ── CÀI ĐẶT MÁY (tham số firmware $M1..$M52) ─────────────────────────────
+    # Lưu/mở FILE cấu hình chạy độc lập (backup/khôi phục/chuyển máy). Đọc/ghi
+    # THẲNG xuống máy cần firmware mở khối cấu hình trong PC_Link (nay chỉ chở
+    # dữ liệu live) — chưa có thì báo rõ để UI biết, giống cách xử firmware cũ.
+    def _mc_path(self):
+        d = self.prof_dir() or os.path.dirname(self._state_path())
+        return os.path.join(d, "cai-dat-may.json")
+
+    def machine_cfg_save(self, cfg):
+        if not isinstance(cfg, dict):
+            return {"ok": False, "err": "dữ liệu cấu hình sai"}
+        try:
+            path = self._mc_path(); tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, ensure_ascii=False, indent=1)
+            os.replace(tmp, path)
+            log.info("[MÁY] lưu cấu hình máy → %s (%d tham số)", path, len(cfg))
+            return {"ok": True, "path": path}
+        except Exception as e:
+            return {"ok": False, "err": str(e)}
+
+    def machine_cfg_load(self):
+        try:
+            with open(self._mc_path(), encoding="utf-8") as f:
+                return {"ok": True, "cfg": json.load(f)}
+        except FileNotFoundError:
+            return {"ok": False, "err": "chưa có file cai-dat-may.json"}
+        except Exception as e:
+            return {"ok": False, "err": str(e)}
+
+    def mc_read(self, items):
+        """Đọc tham số $M TỪ MÁY qua handshake PC_Link.
+        items = [[key, idx], ...] (idx = số $M). Trả {ok, cfg:{key:val}, failed:[key]}.
+        App mở tab Cài đặt máy gọi 1 lần cho cả 52 tham số (mỗi cái 1 vòng hỏi-đáp)."""
+        if not isinstance(items, list):
+            return {"ok": False, "err": "thiếu danh sách tham số"}
+        cfg, failed = {}, []
+        for it in items:
+            try:
+                key, idx = it[0], int(it[1])
+            except Exception:
+                continue
+            r = self._link.cfg_op(1, idx)          # 1 = đọc
+            if r.get("ok"):
+                cfg[key] = r.get("val")
+            else:
+                failed.append(key)
+                if r.get("err", "").startswith("máy chưa nạp"):
+                    return {"ok": False, "err": r["err"]}   # dừng sớm nếu máy không có PC_Link
+        return {"ok": bool(cfg), "cfg": cfg, "failed": failed,
+                "err": "" if cfg else "không đọc được tham số nào"}
+
+    def mc_write(self, items):
+        """Ghi tham số $M XUỐNG MÁY qua handshake PC_Link.
+        items = [[key, idx, val], ...]. Ghi bị CHẶN phía firmware khi đang rang.
+        Trả {ok, count, failed:[key]}. Dùng cho 'Ghi tất cả' và auto-ghi từng ô."""
+        if not isinstance(items, list):
+            return {"ok": False, "err": "thiếu danh sách tham số"}
+        count, failed = 0, []
+        for it in items:
+            try:
+                key, idx, val = it[0], int(it[1]), int(round(float(it[2])))
+            except Exception:
+                continue
+            r = self._link.cfg_op(2, idx, val)     # 2 = ghi
+            if r.get("ok"):
+                count += 1
+            else:
+                failed.append(key)
+                if r.get("err", "").startswith("máy chưa nạp"):
+                    return {"ok": False, "err": r["err"]}
+        if count:
+            log.info("[MÁY] ghi %d tham số $M xuống máy (%d lỗi)", count, len(failed))
+        return {"ok": count > 0, "count": count, "failed": failed,
+                "err": "" if count else "không ghi được (có thể đang rang → firmware khoá)"}
 
     def db_batch_list(self, n=50):
         """Danh sách mẻ mới nhất cho tab Lịch sử (app + web đọc chung)."""
@@ -615,17 +811,90 @@ class Api:
         self.ini_write()          # đổi thư mục hồ sơ → cập nhật settings.ini
         return d
 
+    # ── Kho hồ sơ = ho-so.csv (đọc bằng mắt/Excel/Artisan) ────────────────────
+    # NGUỒN SỰ THẬT của DANH SÁCH hồ sơ (chốt chủ máy 2026-07-25, bỏ profiles.json).
+    # Curve mẻ đã rang KHÔNG nhồi vào đây — nằm ở kho mẻ SQLite + file .csv/.alog
+    # Artisan từng mẻ (prof_write_files). Cột trống = thẻ mỏng (app tự ước).
+    _PROF_COLS = ["no", "name", "roast", "chargeT", "deT", "fcsT", "devTarget",
+                  "preGas", "temp", "time", "kg", "bean", "color", "date",
+                  "roaster", "notes"]
+    _PROF_INT = ("chargeT", "deT", "fcsT", "devTarget", "preGas", "temp")
+
+    def _prof_csv_path(self):
+        return os.path.join(self.prof_dir(), "ho-so.csv")
+
+    def _prof_from_csv(self):
+        """ho-so.csv → list hồ sơ (số đã parse, ô trống bỏ qua). None nếu lỗi."""
+        out = []
+        try:
+            with open(self._prof_csv_path(), "r", encoding="utf-8-sig", newline="") as f:
+                for r in csv.DictReader(f):
+                    p = {}
+                    for k in self._PROF_COLS:
+                        if k == "no":
+                            continue
+                        v = (r.get(k) or "").strip()
+                        if v == "":
+                            continue
+                        if k in self._PROF_INT:
+                            try:
+                                p[k] = int(float(v))
+                            except Exception:
+                                pass
+                        elif k == "kg":
+                            try:
+                                p[k] = float(v)
+                            except Exception:
+                                pass
+                        else:
+                            p[k] = v
+                    if p.get("name"):
+                        out.append(p)
+            return out
+        except Exception:
+            return None
+
+    def _prof_to_csv(self, profiles):
+        """Ghi list hồ sơ ra ho-so.csv (ghi tạm rồi thay — không bao giờ file cụt)."""
+        path = self._prof_csv_path()
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8-sig", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=self._PROF_COLS)
+            w.writeheader()
+            for i, p in enumerate(profiles or []):
+                row = {k: "" for k in self._PROF_COLS}
+                for k in self._PROF_COLS:
+                    v = p.get(k)
+                    if v is not None and v != "":
+                        row[k] = v
+                row["no"] = i + 1
+                w.writerow(row)
+        os.replace(tmp, path)
+
     def prof_load(self):
-        """Đọc profiles.json từ thư mục đã chọn. None = chưa chọn/chưa có file."""
+        """Đọc kho hồ sơ. Ưu tiên ho-so.csv (nguồn sự thật). Chưa có CSV mà còn
+        profiles.json cũ → DI TRÚ một lần (ghi CSV, đổi tên json→.bak). None =
+        chưa chọn thư mục / chưa có hồ sơ nào."""
         d = self.prof_dir()
         if not d:
             return None
-        try:
-            with open(os.path.join(d, "profiles.json"), "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data if isinstance(data, list) else None
-        except Exception:
-            return None
+        if os.path.exists(self._prof_csv_path()):
+            return self._prof_from_csv()
+        jpath = os.path.join(d, "profiles.json")
+        if os.path.exists(jpath):
+            try:
+                with open(jpath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    self._prof_to_csv(data)                 # di trú → ho-so.csv
+                    try:
+                        os.replace(jpath, jpath + ".bak")   # giữ bản phòng hờ
+                    except Exception:
+                        pass
+                    return self._prof_from_csv()
+            except Exception:
+                return None
+        return None
 
     def prof_write_files(self, files):
         """Ghi 1 loạt file text vào thư mục hồ sơ (CSV máy rang / Artisan / index).
@@ -714,17 +983,13 @@ class Api:
             return {"ok": False, "err": str(e)}
 
     def prof_save(self, profiles):
-        """Ghi danh sách hồ sơ ra <thư mục>/profiles.json (ghi tạm rồi thay — chống hỏng file)."""
+        """Ghi danh sách hồ sơ ra <thư mục>/ho-so.csv (ghi tạm rồi thay — chống hỏng file)."""
         d = self.prof_dir()
         if not d:
             return {"ok": False, "err": "chưa chọn thư mục"}
         try:
-            path = os.path.join(d, "profiles.json")
-            tmp = path + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(profiles, f, ensure_ascii=False, indent=1)
-            os.replace(tmp, path)
-            return {"ok": True, "path": path}
+            self._prof_to_csv(profiles)
+            return {"ok": True, "path": self._prof_csv_path()}
         except Exception as e:
             return {"ok": False, "err": str(e)}
 
@@ -800,6 +1065,49 @@ def start_webserver(api):
             elif self.path == "/api/audit":
                 # nhật ký hash-chain + huy hiệu toàn vẹn (xem tự do)
                 self._json({"tail": api.audit_tail(300), "verify": api.audit_verify()})
+            elif self.path == "/api/inv_lots":
+                # GĐ4: kho nhân (xem tự do) — số dư, còn N mẻ, tuổi lô
+                self._json({"lots": api.inv_lots()})
+            elif self.path == "/api/inv_orders":
+                self._json({"orders": api.inv_orders()})
+            elif self.path == "/api/inv_cost":
+                self._json({"cfg": api.inv_cost_config()})
+            elif self.path.startswith("/api/inv_report"):
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query)
+                try:
+                    dd = int(q.get("days", ["7"])[0])
+                except ValueError:
+                    dd = 7
+                self._json({"report": api.inv_report(dd)})
+            elif self.path == "/api/machine_cfg":
+                self._json(api.machine_cfg_load())
+            elif self.path == "/api/mc_read":
+                self._json(api.mc_read())
+            elif self.path.startswith("/api/inv_movements?"):
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query)
+                try:
+                    lot = int(q.get("lot", ["0"])[0])
+                except ValueError:
+                    lot = 0
+                self._json({"movements": api.inv_lot_movements(lot)})
+            elif self.path.startswith("/api/inv_econ?"):
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query)
+                try:
+                    bid = int(q.get("id", ["0"])[0])
+                except ValueError:
+                    bid = 0
+                ds = q.get("drop_sec", [None])[0]
+                ko = q.get("kg_out", [None])[0]
+                self._json({"econ": api.inv_batch_econ(bid, ds, ko)})
+            elif self.path.startswith("/api/inv_cup?"):
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query)
+                tgt = q.get("target", [None])[0]
+                tid = q.get("target_id", [None])[0]
+                self._json({"cuppings": api.inv_cup_list(tgt, tid)})
             elif self.path.startswith("/api/batch_curve?"):
                 from urllib.parse import parse_qs, urlparse
                 q = parse_qs(urlparse(self.path).query)
@@ -905,6 +1213,27 @@ def start_webserver(api):
                 self._json(api.link_new_batch())
             elif self.path == "/api/begin_batch":
                 self._json(api.link_begin_batch(req.get("meta")))
+            # ── GĐ4: ghi kho/đơn/chi phí/cupping (cần token) ────────────────
+            elif self.path == "/api/inv_lot_add":
+                self._json(api.inv_lot_add(req.get("lot") or {}))
+            elif self.path == "/api/inv_lot_edit":
+                self._json(api.inv_lot_edit(req.get("id"), req.get("lot") or {}))
+            elif self.path == "/api/inv_lot_adjust":
+                self._json(api.inv_lot_adjust(req.get("id"), req.get("kg"), req.get("note") or ""))
+            elif self.path == "/api/inv_hopper_set":
+                self._json(api.inv_hopper_set(req.get("lot_id"), req.get("hopper") or 1))
+            elif self.path == "/api/inv_order_add":
+                self._json(api.inv_order_add(req.get("order") or {}))
+            elif self.path == "/api/inv_order_set":
+                self._json(api.inv_order_set(req.get("id"), req.get("order") or {}))
+            elif self.path == "/api/inv_cost_set":
+                self._json(api.inv_cost_config_set(req.get("cfg") or {}))
+            elif self.path == "/api/inv_cup_add":
+                self._json(api.inv_cup_add(req.get("cup") or {}))
+            elif self.path == "/api/machine_cfg_save":
+                self._json(api.machine_cfg_save(req.get("cfg") or {}))
+            elif self.path == "/api/mc_write":
+                self._json(api.mc_write(req.get("cfg") or {}))
             else:
                 self._json({"err": "not found"}, 404)
 
