@@ -46,12 +46,95 @@ APP_TITLE = "OTL Roast Lab — HMI"
 APP_BG = "#0b0e13"          # nền khớp theme tối của HTML, tránh chớp trắng lúc mở
 HTML_NAME = "OTL Roast Lab.html"
 
+# ── THƯ MỤC DỮ LIỆU PORTABLE — NẰM CẠNH EXE ─────────────────────────────────
+# Lệnh chủ máy 2026-07-25: "exe nằm ở đâu thì mọi dữ liệu nằm ở đó luôn." Một thư
+# mục cạnh exe chứa HẾT: settings (app_config.json/settings.ini/state.json),
+# batches.db, auth.json, audit.log, .pepper, logs/, backup/, EBWebView/, VÀ kho hồ
+# sơ rang (ho-so.csv) + .alog Artisan + pdf/. Copy nguyên folder là chạy máy khác.
+# Dev (chạy .py) → tools/appdata/ cho gọn, khỏi rác repo.
+def app_data_dir():
+    if getattr(sys, "frozen", False):
+        base = os.path.dirname(sys.executable)          # cạnh exe đóng gói
+    else:
+        base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "appdata")
+    os.makedirs(base, exist_ok=True)
+    return base
+
+
+def migrate_to_portable():
+    """Di trú MỘT LẦN từ %LOCALAPPDATA%\\OTL Roast Lab HMI (+ prof_dir CŨ) sang thư
+    mục cạnh exe. Chỉ chạy khi thư mục mới CHƯA có app_config.json. KHÔNG xoá nguồn
+    cũ (an toàn, còn bản gốc). Phải gọi TRƯỚC khi mở batches.db/logging."""
+    new = app_data_dir()
+    old = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+                       "OTL Roast Lab HMI")
+    if os.path.abspath(new) == os.path.abspath(old):
+        return
+    if os.path.exists(os.path.join(new, "app_config.json")):
+        return                                          # đã di trú rồi
+    if not os.path.isdir(old):
+        return
+    old_cfg = {}
+    try:
+        with open(os.path.join(old, "app_config.json"), encoding="utf-8") as f:
+            old_cfg = json.load(f)
+    except Exception:
+        pass
+    # 1) file settings/dữ liệu trong dir cũ → dir mới (không đè nếu đã có)
+    for fn in ("state.json", "settings.ini", "batches.db", "auth.json",
+               "audit.log", ".pepper", "otl.lic"):
+        src, dst = os.path.join(old, fn), os.path.join(new, fn)
+        if os.path.exists(src) and not os.path.exists(dst):
+            try:
+                shutil.copy2(src, dst)
+            except Exception:
+                pass
+    for sub in ("backup", "logs"):
+        s, dstd = os.path.join(old, sub), os.path.join(new, sub)
+        if os.path.isdir(s) and not os.path.exists(dstd):
+            try:
+                shutil.copytree(s, dstd)
+            except Exception:
+                pass
+    # 2) hồ sơ CSV/alog/pdf từ prof_dir CŨ (nếu có & khác dir mới)
+    old_pdir = (old_cfg.get("prof_dir") or "").strip()
+    if old_pdir and os.path.isdir(old_pdir) and os.path.abspath(old_pdir) != os.path.abspath(new):
+        for fn in os.listdir(old_pdir):
+            src, dst = os.path.join(old_pdir, fn), os.path.join(new, fn)
+            try:
+                if os.path.isdir(src):
+                    if not os.path.exists(dst):
+                        shutil.copytree(src, dst)
+                elif not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+            except Exception:
+                pass
+    # 3) settings.ini mới: xoá thu_muc cũ để prof_dir MẶC ĐỊNH = cạnh exe
+    ini_new = os.path.join(new, "settings.ini")
+    if os.path.exists(ini_new):
+        try:
+            c = configparser.ConfigParser()
+            c.read(ini_new, encoding="utf-8")
+            if c.has_section("HoSo"):
+                c["HoSo"]["thu_muc"] = ""
+                with open(ini_new, "w", encoding="utf-8") as f:
+                    c.write(f)
+        except Exception:
+            pass
+    # 4) app_config.json mới: bỏ prof_dir (mặc định = cạnh exe) — chốt "đã di trú"
+    old_cfg.pop("prof_dir", None)
+    try:
+        with open(os.path.join(new, "app_config.json"), "w", encoding="utf-8") as f:
+            json.dump(old_cfg, f, ensure_ascii=False, indent=1)
+    except Exception:
+        pass
+
+
 # ── LOG VẬN HÀNH (operation log) ────────────────────────────────────────────
 # MỘT file chung cho cả Python lẫn JS (JS đẩy qua api.op_log): mẻ rang, lệnh
 # máy + độ trễ ACK Modbus, đổi trạng thái kết nối, lỗi JS/Python kèm traceback.
 # Xoay vòng 2MB × 3 file. Xem trong app: Cài đặt → Log kỹ thuật.
-LOG_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-                       "OTL Roast Lab HMI", "logs")
+LOG_DIR = os.path.join(app_data_dir(), "logs")
 LOG_FILE = os.path.join(LOG_DIR, "app.log")
 log = logging.getLogger("otl")
 
@@ -186,10 +269,7 @@ class Api:
     # App đẩy xuống file state.json; web mở lên MƯỢN nguyên hồn — cùng tài
     # khoản, cùng theme, không còn cảnh trình duyệt đòi "tạo master" riêng.
     def _state_path(self):
-        base = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-                            "OTL Roast Lab HMI")
-        os.makedirs(base, exist_ok=True)
-        return os.path.join(base, "state.json")
+        return os.path.join(app_data_dir(), "state.json")   # portable — cạnh exe
 
     def state_save(self, data):
         if not isinstance(data, dict):
@@ -709,10 +789,7 @@ class Api:
     # được (copy qua máy khác, backup). Đường dẫn nhớ trong _cfg_path().
 
     def _cfg_path(self):
-        base = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-                            "OTL Roast Lab HMI")
-        os.makedirs(base, exist_ok=True)
-        return os.path.join(base, "app_config.json")
+        return os.path.join(app_data_dir(), "app_config.json")   # portable — cạnh exe
 
     def _cfg(self):
         try:
@@ -796,8 +873,9 @@ class Api:
             self.web_cfg["license_enforce"] = c["BanQuyen"].get("cuong_che", "0") != "0"
 
     def prof_dir(self):
-        """Thư mục lưu hồ sơ hiện tại ('' = chưa chọn)."""
-        return self._cfg().get("prof_dir", "")
+        """Thư mục lưu hồ sơ. MẶC ĐỊNH = thư mục dữ liệu cạnh exe (portable) — khỏi
+        cần bấm 📁. Nút 📁 (prof_dir_pick) vẫn override sang thư mục khác nếu muốn."""
+        return (self._cfg().get("prof_dir") or "").strip() or app_data_dir()
 
     def prof_dir_pick(self):
         """Mở hộp chọn thư mục Windows → lưu lựa chọn, trả về đường dẫn."""
@@ -1251,8 +1329,10 @@ def start_webserver(api):
 
 
 def main():
+    migrate_to_portable()   # di trú 1 lần data cũ (%LOCALAPPDATA% + prof_dir) sang cạnh exe — TRƯỚC logging/DB
     setup_logging()
-    log.info("[APP] khởi động — %s", "exe" if getattr(sys, "frozen", False) else "dev")
+    log.info("[APP] khởi động — %s — data: %s",
+             "exe" if getattr(sys, "frozen", False) else "dev", app_data_dir())
     api = Api()
     # Tự mở FULLSCREEN đúng độ phân giải màn hình hiện tại — hoàn toàn tự động.
     # Phần HTML tự co khung 2560×1440 vừa khít mọi phân giải (fit()).
@@ -1305,9 +1385,8 @@ def main():
     window.events.loaded += _start_push
     # QUAN TRỌNG: pywebview mặc định private_mode=True (ẩn danh) → localStorage bị
     # xoá mỗi lần đóng. App lưu PIN/tài khoản/config/nhật ký trong localStorage nên
-    # phải TẮT ẩn danh + trỏ thư mục dữ liệu bền trong %LOCALAPPDATA%.
-    storage = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-                           "OTL Roast Lab HMI")
+    # phải TẮT ẩn danh + trỏ thư mục dữ liệu bền (portable — cạnh exe).
+    storage = app_data_dir()
     # WebView2 (private_mode=False) hay giữ CACHE trang cũ → sửa HTML xong mở app
     # vẫn thấy giao diện cũ. Dọn cache render mỗi lần mở; GIỮ Local Storage
     # (PIN/tài khoản/config nằm ở "Local Storage"/"IndexedDB", không đụng).
