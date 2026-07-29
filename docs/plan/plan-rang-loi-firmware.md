@@ -207,6 +207,46 @@ khi rang AUTO, chỉ khác nguồn: kho mẻ của app thay cho thẻ SD.
   tự về THƯỜNG. Firmware vẫn giữ watchdog mất-app + mồi-hụt + timer xi-lanh.
 - Màn chờ IDLE hiện thêm dòng "Rang tự động: <mã mẻ nền>" / "chưa có mẻ nền".
 
+### Dọn màn Rang + trục đồ thị cấu hình được (chủ máy 2026-07-29)
+
+**Thanh công cụ** chỉ còn lệnh máy: Nạp hạt · Xả liệu · **Làm nguội** (dời lên từ
+dải thiết bị vì dùng mỗi mẻ) · Tạm dừng · Kết thúc mẻ. Bỏ nút "Hồ sơ" (trùng tab)
+và "Đổi view" (vào Cài đặt, xét quyền). Loop & Prof No. ẩn/hiện được và **chỉ hiện
+ở chế độ TỰ ĐỘNG**.
+
+**Quyền xem:** Master dùng cả hai kiểu · `view_expert` → Chi tiết · `view_production`
+→ Đơn giản. Đăng nhập tự áp kiểu đã lưu, thiếu quyền thì rơi về kiểu còn lại.
+
+**Nút ĐÁNH LỬA** dời lên trên cụm Burner, 4 trạng thái + **đếm ngược thời gian mồi**
+(`ig_tmo`, mặc định 45s, cài trong Cài đặt): xám tro → xanh "còn 45s…" → hết giờ
+chuyển vàng thở "quá Ns" → đỏ toả nhiệt khi bắt lửa. Mốc 45s nằm TRƯỚC chốt mồi-hụt
+75s của firmware nên thợ còn kịp xử lý.
+
+**Kết thúc mẻ** thở vàng từ lúc qua mốc TP. **Dải thiết bị phụ** ghim/thu gọn được
+(`otl_devpin`), nút bung là nút bấm to 76px. **Thanh giai đoạn** mỏng còn 52px mà
+chữ to hơn (tên + số cùng hàng thay vì xếp chồng).
+
+**Trục đồ thị — cấu hình đủ, mỗi trục một luật:**
+| Trục | Luật |
+|---|---|
+| Thời gian | LUÔN từ **−0:30** tới `ch_time` phút. Còn 1 phút là chạm mép → tự nới thêm `ch_grow` phút, nới bao nhiêu lần cũng được (0 = tắt) |
+| Nhiệt độ | `ch_tmin`…`ch_tmax`; `ch_auto`=Tự động thì **chỉ nới trần lên** khi đường vượt, không co xuống dưới mức đã cài |
+| RoR | `ch_rmin`…`ch_rmax`, **không bao giờ tự nới** — để so mẻ này với mẻ kia cùng thang |
+
+Sửa kèm: nhánh mẻ mẫu quên đặt `i0` theo mốc nạp → vẽ ra một vệt cụt ở vùng −0:30.
+
+**Review code:** bắt 1 lỗi tự gây — `tickClock()` chạy ngay lúc khai báo (dòng
+~3322) trong khi `DS`/`CFG` mãi dòng 3332/5335 mới có → gọi `updateIgniteBtn()` ở
+đó văng ReferenceError vùng chết của `let`; đã bọc try/catch, nhịp đầu bỏ qua.
+
+**Review design (theo `docs/ref/ref-design-tokens.md`):** đợt sửa này ban đầu chế 6
+mã màu mới (`#2563eb #b8860b #e53935 #c62828 #8a5a00 #6b7a8a`) — **phạm luật "không
+chế số mới"**, đã thay hết bằng token (`--c-bt --warn --amber-ink --danger --mute`)
+và đổi `rgba()` thành `color-mix()` trên token. Kiểm lại: **0 font-size px thô, 0
+border-radius px thô**, 35 mã màu thô còn lại đều nằm trong định nghĩa theme/palette
+(tài liệu ghi rõ là cố ý giữ). Vùng chạm: quét cả 3 tab, **không nút nào < 44px**
+(đã nâng sao ★ từ ~40px lên 56px).
+
 ### Chốt NẠP HẠT PHẢI CÓ LỬA + CÔNG THỨC NẠP (chủ máy 2026-07-29)
 
 **1. Không có lửa thì không nạp.** Đặt trong `cmdCharge()` vì CẢ BA đường nạp đều
