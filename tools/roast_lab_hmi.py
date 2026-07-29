@@ -896,9 +896,10 @@ class Api:
     # bgBatch = id MẺ NỀN trong kho mẻ (batches.db) — chế độ rang TỰ ĐỘNG phát lại
     # đúng đường gas/gió/trống của mẻ đó. Trống = hồ sơ chỉ rang THƯỜNG (thợ chỉnh tay).
     _PROF_COLS = ["no", "name", "roast", "chargeT", "deT", "fcsT", "devTarget",
-                  "preGas", "temp", "time", "kg", "bean", "bgBatch", "color",
-                  "date", "roaster", "notes"]
-    _PROF_INT = ("chargeT", "deT", "fcsT", "devTarget", "preGas", "temp", "bgBatch")
+                  "preGas", "temp", "time", "kg", "bean", "bgBatch", "fav",
+                  "color", "date", "roaster", "notes"]
+    _PROF_INT = ("chargeT", "deT", "fcsT", "devTarget", "preGas", "temp",
+                 "bgBatch", "fav")
 
     def _prof_csv_path(self):
         return os.path.join(self.prof_dir(), "ho-so.csv")
@@ -1073,6 +1074,72 @@ class Api:
         except Exception as e:
             return {"ok": False, "err": str(e)}
 
+    # ── CÔNG THỨC NẠP = cong-thuc-nap.csv ────────────────────────────────────
+    # Bộ mức máy đặt SẴN cho lúc vào mẻ: gas / gió / trống + nhiệt charge.
+    # Thợ chọn 1 công thức trước khi nạp → app ghi thẳng 3 mức xuống máy và đặt
+    # nhiệt nạp. Tách khỏi ho-so.csv vì 1 công thức dùng cho nhiều hồ sơ (cùng
+    # một cách vào mẻ, khác loại cà). Cùng kiểu CSV đọc-bằng-mắt như hồ sơ.
+    _NAP_COLS = ["no", "name", "burner", "air", "drum", "chargeT", "fav",
+                 "roaster", "date", "notes"]
+    _NAP_INT = ("burner", "air", "drum", "chargeT", "fav")
+
+    def _nap_csv_path(self):
+        return os.path.join(self.prof_dir(), "cong-thuc-nap.csv")
+
+    def nap_load(self):
+        """Đọc kho công thức nạp. Chưa có file → [] (app tự mời tạo)."""
+        d = self.prof_dir()
+        if not d or not os.path.exists(self._nap_csv_path()):
+            return []
+        out = []
+        try:
+            with open(self._nap_csv_path(), "r", encoding="utf-8-sig", newline="") as f:
+                for r in csv.DictReader(f):
+                    n = {}
+                    for k in self._NAP_COLS:
+                        if k == "no":
+                            continue
+                        v = (r.get(k) or "").strip()
+                        if v == "":
+                            continue
+                        if k in self._NAP_INT:
+                            try:
+                                n[k] = int(float(v))
+                            except Exception:
+                                pass
+                        else:
+                            n[k] = v
+                    if n.get("name"):
+                        out.append(n)
+            return out
+        except Exception:
+            log.error("[HỒ SƠ] đọc cong-thuc-nap.csv lỗi", exc_info=True)
+            return []
+
+    def nap_save(self, naps):
+        """Ghi kho công thức nạp (ghi tạm rồi thay — không bao giờ file cụt)."""
+        d = self.prof_dir()
+        if not d:
+            return {"ok": False, "err": "chưa chọn thư mục"}
+        try:
+            path = self._nap_csv_path()
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8-sig", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=self._NAP_COLS)
+                w.writeheader()
+                for i, n in enumerate(naps or []):
+                    row = {k: "" for k in self._NAP_COLS}
+                    for k in self._NAP_COLS:
+                        v = n.get(k)
+                        if v is not None and v != "":
+                            row[k] = v
+                    row["no"] = i + 1
+                    w.writerow(row)
+            os.replace(tmp, path)
+            return {"ok": True, "path": path}
+        except Exception as e:
+            return {"ok": False, "err": str(e)}
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # WEB SERVER LAN — điện thoại/tablet cùng WiFi xưởng vào http://<ip-máy-tính>:8555
@@ -1136,6 +1203,8 @@ def start_webserver(api):
                 # web đọc CHUNG profiles.json với app — Legion/điện thoại thấy đúng
                 # hồ sơ thật, không xài bản localStorage riêng của trình duyệt
                 self._json({"profiles": api.prof_load()})
+            elif self.path == "/api/naps":
+                self._json({"naps": api.nap_load()})       # công thức nạp
             elif self.path == "/api/batches":
                 # lịch sử mẻ từ kho SQLite — web xem chung với app (xem tự do)
                 self._json({"batches": api.db_batch_list(50)})
@@ -1282,6 +1351,8 @@ def start_webserver(api):
                                              req.get("msg") or "")})
             elif self.path == "/api/profiles":
                 self._json(api.prof_save(req.get("profiles") or []))
+            elif self.path == "/api/naps":
+                self._json(api.nap_save(req.get("naps") or []))    # công thức nạp
             elif self.path == "/api/uievent":
                 self._json(api.ui_event(req))
             elif self.path == "/api/set_config":

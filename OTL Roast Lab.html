@@ -252,6 +252,25 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .ri-charge{margin-top:10px;cursor:pointer;user-select:none}
 .ri-charge b{color:var(--accent);font-size:var(--fs-26)}
 .ri-charge:active{opacity:.7}
+.ri-nap b{font-size:var(--fs-22)}
+.pkopt .pkdel{float:right;color:var(--danger);padding:0 10px;font-weight:700}
+/* ── 2 tab con trong trang Hồ sơ ── */
+.hsnav{display:flex;gap:12px;margin:0 0 20px}
+.hsnav button{flex:none;padding:14px 28px;border-radius:var(--r-sm);border:1px solid var(--hair-2);
+  background:var(--glass);color:var(--dim);font-size:var(--fs-20);font-weight:700;cursor:pointer}
+.hsnav button.on{border-color:var(--accent);color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 14%,var(--glass))}
+.hspane{display:none}
+.hspane.on{display:block}
+/* ── sao yêu thích (hồ sơ + công thức nạp) ── */
+.favstar{background:none;border:0;cursor:pointer;font-size:var(--fs-26);line-height:1;
+  color:var(--mute);padding:4px 8px}
+.favstar.on{color:var(--warn)}
+.favstar:active{transform:scale(.9)}
+/* ── thẻ công thức nạp ── */
+.napcard .nmeta{display:flex;gap:28px;margin:14px 0 6px}
+.napcard .nmeta .k{font-size:var(--fs-14);color:var(--mute);text-transform:uppercase;letter-spacing:1px}
+.napcard .nmeta .v{font-family:var(--f-num);font-weight:700;font-size:var(--fs-26)}
 /* Bảng thông số mẻ trên màn chờ (Bước F) */
 .ri-plan{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:600px}
 .rp-c{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 13px;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md)}
@@ -1618,6 +1637,10 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
             <!-- Nhiệt charge theo hồ sơ — chạm vào số là gõ đổi ngay (như chip DROP) -->
             <div class="ri-hint ri-charge" id="riChargeRow" onclick="chargeTEdit()">
               🌡 Nạp hạt tại <b class="num" id="riChargeT">—</b> · chạm để đổi</div>
+            <!-- CÔNG THỨC NẠP: bộ mức máy đặt sẵn (gas/gió/trống + nhiệt nạp) cho
+                 lúc vào mẻ. Chạm để chọn → app ghi thẳng 3 mức xuống máy. -->
+            <div class="ri-hint ri-charge ri-nap" id="riNapRow" onclick="napPick()">
+              ⚙ Công thức nạp: <b id="riNapName">— chưa chọn —</b> · chạm để chọn</div>
             <!-- Bảng thông số mẻ (Bước F): xem trước công thức trước khi bấm rang;
                  ~ = app tự ước (hồ sơ chưa đặt setpoint đó) -->
             <div class="ri-plan" id="riPlan"></div>
@@ -1764,8 +1787,12 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         <div class="pgwrap">
           <div class="pghead">
             <div><div class="pgtitle" data-i18n="tab.hoso">Hồ sơ</div>
-              <div class="pgsub">Chọn một hồ sơ để nạp và bắt đầu mẻ rang</div></div>
-            <div class="pgctrls">
+              <div class="pgsub" id="hsSub">Chọn một hồ sơ để nạp và bắt đầu mẻ rang</div></div>
+            <div class="pgctrls" id="hsCtrlNap" style="display:none">
+              <button class="sortbtn" id="napFavBtn" onclick="napToggleFavFilter()">★ Yêu thích</button>
+              <button class="sortbtn addprof" onclick="napNew()">＋ Công thức mới</button>
+            </div>
+            <div class="pgctrls" id="hsCtrlProf">
               <div class="segchips" id="profFilter">
                 <button class="chip on" data-f="all" onclick="setProfFilter('all')">Tất cả</button>
                 <button class="chip" data-f="Rang nhạt" onclick="setProfFilter('Rang nhạt')">Nhạt</button>
@@ -1778,6 +1805,13 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
               <button class="sortbtn addprof" onclick="newProfile()">＋ <span data-i18n="prof.new">Hồ sơ mới</span></button>
             </div>
           </div>
+          <!-- 2 TAB CON: hồ sơ rang · công thức nạp (dùng riêng gotoHs, KHÔNG đụng
+               .subpane của trang Cài đặt) -->
+          <div class="hsnav" id="hsnav">
+            <button class="on" data-hs="rang" onclick="gotoHs('rang')">☕ Hồ sơ rang</button>
+            <button data-hs="nap" onclick="gotoHs('nap')">⚙ Công thức nạp</button>
+          </div>
+          <div class="hspane on" id="hs-rang">
           <div class="profgrid" id="profgrid">
             <div class="profcard" style="border-left-color:#c9a227">
               <div class="ph"><div><div class="pn">Ethiopia Yirgacheffe</div><div class="pnotes">Washed · Floral · Citrus</div></div>
@@ -1804,6 +1838,9 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                 <div><div class="k">Thời gian</div><div class="v num">12:00</div></div></div>
               <button class="loadbtn" onclick="gotoTab('rang')">▶  Nạp &amp; rang</button></div>
           </div>
+          </div>
+          <!-- TAB CON 2: kho CÔNG THỨC NẠP (gas/gió/trống + nhiệt nạp) -->
+          <div class="hspane" id="hs-nap"><div class="profgrid" id="napgrid"></div></div>
         </div>
       </section>
       <section class="pane" id="pane-lichsu">
@@ -2230,6 +2267,24 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         <button class="bigbtn primary" onclick="saveProfEdit()">Lưu</button></div>
     </div></div>
 
+    <!-- ══════════ TẠO / SỬA CÔNG THỨC NẠP ══════════ -->
+    <div class="overlay" id="napedit"><div class="pebox">
+      <div class="petitle" id="napTitle">Công thức nạp</div>
+      <div class="pefield"><span class="pel">Tên công thức</span><input class="peval" id="na_name" type="text" spellcheck="false" autocomplete="off" oninput="naTmp.name=this.value"></div>
+      <div class="pehint">Mức máy áp xuống khi chọn công thức này</div>
+      <div class="pefield"><span class="pel">Gas / Burner (%)</span><input class="peval" id="na_burner" type="text" inputmode="numeric" autocomplete="off" placeholder="—" onblur="naOpt(this,'burner')" oninput="naOptIn(this,'burner')"></div>
+      <div class="pefield"><span class="pel">Gió / Airflow (%)</span><input class="peval" id="na_air" type="text" inputmode="numeric" autocomplete="off" placeholder="—" onblur="naOpt(this,'air')" oninput="naOptIn(this,'air')"></div>
+      <div class="pefield"><span class="pel">Trống / Drum (%)</span><input class="peval" id="na_drum" type="text" inputmode="numeric" autocomplete="off" placeholder="—" onblur="naOpt(this,'drum')" oninput="naOptIn(this,'drum')"></div>
+      <div class="pefield"><span class="pel">Nhiệt nạp (°C)</span><input class="peval" id="na_chargeT" type="text" inputmode="numeric" autocomplete="off" placeholder="giữ nguyên" onblur="naOpt(this,'chargeT',100,260)" oninput="naOptIn(this,'chargeT')"></div>
+      <div class="pehint">Ghi chép</div>
+      <div class="pefield"><span class="pel">Yêu thích</span><button class="peval" id="na_fav" onclick="naToggleFav()"></button></div>
+      <div class="pefield"><span class="pel">Ghi chú</span><input class="peval" id="na_notes" type="text" spellcheck="false" autocomplete="off" oninput="naTmp.notes=this.value"></div>
+      <div class="pefield"><span class="pel">Ngày tạo</span><input class="peval" id="na_date" type="date" autocomplete="off" oninput="naTmp.date=peDateFromISO(this.value)"></div>
+      <div class="pefield"><span class="pel">Người tạo</span><input class="peval" id="na_roaster" type="text" readonly tabindex="-1"></div>
+      <div class="perow"><button class="bigbtn ghost" onclick="closeNapEdit()">Hủy</button>
+        <button class="bigbtn primary" onclick="saveNapEdit()">Lưu</button></div>
+    </div></div>
+
     <!-- ══════════ CÂN PHỄU (Loader) — như bảng cân trên HMI ══════════ -->
     <div class="overlay" id="scalebox"><div class="pebox">
       <div class="petitle">⚖ Cân phễu — Loader</div>
@@ -2346,7 +2401,7 @@ function gotoTab(name){
   document.querySelectorAll('#tabnav .tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
   if(name==='caidat') enterSettings();
   if(name==='rang'){ updateRoastLive(); }
-  if(name==='hoso') renderProfiles();
+  if(name==='hoso') gotoHs(HS_TAB);      // giữ nguyên tab con đang mở
   if(name==='lichsu') renderHistory();
   if(name==='kho') khoRender();
 }
@@ -2913,11 +2968,14 @@ function renderProfiles(){
   const sorters={name:(a,b)=>a.p.name.localeCompare(b.p.name),
     temp:(a,b)=>a.p.temp-b.p.temp, time:(a,b)=>a.p.time.localeCompare(b.p.time)};
   list.sort(sorters[profSort]);
+  // YÊU THÍCH luôn nổi lên đầu, trong nhóm vẫn giữ thứ tự sắp xếp đang chọn
+  list.sort((a,b)=>(b.p.fav?1:0)-(a.p.fav?1:0));
   if(list.length){
     g.innerHTML = list.map(({p,i})=>`
     <div class="profcard" style="border-left-color:${p.color}">
       <div class="ph"><div><div class="pn">${esc(p.name)}</div><div class="pnotes">${esc(p.notes)}</div></div>
         <div style="display:flex;gap:12px;align-items:center">
+          <button class="favstar ${p.fav?'on':''}" onclick="toggleProfFav(${i})" title="Yêu thích">${p.fav?'★':'☆'}</button>
           <span class="roastbadge">${esc(p.roast)}</span>
           <button class="editbtn" onclick="editProfile(${i})" title="Sửa">✎</button>
           <button class="editbtn del" onclick="deleteProfile(${i})" title="Xoá">🗑</button></div></div>
@@ -2936,6 +2994,26 @@ function renderProfiles(){
     // có hồ sơ nhưng bộ lọc không khớp
     g.innerHTML=`<div class="profempty"><div class="pe-s">${I18N[LANG]['prof.nofilter']}</div></div>`;
   }
+}
+/* Sao yêu thích hồ sơ — bật/tắt rồi lưu ngay (cột fav trong ho-so.csv) */
+function toggleProfFav(i){
+  const ps=loadProfiles(), p=ps[i]; if(!p)return;
+  p.fav=p.fav?0:1; saveProfiles(ps); renderProfiles();
+}
+/* ── 2 TAB CON trang Hồ sơ ── */
+let HS_TAB='rang';
+function gotoHs(name){
+  HS_TAB=name;
+  document.querySelectorAll('.hspane').forEach(p=>p.classList.remove('on'));
+  const pane=document.getElementById('hs-'+name); if(pane)pane.classList.add('on');
+  document.querySelectorAll('#hsnav button').forEach(b=>b.classList.toggle('on',b.dataset.hs===name));
+  const isNap=name==='nap';
+  document.getElementById('hsCtrlProf').style.display=isNap?'none':'';
+  document.getElementById('hsCtrlNap').style.display=isNap?'':'none';
+  document.getElementById('hsSub').textContent=isNap
+    ? 'Bộ mức máy đặt sẵn cho lúc vào mẻ — gas, gió, trống và nhiệt nạp'
+    : 'Chọn một hồ sơ để nạp và bắt đầu mẻ rang';
+  if(isNap)renderNaps(); else renderProfiles();
 }
 function setProfFilter(f){profFilter=f;
   document.querySelectorAll('#profFilter .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f));renderProfiles();}
@@ -3240,6 +3318,8 @@ if(window._OTL_WEBCLONE){
     /* hồ sơ: web đọc/ghi CHUNG profiles.json với app qua server — đồng bộ thật */
     prof_load:async()=>{const r=await _wapi('profiles');return (r&&r.profiles)||null;},
     prof_save:async p=>_wcmd('profiles',{profiles:p}),
+    nap_load:async()=>{const r=await _wapi('naps');return (r&&r.naps)||[];},
+    nap_save:async n=>_wcmd('naps',{naps:n}),
     prof_write_files:async()=>({ok:false,err:'web'}), prof_export_pdf:async()=>({ok:false,err:'web'}),
     prof_dir:async()=>'', prof_dir_pick:async()=>'', toggle_fullscreen:()=>{},
     /* GĐ4 — KHO/ĐƠN/CHI PHÍ/CUPPING: web ĐỌC tự do; GHI cần token (PIN web) */
@@ -3570,8 +3650,8 @@ function machSample(d){
 }
 /* Nhịp poll bật ở cuối phần INIT (sau khi R/CFG đã khai báo) — xem dsStart() */
 function dsStart(){ dsTick(); setInterval(dsTick,1000);
-  window.addEventListener('pywebviewready',()=>{dsTick();profDiskInit();webIpInit();});
-  if(window.pywebview){profDiskInit();webIpInit();}   // bridge có sẵn rồi thì chạy luôn
+  window.addEventListener('pywebviewready',()=>{dsTick();profDiskInit();napLoad();webIpInit();});
+  if(window.pywebview){profDiskInit();napLoad();webIpInit();}   // bridge có sẵn rồi thì chạy luôn
 }
 /* ── Chip địa chỉ web LAN trên thanh trên: hiện IP:cổng, chạm là copy ── */
 let WEB_URL='';
@@ -3856,8 +3936,24 @@ async function cmdEscape(){
   if(!dsBridge()){ await machCmd('escape'); return; }
   await cmdLatch('escape','btnEscape');
 }
+/* ⛔ CHỐT NẠP HẠT — PHẢI CÓ LỬA (lệnh chủ máy 2026-07-29).
+   Đổ hạt vào trống không lửa = mẻ hỏng: hạt nằm ăn nhiệt dư của mặt trống rồi
+   nguội dần, không bao giờ lên được đường rang.
+   Đặt trong cmdCharge() vì CẢ BA đường nạp đều đi qua đây:
+     • nút "Nạp hạt" thanh công cụ (đường override của thợ, trước đây không gác gì)
+     • nút BẮT ĐẦU ở màn chờ (startRoast)
+     • tự-nạp khi BT tới cửa nhiệt (chkChargeReady)
+   FIRMWARE KHÔNG gác việc này — relay CH3 chỉ chạy theo mức CHARGE_BTN_R
+   (IOConfig.h:53), không kiểm lửa. App là nơi DUY NHẤT chặn được. */
+function chargeFlameOk(){
+  if(flagShow('flame'))return true;
+  toast('CHƯA CÓ LỬA — không nạp hạt được. Đánh lửa trước đã.');
+  opLog('MẺ','CHẶN nạp hạt — chưa có lửa','WARN');
+  return false;
+}
 async function cmdCharge(){
   if(!dsBridge()){ startRoast(); return; }              // demo trong trình duyệt
+  if(!chargeFlameOk())return;
   await cmdLatch('charge','btnCharge');
 }
 async function cmdDrop(){
@@ -4204,6 +4300,13 @@ function startRoast(){
         return;
       }
     }
+    // BT đã trong cửa nhiệt nhưng CHƯA CÓ LỬA → mời đánh lửa, đừng chỉ báo lỗi cụt
+    // (cmdCharge vẫn chặn lần nữa — đây chỉ là lối dẫn cho thợ đỡ phải đoán).
+    if(!flagShow('flame')){
+      if(confirm(`BT ${bt.toFixed(1)}° đã tới cửa nạp nhưng CHƯA CÓ LỬA.\n`+
+                 `Đánh lửa ngay? (có lửa rồi bấm BẮT ĐẦU lần nữa để nạp)`)) cmdIgnite();
+      return;
+    }
     toast('Đã gửi lệnh Nạp hạt — mẻ bắt đầu khi máy vào CHARGE',true);
     cmdCharge(); return;
   }
@@ -4535,6 +4638,199 @@ document.getElementById('scalebox').addEventListener('click',e=>{if(e.target.id=
    ĐÚNG 2 chế độ — THƯỜNG / TỰ ĐỘNG. Rang tự động nay do APP phát lại đường
    gas/gió/trống của MẺ NỀN ghim trong hồ sơ (xem khối RANG TỰ ĐỘNG), không nhờ
    firmware đọc file SD nữa. Thợ vẫn bật AUTO thẳng trên HMI của máy nếu muốn. */
+/* ════════ CÔNG THỨC NẠP ═══════════════════════════════════════════════════
+   Bộ mức máy đặt SẴN cho lúc vào mẻ: gas / gió / trống + nhiệt nạp. Thợ chọn
+   một công thức ở màn chờ → app ghi thẳng 3 mức xuống máy và đặt nhiệt nạp, để
+   máy đứng ĐÚNG thế trước khi hạt rơi vào trống.
+   Kho = cong-thuc-nap.csv cạnh exe (mở bằng Excel như ho-so.csv). Tách khỏi hồ
+   sơ vì cùng một cách vào mẻ dùng chung cho nhiều loại cà. */
+let NAPS=[], NAP_CUR=null;
+async function napLoad(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(a&&a.nap_load){try{NAPS=await a.nap_load()||[];}catch(e){NAPS=[];}}
+  const last=localStorage.getItem('otl_nap_cur');
+  NAP_CUR=NAPS.find(n=>n.name===last)||null;
+  renderNapRow();
+}
+function napDesc(n){
+  return `gas ${n.burner!=null?n.burner:'—'}% · gió ${n.air!=null?n.air:'—'}% · trống ${n.drum!=null?n.drum:'—'}%`
+       + (n.chargeT?` · nạp ${n.chargeT}°`:'');
+}
+function renderNapRow(){
+  const el=document.getElementById('riNapName');if(!el)return;
+  el.textContent=NAP_CUR?`${NAP_CUR.name} · ${napDesc(NAP_CUR)}`:'— chưa chọn —';
+}
+function napPick(){
+  const list=NAPS.map((n,i)=>({n,i}))
+    .sort((a,b)=>(b.n.fav?1:0)-(a.n.fav?1:0)||a.n.name.localeCompare(b.n.name));
+  document.getElementById('pkBox').innerHTML=
+    list.map(({n,i})=>`<div class="pkopt ${NAP_CUR&&NAP_CUR.name===n.name?'sel':''}" onclick="napApply(${i})">`+
+      `<span class="pkdel" onclick="event.stopPropagation();napDel(${i})">✕</span>`+
+      `${n.fav?'★ ':''}${esc(n.name)} · ${napDesc(n)}</div>`).join('')
+    + `<div class="pkopt" onclick="napAddFromLive()">＋ Lưu MỨC ĐANG CHẠY thành công thức</div>`;
+  document.getElementById('picker').classList.add('on');
+}
+/* Áp công thức: ghi 3 mức xuống máy + đặt nhiệt nạp. KHÔNG đụng lệnh nạp hạt —
+   đây chỉ là dựng thế máy, thợ vẫn tự bấm BẮT ĐẦU khi thấy ổn. */
+async function napApply(i){
+  const n=NAPS[i];if(!n)return;
+  NAP_CUR=n;localStorage.setItem('otl_nap_cur',n.name);
+  document.getElementById('picker').classList.remove('on');
+  renderNapRow();
+  if(n.chargeT){R.chargeT=n.chargeT;renderChargeRow();renderIdlePlan();}
+  if(!dsBridge()){toast(`Đã chọn công thức "${n.name}" (mô phỏng)`,true);return;}
+  const set=(kind,key,v)=>{
+    if(v==null||isNaN(v))return;
+    v=Math.max(0,Math.min(100,Math.round(v)));
+    R[key]=v;OUT_HOLD[key]={v:v,until:Date.now()+3000};machCmd(kind,v);
+  };
+  set('gas','burner',n.burner); set('air','air',n.air); set('drum','drum',n.drum);
+  opLog('MẺ',`công thức nạp "${n.name}" → ${napDesc(n)}`);
+  toast(`Đã áp công thức "${n.name}" xuống máy`,true);
+}
+/* Lưu THẾ MÁY ĐANG CHẠY thành công thức — thợ chỉnh tay tới lúc ưng thì bấm cái
+   này, khỏi phải gõ lại từng số. Nối máy thì lấy số THẬT của máy. */
+async function napAddFromLive(){
+  document.getElementById('picker').classList.remove('on');
+  const d=DS.snap||{}, live=dsLive();
+  const cur={burner:Math.round(live?d.gas:R.burner),
+             air:Math.round(live?d.air:R.air),
+             drum:Math.round(live?d.drum:R.drum)};
+  if(R.chargeT)cur.chargeT=R.chargeT;
+  const name=(await openKb(''))||'';
+  if(!name.trim())return;
+  if(NAPS.some(n=>n.name===name)){toast('Đã có công thức tên này');return;}
+  NAPS.push(Object.assign({name},cur));
+  await napStore();
+  NAP_CUR=NAPS[NAPS.length-1];localStorage.setItem('otl_nap_cur',name);
+  renderNapRow();
+  toast(`Đã lưu công thức "${name}" · ${napDesc(NAP_CUR)}`,true);
+}
+async function napDel(i){
+  const n=NAPS[i];if(!n)return;
+  if(!confirm(`Xoá công thức nạp "${n.name}"?`))return;
+  NAPS.splice(i,1);await napStore();
+  if(NAP_CUR&&NAP_CUR.name===n.name){NAP_CUR=null;localStorage.removeItem('otl_nap_cur');}
+  renderNapRow();
+  // xoá từ bộ chọn màn chờ → vẽ lại bộ chọn; xoá từ tab Hồ sơ → vẽ lại lưới thẻ
+  if(document.getElementById('picker').classList.contains('on'))napPick(); else renderNaps();
+}
+async function napStore(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.nap_save))return;
+  try{const r=await a.nap_save(NAPS);if(r&&!r.ok)toast('Lưu công thức lỗi: '+(r.err||''));}
+  catch(e){toast('Lưu công thức lỗi');}
+}
+/* ── Kho công thức nạp: tab con thứ 2 của trang Hồ sơ ─────────────────────── */
+let napFavOnly=false;
+function napToggleFavFilter(){
+  napFavOnly=!napFavOnly;
+  const b=document.getElementById('napFavBtn');
+  if(b){b.textContent=napFavOnly?'★ Chỉ yêu thích':'★ Yêu thích';b.classList.toggle('addprof',false);}
+  renderNaps();
+}
+function renderNaps(){
+  const g=document.getElementById('napgrid');if(!g)return;
+  let list=NAPS.map((n,i)=>({n,i}));
+  if(napFavOnly)list=list.filter(o=>o.n.fav);
+  list.sort((a,b)=>(b.n.fav?1:0)-(a.n.fav?1:0)||a.n.name.localeCompare(b.n.name));
+  if(!list.length){
+    g.innerHTML=`<div class="profempty"><div class="pe-ic">⚙</div>
+      <div class="pe-t">${napFavOnly?'Chưa có công thức yêu thích':'Chưa có công thức nạp nào'}</div>
+      <div class="pe-s">Công thức nạp là bộ mức máy đặt sẵn cho lúc vào mẻ:
+        gas, gió, trống và nhiệt nạp. Chọn ở màn chờ rang là áp thẳng xuống máy.</div>
+      <button class="pe-new" onclick="napNew()">＋ Công thức mới</button></div>`;
+    return;
+  }
+  const cell=(k,v)=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  g.innerHTML=list.map(({n,i})=>`
+    <div class="profcard napcard" style="border-left-color:${n.fav?'var(--warn)':'#6b7a8a'}">
+      <div class="ph"><div><div class="pn">${esc(n.name)}</div>
+        <div class="pnotes">${esc(n.notes||'')}</div></div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <button class="favstar ${n.fav?'on':''}" onclick="napFavToggle(${i})" title="Yêu thích">${n.fav?'★':'☆'}</button>
+          <button class="editbtn" onclick="napEdit(${i})" title="Sửa">✎</button>
+          <button class="editbtn del" onclick="napDel(${i})" title="Xoá">🗑</button></div></div>
+      <div class="nmeta">
+        ${cell('Gas',   n.burner!=null?n.burner+'%':'—')}
+        ${cell('Gió',   n.air!=null?n.air+'%':'—')}
+        ${cell('Trống', n.drum!=null?n.drum+'%':'—')}
+        ${cell('Nhiệt nạp', n.chargeT?n.chargeT+'°C':'—')}
+      </div>
+      <div class="pfoot">📅 ${esc(n.date||'—')} · 👤 ${esc(n.roaster||'—')}</div>
+      <button class="loadbtn" onclick="napApplyFromTab(${i})">⚙ Áp xuống máy</button></div>`).join('');
+}
+async function napFavToggle(i){
+  const n=NAPS[i];if(!n)return;
+  n.fav=n.fav?0:1; await napStore(); renderNaps();
+  if(NAP_CUR&&NAP_CUR.name===n.name)renderNapRow();
+}
+/* Áp từ tab Hồ sơ → nhảy luôn sang màn rang cho thợ thấy máy đổi */
+async function napApplyFromTab(i){
+  await napApply(i);
+  gotoTab('rang');
+}
+/* ── Tạo / sửa công thức nạp ── */
+let naIdx=-1, naTmp=null;
+function napNew(){
+  naIdx=-1;
+  const d=DS.snap||{}, live=dsLive();
+  // mồi sẵn bằng MỨC ĐANG CHẠY của máy — thợ chỉnh tay xong tạo là số đã đúng
+  naTmp={name:'',burner:Math.round(live?d.gas:R.burner),
+         air:Math.round(live?d.air:R.air), drum:Math.round(live?d.drum:R.drum),
+         date:new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}),
+         roaster:(typeof session!=='undefined'&&session)?session.name:''};
+  if(R.chargeT)naTmp.chargeT=R.chargeT;
+  document.getElementById('napTitle').textContent='Công thức nạp mới';
+  refreshNA();document.getElementById('napedit').classList.add('on');
+}
+function napEdit(i){
+  const n=NAPS[i];if(!n)return;
+  naIdx=i;naTmp=Object.assign({},n);
+  if(!naTmp.roaster&&typeof session!=='undefined'&&session)naTmp.roaster=session.name;
+  document.getElementById('napTitle').textContent='Sửa công thức nạp';
+  refreshNA();document.getElementById('napedit').classList.add('on');
+}
+function refreshNA(){
+  const v=(id,val)=>{const e=document.getElementById(id);if(e)e.value=val;};
+  v('na_name',naTmp.name||'');
+  v('na_burner',naTmp.burner!=null?naTmp.burner:'');
+  v('na_air',naTmp.air!=null?naTmp.air:'');
+  v('na_drum',naTmp.drum!=null?naTmp.drum:'');
+  v('na_chargeT',naTmp.chargeT!=null?naTmp.chargeT:'');
+  v('na_notes',naTmp.notes||'');
+  v('na_date',peDateToISO(naTmp.date));
+  v('na_roaster',naTmp.roaster||'');
+  const f=document.getElementById('na_fav');
+  if(f)f.textContent=naTmp.fav?'★ Có':'☆ Không';
+}
+function naToggleFav(){naTmp.fav=naTmp.fav?0:1;refreshNA();}
+/* Ô số tuỳ chọn: trống = bỏ hẳn khỏi công thức (không ép mức đó xuống máy) */
+function naOpt(el,key,min,max){
+  const raw=el.value.trim();
+  if(raw===''){delete naTmp[key];el.value='';return;}
+  let n=parseInt(raw,10);
+  if(isNaN(n)){delete naTmp[key];el.value='';return;}
+  n=Math.max(min===undefined?0:min,Math.min(max===undefined?100:max,n));
+  naTmp[key]=n;el.value=n;
+}
+function naOptIn(el,key){const raw=el.value.trim();
+  if(raw==='')delete naTmp[key]; else{const n=parseInt(raw,10);if(!isNaN(n))naTmp[key]=n;}}
+function closeNapEdit(){document.getElementById('napedit').classList.remove('on');}
+async function saveNapEdit(){
+  const name=(naTmp.name||'').trim();
+  if(!name){toast('Đặt tên cho công thức đã');return;}
+  if(NAPS.some((n,k)=>n.name===name&&k!==naIdx)){toast('Đã có công thức tên này');return;}
+  naTmp.name=name;
+  const isNew=naIdx<0||naIdx>=NAPS.length;
+  if(isNew)NAPS.push(naTmp); else NAPS[naIdx]=naTmp;
+  await napStore();
+  if(NAP_CUR&&NAP_CUR.name===name){NAP_CUR=naTmp;renderNapRow();}
+  closeNapEdit();renderNaps();
+  if(typeof pushAudit==='function'&&session)pushAudit(isNew?'Tạo':'Sửa','Công thức nạp','',name);
+  toast(isNew?'Đã tạo công thức nạp':'Đã lưu công thức nạp',true);
+}
+document.getElementById('napedit').addEventListener('click',e=>{if(e.target.id==='napedit')closeNapEdit();});
 /* Dòng "Nạp hạt tại XXX°C" ở màn chờ rang + gõ đổi ngay tại chỗ (như chip DROP) */
 function renderChargeRow(){
   const b=document.getElementById('riChargeT');

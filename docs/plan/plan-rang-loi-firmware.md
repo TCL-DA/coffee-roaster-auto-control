@@ -207,6 +207,26 @@ khi rang AUTO, chỉ khác nguồn: kho mẻ của app thay cho thẻ SD.
   tự về THƯỜNG. Firmware vẫn giữ watchdog mất-app + mồi-hụt + timer xi-lanh.
 - Màn chờ IDLE hiện thêm dòng "Rang tự động: <mã mẻ nền>" / "chưa có mẻ nền".
 
+### Chốt NẠP HẠT PHẢI CÓ LỬA + CÔNG THỨC NẠP (chủ máy 2026-07-29)
+
+**1. Không có lửa thì không nạp.** Đặt trong `cmdCharge()` vì CẢ BA đường nạp đều
+đi qua đó: nút "Nạp hạt" thanh công cụ (đường override, trước đây không gác gì),
+nút BẮT ĐẦU (`startRoast`), và tự-nạp khi tới nhiệt (`chkChargeReady`).
+Thêm lối dẫn ở `startRoast`: BT đã tới cửa mà chưa có lửa → mời đánh lửa thay vì
+báo lỗi cụt. **Firmware KHÔNG gác việc này** — `IOConfig.h:53` chỉ `if(CHARGE_BTN_R
+== 1) CH3_RL_ON`, không kiểm lửa/nhiệt/trống. App là nơi DUY NHẤT chặn được.
+Bench 8/8 PASS (chặn khi không lửa · cho qua khi có lửa · chặn lại khi mất lửa ·
+không chặn ở chế độ mô phỏng).
+
+**2. Công thức nạp** — bộ mức máy đặt sẵn cho lúc vào mẻ: `burner / air / drum +
+chargeT`. Kho = `cong-thuc-nap.csv` cạnh exe (`nap_load`/`nap_save`, cột
+`no,name,burner,air,drum,chargeT,notes`), tách khỏi `ho-so.csv` vì một cách vào mẻ
+dùng chung cho nhiều loại cà. UI ở màn chờ: dòng "⚙ Công thức nạp" → chạm mở bộ
+chọn → áp là app ghi thẳng 3 mức xuống máy + đặt nhiệt nạp. Có nút **"＋ Lưu MỨC
+ĐANG CHẠY thành công thức"** (thợ chỉnh tay tới lúc ưng thì lưu, khỏi gõ số) và ✕
+để xoá. Nhớ công thức dùng lần cuối qua `localStorage otl_nap_cur`.
+**Áp công thức KHÔNG tự nạp hạt** — chỉ dựng thế máy, thợ vẫn tự bấm BẮT ĐẦU.
+
 ### Curve nền — LUÔN CÓ, bật/tắt được (chủ máy 2026-07-29)
 
 Yêu cầu: *"lúc nào cũng có file nền (bật tắt được), có hồ sơ rang thì load hồ sơ đó
