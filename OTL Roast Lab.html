@@ -40,12 +40,18 @@ html[data-theme="dark"]{
   --hair:rgba(255,255,255,.08); --hair-2:rgba(255,255,255,.14);
   --txt:#eef2f7; --dim:#93a0b0; --mute:#5c6675; --faint:#39424e;
   --btn:rgba(255,255,255,.05); --btn-h:rgba(255,255,255,.10); --glass:rgba(255,255,255,.06);
+  /* nền tối thì mực phải SÁNG lên, không được tối đi như theme sáng */
+  --blue-ink:#7aa8ff; --red-ink:#ff8a90; --gold-ink:#e8c25a;
 }
 html[data-theme="light"]{
   --bg:#e9edf2; --letter:#c9d0d9; --panel:#ffffff; --card:#f4f7fb; --inset:#e7ecf2;
   --hair:rgba(10,20,30,.10); --hair-2:rgba(10,20,30,.16);
   --txt:#0f1720; --dim:#4a5666; --mute:#7a8595; --faint:#b3bcc7;
   --btn:rgba(10,20,30,.04); --btn-h:rgba(10,20,30,.08); --glass:rgba(10,20,30,.03);
+  /* MỰC trạng thái: bản đủ tối để đọc trên nền sáng (cùng họ với --amber-ink).
+     Màu gốc --c-bt/--danger dùng cho VIỀN và quầng sáng; chữ thì dùng mực này,
+     vì #2563eb chỉ đạt 4.06:1 và #e11d2f 4.41:1 — dưới chuẩn 4.5:1. */
+  --blue-ink:#1a4bb8; --red-ink:#9e1019; --gold-ink:#7a5a06;
 }
 
 /* ── Màu chủ đạo (accent) chọn ở topbar — mặc định OTL: phối đỏ + xanh theo logo ── */
@@ -290,33 +296,33 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .ignitebtn .ig-ic{width:34px;height:34px}
 .ignitebtn .ig-t{font-size:var(--fs-22);font-weight:800;letter-spacing:1px}
 /* trạng thái xuống dòng riêng cho gọn chiều cao — cột phải rất chật */
-.ignitebtn .ig-s{flex-basis:100%;text-align:center;font-size:var(--fs-14);color:var(--mute);
+/* Dòng trạng thái là chữ NHỎ → giữ màu trung tính đủ tương phản (4.5:1).
+   Màu trạng thái đã do tiêu đề + viền + quầng sáng gánh, không cần tô ở đây. */
+.ignitebtn .ig-s{flex-basis:100%;text-align:center;font-size:var(--fs-14);color:var(--dim);
   text-transform:uppercase;letter-spacing:1px}
 /* Màu lấy TỪ THANG TOKEN (luật: không chế mã màu mới — ref-design-tokens.md):
    xanh = --c-bt · vàng = --warn/--amber-ink · đỏ = --danger */
-/* chưa lửa — tro nguội, quầng xám mờ */
-.ignitebtn.cold{color:var(--mute);
+/* chưa lửa — tro nguội. VẪN phải đọc rõ: đây là việc ĐẦU TIÊN của mọi mẻ, trước
+   đây để --mute + icon mờ hẳn nên chìm hơn cả nút chưa dùng tới. */
+.ignitebtn.cold{color:var(--dim);border-color:var(--hair-2);background:var(--card);
   box-shadow:0 0 26px color-mix(in srgb,var(--mute) 22%,transparent) inset,var(--elev)}
-.ignitebtn.cold .ig-ic{opacity:.55;filter:blur(.4px) grayscale(1)}
+.ignitebtn.cold .ig-ic{opacity:.8;filter:grayscale(1)}
 /* đang mồi — xanh dương */
-.ignitebtn.lit{color:var(--c-bt);border-color:var(--c-bt);
+.ignitebtn.lit{color:var(--blue-ink);border-color:var(--c-bt);
   background:color-mix(in srgb,var(--c-bt) 14%,var(--glass));
   box-shadow:0 0 30px color-mix(in srgb,var(--c-bt) 40%,transparent),
              0 0 42px color-mix(in srgb,var(--c-bt) 22%,transparent) inset}
-.ignitebtn.lit .ig-s{color:var(--c-bt)}
 /* mồi hoài không bắt — vàng THỞ nhẹ, không chớp giật */
-.ignitebtn.slow{color:var(--amber-ink);border-color:var(--warn);
+.ignitebtn.slow{color:var(--gold-ink);border-color:var(--warn);
   background:color-mix(in srgb,var(--warn) 16%,var(--glass));animation:igBreath 2.2s ease-in-out infinite}
-.ignitebtn.slow .ig-s{color:var(--amber-ink)}
 @keyframes igBreath{
   0%,100%{box-shadow:0 0 16px color-mix(in srgb,var(--warn) 28%,transparent),
                      0 0 20px color-mix(in srgb,var(--warn) 14%,transparent) inset}
   50%    {box-shadow:0 0 40px color-mix(in srgb,var(--warn) 66%,transparent),
                      0 0 52px color-mix(in srgb,var(--warn) 34%,transparent) inset}}
 /* có lửa — đỏ toả nhiệt, hơi phập phồng như ngọn lửa */
-.ignitebtn.fire{color:var(--danger);border-color:var(--danger);
+.ignitebtn.fire{color:var(--red-ink);border-color:var(--danger);
   background:color-mix(in srgb,var(--danger) 15%,var(--glass));animation:igHeat 3s ease-in-out infinite}
-.ignitebtn.fire .ig-s{color:var(--danger)}
 .ignitebtn.fire .ig-ic{filter:drop-shadow(0 0 8px color-mix(in srgb,var(--danger) 75%,transparent))}
 @keyframes igHeat{
   0%,100%{box-shadow:0 0 30px color-mix(in srgb,var(--danger) 45%,transparent),
@@ -328,16 +334,32 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .devpin{flex:none;width:64px;border:1px dashed var(--hair-2);border-radius:var(--r-sm);
   background:transparent;cursor:pointer;font-size:var(--fs-22);opacity:.6}
 .devpin:active{transform:scale(.94)}
-/* Nút bung dải thiết bị: NÚT NHẤN THẬT, to bản, dễ chạm — không phải cái gạch mờ */
-.devexp{width:100%;height:76px;margin-bottom:10px;border:1px solid var(--hair-2);
+/* Hồ sơ ★ yêu thích ở màn chờ — thẻ to, chạm phát vào mẻ */
+.ns-favs{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;max-width:1100px;margin-top:6px}
+.nsfav{min-width:230px;padding:18px 24px;border-radius:var(--r-lg);cursor:pointer;
+  border:1px solid var(--hair-2);border-left:6px solid var(--accent);background:var(--card);
+  box-shadow:var(--elev),var(--edge);text-align:left;transition:transform .1s var(--ease)}
+.nsfav:active{transform:scale(.97)}
+.nsfav .nfn{font-size:var(--fs-26);font-weight:800;color:var(--txt)}
+.nsfav .nfm{font-size:var(--fs-18);color:var(--dim);margin-top:4px}
+.nsfav .nfm b{color:var(--c-bt);font-family:var(--f-num)}
+.ns-favs .nsmore{align-self:center;background:none;border:0;cursor:pointer;
+  color:var(--accent);font-size:var(--fs-20);font-weight:700;padding:0 18px;height:56px}
+/* Thẻ ĐỒNG HỒ MẺ — số to trọn thẻ, vacuum là dòng phụ */
+.clockcard{text-align:center}
+.clockcard .clockbig{font-size:var(--fs-80);color:var(--txt);line-height:1}
+.clockcard .vacline{color:var(--mute);font-size:var(--fs-18);margin-top:2px}
+/* Nút bung dải thiết bị: nút nhấn thật nhưng NEO GÓC PHẢI, bề ngang vừa chữ —
+   thu gọn là phải tiết kiệm chỗ thật, không chiếm nguyên một dải ngang. */
+.devexp{width:fit-content;margin-left:auto;height:52px;margin-bottom:10px;border:1px solid var(--hair-2);
   border-radius:var(--r-md);background:var(--card);color:var(--txt);
-  font-size:var(--fs-22);font-weight:800;letter-spacing:1px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:12px;
+  font-size:var(--fs-20);font-weight:800;letter-spacing:1px;cursor:pointer;
+  padding:0 26px;display:flex;align-items:center;justify-content:center;gap:12px;
   box-shadow:var(--elev),var(--edge);transition:transform .12s var(--ease),
   background .2s var(--ease),border-color .2s var(--ease)}
 .devexp:hover{border-color:var(--accent);color:var(--accent)}
 .devexp:active{transform:scale(.985)}
-.devexp .dx-ic{font-size:var(--fs-26);line-height:1}
+.devexp .dx-ic{width:26px;height:26px}
 /* KẾT THÚC MẺ — qua mốc TP là mẻ đã thật sự chạy, từ đây thợ có thể phải xả bất
    cứ lúc nào → nút thở nhẹ + viền vàng cho đập vào mắt, không chớp giật. */
 .tbtn.warn.hot{border-color:var(--warn);color:var(--amber-ink);
@@ -465,6 +487,10 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .tbtn.hit{background:color-mix(in srgb,var(--accent) 26%,var(--btn));border-color:var(--accent);color:var(--accent)}
 /* Nút HỆ TRỌNG (Kết thúc mẻ): hổ phách — tách khỏi màu đỏ vốn dành cho lỗi/mất kết nối */
 .tbtn.warn{border-color:color-mix(in srgb,var(--c-try) 55%,transparent);color:var(--c-try)}
+/* CHƯA vào mẻ thì "Kết thúc mẻ" KHÔNG được nổi hơn "Đánh lửa" — hạ về nút thường,
+   vẫn bấm được (thợ có thể cần mở cửa xả ngoài mẻ), chỉ thôi hút mắt. */
+.tbtn.warn.idle{border-color:var(--hair-2);color:var(--mute)}
+.tbtn.warn.idle .ti{opacity:.5}
 .tbtn.warn.hit,
 .tbtn.warn.on{background:color-mix(in srgb,var(--c-try) 26%,var(--btn));border-color:var(--c-try);color:var(--c-try)}
 .tbtn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -1699,6 +1725,9 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <div class="ri-inner">
             <svg class="ns-ic ot" aria-hidden="true"><use href="#i-trend"/></svg>
             <div class="ns-title" data-i18n="rang.nosel">Chưa chọn hồ sơ rang</div>
+            <!-- Hồ sơ ★ YÊU THÍCH ngay tại đây: vào mẻ 1 chạm, khỏi phải đi vòng
+                 sang tab Hồ sơ rồi tìm (trước là 4 chạm cho việc làm mỗi mẻ). -->
+            <div class="ns-favs" id="nsFavs"></div>
             <div class="ri-hint" data-i18n="rang.noselhint">Chọn một hồ sơ để nạp và bắt đầu mẻ rang</div>
             <button class="ns-pick" onclick="gotoTab('hoso')"><span data-i18n="rang.pickprof">Chọn hồ sơ rang</span></button>
           </div>
@@ -1795,13 +1824,17 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
             <div class="rcard"><div class="duo">
               <div class="col et"><div class="cap">Exhaust · ET</div><div class="v num" id="liveET">214.0</div><div class="sub">RoR <span id="liveETror">+9.1</span></div></div>
               <div class="vl"></div>
-              <div class="col abt"><div class="cap">Drum · RPM</div><div class="v num"><span id="liveDrumRpm">55</span><small style="font-size:24px;color:var(--mute)"> rpm</small></div><div class="sub"><span id="liveDrumHz">—</span> Hz · <span id="liveDrumPct">—</span>%</div></div>
+              <!-- % trống đã có nguyên một hàng ± phía dưới → ở đây chỉ rpm + Hz,
+                   không hiện cùng một đại lượng ở hai chỗ -->
+              <div class="col abt"><div class="cap">Drum · RPM</div><div class="v num"><span id="liveDrumRpm">55</span><small style="font-size:24px;color:var(--mute)"> rpm</small></div><div class="sub"><span id="liveDrumHz">—</span> Hz</div></div>
             </div></div>
-            <div class="rcard"><div class="duo">
-              <div class="col"><div class="cap">Vacuum</div><div class="v num"><span id="liveVac">−80</span><small style="font-size:24px;color:var(--mute)"> Pa</small></div></div>
-              <div class="vl"></div>
-              <div class="col"><div class="cap" data-i18n="rang.time">Thời gian</div><div class="v num" id="rangClock" style="font-size:74px;color:var(--txt)">00:00</div></div>
-            </div></div>
+            <!-- ĐỒNG HỒ MẺ chiếm trọn thẻ (số thợ liếc nhiều nhất lúc rang);
+                 Vacuum xuống dòng phụ vì phần lớn thời gian đứng im. -->
+            <div class="rcard clockcard">
+              <div class="cap" data-i18n="rang.time">Thời gian</div>
+              <div class="v num clockbig" id="rangClock">00:00</div>
+              <div class="sub vacline">Vacuum <span class="num" id="liveVac">−80</span> Pa</div>
+            </div>
             <!-- ĐÁNH LỬA — nằm ngay trên cụm Burner: thao tác lửa cùng chỗ với gas.
                  4 trạng thái nhìn phát biết (xem .ignitebtn trong CSS):
                  xám tro = chưa lửa · xanh = đang mồi · vàng thở = mồi quá 60s chưa
@@ -1846,8 +1879,9 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
 
         <!-- Dải thiết bị phụ (bật/tắt). GHIM/THU GỌN được: khách ít đụng tới nên
              thu gọn cho màn rang thoáng, cần thì bung ra lại. Nhớ ở localStorage. -->
-        <button class="devexp detail-only" id="devExpand" onclick="setDevPin(1)" style="display:none">
-          <span class="dx-ic" aria-hidden="true">⚙</span><span>THIẾT BỊ PHỤ</span><span class="dx-ic" aria-hidden="true">▾</span></button>
+        <button class="devexp detail-only" id="devExpand" onclick="setDevPin(1)" style="display:none"
+                aria-label="Bung dải thiết bị phụ">
+          <svg class="dx-ic ot" aria-hidden="true"><use href="#i-settings"/></svg><span>THIẾT BỊ PHỤ</span></button>
         <div class="devstrip detail-only" id="devstrip">
           <button class="devbtn" id="btnDrumFan" data-dev="drumfan" onclick="cmdDev('drumfan',this)"><svg class="devico ot"><use href="#i-drumfan"/></svg><span>Drum-Fan</span></button>
           <button class="devbtn" id="btnMixer" data-dev="mixer" onclick="cmdDev('mixer',this)"><svg class="devico ot"><use href="#i-mixer"/></svg><span>Mixer</span></button>
@@ -1855,7 +1889,8 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <button class="devbtn" id="btnLoader" data-dev="loader" onclick="cmdDev('loader',this)"><svg class="devico ot"><use href="#i-loader"/></svg><span>Loader</span></button>
           <button class="devbtn" id="btnScale" onclick="openScale()"><svg class="devico ot"><use href="#i-loader"/></svg><span id="scaleBtnLbl">Cân</span></button>
           <button class="devbtn" id="btnDestoner" data-dev="destoner" onclick="cmdDev('destoner',this)"><svg class="devico ot"><use href="#i-destoner"/></svg><span>Destoner</span></button>
-          <button class="devpin" id="devPin" onclick="setDevPin(0)" title="Thu gọn dải thiết bị">📌</button>
+          <button class="devpin" id="devPin" onclick="setDevPin(0)" title="Thu gọn dải thiết bị"
+                  aria-label="Thu gọn dải thiết bị phụ">📌</button>
         </div>
 
         <!-- Toolbar dưới -->
@@ -1863,7 +1898,7 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
              nút "Hồ sơ" bỏ (trùng tab Hồ sơ trên nav); "Đổi view" chuyển vào Cài đặt
              vì phải xét quyền tài khoản. Loop + Prof No. chỉ hiện ở chế độ TỰ ĐỘNG. -->
         <div class="toolbar">
-          <button class="tbtn" id="btnCharge" onclick="cmdCharge()"><svg class="ti ot" aria-hidden="true"><use href="#i-charge"/></svg><span data-i18n="tb.charge">Nạp hạt</span></button>
+          <button class="tbtn" id="btnCharge" onclick="cmdCharge({tay:1})"><svg class="ti ot" aria-hidden="true"><use href="#i-charge"/></svg><span data-i18n="tb.charge">Nạp hạt</span></button>
           <button class="tbtn" id="btnEscape" onclick="cmdEscape()"><svg class="ti ot" aria-hidden="true"><use href="#i-escape"/></svg><span data-i18n="tb.eject">Xả liệu</span></button>
           <!-- Làm nguội: dời từ dải thiết bị phụ lên đây vì thợ dùng mỗi mẻ -->
           <button class="tbtn" id="btnCool" data-dev="cooling" onclick="cmdCool(event)"><svg class="ti ot" aria-hidden="true"><use href="#i-cool"/></svg><span>Làm nguội</span></button>
@@ -2515,7 +2550,7 @@ function gotoTab(name){
   document.getElementById('pane-'+name).classList.add('on');
   document.querySelectorAll('#tabnav .tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
   if(name==='caidat') enterSettings();
-  if(name==='rang'){ updateRoastLive(); }
+  if(name==='rang'){ updateRoastLive(); if(R.phase==='NOSEL')renderNoselFavs(); }
   if(name==='hoso') gotoHs(HS_TAB);      // giữ nguyên tab con đang mở
   if(name==='lichsu') renderHistory();
   if(name==='kho') khoRender();
@@ -2636,7 +2671,8 @@ async function profDiskInit(){
   if(!(window.pywebview&&pywebview.api.prof_load))return;
   try{
     const d=await pywebview.api.prof_load();
-    if(Array.isArray(d)&&d.length){localStorage.setItem(LS_PROF,JSON.stringify(d));renderProfiles();}
+    if(Array.isArray(d)&&d.length){localStorage.setItem(LS_PROF,JSON.stringify(d));renderProfiles();
+      if(R.phase==='NOSEL')renderNoselFavs();}   // hồ sơ về từ đĩa → vẽ lại thẻ ★ màn chờ
   }catch(e){}
 }
 /* Chọn thư mục lưu hồ sơ (hộp thoại Windows) rồi ghi ngay bản hiện tại vào đó */
@@ -3090,7 +3126,7 @@ function renderProfiles(){
     <div class="profcard" style="border-left-color:${p.color}">
       <div class="ph"><div><div class="pn">${esc(p.name)}</div><div class="pnotes">${esc(p.notes)}</div></div>
         <div style="display:flex;gap:12px;align-items:center">
-          <button class="favstar ${p.fav?'on':''}" onclick="toggleProfFav(${i})" title="Yêu thích">${p.fav?'★':'☆'}</button>
+          <button class="favstar ${p.fav?'on':''}" onclick="toggleProfFav(${i})" title="Yêu thích" aria-label="${p.fav?'Bỏ':'Đánh dấu'} yêu thích hồ sơ ${esc(p.name)}">${p.fav?'★':'☆'}</button>
           <span class="roastbadge">${esc(p.roast)}</span>
           <button class="editbtn" onclick="editProfile(${i})" title="Sửa">✎</button>
           <button class="editbtn del" onclick="deleteProfile(${i})" title="Xoá">🗑</button></div></div>
@@ -4058,21 +4094,25 @@ async function cmdEscape(){
 /* ⛔ CHỐT NẠP HẠT — PHẢI CÓ LỬA (lệnh chủ máy 2026-07-29).
    Đổ hạt vào trống không lửa = mẻ hỏng: hạt nằm ăn nhiệt dư của mặt trống rồi
    nguội dần, không bao giờ lên được đường rang.
-   Đặt trong cmdCharge() vì CẢ BA đường nạp đều đi qua đây:
-     • nút "Nạp hạt" thanh công cụ (đường override của thợ, trước đây không gác gì)
-     • nút BẮT ĐẦU ở màn chờ (startRoast)
-     • tự-nạp khi BT tới cửa nhiệt (chkChargeReady)
-   FIRMWARE KHÔNG gác việc này — relay CH3 chỉ chạy theo mức CHARGE_BTN_R
-   (IOConfig.h:53), không kiểm lửa. App là nơi DUY NHẤT chặn được. */
-function chargeFlameOk(){
-  if(flagShow('flame'))return true;
-  toast('CHƯA CÓ LỬA — không nạp hạt được. Đánh lửa trước đã.');
-  opLog('MẺ','CHẶN nạp hạt — chưa có lửa','WARN');
-  return false;
-}
-async function cmdCharge(){
+
+   PHÂN BIỆT HAI ĐƯỜNG (chủ máy chỉnh 2026-07-29): "phải có lửa" là luật của LUỒNG
+   MẺ, không phải luật của cái máy. Máy đang rảnh, chưa chọn hồ sơ, chưa bấm bắt
+   đầu — thợ muốn mở cửa nạp thì phải cho mở.
+     • Luồng mẻ (nút BẮT ĐẦU, tự-nạp khi tới nhiệt) → CHẶN CỨNG, không lửa không nạp.
+     • Nút "Nạp hạt" thanh công cụ = lệnh máy thuần → chỉ HỎI LẠI, thợ đồng ý là chạy.
+   Firmware vẫn không gác gì (IOConfig.h:53 chỉ theo mức CHARGE_BTN_R). */
+async function cmdCharge(opt){
   if(!dsBridge()){ startRoast(); return; }              // demo trong trình duyệt
-  if(!chargeFlameOk())return;
+  const tay=!!(opt&&opt.tay);                           // thợ bấm tay ở thanh công cụ
+  if(!flagShow('flame')){
+    if(!tay){                                           // luồng mẻ → chặn cứng
+      toast('CHƯA CÓ LỬA — không nạp hạt được. Đánh lửa trước đã.');
+      opLog('MẺ','CHẶN nạp hạt trong luồng mẻ — chưa có lửa','WARN');
+      return;
+    }
+    if(!confirm('CHƯA CÓ LỬA.\nVẫn mở cửa nạp?\n(Đổ hạt vào trống nguội là mẻ hỏng — chỉ nên làm khi đang thao tác máy, không phải vào mẻ.)'))return;
+    opLog('MẺ','thợ tự xác nhận: mở cửa nạp khi CHƯA CÓ LỬA','WARN');
+  }
   await cmdLatch('charge','btnCharge');
 }
 async function cmdDrop(){
@@ -4238,9 +4278,11 @@ function stepOut(btn){if(R.mode!=='MANUAL')return;
    đoạn đó) thì GIỮ 0%, không tự cộng bù; mất PC control → tự về THƯỜNG.
    Firmware vẫn giữ watchdog mất-app + mồi-hụt và tự đóng xi-lanh theo timer. */
 const AUTO={plan:null,srcId:null,srcName:'',lastMs:0,comp:0,
-            sent:{burner:null,air:null,drum:null}};
+            sent:{burner:null,air:null,drum:null},    // mức máy ĐÃ NHẬN (xác nhận)
+            busy:{burner:0,air:0,drum:0}};            // đang có lệnh bay, chống chồng
 const MODE_LBL={vi:{MANUAL:'THƯỜNG',AUTO:'TỰ ĐỘNG'},en:{MANUAL:'MANUAL',AUTO:'AUTO'}};
-function autoReset(){AUTO.lastMs=0;AUTO.comp=0;AUTO.sent={burner:null,air:null,drum:null};}
+function autoReset(){AUTO.lastMs=0;AUTO.comp=0;
+  AUTO.sent={burner:null,air:null,drum:null};AUTO.busy={burner:0,air:0,drum:0};}
 /* Nạp MẺ NỀN của hồ sơ → bảng gas/gió/trống/BT theo từng giây (dạng sdGas[] firmware).
    Không có mẻ nền / không lấy được curve → plan=null → không vào được TỰ ĐỘNG. */
 async function loadAutoPlan(p){
@@ -4289,19 +4331,31 @@ function toggleMode(){
   opLog('MẺ',`chế độ TỰ ĐỘNG — theo mẻ nền "${AUTO.srcName}"`);toast('Chế độ TỰ ĐỘNG',true);
 }
 /* Ghi 1 mức xuống máy — CHỈ khi đổi so với lệnh app gửi lần trước (đỡ nghẽn Modbus) */
-function autoSet(kind,v,cur){
+async function autoSet(kind,v,cur){
   if(v==null||isNaN(v))return;
   const key=kind==='gas'?'burner':kind;
   v=Math.max(0,Math.min(100,Math.round(v)));
   if(AUTO.sent[key]===v)return;
-  AUTO.sent[key]=v;
-  if(cur!=null&&Math.round(cur)===v)return;         // máy đã đúng mức rồi, khỏi gửi
+  if(cur!=null&&Math.round(cur)===v){AUTO.sent[key]=v;return;}   // máy đã đúng mức rồi
+  if(AUTO.busy[key])return;                         // lệnh trước chưa xong, đừng chồng
+  AUTO.busy[key]=1;
   R[key]=v;OUT_HOLD[key]={v:v,until:Date.now()+3000};
-  machCmd(kind,v);
-  opLog('AUTO',`${CMD_LBL[kind]||kind} → ${v}%`);
+  let ok=false;
+  try{ ok=await machCmd(kind,v); }finally{ AUTO.busy[key]=0; }
+  // CHỈ ghi nhận "đã gửi" khi máy NHẬN THẬT. Trước đây ghi trước rồi mới gửi —
+  // một lệnh rớt (Modbus hụt nhịp / mất PC control chớp nhoáng) là app tưởng đã
+  // gửi rồi, không bao giờ thử lại → gas kẹt sai mức tới hết mẻ.
+  if(ok){AUTO.sent[key]=v;opLog('AUTO',`${CMD_LBL[kind]||kind} → ${v}%`);}
+  else   opLog('AUTO',`${CMD_LBL[kind]||kind} → ${v}% GỬI HỤT — vòng sau thử lại`,'WARN');
 }
 function autoTick(d){
-  if(R.mode!=='AUTO'||!AUTO.plan||R.phase!=='RUNNING'||!dsLive())return;
+  if(R.mode!=='AUTO'||!AUTO.plan||R.phase!=='RUNNING')return;
+  if(!dsLive()){
+    // Mất kết nối: quên mức đã gửi. Nối lại có thể máy đã bị firmware nhả quyền về
+    // HMI và mức bị thợ/HMI đổi — phải ÁP LẠI từ đầu, đừng tin bộ nhớ cũ.
+    AUTO.sent={burner:null,air:null,drum:null};
+    return;
+  }
   const fl=d.flags||{};
   if(!fl.pc_control){                                // mất quyền điều khiển → trả tay ngay
     R.mode='MANUAL';autoReset();syncModeBtn();
@@ -4414,10 +4468,29 @@ async function cmdDev(name,btn){
 /* ════════ STATE MACHINE MÀN RANG: IDLE → RUNNING → DONE ════════ */
 let roastTimer=null;
 function fmtMMSS(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+/* Màn "chưa chọn hồ sơ": bày sẵn hồ sơ ★ yêu thích để vào mẻ bằng MỘT chạm.
+   Chưa gắn sao hồ sơ nào → lấy tạm 4 hồ sơ đầu, vẫn hơn bắt thợ đi vòng. */
+function renderNoselFavs(){
+  const box=document.getElementById('nsFavs');if(!box)return;
+  const ps=loadProfiles();
+  let list=ps.map((p,i)=>({p,i})).filter(o=>o.p.fav);
+  const chuaGanSao=!list.length;
+  if(chuaGanSao)list=ps.map((p,i)=>({p,i})).slice(0,4);
+  // màu hồ sơ đến từ CSV do người dùng sửa được → chỉ nhận đúng dạng #rgb/#rrggbb,
+  // không thả thẳng chuỗi lạ vào thuộc tính style
+  const mau=c=>/^#[0-9a-fA-F]{3,8}$/.test(c||'')?c:'var(--accent)';
+  box.innerHTML=list.slice(0,5).map(({p,i})=>`
+    <button class="nsfav" style="border-left-color:${mau(p.color)}" onclick="loadProfile(${i})">
+      <div class="nfn">${p.fav?'★ ':''}${esc(p.name)}</div>
+      <div class="nfm">${esc(p.roast||'—')} · nạp <b>${p.chargeT||'—'}°</b> · xả <b>${p.temp||'—'}°</b> · ${esc(p.time||'—')}</div>
+    </button>`).join('')
+    + (ps.length>list.length?`<button class="nsmore" onclick="gotoTab('hoso')">Xem tất cả ${ps.length} hồ sơ →</button>`:'');
+}
 function setRoastPhase(p){
   R.phase=p;
   document.getElementById('pane-rang').setAttribute('data-phase',p);
   if(p==='IDLE')renderIdlePlan();     // màn chờ: cập nhật bảng thông số mẻ (Bước F)
+  if(p==='NOSEL')renderNoselFavs();   // chưa chọn hồ sơ: bày hồ sơ ★ vào mẻ 1 chạm
 }
 /* Bảng thông số mẻ trên màn chờ — suy từ hồ sơ + mô hình mục tiêu (TGT).
    Trường hồ sơ chưa đặt (thẻ mỏng) hiện kèm "~" = app tự ước. */
@@ -4939,7 +5012,7 @@ function renderNaps(){
       <div class="ph"><div><div class="pn">${esc(n.name)}</div>
         <div class="pnotes">${esc(n.notes||'')}</div></div>
         <div style="display:flex;gap:12px;align-items:center">
-          <button class="favstar ${n.fav?'on':''}" onclick="napFavToggle(${i})" title="Yêu thích">${n.fav?'★':'☆'}</button>
+          <button class="favstar ${n.fav?'on':''}" onclick="napFavToggle(${i})" title="Yêu thích" aria-label="${n.fav?'Bỏ':'Đánh dấu'} yêu thích công thức ${esc(n.name)}">${n.fav?'★':'☆'}</button>
           <button class="editbtn" onclick="napEdit(${i})" title="Sửa">✎</button>
           <button class="editbtn del" onclick="napDel(${i})" title="Xoá">🗑</button></div></div>
       <div class="nmeta">
@@ -5069,7 +5142,10 @@ function updateRoastLive(){
   updateIgniteBtn();   // nút đánh lửa: tro / xanh / vàng thở / đỏ toả nhiệt
   // Kết thúc mẻ nổi lên từ lúc QUA TP — mẻ đã thật sự chạy, xả là chuyện lúc nào cũng có thể
   const bd=document.getElementById('btnDrop');
-  if(bd)bd.classList.toggle('hot', R.phase==='RUNNING' && R.mileT.TP!=null);
+  if(bd){
+    bd.classList.toggle('hot', R.phase==='RUNNING' && R.mileT.TP!=null);
+    bd.classList.toggle('idle', R.phase!=='RUNNING');   // chưa vào mẻ thì đừng hút mắt
+  }
   const started=(R.phase==='RUNNING'||R.phase==='DONE');   // đã bắt đầu mẻ?
   // đồng hồ thời gian mẻ
   txt('rangClock', started?fmtMMSS(R.elapsed):'00:00');
@@ -5103,8 +5179,7 @@ function updateRoastLive(){
         const rpm50=parseFloat(CFG.cn_rpm50)||71;
         const hz=(d.drum_hz!=null)?d.drum_hz:(30+d.drum*0.2);
         txt('liveDrumRpm', Math.round(hz*rpm50/50));
-        txt('liveDrumHz', hz.toFixed(1));
-        txt('liveDrumPct', Math.round(d.drum));
+        txt('liveDrumHz', hz.toFixed(1));   // % trống đã có hàng ± riêng, không lặp ở đây
       }
       txt('liveVac', d.vac);
     }else{
@@ -5113,7 +5188,7 @@ function updateRoastLive(){
       txt('liveET', c.et.toFixed(1));   txt('liveETror', sgn(c.et-c.bt));
       const rpm50=parseFloat(CFG.cn_rpm50)||71, hz=30+R.drum*0.2;   // mô phỏng: suy từ %
       txt('liveDrumRpm', Math.round(hz*rpm50/50));
-      txt('liveDrumHz', hz.toFixed(1)); txt('liveDrumPct', Math.round(R.drum));
+      txt('liveDrumHz', hz.toFixed(1));
     }
   }
   updatePhaseBar();      // thanh pha + bigcard đơn giản
@@ -5145,9 +5220,14 @@ function updatePhaseBar(){
     el.classList.toggle('ph-todo', started && !passed && !active);
     // cập nhật thời gian đã trôi trong pha (chỉ thanh phasetl)
     const pp=el.querySelector('.pp'); if(pp){
-      const pct=Math.round((b-a)/ROAST_SECS*100);
-      const inPhase=Math.max(0,Math.min(b,e)-a);
-      pp.textContent=active?`${pct}% · ${fmtMMSS(inPhase)}`:`${pct}% · ${fmtMMSS(b-a)}`;
+      // CHƯA nạp hồ sơ → ROAST_SECS/MILES còn là mẻ MẪU, mấy con số này là số bịa.
+      // Trên màn máy thật, số bịa hại hơn không có số → để trống, chỉ hiện tên pha.
+      if(R.profNo<1){pp.textContent='';}
+      else{
+        const pct=Math.round((b-a)/ROAST_SECS*100);
+        const inPhase=Math.max(0,Math.min(b,e)-a);
+        pp.textContent=active?`${pct}% · ${fmtMMSS(inPhase)}`:`${pct}% · ${fmtMMSS(b-a)}`;
+      }
     }
   });
 }
@@ -5255,8 +5335,9 @@ function drawChart(){
   for(let v=up(tMin,tStep);v<=tMax+1;v+=tStep){const Y=yT(v);
     g.strokeStyle=hair;g.beginPath();g.moveTo(L,Y);g.lineTo(W-Rp,Y);g.stroke();
     g.fillStyle=dim;g.textAlign='right';g.fillText(v,L-14,Y+7);}
-  // số trục RoR (phải)
-  g.fillStyle=cror;g.textAlign='left';
+  // Số trục RoR (phải) — dùng --dim như trục nhiệt cho dễ đọc; màu --c-ror giữ cho
+  // TIÊU ĐỀ trục và đường RoR, vẫn đủ biết trục nào là trục nào.
+  g.fillStyle=dim;g.textAlign='left';
   const rStep=(rMax-rMin)<=60?10:20;
   for(let v=up(rMin,rStep);v<=rMax+0.1;v+=rStep){g.fillText(v>0?'+'+v:''+v, W-Rp+14, yR(v)+7);}
   // vạch thời gian + số (dưới). Mốc 0:00 = lúc NẠP; bên trái nó là khoảng −0:30.

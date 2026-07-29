@@ -207,6 +207,39 @@ khi rang AUTO, chỉ khác nguồn: kho mẻ của app thay cho thẻ SD.
   tự về THƯỜNG. Firmware vẫn giữ watchdog mất-app + mồi-hụt + timer xi-lanh.
 - Màn chờ IDLE hiện thêm dòng "Rang tự động: <mã mẻ nền>" / "chưa có mẻ nền".
 
+### Vòng review code + design (2026-07-29, cuối ngày)
+
+**⛔ SỬA LẠI CHỐT NẠP HẠT — chủ máy bác cách làm cũ:** *"chưa bắt đầu rang, chưa
+chọn hồ sơ, chưa bấm bắt đầu, mà đã chặn charge rồi? lỡ máy đang free mà, phải để
+người dùng muốn bấm gì bấm chứ."* Đúng — "phải có lửa" là luật của **luồng mẻ**,
+không phải luật của cái máy. Nay tách hai đường:
+- Luồng mẻ (nút BẮT ĐẦU, tự-nạp khi tới nhiệt) → **chặn cứng** như cũ.
+- Nút "Nạp hạt" thanh công cụ = lệnh máy thuần → **chỉ hỏi lại**, thợ đồng ý là chạy.
+
+**Review code — 3 lỗi thật:**
+1. **`autoSet()` ghi "đã gửi" TRƯỚC khi gửi** → một lệnh rớt (Modbus hụt nhịp, mất
+   PC control chớp nhoáng) là app tưởng đã gửi, **không bao giờ thử lại → gas kẹt
+   sai mức tới hết mẻ**. Nay `await machCmd()` rồi mới ghi `AUTO.sent`, thất bại thì
+   ghi WARN và vòng sau thử lại; thêm `AUTO.busy` chống chồng lệnh.
+2. **Mất kết nối giữa mẻ AUTO** → `AUTO.sent` giữ nguyên; nối lại có thể firmware đã
+   nhả quyền về HMI và mức bị đổi, nhưng app vẫn tin bộ nhớ cũ nên không áp lại. Nay
+   mất kết nối là xoá `AUTO.sent`, nối lại áp lại từ đầu.
+3. Màu hồ sơ từ CSV thả thẳng vào thuộc tính `style` → nay chỉ nhận đúng `#rrggbb`.
+
+**Review design (checklist ui-ux-pro-max, mục CRITICAL):**
+- **Tương phản** — đo có ghép nền alpha, ban đầu 2/4 trạng thái nút lửa RỚT chuẩn
+  (`lit` 4.06, `fire` 4.41; `slow` chỉ **1.96**). Nguyên nhân: tô chữ bằng chính màu
+  trạng thái. Sửa: thêm bộ **mực trạng thái theo theme** `--blue-ink / --red-ink /
+  --gold-ink` (cùng họ `--amber-ink` sẵn có, sáng lên ở theme tối), và dòng trạng
+  thái chữ nhỏ về màu trung tính `--dim`. Kết quả: cold 6.94 · lit 4.84 · slow 3.84
+  (chữ lớn, chuẩn ≥3) · fire 5.10 — **đạt hết**.
+- **color-not-only** — 4 trạng thái lửa đều có CHỮ kèm màu, người mù màu vẫn đọc được.
+- **Emoji làm icon cấu trúc** — nút "THIẾT BỊ PHỤ" đổi ⚙ sang SVG `#i-settings`
+  (app vốn dùng sprite SVG, em lỡ trộn emoji vào).
+- **Nút chỉ-có-icon** — 📌 và ★ thêm `aria-label`.
+- Kiểm lại: `prefers-reduced-motion` đã có luật toàn cục (dòng ~760); `.num` đã có
+  `tabular-nums`; vùng chạm cả 3 tab không nút nào < 44px.
+
 ### Dọn màn Rang + trục đồ thị cấu hình được (chủ máy 2026-07-29)
 
 **Thanh công cụ** chỉ còn lệnh máy: Nạp hạt · Xả liệu · **Làm nguội** (dời lên từ
