@@ -24,6 +24,7 @@
   /* ── TOKEN TRẠNG THÁI (hợp nhất 2026-07-23) — 1 nghĩa 1 màu ── */
   --ok:#0f9d6b; --warn:#d98a1a; --danger:#e11d2f;
   --amber-ink:#b8860b;   /* mực amber đọc được (gas/preheat/lệch) */
+  --ok-ink:#0a7350;      /* mực xanh-OK: #0f9d6b chỉ 3.47:1 trên nền sáng, dưới chuẩn */
   --tip-bg:#0f1620;      /* nền tooltip */
   --c-ok:var(--ok); --c-warn:var(--danger); --c-try:var(--warn); /* alias cũ */
   /* ── THANG BO GÓC (6 bậc) ── */
@@ -41,7 +42,7 @@ html[data-theme="dark"]{
   --txt:#eef2f7; --dim:#93a0b0; --mute:#5c6675; --faint:#39424e;
   --btn:rgba(255,255,255,.05); --btn-h:rgba(255,255,255,.10); --glass:rgba(255,255,255,.06);
   /* nền tối thì mực phải SÁNG lên, không được tối đi như theme sáng */
-  --blue-ink:#7aa8ff; --red-ink:#ff8a90; --gold-ink:#e8c25a;
+  --blue-ink:#7aa8ff; --red-ink:#ff8a90; --gold-ink:#e8c25a; --ok-ink:#3ddb9b;
 }
 html[data-theme="light"]{
   --bg:#e9edf2; --letter:#c9d0d9; --panel:#ffffff; --card:#f4f7fb; --inset:#e7ecf2;
@@ -51,7 +52,7 @@ html[data-theme="light"]{
   /* MỰC trạng thái: bản đủ tối để đọc trên nền sáng (cùng họ với --amber-ink).
      Màu gốc --c-bt/--danger dùng cho VIỀN và quầng sáng; chữ thì dùng mực này,
      vì #2563eb chỉ đạt 4.06:1 và #e11d2f 4.41:1 — dưới chuẩn 4.5:1. */
-  --blue-ink:#1a4bb8; --red-ink:#9e1019; --gold-ink:#7a5a06;
+  --blue-ink:#1a4bb8; --red-ink:#9e1019; --gold-ink:#7a5a06; --ok-ink:#0a7350;
 }
 
 /* ── Màu chủ đạo (accent) chọn ở topbar — mặc định OTL: phối đỏ + xanh theo logo ── */
@@ -810,7 +811,26 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 /* nút gạt web LAN trong hàng Web điện thoại */
 .umrow .wtog{margin-left:10px;padding:4px 14px;border-radius:var(--r-sm);font-size:var(--fs-16);
   font-weight:700;background:var(--btn);border:1px solid var(--hair-2);color:var(--mute);cursor:pointer}
-.umrow .wtog.on{background:color-mix(in srgb,var(--ok) 18%,transparent);border-color:var(--ok);color:var(--ok)}
+/* chữ dùng --ok-ink (không phải --ok): nền/viền giữ màu gốc, chữ mới đủ tương phản */
+.umrow .wtog.on{background:color-mix(in srgb,var(--ok) 18%,transparent);border-color:var(--ok);color:var(--ok-ink)}
+/* GĐ5 — bảng âm thanh con trong menu avatar (mốc rang / giọng nói / báo động / nhịp RoR) */
+#sndPanel{display:flex;flex-direction:column;gap:8px;margin:-4px 0 2px 0}
+#sndPanel.off{opacity:.45}       /* nút con đã set disabled thật trong sndSyncLabel */
+/* min-height + flex:none: trong cột flex, height thường bị bóp lại (đo thật ra 36px,
+   dưới chuẩn chạm 44px) — thợ đeo găng bấm trượt. Phải khoá không cho co. */
+.umrow.sndsub{min-height:52px;height:auto;flex:0 0 auto;font-size:var(--fs-16);
+  background:transparent;border-color:color-mix(in srgb,var(--hair) 60%,transparent)}
+.umrow.sndsub .k{color:var(--txt)}   /* --mute chỉ đạt 3.0-3.7:1 — nhãn nút phải đọc rõ */
+.umrow.sndsub .wtog{color:var(--txt)}          /* trạng thái TẮT: dựa nền+viền, không dựa chữ mờ */
+.umrow.sndsub .wtog.on{color:var(--ok-ink)}
+.umrow.sndvol{cursor:default}
+.umrow.sndvol:active{transform:none;background:transparent}
+.volgrp{display:flex;align-items:center;gap:10px}
+.volgrp .volbtn{width:44px;height:44px;flex:0 0 auto;border-radius:var(--r-sm);
+  border:1px solid var(--hair-2);background:var(--btn);color:var(--txt);
+  font-size:var(--fs-20);font-weight:700;cursor:pointer}
+.volgrp .volbtn:active{background:var(--btn-h)}
+.volgrp b{min-width:56px;text-align:center;color:var(--txt)}
 /* thememenu nhúng thẳng trong usermenu — không còn là popover riêng */
 .thememenu.inline{position:static;display:flex;border:0;background:transparent;box-shadow:none;padding:0;width:auto}
 #hueRange{width:100%;height:44px;-webkit-appearance:none;appearance:none;border-radius:var(--r-sm);outline:none;cursor:pointer;
@@ -1620,8 +1640,30 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
         <button class="umrow" onclick="toggleLang()"><span class="k">🌐 <span data-i18n="um.lang">Ngôn ngữ</span></span><span id="langLbl"><b>VI</b>/EN</span></button>
         <button class="umrow" id="sndRow" onclick="soundToggle(event)"
           data-help="Bật/tắt tiếng chạm kim loại khi bấm nút — xưởng ồn thì nghe rõ, muốn im thì tắt.">
-          <span class="k">🔔 <span data-i18n="um.sound">Âm chạm</span></span>
+          <span class="k">🔔 <span data-i18n="um.sound">Âm thanh</span></span>
           <span class="wtog" id="sndTog">BẬT</span></button>
+        <div id="sndPanel">
+          <button class="umrow sndsub" onclick="sndChan('mile',event)"
+            data-help="Mỗi mốc rang một tiếng riêng (quay đầu · khô vàng · crack đầu · phát triển · xả) — nghe là biết, khỏi liếc màn.">
+            <span class="k">Âm mốc rang</span><span class="wtog" id="sndT_mile">BẬT</span></button>
+          <button class="umrow sndsub" onclick="sndChan('voice',event)"
+            data-help="Đọc tên mốc thành lời + đếm ngược 60/30/10 giây trước khi xả. Máy chưa cài giọng tiếng Việt thì dùng giọng mặc định.">
+            <span class="k">Giọng nói</span><span class="wtog" id="sndT_voice">BẬT</span></button>
+          <button class="umrow sndsub" onclick="sndChan('alarm',event)"
+            data-help="Chuông gắt khác hẳn tiếng thường khi mất kết nối / máy đứng / cảm biến bệnh.">
+            <span class="k">Chuông báo động</span><span class="wtog" id="sndT_alarm">BẬT</span></button>
+          <button class="umrow sndsub" onclick="sndChan('tick',event)"
+            data-help="Nhịp như tiếng tim đập theo RoR — tick nhanh là RoR lên, chậm là RoR xuống. Mặc định tắt.">
+            <span class="k">Nhịp theo RoR</span><span class="wtog" id="sndT_tick">TẮT</span></button>
+          <div class="umrow sndsub sndvol">
+            <span class="k">Âm lượng</span>
+            <span class="volgrp">
+              <button class="volbtn" onclick="sndVol(-1,event)" aria-label="Giảm âm lượng">−</button>
+              <b class="num" id="sndVolV">85%</b>
+              <button class="volbtn" onclick="sndVol(1,event)" aria-label="Tăng âm lượng">＋</button>
+            </span>
+          </div>
+        </div>
         <button class="umrow num" id="ipChip" style="display:none" onclick="copyWebIp()"
           data-help="Bật/tắt web LAN bằng nút gạt. Đang bật thì chạm hàng này để copy địa chỉ cho điện thoại.">
           <span class="k">📶 <span data-i18n="um.web">Web điện thoại</span>
@@ -3623,7 +3665,12 @@ function faultCheck(d){
     return;
   }
   el.classList.add('show');el.classList.toggle('warn',warn);msg.textContent=text;
-  if(key!==_fault.key){opLog('FAULT',text,warn?'WARN':'ERROR');_fault.key=key;}
+  if(key!==_fault.key){
+    opLog('FAULT',text,warn?'WARN':'ERROR');_fault.key=key;
+    // GĐ5: sự cố MỚI mới kêu, không rú mỗi nhịp poll. Bọc try vì khối âm thanh
+    // khai báo SAU hàm này — sự cố ngay lúc boot sẽ chạm vùng chết của const.
+    try{sndAlarm();say(vi?'Cảnh báo':'Alarm');}catch(e){}
+  }
 }
 async function dsTick(){
   window._dsTickCount=(window._dsTickCount|0)+1;   // đếm nhịp — soi timer có bị bóp không
@@ -4033,6 +4080,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 /* Đánh lửa & Cooling: nối máy thì theo CỜ MÁY như Nạp/Xả (mồi hụt firmware đóng
    gas hay thợ tắt trên HMI là nút app tự tắt theo); demo trình duyệt giữ kiểu cũ */
 async function cmdIgnite(e){
+  try{snd('ignite');}catch(err){}     // tic đá lửa + hơi gas bùng — nghe là biết lệnh đã đi
   if(!dsBridge()){ await cmdToggle('ignite', e&&e.currentTarget); return; }
   await cmdLatch('ignite','btnIgnite');
 }
@@ -4113,6 +4161,7 @@ async function cmdCharge(opt){
     if(!confirm('CHƯA CÓ LỬA.\nVẫn mở cửa nạp?\n(Đổ hạt vào trống nguội là mẻ hỏng — chỉ nên làm khi đang thao tác máy, không phải vào mẻ.)'))return;
     opLog('MẺ','thợ tự xác nhận: mở cửa nạp khi CHƯA CÓ LỬA','WARN');
   }
+  try{snd('charge');}catch(err){}      // hơi trút xuống + thép cửa nạp
   await cmdLatch('charge','btnCharge');
 }
 async function cmdDrop(){
@@ -4582,6 +4631,7 @@ function startRoast(){
       color:R.profColor||'',roaster:(typeof session!=='undefined'&&session&&session.name)||''});
   opLog('MẺ',`bắt đầu rang — hồ sơ "${R.profName||'?'}"${dsLive()?' (máy thật)':' (mô phỏng)'}`);
   setRoastPhase('RUNNING');
+  mileWatchReset();say('Bắt đầu rang');rorTickLoop();   // GĐ5
   roastTimer=setInterval(roastTick,1000);
   roastTick();
 }
@@ -4603,6 +4653,9 @@ function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết th�
   if(R.phase!=='RUNNING')return;
   if(R.mode==='AUTO'){R.mode='MANUAL';autoReset();syncModeBtn();}   // xong mẻ → trả tay cho thợ
   clearInterval(roastTimer);roastTimer=null;R.paused=false;
+  // GĐ5: xả tay thì mốc DROP không vào R.mileT — vẫn phải kêu "hết mẻ"
+  if(!MW.said.DROP){MW.said.DROP=1;if(SND.mile)_play(MILE_SND.DROP);say('Xả mẻ');}
+  clearTimeout(_tickTmr);_tickTmr=null;                 // hết mẻ, tắt nhịp tim
   const dropSec=R.elapsed;      // giây xả thật (có thể xả sớm)
   R.prog=dropSec/ROAST_SECS;R.elapsed=dropSec;
   // ── tổng kết mẻ ──
@@ -4677,7 +4730,7 @@ function renderDoneTargets(dropSec,dropT,devPct){
 }
 function newRoast(){             // "Mẻ mới" → về IDLE
   clearInterval(roastTimer);roastTimer=null;
-  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};R._machRun=false;seriesReset();
+  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};R._machRun=false;seriesReset();mileWatchReset();
   // xoá luôn đồng hồ/mốc bên Python, không thì lệnh Nạp hạt lần sau bị bỏ qua
   if(dsBridge()&&window.pywebview.api.link_new_batch)window.pywebview.api.link_new_batch();
   setRoastPhase('IDLE');
@@ -4772,7 +4825,7 @@ function loadProfile(idx){
   R.chargeT=p.chargeT||0; R._chargeReady=false; renderChargeRow();
   txt('riProfName',p.name); txt('riProfRoast',p.roast||''); txt('riPfn','No.'+(idx+1)); txt('tbPfn',String(idx+1));
   if(R.phase==='RUNNING'){clearInterval(roastTimer);roastTimer=null;}   // đang rang dở → hủy
-  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};seriesReset(); setRoastPhase('IDLE');
+  R.elapsed=0;R.prog=0;R.paused=false;R.mileT={};R.mileD={};seriesReset();mileWatchReset(); setRoastPhase('IDLE');
   document.getElementById('pane-rang').classList.remove('paused');
   gotoTab('rang');                // gotoTab sẽ updateRoastLive()
 }
@@ -5138,6 +5191,7 @@ function mileDeg(m){
   return (dsLive()||SERIES.t.length)?'—':m.d;
 }
 function updateRoastLive(){
+  try{mileWatch();}catch(e){}   // GĐ5: mốc vừa đạt → tiếng riêng + đọc thành lời
   renderChargeRow();   // dòng "Nạp hạt tại …°C" ở màn chờ luôn theo R.chargeT
   updateIgniteBtn();   // nút đánh lửa: tro / xanh / vàng thở / đỏ toả nhiệt
   // Kết thúc mẻ nổi lên từ lúc QUA TP — mẻ đã thật sự chạy, xả là chuyện lúc nào cũng có thể
@@ -6118,12 +6172,35 @@ async function renderAudit(){const body=document.getElementById('auditBody');if(
     <tbody>${a.map(e=>`<tr><td>${fmt(e.ts)}</td><td>${esc(e.user)}</td><td>${esc(e.action)}</td><td class="f">${esc(e.field)}</td>
       <td>${e.old?`<span class="old">${esc(e.old)}</span>`:''}<span class="chg">${esc(e['new']||'')}</span></td></tr>`).join('')}</tbody></table>`;}
 
-/* ════════ ÂM CHẠM KIM LOẠI — tổng hợp Web Audio, KHÔNG file ngoài ════════
-   Panel cạnh máy rang, xưởng ồn (burner + quạt hút) → tiếng "clink" ngắn xác nhận
-   chạm nút. Kim loại = vài sóng sin tỉ lệ PHI HÀI + decay mũ nhanh (như gõ thanh
-   thép). Lazy-init AudioContext trong cử chỉ chạm đầu tiên (trình duyệt bắt buộc).
-   Tắt/bật ở menu avatar, nhớ trong localStorage. */
-const SND={ctx:null,on:localStorage.getItem('otl_sound')!=='0'};
+/* ═══════════════ BỘ ÂM OTL — tổng hợp Web Audio, KHÔNG file ngoài ═══════════════
+   Ngôn ngữ âm thanh lấy từ CHÍNH CÁI MÁY, không phải tiếng "bíp" máy tính. Xưởng
+   ồn (burner + quạt hút), thợ đứng xa 1-2m, tay bận — tiếng phải NGẮN, ĐANH,
+   và nghe là biết chuyện gì mà không cần nhìn.
+
+   ── BA CHẤT LIỆU GỐC (primitive), đúng ba thứ có thật trong máy rang ──
+     ① THÉP   `_metal`  — gõ vào thành trống / cửa xả: sin phi hài + tắt mũ nhanh
+     ② HƠI LỬA `_air`   — gas phun + hơi ẩm thoát: nhiễu trắng qua bandpass quét
+     ③ NỔ HẠT `_crack`  — hạt nứt: chùm xung cực ngắn thưa, ngẫu nhiên
+     ④ THÂN TRỐNG `_body` — khối gang nặng: sin trầm tụt cao độ (dùng cho việc NẶNG)
+
+   ── TẦNG NGHĨA (semantic) ──  chạm · xác nhận · huỷ · báo động · mốc rang · nhịp
+   ── TẦNG SỰ KIỆN (component) ── bảng SFX/MILE_SND bên dưới ghép từ 4 chất liệu.
+
+   Quy ước cân bằng: tiếng chạm ~0.06-0.10 · mốc thường ~0.13-0.17 · mốc lớn &
+   báo động ~0.20-0.26. Càng quan trọng càng to VÀ càng khác chất, không chỉ to.
+   Lazy-init AudioContext trong cử chỉ chạm đầu tiên (trình duyệt bắt buộc). */
+const SND_DEF={on:true,mile:true,voice:true,alarm:true,tick:false,vol:0.85};
+const SND=Object.assign({ctx:null},SND_DEF,(()=>{
+  try{const j=JSON.parse(localStorage.getItem('otl_snd_cfg')||'null');if(j)return j;}catch(e){}
+  return {on:localStorage.getItem('otl_sound')!=='0'};   // di trú cờ cũ 1 lần
+})());
+function sndSave(){
+  try{
+    localStorage.setItem('otl_snd_cfg',JSON.stringify({on:SND.on,mile:SND.mile,
+      voice:SND.voice,alarm:SND.alarm,tick:SND.tick,vol:SND.vol}));
+    localStorage.setItem('otl_sound',SND.on?'1':'0');   // giữ cờ cũ cho bản trước
+  }catch(e){}
+}
 function _sndCtx(){
   try{
     if(!SND.ctx)SND.ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -6131,43 +6208,291 @@ function _sndCtx(){
   }catch(e){SND.ctx=null;}
   return SND.ctx;
 }
-/* một tiếng gõ kim loại: tổng sóng sin theo tỉ lệ tần số phi hài, biên giảm dần,
-   bọc trong envelope tấn công cực nhanh (4ms) + tắt mũ → nghe đanh, gọn, "leng keng" */
+/* ── BUS CHUNG: mọi tiếng đi qua đây → chỉnh âm lượng một chỗ, và bộ nén mềm
+   chặn vỡ tiếng khi nhiều lớp chồng nhau (mốc rang = thép + hơi + nổ cùng lúc). */
+function _bus(){
+  const c=_sndCtx();if(!c)return null;
+  if(!SND._bus){
+    const g=c.createGain();
+    const comp=c.createDynamicsCompressor();
+    try{comp.threshold.value=-14;comp.ratio.value=8;comp.attack.value=0.003;comp.release.value=0.14;}catch(e){}
+    g.connect(comp).connect(c.destination);
+    SND._bus=g;
+  }
+  SND._bus.gain.value=SND.vol;
+  return SND._bus;
+}
+/* nhiễu trắng dùng lại — nguồn cho hơi lửa & nổ hạt (tạo 1 lần, đỡ tốn CPU) */
+function _noiseBuf(){
+  const c=_sndCtx();if(!c)return null;
+  if(!SND._nb){
+    const n=Math.floor(c.sampleRate*1.2),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);
+    for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+    SND._nb=b;
+  }
+  return SND._nb;
+}
+/* envelope chung: tấn công nhanh rồi tắt mũ. atk nhỏ = đanh, atk lớn = phù/thổi */
+function _env(c,node,t,gain,dur,atk){
+  node.gain.setValueAtTime(0.0001,t);
+  node.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),t+(atk||0.004));
+  node.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+}
+
+/* ① THÉP — gõ vào thành trống: tổng sin theo tỉ lệ PHI HÀI (không phải bội số
+   nguyên) nên nghe ra kim loại chứ không ra nốt nhạc; tắt mũ nhanh = đanh, gọn. */
 function _metal(freq,dur,gain,ratios){
-  const c=_sndCtx();if(!c)return;
+  const c=_sndCtx(),bus=_bus();if(!c||!bus)return;
   const t=c.currentTime,out=c.createGain();
-  out.gain.setValueAtTime(0.0001,t);
-  out.gain.exponentialRampToValueAtTime(gain,t+0.004);
-  out.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  _env(c,out,t,gain,dur,0.004);
   const hp=c.createBiquadFilter();hp.type='highpass';hp.frequency.value=280; // bỏ ù trầm
-  out.connect(hp).connect(c.destination);
+  out.connect(hp).connect(bus);
   (ratios||[1,2.76,5.4,8.93]).forEach((r,i)=>{
     const o=c.createOscillator();o.type='sine';o.frequency.value=freq*r;
     const g=c.createGain();g.gain.value=1/(i+1.7);   // hài càng cao càng nhỏ
     o.connect(g).connect(out);o.start(t);o.stop(t+dur+0.02);
   });
 }
+/* ② HƠI LỬA — gas phun qua béc / hơi ẩm thoát khỏi hạt: nhiễu trắng qua bandpass
+   QUÉT tần số. Quét LÊN = phun ra/bốc lên, quét XUỐNG = lịm dần/tắt. */
+function _air(dur,gain,f0,f1,q){
+  const c=_sndCtx(),bus=_bus(),nb=_noiseBuf();if(!c||!bus||!nb)return;
+  const t=c.currentTime;
+  const s=c.createBufferSource();s.buffer=nb;s.loop=true;
+  const bp=c.createBiquadFilter();bp.type='bandpass';bp.Q.value=q||1.6;
+  bp.frequency.setValueAtTime(f0,t);
+  bp.frequency.exponentialRampToValueAtTime(Math.max(60,f1),t+dur);
+  const out=c.createGain();
+  _env(c,out,t,gain,dur,Math.min(0.05,dur*0.25));   // tấn công mềm = tiếng thổi, không phải gõ
+  s.connect(bp).connect(out).connect(bus);
+  s.start(t);s.stop(t+dur+0.02);
+}
+/* ③ NỔ HẠT — tiếng crack thật: chùm xung CỰC NGẮN, thưa, ngẫu nhiên cả về thời
+   điểm lẫn độ to. Đây là thứ tai thợ đã quen nghe trong trống, nên nhận ra ngay. */
+function _crack(dur,gain,n,lo){
+  const c=_sndCtx(),bus=_bus(),nb=_noiseBuf();if(!c||!bus||!nb)return;
+  const t0=c.currentTime;
+  for(let i=0;i<n;i++){
+    const t=t0+Math.random()*dur, d=0.006+Math.random()*0.014;
+    const s=c.createBufferSource();s.buffer=nb;
+    s.playbackRate.value=0.8+Math.random()*0.6;
+    const hp=c.createBiquadFilter();hp.type='highpass';
+    hp.frequency.value=(lo||1400)*(0.8+Math.random()*0.9);
+    const g=c.createGain();
+    const v=gain*(0.45+Math.random()*0.55);
+    g.gain.setValueAtTime(Math.max(0.0002,v),t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    s.connect(hp).connect(g).connect(bus);
+    s.start(t);s.stop(t+d+0.01);
+  }
+}
+/* ④ THÂN TRỐNG — khối gang nặng: sin trầm TỤT cao độ, qua lowpass. Dùng cho việc
+   NẶNG (xả mẻ, huỷ, nguy) — tai người đọc "tụt cao độ" = kết thúc/đi xuống. */
+function _body(f0,f1,dur,gain){
+  const c=_sndCtx(),bus=_bus();if(!c||!bus)return;
+  const t=c.currentTime,o=c.createOscillator();o.type='sine';
+  o.frequency.setValueAtTime(f0,t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(30,f1),t+dur);
+  const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;
+  const out=c.createGain();
+  _env(c,out,t,gain,dur,0.006);
+  o.connect(lp).connect(out).connect(bus);
+  o.start(t);o.stop(t+dur+0.02);
+}
+
+/* ══ TẦNG SỰ KIỆN — mỗi tiếng là một CÔNG THỨC ghép từ 4 chất liệu trên ══
+   Đọc như đơn pha: [chất liệu, độ trễ ms, tham số…]. Sửa cảm giác thì sửa ở đây,
+   KHÔNG sửa hàm chất liệu (giữ 4 hàm gốc sạch để mọi tiếng cùng một "chất"). */
+const SFX={
+  // ── chạm nút: phải RẤT nhẹ, nghe 60 lần/ngày mà không phát bực ──
+  tap:     [['metal',0,1350,0.065,0.075,[1,2.76,5.2]]],
+  // xác nhận: hai nốt thép ĐI LÊN + hơi lửa mỏng phía sau = "máy nhận lệnh rồi"
+  confirm: [['metal',0,700,0.10,0.11,[1,2.01,3.0]],
+            ['metal',80,1050,0.13,0.15,[1,2.01,3.0,4.7]],
+            ['air',40,0.10,0.030,1800,3200,2.2]],
+  // huỷ / nguy: thép trầm + thân trống tụt xuống = "đóng lại, đi xuống"
+  warn:    [['metal',0,190,0.13,0.17,[1,1.5,2.42,3.35]],
+            ['body',30,180,90,0.30,0.14]],
+  // đánh lửa: TIC đá lửa rồi HƠI GAS bùng lên — đúng thứ tự tai nghe ngoài máy
+  ignite:  [['metal',0,2100,0.09,0.05,[1,3.1]],
+            ['air',60,0.34,0.13,420,1500,1.1],
+            ['air',120,0.30,0.075,1600,700,1.8]],
+  // nạp hạt: hơi quét XUỐNG (hạt trút vào) + thép cửa nạp
+  charge:  [['air',0,0.28,0.11,2600,600,1.3],
+            ['metal',150,520,0.12,0.14,[1,2.4,3.9]]],
+};
+/* phát một công thức. Chốt TẮT TỔNG đặt ở ĐÂY — mọi tiếng ghép đều đi qua hàm này,
+   để chỗ khác dễ quên (mốc rang từng lọt lưới: tắt tiếng rồi vẫn kêu). */
+function _play(recipe){
+  if(!SND.on||!recipe)return;
+  recipe.forEach(p=>{
+    const kind=p[0],delay=p[1]||0,a=p.slice(2);
+    setTimeout(()=>{
+      if(kind==='metal')_metal(a[0],a[1],a[2],a[3]);
+      else if(kind==='air')_air(a[0],a[1],a[2],a[3],a[4]);
+      else if(kind==='crack')_crack(a[0],a[1],a[2],a[3]);
+      else if(kind==='body')_body(a[0],a[1],a[2],a[3]);
+    },delay);
+  });
+}
 function snd(kind){
   if(!SND.on)return;
-  if(kind==='confirm')_metal(680,0.32,0.15,[1,2.01,3.0,4.7]);   // "ding" sáng — lưu/bắt đầu
-  else if(kind==='warn')_metal(150,0.30,0.16,[1,1.5,2.42,3.35]); // "thunk" trầm — huỷ/nguy
-  else _metal(1200,0.10,0.085,[1,2.76,5.2]);                     // "tick" gọn — mặc định
+  _play(SFX[kind]||SFX.tap);
 }
+/* ══════ GĐ5 — RANG KHÔNG CẦN NHÌN MÀN (tai thay mắt) ══════
+   Mắt thợ ở TRỐNG, không ở màn hình. Mốc rang phát TIẾNG RIÊNG + đọc thành
+   lời, nên đang canh crack không phải liếc màn. Xem docs/plan/plan-nangcap-gd5-gd8.md */
+
+/* ══ ÂM 5 MỐC RANG — mỗi mốc KỂ ĐÚNG chuyện đang xảy ra trong trống ══
+   Không phải 5 tiếng bíp cao thấp khác nhau, mà 5 CHẤT khác nhau — tai phân biệt
+   chất liệu tốt hơn nhiều so với phân biệt cao độ, nhất là trong xưởng ồn.
+
+   TP  quay đầu   — hạt hết hút nhiệt, BT bật lên: thép ĐI LÊN, nhẹ, gọn.
+   DE  khô vàng   — ẩm thoát ra thành hơi: HƠI LỬA quét lên + thép ấm. Chất "hơi"
+                    chỉ dùng ở đây và ở lửa, nên nghe hơi là biết "nước đang bay".
+   FCs crack đầu  — MỐC QUAN TRỌNG NHẤT: dùng chính tiếng NỔ HẠT + chuông thép
+                    sáng. Đây là tiếng thợ đã quen nghe trong trống → nhận ra ngay.
+   DEV phát triển — giai đoạn êm, không được giật mình: một nốt thép dịu, trầm hơn.
+   DROP xả mẻ     — việc NẶNG: thép ĐI XUỐNG + hơi trút + thân trống gang trầm dài.
+                    Đi xuống & nặng = kết thúc; không thể lẫn với FCs (nổ & sáng). */
+const MILE_SND={
+  TP:  [['metal',0,520,0.18,0.12,[1,2.4,3.9]],
+        ['metal',105,790,0.28,0.145,[1,2.4,3.9]]],
+  DE:  [['air',0,0.42,0.105,700,2600,1.5],
+        ['metal',90,660,0.34,0.135,[1,2.4,3.9]]],
+  FCs: [['crack',0,0.30,0.22,7,1500],
+        ['metal',40,1180,0.16,0.15,[1,2.01,3.0]],
+        ['metal',190,1620,0.46,0.175,[1,2.01,3.0,4.7]]],
+  DEV: [['metal',0,560,0.30,0.105,[1,2.01,3.0]]],
+  DROP:[['metal',0,1050,0.18,0.15,[1,2.01,3.0]],
+        ['metal',140,700,0.20,0.155,[1,2.01,3.0]],
+        ['air',210,0.34,0.10,2400,500,1.2],
+        ['body',260,220,80,0.62,0.20]],
+};
+const MILE_SAY={TP:'Quay đầu',DE:'Khô vàng',FCs:'Crack đầu',DEV:'Phát triển',DROP:'Xả mẻ'};
+
+/* ── Giọng nói tiếng Việt (Web Speech, không file) ──
+   Windows có thể KHÔNG cài giọng vi-VN → nói bằng giọng mặc định vẫn hiểu
+   được, và tiếng gõ mốc ở trên đã đủ báo. Không có API thì im lặng bỏ qua. */
+let _voice=null,_voiceReady=false;
+function _pickVoice(){
+  try{
+    const vs=window.speechSynthesis.getVoices()||[];
+    if(!vs.length)return null;            // chưa nạp xong, lần sau thử lại
+    _voiceReady=true;
+    _voice=vs.find(v=>/^vi/i.test(v.lang))||null;
+  }catch(e){_voiceReady=true;}
+  return _voice;
+}
+function say(text){
+  if(!SND.on||!SND.voice||!text)return;
+  try{
+    if(!('speechSynthesis' in window))return;
+    if(!_voiceReady)_pickVoice();
+    const u=new SpeechSynthesisUtterance(text);
+    if(_voice)u.voice=_voice;
+    u.lang=_voice?_voice.lang:'vi-VN';
+    u.volume=Math.min(1,SND.vol);u.rate=1.05;
+    window.speechSynthesis.cancel();      // đang rang: tin mới đè tin cũ, đừng xếp hàng
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+try{ if('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged=_pickVoice; }catch(e){}
+
+/* ── Chuông báo động: PHẢI khác hẳn mọi tiếng thường ──
+   Quãng ba cung (tritone) nghịch tai + lặp 3 lần, trầm và gắt — nghe là giật
+   mình quay lại máy, không thể lẫn với tiếng chạm nút hay tiếng mốc. */
+function sndAlarm(){
+  if(!SND.on||!SND.alarm)return;
+  const R2=[1,1.41,1.98];              // quãng ba cung — tai người thấy "sai", không chịu bỏ qua
+  for(let i=0;i<3;i++)setTimeout(()=>{
+    _metal(300,0.16,0.22,R2);
+    setTimeout(()=>_metal(212,0.22,0.22,R2),95);
+  },i*380);
+  _body(150,70,0.7,0.12);              // nền gang trầm chạy dưới — nghe thấy cả khi quạt hút gào
+}
+
+/* ── Nhịp "tim" theo RoR — nghe nhanh/chậm là biết RoR lên/xuống, khỏi nhìn số.
+   Mặc định TẮT (không phải ai cũng chịu được tiếng nền suốt mẻ). ── */
+let _tickTmr=null;
+function rorTickLoop(){
+  clearTimeout(_tickTmr);_tickTmr=null;
+  if(!SND.on||!SND.tick||R.phase!=='RUNNING')return;
+  let ror=0;
+  try{ ror=(dsLive()&&DS.snap)?DS.snap.ror_bt:(SERIES.ror.length?SERIES.ror[SERIES.ror.length-1]:0); }catch(e){}
+  // 0°C/phút → 2.4s (thong thả) · ≥20°C/phút → 0.45s (dồn dập)
+  const iv=Math.max(450,Math.min(2400,2400-(Math.max(0,ror)/20)*1950));
+  _metal(1500,0.05,0.05,[1,2.4]);      // rất khẽ: chạy nền suốt mẻ, to là phát điên
+  _tickTmr=setTimeout(rorTickLoop,iv);
+}
+
+/* ── Canh mốc: mốc nào VỪA đạt thì kêu + đọc. Đọc R.mileT nên đúng cho CẢ hai
+   nguồn (máy thật qua machSample, và ngưỡng nhiệt qua chkAutoMiles). ── */
+const MW={said:{},cd:0};
+function mileWatchReset(){MW.said={};MW.cd=0;}
+function mileWatch(){
+  if(R.phase!=='RUNNING')return;
+  for(const id in R.mileT){
+    if(R.mileT[id]==null||MW.said[id])continue;
+    MW.said[id]=1;
+    if(SND.mile)_play(MILE_SND[id]||MILE_SND.DEV);
+    say(MILE_SAY[id]||id);
+  }
+  // Đếm ngược tới XẢ — mốc duy nhất đáng giục (lỡ 10 giây là hỏng mẻ)
+  const dp=MILES.find(m=>m.id==='DROP');
+  if(dp&&R.mileT.DROP==null){
+    const left=dp.s-R.elapsed;
+    if((left===60||left===30||left===10)&&MW.cd!==left){MW.cd=left;say('Còn '+left+' giây');}
+  }
+}
+
 function soundToggle(ev){
   if(ev)ev.stopPropagation();
-  SND.on=!SND.on;localStorage.setItem('otl_sound',SND.on?'1':'0');
+  SND.on=!SND.on;sndSave();
   sndSyncLabel();
-  if(SND.on)snd('confirm');           // nghe thử ngay khi bật
+  if(SND.on){snd('confirm');rorTickLoop();}
+  else{clearTimeout(_tickTmr);_tickTmr=null;try{window.speechSynthesis.cancel();}catch(e){}}
+}
+function sndChan(k,ev){                    // bật/tắt riêng từng loại tiếng
+  if(ev)ev.stopPropagation();
+  SND[k]=!SND[k];sndSave();sndSyncLabel();
+  if(!SND.on)return;
+  if(k==='tick')rorTickLoop();
+  else if(SND[k]){                          // bật loại nào thì nghe thử ngay loại đó
+    if(k==='mile')_play(MILE_SND.FCs);
+    else if(k==='alarm')sndAlarm();
+    else if(k==='voice')say('Crack đầu');
+  }
+}
+function sndVol(dir,ev){
+  if(ev)ev.stopPropagation();
+  SND.vol=Math.max(0,Math.min(1,Math.round((SND.vol+dir*0.15)*100)/100));
+  sndSave();sndSyncLabel();
+  if(SND.on)snd('tap');
 }
 function sndSyncLabel(){
   const el=document.getElementById('sndTog');
   if(el){el.textContent=SND.on?'BẬT':'TẮT';el.classList.toggle('on',SND.on);}
+  ['mile','voice','alarm','tick'].forEach(k=>{
+    const t=document.getElementById('sndT_'+k);
+    if(t){t.textContent=SND[k]?'BẬT':'TẮT';t.classList.toggle('on',!!SND[k]);}
+  });
+  const v=document.getElementById('sndVolV');
+  if(v)v.textContent=Math.round(SND.vol*100)+'%';
+  const p=document.getElementById('sndPanel');
+  if(p){
+    p.classList.toggle('off',!SND.on);
+    // Tắt tổng thì các nút con phải DISABLED thật, không chỉ mờ đi: mờ + pointer-events
+    // vẫn cho tab tới được → bấm phím Enter vào nút "chết" (lỗi a11y).
+    p.querySelectorAll('button').forEach(b=>{b.disabled=!SND.on;});
+  }
 }
 /* Uỷ quyền click TOÀN CỤC (capture) — chạm bất kỳ nút tương tác nào cũng kêu, phân
    loại theo class. Capture để phát tiếng kể cả khi onclick nút đó chặn propagation. */
 document.addEventListener('click',ev=>{
   const b=ev.target.closest('button, .tbtn, .padkey, .sw, .pkopt, .pick, .modebtn, .mchip, .utile');
-  if(!b||b.disabled||b.id==='sndRow'||b.classList.contains('wtog'))return; // 2 nút này tự phát riêng
+  // sndRow/.wtog/.sndsub tự phát tiếng riêng (nghe thử loại vừa bật) — đừng chồng tiếng tap
+  if(!b||b.disabled||b.id==='sndRow'||b.classList.contains('wtog')||b.classList.contains('sndsub'))return;
   let kind='tap';
   if(b.matches('.primary, .addprof, .bigbtn.primary'))kind='confirm';
   else if(b.matches('.danger, .khodanger'))kind='warn';
