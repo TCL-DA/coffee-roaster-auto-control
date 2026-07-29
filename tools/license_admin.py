@@ -20,6 +20,14 @@ import json
 import os
 import sys
 
+# Console Windows mặc định cp1252 -> print tiếng Việt sẽ nổ UnicodeEncodeError.
+# Ép UTF-8 cho stdout/stderr để lệnh init/sign in tên xưởng có dấu an toàn.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ed25519_tiny                                            # noqa: E402
 import license_otl                                            # noqa: E402

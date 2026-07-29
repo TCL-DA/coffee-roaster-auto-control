@@ -27,7 +27,7 @@ import ed25519_tiny                                            # noqa: E402
 
 # Khoá công khai của OTL (hex 64 ký tự). RỖNG = chưa phát hành khoá → verify
 # luôn False (chỉ có ý nghĩa khi bật cưỡng chế). Sinh khoá: license_admin.py init
-PUBLIC_KEY_HEX = ""
+PUBLIC_KEY_HEX = "22adb18a126b1dfea89ac2894db13bc30d4405c3da145d6b9ba6c4d2d018dfc1"
 
 LIC_NAME = "otl.lic"
 
