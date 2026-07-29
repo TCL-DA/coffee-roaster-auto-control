@@ -271,6 +271,53 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .napcard .nmeta{display:flex;gap:28px;margin:14px 0 6px}
 .napcard .nmeta .k{font-size:var(--fs-14);color:var(--mute);text-transform:uppercase;letter-spacing:1px}
 .napcard .nmeta .v{font-family:var(--f-num);font-weight:700;font-size:var(--fs-26)}
+/* ══ NÚT ĐÁNH LỬA (cột phải, trên cụm Burner) — 4 trạng thái nhìn phát biết ══
+   .cold  xám tro, quầng mờ   → chưa có lửa, chưa mồi
+   .lit   xanh dương          → đang mồi, chờ bắt lửa
+   .slow  vàng thở (breath)   → mồi quá 60s vẫn chưa bắt — thợ phải ngó
+   .fire  đỏ toả nhiệt        → đã có lửa                                     */
+.ignitebtn{flex:none;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:4px 14px;padding:10px 16px;border-radius:var(--r-md);border:1px solid var(--hair-2);
+  cursor:pointer;background:var(--glass);backdrop-filter:blur(6px);
+  transition:background .3s var(--ease),border-color .3s var(--ease),
+  box-shadow .3s var(--ease),color .3s var(--ease)}
+.ignitebtn:active{transform:scale(.98)}
+.ignitebtn .ig-ic{width:34px;height:34px}
+.ignitebtn .ig-t{font-size:var(--fs-22);font-weight:800;letter-spacing:1px}
+/* trạng thái xuống dòng riêng cho gọn chiều cao — cột phải rất chật */
+.ignitebtn .ig-s{flex-basis:100%;text-align:center;font-size:var(--fs-14);color:var(--mute);
+  text-transform:uppercase;letter-spacing:1px}
+/* chưa lửa — tro nguội, quầng xám mờ */
+.ignitebtn.cold{color:var(--mute);box-shadow:0 0 26px rgba(120,130,140,.20) inset,0 4px 14px rgba(0,0,0,.10)}
+.ignitebtn.cold .ig-ic{opacity:.55;filter:blur(.4px) grayscale(1)}
+/* đang mồi — xanh dương */
+.ignitebtn.lit{color:#2563eb;border-color:#2563eb;
+  background:color-mix(in srgb,#2563eb 14%,var(--glass));
+  box-shadow:0 0 30px rgba(37,99,235,.40),0 0 42px rgba(37,99,235,.22) inset}
+.ignitebtn.lit .ig-s{color:#2563eb}
+/* mồi hoài không bắt — vàng THỞ nhẹ, không chớp giật */
+.ignitebtn.slow{color:#b8860b;border-color:var(--warn);
+  background:color-mix(in srgb,var(--warn) 16%,var(--glass));animation:igBreath 2.2s ease-in-out infinite}
+.ignitebtn.slow .ig-s{color:#b8860b}
+@keyframes igBreath{
+  0%,100%{box-shadow:0 0 16px rgba(217,168,26,.28),0 0 20px rgba(217,168,26,.14) inset}
+  50%    {box-shadow:0 0 40px rgba(217,168,26,.66),0 0 52px rgba(217,168,26,.34) inset}}
+/* có lửa — đỏ toả nhiệt, hơi phập phồng như ngọn lửa */
+.ignitebtn.fire{color:#c62828;border-color:#e53935;
+  background:color-mix(in srgb,#e53935 15%,var(--glass));animation:igHeat 3s ease-in-out infinite}
+.ignitebtn.fire .ig-s{color:#c62828}
+.ignitebtn.fire .ig-ic{filter:drop-shadow(0 0 8px rgba(229,57,53,.75))}
+@keyframes igHeat{
+  0%,100%{box-shadow:0 0 30px rgba(229,57,53,.45),0 0 40px rgba(229,57,53,.24) inset}
+  50%    {box-shadow:0 0 46px rgba(229,57,53,.62),0 0 58px rgba(229,57,53,.34) inset}}
+@media (prefers-reduced-motion:reduce){.ignitebtn.slow,.ignitebtn.fire{animation:none}}
+/* ── ghim / thu gọn dải thiết bị phụ ── */
+.devpin{flex:none;width:64px;border:1px dashed var(--hair-2);border-radius:var(--r-sm);
+  background:transparent;cursor:pointer;font-size:var(--fs-22);opacity:.6}
+.devpin:active{transform:scale(.94)}
+.devexp{width:100%;padding:10px;margin-bottom:10px;border:1px dashed var(--hair-2);
+  border-radius:var(--r-sm);background:var(--glass);color:var(--dim);
+  font-size:var(--fs-16);font-weight:700;cursor:pointer}
 /* Bảng thông số mẻ trên màn chờ (Bước F) */
 .ri-plan{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:600px}
 .rp-c{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 13px;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md)}
@@ -1725,6 +1772,15 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
               <div class="vl"></div>
               <div class="col"><div class="cap" data-i18n="rang.time">Thời gian</div><div class="v num" id="rangClock" style="font-size:74px;color:var(--txt)">00:00</div></div>
             </div></div>
+            <!-- ĐÁNH LỬA — nằm ngay trên cụm Burner: thao tác lửa cùng chỗ với gas.
+                 4 trạng thái nhìn phát biết (xem .ignitebtn trong CSS):
+                 xám tro = chưa lửa · xanh = đang mồi · vàng thở = mồi quá 60s chưa
+                 bắt · đỏ toả nhiệt = đã có lửa. -->
+            <button class="ignitebtn" id="btnIgnite" onclick="cmdIgnite(event)">
+              <svg class="ig-ic ot" aria-hidden="true"><use href="#i-ignite"/></svg>
+              <span class="ig-t" data-i18n="tb.ignite">Đánh lửa</span>
+              <span class="ig-s" id="igniteState">chưa có lửa</span>
+            </button>
             <div class="rcard outcard">
               <div class="outrow burner">
                 <button class="pm" data-out="burner" data-d="-1" onclick="stepOut(this)">−</button>
@@ -1758,8 +1814,10 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           </div>
         </div>
 
-        <!-- Dải thiết bị phụ (bật/tắt) -->
-        <div class="devstrip detail-only">
+        <!-- Dải thiết bị phụ (bật/tắt). GHIM/THU GỌN được: khách ít đụng tới nên
+             thu gọn cho màn rang thoáng, cần thì bung ra lại. Nhớ ở localStorage. -->
+        <button class="devexp detail-only" id="devExpand" onclick="setDevPin(1)" style="display:none">▾ Thiết bị phụ</button>
+        <div class="devstrip detail-only" id="devstrip">
           <button class="devbtn" id="btnDrumFan" data-dev="drumfan" onclick="cmdDev('drumfan',this)"><svg class="devico ot"><use href="#i-drumfan"/></svg><span>Drum-Fan</span></button>
           <button class="devbtn" id="btnMixer" data-dev="mixer" onclick="cmdDev('mixer',this)"><svg class="devico ot"><use href="#i-mixer"/></svg><span>Mixer</span></button>
           <button class="devbtn" id="btnCool" data-dev="cooling" onclick="cmdCool(event)"><svg class="devico ot"><use href="#i-cool"/></svg><span>Cooling</span></button>
@@ -1767,19 +1825,20 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <button class="devbtn" id="btnLoader" data-dev="loader" onclick="cmdDev('loader',this)"><svg class="devico ot"><use href="#i-loader"/></svg><span>Loader</span></button>
           <button class="devbtn" id="btnScale" onclick="openScale()"><svg class="devico ot"><use href="#i-loader"/></svg><span id="scaleBtnLbl">Cân</span></button>
           <button class="devbtn" id="btnDestoner" data-dev="destoner" onclick="cmdDev('destoner',this)"><svg class="devico ot"><use href="#i-destoner"/></svg><span>Destoner</span></button>
+          <button class="devpin" id="devPin" onclick="setDevPin(0)" title="Thu gọn dải thiết bị">📌</button>
         </div>
 
         <!-- Toolbar dưới -->
+        <!-- Thanh công cụ: chỉ còn LỆNH MÁY. Đánh lửa đã dời lên cạnh cụm Burner;
+             nút "Hồ sơ" bỏ (trùng tab Hồ sơ trên nav); "Đổi view" chuyển vào Cài đặt
+             vì phải xét quyền tài khoản. Loop + Prof No. chỉ hiện ở chế độ TỰ ĐỘNG. -->
         <div class="toolbar">
-          <button class="tbtn" id="btnIgnite" onclick="cmdIgnite(event)"><svg class="ti ot" aria-hidden="true"><use href="#i-ignite"/></svg><span data-i18n="tb.ignite">Đánh lửa</span></button>
           <button class="tbtn" id="btnCharge" onclick="cmdCharge()"><svg class="ti ot" aria-hidden="true"><use href="#i-charge"/></svg><span data-i18n="tb.charge">Nạp hạt</span></button>
           <button class="tbtn" id="btnEscape" onclick="cmdEscape()"><svg class="ti ot" aria-hidden="true"><use href="#i-escape"/></svg><span data-i18n="tb.eject">Xả liệu</span></button>
           <button class="tbtn" id="pauseBtn" onclick="togglePause()"><svg class="ti ot" aria-hidden="true"><use href="#i-pause"/></svg><span data-i18n="tb.pause">Tạm dừng</span></button>
           <button class="tbtn warn" id="btnDrop" onclick="cmdDrop()"><svg class="ti ot" aria-hidden="true"><use href="#i-drop"/></svg><span data-i18n="tb.drop">Kết thúc mẻ</span></button>
-          <button class="tbtn dis" id="loopBtn" title="Chỉ dùng ở chế độ AUTO"><svg class="ti ot" aria-hidden="true"><use href="#i-loop"/></svg>Loop</button>
-          <button class="tbtn"><span class="ti pfn num" id="tbPfn">2</span><span data-i18n="tb.prof">Prof No.</span></button>
-          <button class="tbtn" onclick="gotoTab('hoso')"><svg class="ti ot" aria-hidden="true"><use href="#i-trend"/></svg><span data-i18n="tb.profile">Hồ sơ</span></button>
-          <button class="tbtn go" onclick="toggleView()"><svg class="ti ot" aria-hidden="true"><use href="#i-view"/></svg><span data-i18n="tb.view">Đổi view</span></button>
+          <button class="tbtn dis" id="loopBtn" title="Chỉ dùng ở chế độ TỰ ĐỘNG"><svg class="ti ot" aria-hidden="true"><use href="#i-loop"/></svg>Loop</button>
+          <button class="tbtn" id="profNoBtn"><span class="ti pfn num" id="tbPfn">2</span><span data-i18n="tb.prof">Prof No.</span></button>
         </div>
       </section>
 
@@ -2036,6 +2095,14 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                     <div class="permchk" data-dev-en="afterburner"><span class="bx">✓</span>Afterburner</div>
                     <div class="permchk" data-dev-en="loader"><span class="bx">✓</span>Loader</div>
                     <div class="permchk" data-dev-en="destoner"><span class="bx">✓</span>Destoner</div>
+                  </div>
+                  <!-- Kiểu hiển thị màn Rang — dời từ nút "Đổi view" ở thanh công cụ
+                       vào đây vì phải xét quyền tài khoản (Master / expert / production) -->
+                  <div class="section-t">Màn Rang</div>
+                  <div class="frow"><label>Kiểu hiển thị <span class="q" title="Chi tiết: đồ thị + số đầy đủ (cần quyền Chuyên gia). Đơn giản: 3 thẻ pha to (cần quyền Sản xuất). Master dùng được cả hai.">?</span></label>
+                    <div class="pick" data-cfg="ui_view" data-label="Kiểu hiển thị" onclick="pickView(this)"><span class="pv">Chi tiết</span><span class="car">▾</span></div></div>
+                  <div class="permrow" id="uiEnRow" style="grid-column:1/-1">
+                    <div class="permchk" data-ui-en="loopprof"><span class="bx">✓</span>Hiện Loop &amp; Prof No. (chỉ ở chế độ TỰ ĐỘNG)</div>
                   </div>
                   <div class="section-t">Trục biểu đồ</div>
                   <div class="frow"><label>Chế độ trục <span class="q" title="Tự động: khớp theo mẻ rang. Cố định: dùng min/max bên dưới.">?</span></label>
@@ -4155,6 +4222,7 @@ function syncModeBtn(){
   if(s)s.textContent=auto?('nền: '+(AUTO.srcName||'—')):(AUTO.plan?'':'chưa có mẻ nền');
   document.querySelectorAll('.outrow .pm').forEach(p=>p.classList.toggle('dis',auto));
   const lb=document.getElementById('loopBtn');if(lb)lb.classList.toggle('dis',!auto);
+  applyUiVis();     // Loop & Prof No. chỉ hiện ở chế độ TỰ ĐỘNG
 }
 function toggleMode(){
   if(R.mode==='AUTO'){                              // TỰ ĐỘNG → THƯỜNG: trả tay cho thợ
@@ -4210,8 +4278,78 @@ function autoTick(d){
   if(!fl.flame&&g>d.gas)g=d.gas;                     // chưa có lửa → không đổ gas sống
   autoSet('gas',g,d.gas);
 }
-function toggleView(){R.view=R.view==='detail'?'simple':'detail';
-  document.getElementById('pane-rang').classList.toggle('simple',R.view==='simple');drawChart();}
+/* ══ KIỂU HIỂN THỊ MÀN RANG — theo QUYỀN tài khoản ══════════════════════════
+   Nút "Đổi view" ở thanh công cụ đã bỏ; đổi trong Cài đặt → Model nhiệt → Màn Rang.
+     • Master              — dùng được cả hai kiểu
+     • quyền "Chuyên gia"  (view_expert)     — kiểu CHI TIẾT (đồ thị + số đầy đủ)
+     • quyền "Sản xuất"    (view_production) — kiểu ĐƠN GIẢN (3 thẻ pha to)
+   Không có quyền nào → không đổi được, giữ nguyên kiểu đang dùng. */
+function canView(mode){
+  if(!session)return false;
+  if(session.role==='master')return true;
+  const p=session.perms||{};
+  return mode==='detail'?!!p.view_expert:!!p.view_production;
+}
+function applyView(){
+  document.getElementById('pane-rang').classList.toggle('simple',R.view==='simple');
+  drawChart();
+}
+function setView(mode,quiet){
+  if(mode!=='detail'&&mode!=='simple')return false;
+  if(!canView(mode)){
+    if(!quiet)toast(mode==='detail'?'Cần quyền Chuyên gia mới xem kiểu Chi tiết'
+                                   :'Cần quyền Sản xuất mới xem kiểu Đơn giản');
+    return false;
+  }
+  R.view=mode;applyView();
+  if(!quiet)opLog('THAO TÁC','đổi kiểu hiển thị → '+(mode==='detail'?'Chi tiết':'Đơn giản'));
+  return true;
+}
+/* Ô chọn kiểu hiển thị trong Cài đặt — chỉ liệt kê kiểu tài khoản được phép */
+function pickView(el){
+  const opts=[];
+  if(canView('detail'))opts.push('Chi tiết');
+  if(canView('simple'))opts.push('Đơn giản');
+  if(!opts.length){toast('Tài khoản chưa được cấp quyền đổi kiểu hiển thị');return;}
+  openPick(el,opts);
+}
+/* Áp kiểu hiển thị + hiện/ẩn Loop & Prof No. theo cài đặt và chế độ rang.
+   Loop/Prof CHỈ có nghĩa ở chế độ TỰ ĐỘNG nên chế độ THƯỜNG là ẩn hẳn. */
+function applyUiVis(){
+  const on=String(CFG.ui_loopprof||'1')==='1' && R.mode==='AUTO';
+  ['loopBtn','profNoBtn'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=on?'':'none';});
+}
+/* Ghim / thu gọn dải thiết bị phụ — sở thích từng máy trạm nên để localStorage */
+function setDevPin(v){
+  localStorage.setItem('otl_devpin',v?'1':'0');
+  applyDevPin();
+  opLog('THAO TÁC','dải thiết bị phụ: '+(v?'ghim':'thu gọn'));
+}
+function applyDevPin(){
+  const pinned=localStorage.getItem('otl_devpin')!=='0';
+  const strip=document.getElementById('devstrip'), exp=document.getElementById('devExpand');
+  if(strip)strip.style.display=pinned?'':'none';
+  if(exp)exp.style.display=pinned?'none':'';
+}
+/* ══ TRẠNG THÁI NÚT ĐÁNH LỬA ═══════════════════════════════════════════════
+   cold → lit → (quá 60s chưa bắt) slow → fire. Mốc 60s bám chốt mồi-hụt của
+   firmware (PCL_FLAME_TMO_S = 75s tự đóng gas) — báo cho thợ TRƯỚC khi máy tự cắt. */
+const IGNITE_SLOW_S=60;
+function updateIgniteBtn(){
+  const b=document.getElementById('btnIgnite');if(!b)return;
+  const flame=flagShow('flame'), lit=flagShow('ignite');
+  if(lit&&!R._igniteAt)R._igniteAt=Date.now();
+  if(!lit)R._igniteAt=0;
+  let cls='cold', txt='chưa có lửa';
+  if(flame){cls='fire';txt='đang cháy';}
+  else if(lit){
+    const s=R._igniteAt?(Date.now()-R._igniteAt)/1000:0;
+    if(s>IGNITE_SLOW_S){cls='slow';txt=`mồi ${Math.round(s)}s — chưa bắt lửa`;}
+    else{cls='lit';txt='đang mồi…';}
+  }
+  b.classList.remove('cold','lit','slow','fire');b.classList.add(cls);
+  const s=document.getElementById('igniteState');if(s)s.textContent=txt;
+}
 const DEV={};   // trạng thái thiết bị phụ (chỉ dùng cho demo trình duyệt)
 function toggleDev(btn){const d=btn.dataset.dev;DEV[d]=!btn.classList.contains('on');btn.classList.toggle('on',DEV[d]);}
 /* Thiết bị phụ: nối máy → lệnh THẬT qua PC_Link (toggle theo cờ máy); demo → toggle giả */
@@ -4875,6 +5013,7 @@ function mileDeg(m){
 }
 function updateRoastLive(){
   renderChargeRow();   // dòng "Nạp hạt tại …°C" ở màn chờ luôn theo R.chargeT
+  updateIgniteBtn();   // nút đánh lửa: tro / xanh / vàng thở / đỏ toả nhiệt
   const started=(R.phase==='RUNNING'||R.phase==='DONE');   // đã bắt đầu mẻ?
   // đồng hồ thời gian mẻ
   txt('rangClock', started?fmtMMSS(R.elapsed):'00:00');
@@ -5119,9 +5258,10 @@ function pushAudit(action,field,ov,nv){
   localStorage.setItem(LS_AUDIT,JSON.stringify(a.slice(0,500)));}
 
 /* ── config ── */
-const CFG_FIELDS={ketnoi:['cn_artisan','cn_bt','cn_baud','cn_rpm50'],calib:['cg_db_pre','cg_db_fcs','cg_step','cg_period','cg_cap'],model:['mn_preset','mn_gasbal','mn_sens','mn_loss','ch_auto','ch_tmax','ch_rmax','ch_time']};
+const CFG_FIELDS={ketnoi:['cn_artisan','cn_bt','cn_baud','cn_rpm50'],calib:['cg_db_pre','cg_db_fcs','cg_step','cg_period','cg_cap'],model:['mn_preset','mn_gasbal','mn_sens','mn_loss','ch_auto','ch_tmax','ch_rmax','ch_time','ui_view']};
 const CFG_DEFAULT={cn_artisan:'COM3',cn_bt:'COM5',cn_baud:'38400',cn_rpm50:'71',
-  dv_drumfan:'1',dv_mixer:'1',dv_cooling:'1',dv_afterburner:'1',dv_loader:'1',dv_destoner:'1',cg_db_pre:'1.0',cg_db_fcs:'0.6',cg_step:'5',cg_period:'10',cg_cap:'10',mn_preset:'Cacao 30kg (anh Hiếu)',mn_gasbal:'22',mn_sens:'1.0',mn_loss:'0.35',ch_auto:'Tự động',ch_tmax:'300',ch_rmax:'40',ch_time:'15'};
+  dv_drumfan:'1',dv_mixer:'1',dv_cooling:'1',dv_afterburner:'1',dv_loader:'1',dv_destoner:'1',cg_db_pre:'1.0',cg_db_fcs:'0.6',cg_step:'5',cg_period:'10',cg_cap:'10',mn_preset:'Cacao 30kg (anh Hiếu)',mn_gasbal:'22',mn_sens:'1.0',mn_loss:'0.35',ch_auto:'Tự động',ch_tmax:'300',ch_rmax:'40',ch_time:'15',
+  ui_view:'Chi tiết',ui_loopprof:'1'};
 let CFG={};       // giá trị đã lưu
 let CFG_EDIT={};  // giá trị đang sửa (chưa lưu)
 function loadCfg(){try{return Object.assign({},CFG_DEFAULT,JSON.parse(localStorage.getItem(LS_CFG))||{});}catch(e){return Object.assign({},CFG_DEFAULT);}}
@@ -5162,6 +5302,13 @@ function renderConfigUI(){
     c.classList.toggle('on',String(CFG_EDIT[k]||'1')==='1');
     c.onclick=()=>{CFG_EDIT[k]=(String(CFG_EDIT[k]||'1')==='1')?'0':'1';
       c.classList.toggle('on',CFG_EDIT[k]==='1');applyDevVisibility();markDirty();};
+  });
+  // tuỳ chọn giao diện màn Rang (Loop & Prof No.) — cũng hiệu lực ngay
+  document.querySelectorAll('#uiEnRow .permchk').forEach(c=>{
+    const k='ui_'+c.dataset.uiEn;
+    c.classList.toggle('on',String(CFG_EDIT[k]||'1')==='1');
+    c.onclick=()=>{CFG_EDIT[k]=(String(CFG_EDIT[k]||'1')==='1')?'0':'1';
+      c.classList.toggle('on',CFG_EDIT[k]==='1');CFG[k]=CFG_EDIT[k];applyUiVis();markDirty();};
   });
   validateCom();
 }
@@ -5217,7 +5364,9 @@ function openPick(el,opts){pickTarget=el;const cur=el.querySelector('.pv').textC
   document.getElementById('pkBox').innerHTML=opts.map(o=>`<div class="pkopt ${o===cur?'sel':''}" onclick="choosePick('${o.replace(/'/g,"\\'")}')">${o}</div>`).join('');
   document.getElementById('picker').classList.add('on');}
 function choosePick(v){pickTarget.querySelector('.pv').textContent=v;CFG_EDIT[pickTarget.dataset.cfg]=v;
-  document.getElementById('picker').classList.remove('on');validateCom();markDirty();}
+  document.getElementById('picker').classList.remove('on');validateCom();markDirty();
+  // kiểu hiển thị đổi là thấy NGAY, khỏi phải bấm Lưu rồi mới biết mình chọn gì
+  if(pickTarget.dataset.cfg==='ui_view')setView(v==='Đơn giản'?'simple':'detail');}
 document.getElementById('picker').addEventListener('click',e=>{if(e.target.id==='picker')e.target.classList.remove('on');});
 
 /* ── numpad field ── */
@@ -5409,7 +5558,13 @@ async function licGateAfterLogin(){
     if(LIC_BLOCK)toast(LANG==='vi'?'Chế độ XEM — máy chưa kích hoạt bản quyền (Cài đặt → Tài khoản → Bản quyền)':'VIEW mode — machine not licensed');
   }catch(e){LIC_BLOCK=false;}
 }
-function finishLogin(){document.getElementById('login').classList.remove('on');updateBadge();gotoTab('rang');
+function finishLogin(){document.getElementById('login').classList.remove('on');updateBadge();
+  // Kiểu hiển thị theo QUYỀN của người vừa đăng nhập: lấy cài đặt đã lưu, không đủ
+  // quyền thì rơi về kiểu còn lại; không có quyền nào thì giữ nguyên màn đang có.
+  const want=(CFG.ui_view==='Đơn giản')?'simple':'detail';
+  if(!setView(want,true)) setView(want==='detail'?'simple':'detail',true);
+  applyUiVis(); applyDevPin();
+  gotoTab('rang');
   licGateAfterLogin();     // license cưỡng chế (mặc định tắt) → có thể vào chế độ xem
   portGateAfterLogin();}   // nhớ cổng cũ → tự nối; không nối được mới hỏi
 function logout(){const a=pyAuth();
@@ -5664,7 +5819,7 @@ async function renderAccounts(){const body=document.getElementById('accBody');if
   const pill=(on,t)=>`<span class="pill ${on?'':'off'}">${t}</span>`;
   const rows=slaves.length?slaves.map(({x})=>{const p=x.perms||{};return `<tr>
     <td><span class="uicon">${x.name[0].toUpperCase()}</span>${esc(x.name)}</td>
-    <td>${pill(p.ket_noi,'Kết nối')}${pill(p.calib_gas,'Calib')}${pill(p.model_nhiet,'Model')}</td>
+    <td>${pill(p.ket_noi,'Kết nối')}${pill(p.calib_gas,'Calib')}${pill(p.model_nhiet,'Model')}${pill(p.view_expert,'Chuyên gia')}${pill(p.view_production,'Sản xuất')}</td>
     <td>${x.enabled!==false?pill(1,LANG==='vi'?'Bật':'On'):pill(0,LANG==='vi'?'Khoá':'Off')}</td>
     <td style="text-align:right;white-space:nowrap">
       <button class="linkbtn" onclick="accToggle('${encodeURIComponent(x.name)}',${x.enabled!==false?1:0})">${x.enabled!==false?(LANG==='vi'?'Khoá':'Off'):(LANG==='vi'?'Mở':'On')}</button>
@@ -5680,6 +5835,9 @@ async function renderAccounts(){const body=document.getElementById('accBody');if
       <div class="permchk" data-perm="ket_noi" onclick="this.classList.toggle('on')"><span class="bx">✓</span>Kết nối</div>
       <div class="permchk" data-perm="calib_gas" onclick="this.classList.toggle('on')"><span class="bx">✓</span>Calib gas</div>
       <div class="permchk" data-perm="model_nhiet" onclick="this.classList.toggle('on')"><span class="bx">✓</span>Model nhiệt</div>
+      <!-- 2 quyền quyết định KIỂU HIỂN THỊ màn Rang được phép dùng -->
+      <div class="permchk" data-perm="view_expert" onclick="this.classList.toggle('on')"><span class="bx">✓</span>Chuyên gia (view Chi tiết)</div>
+      <div class="permchk" data-perm="view_production" onclick="this.classList.toggle('on')"><span class="bx">✓</span>Sản xuất (view Đơn giản)</div>
     </div>
     <div style="margin-top:16px"><button class="bigbtn primary" onclick="accAdd()">${LANG==='vi'?'Thêm thợ':'Add'}</button></div>
     <div class="section-t" style="margin-top:30px">${LANG==='vi'?'Bản quyền':'License'}</div>
