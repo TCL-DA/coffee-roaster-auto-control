@@ -893,10 +893,12 @@ class Api:
     # NGUỒN SỰ THẬT của DANH SÁCH hồ sơ (chốt chủ máy 2026-07-25, bỏ profiles.json).
     # Curve mẻ đã rang KHÔNG nhồi vào đây — nằm ở kho mẻ SQLite + file .csv/.alog
     # Artisan từng mẻ (prof_write_files). Cột trống = thẻ mỏng (app tự ước).
+    # bgBatch = id MẺ NỀN trong kho mẻ (batches.db) — chế độ rang TỰ ĐỘNG phát lại
+    # đúng đường gas/gió/trống của mẻ đó. Trống = hồ sơ chỉ rang THƯỜNG (thợ chỉnh tay).
     _PROF_COLS = ["no", "name", "roast", "chargeT", "deT", "fcsT", "devTarget",
-                  "preGas", "temp", "time", "kg", "bean", "color", "date",
-                  "roaster", "notes"]
-    _PROF_INT = ("chargeT", "deT", "fcsT", "devTarget", "preGas", "temp")
+                  "preGas", "temp", "time", "kg", "bean", "bgBatch", "color",
+                  "date", "roaster", "notes"]
+    _PROF_INT = ("chargeT", "deT", "fcsT", "devTarget", "preGas", "temp", "bgBatch")
 
     def _prof_csv_path(self):
         return os.path.join(self.prof_dir(), "ho-so.csv")

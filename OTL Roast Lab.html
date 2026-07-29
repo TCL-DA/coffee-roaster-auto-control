@@ -163,22 +163,25 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .modebtn .ml{font-size:var(--fs-14);letter-spacing:2px;text-transform:uppercase;color:var(--mute)}
 .modebtn .mmode{font-family:var(--f-num);font-weight:700;font-size:var(--fs-36);color:var(--accent);line-height:1}
 .modebtn.manual .mmode{color:var(--c-gas)}
-.modebtn.ap{min-width:150px}
-.modebtn.ap .mmode{color:var(--mute)}                    /* tắt: xám */
-.modebtn.ap.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--glass))}
-.modebtn.ap.on .mmode{color:var(--accent)}               /* bật: nổi accent */
-.modebtn.ap.on .ml{color:var(--accent)}
+/* TỰ ĐỘNG: nổi accent để liếc là biết máy đang tự chỉnh gas/gió/trống */
+.modebtn.auto{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--glass))}
+.modebtn.auto .ml{color:var(--accent)}
+.modebtn .msrc{font-size:var(--fs-14);color:var(--mute);margin-top:4px;max-width:200px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* body rang */
 .rangbody{flex:1;min-height:0;overflow:hidden;display:grid;grid-template-columns:1fr 540px;gap:22px;padding:6px 28px 0}
 .chartcol{display:flex;flex-direction:column;gap:14px;min-width:0;min-height:0}
 .chartwrap{flex:1;min-height:0;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-lg);position:relative;overflow:hidden}
 .chartwrap canvas{width:100%;height:100%;display:block}
-.chartleg{position:absolute;top:16px;right:20px;display:flex;gap:20px;background:color-mix(in srgb,var(--panel) 70%,transparent);
+/* z-index 25 > overlay màn chờ (20): nút bật/tắt nền phải bấm được cả khi chưa vào mẻ */
+.chartleg{position:absolute;top:16px;right:20px;z-index:25;display:flex;gap:20px;background:color-mix(in srgb,var(--panel) 70%,transparent);
   padding:10px 16px;border-radius:var(--r-sm);border:1px solid var(--hair)}
 .chartleg .lg{display:flex;align-items:center;gap:8px;font-size:var(--fs-16);color:var(--dim);font-weight:600}
 .chartleg .lg i{width:22px;height:5px;border-radius:var(--r-xs);display:inline-block}
 /* vạch legend NỀN MỜ MỤC TIÊU: đứt khúc + mờ — khớp nét vẽ trên canvas */
+.chartleg .lg.lgbg{cursor:pointer}
+.chartleg .lg.lgbg.off{opacity:.35;text-decoration:line-through}
 .chartleg .lg i.dash{opacity:.5;
   -webkit-mask:repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 10px);
           mask:repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 10px)}
@@ -197,15 +200,24 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
    thanh pha, dải thiết bị đều sáng & dùng được khi chưa vào mẻ */
 #pane-rang[data-phase="NOSEL"] .rangbody .chartwrap,
 #pane-rang[data-phase="NOSEL"] .simplewrap,
-#pane-rang[data-phase="IDLE"] .rangbody .chartwrap,
 #pane-rang[data-phase="IDLE"] .simplewrap{opacity:.28;filter:grayscale(.4);pointer-events:none}
+/* IDLE: KHÔNG mờ/xám đồ thị nữa — màn chờ PHẢI thấy curve nền (chủ máy 2026-07-29).
+   Trước đây hạ 28% + grayscale + khoá chạm → nền vẽ ra cũng như không, và không
+   chạm nổi nhãn "Nền" để bật/tắt. Giờ chỉ hạ nhẹ cho overlay BẮT ĐẦU nổi hơn.
+   NOSEL vẫn mờ như cũ: chưa chọn hồ sơ thì không có nền nào để xem. */
+#pane-rang[data-phase="IDLE"] .rangbody .chartwrap{opacity:.92}
 #pane-rang[data-phase="DONE"] .roast-done{display:flex}
 /* Overlay che phần XEM (curve, số live), KHÔNG che thanh công cụ dưới cùng:
    thợ vẫn phải đánh lửa / nạp hạt / xả liệu / xả mẻ được khi chưa chọn hồ sơ.
    bottom = đúng chiều cao .toolbar (130px) để không đè lên nút. */
 .roast-idle,.roast-nosel{position:absolute;left:0;right:0;top:0;bottom:130px;z-index:20;
   flex-direction:column;align-items:center;justify-content:center;
-  background:color-mix(in srgb,var(--bg) 62%,transparent);backdrop-filter:blur(3px)}
+  /* mờ vừa đủ đọc chữ nhưng VẪN THẤY curve nền phía sau (chủ máy: lúc nào cũng có nền) */
+  background:color-mix(in srgb,var(--bg) 34%,transparent);backdrop-filter:blur(1.5px);
+  /* tấm mờ KHÔNG nuốt cú chạm — để bấm được nhãn "Nền" trên đồ thị phía dưới.
+     Bản thân nội dung (.ri-inner) vẫn nhận chạm bình thường. */
+  pointer-events:none}
+.roast-idle .ri-inner,.roast-nosel .ri-inner{pointer-events:auto}
 /* View CHI TIẾT: overlay chỉ che đúng vùng CHART —
    top 110 = chừa dải mốc; right 590 = chừa cột phải (540 + gap 22 + padding 28);
    bottom 298 = chừa thanh pha 70 + dải thiết bị 98 + toolbar 130.
@@ -247,8 +259,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .rp-v{font-size:var(--fs-22);color:var(--txt);font-weight:700}
 .rp-v .est{color:var(--dim);opacity:.65;font-weight:400}
 .ri-btnrow{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
-.ri-sdauto{margin-top:10px}
-.ri-sdauto.running{border-color:var(--accent);color:var(--accent)}
 /* bảng cân phễu */
 .scgrid{display:flex;gap:16px;margin-bottom:18px}
 .scitem{flex:1;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-md);padding:16px 20px;text-align:center}
@@ -1615,10 +1625,9 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
               <button class="ri-change" onclick="editCurrentProfile()">✎ Sửa thông số mẻ</button>
               <button class="ri-change" onclick="gotoTab('hoso')" data-i18n="rang.change">Đổi hồ sơ</button>
             </div>
-            <!-- RANG AUTO thật: chọn profile trên thẻ SD của máy → firmware phát lại
-                 (calibProgram). Chỉ hiện khi nối máy PC_Link. -->
-            <button class="ri-change ri-sdauto" id="sdAutoBtn" onclick="sdAutoRoast()" style="display:none">
-              ▶ RANG AUTO từ thẻ SD máy</button>
+            <!-- ĐÃ GỠ nút "RANG AUTO từ thẻ SD máy": app KHÔNG đụng thẻ SD (lệnh chủ
+                 máy) và chỉ có 2 chế độ — THƯỜNG / TỰ ĐỘNG, chọn bằng nút Chế độ
+                 trong màn rang. Muốn tự động thì ghim MẺ NỀN cho hồ sơ. -->
           </div>
         </div>
         <!-- Màn TỔNG KẾT MẺ (DONE) -->
@@ -1649,18 +1658,19 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
           <div class="mchip now" onclick="mileSetEdit('FCs')"><div class="mn">FCs</div><div class="mv"><span class="tm num">09:40</span><span class="dg num">196°</span></div></div>
           <div class="mchip todo"><div class="mn">DEV</div><div class="mv"><span class="tm num">—</span><span class="dg num">—</span></div></div>
           <div class="mchip todo" onclick="mileSetEdit('DROP')"><div class="mn">DROP</div><div class="mv"><span class="tm num">—</span><span class="dg num">—</span></div></div>
+          <!-- CHẾ ĐỘ RANG — chỉ 2: THƯỜNG (thợ chỉnh gas/gió/trống) và TỰ ĐỘNG (app
+               chỉnh theo mẻ nền của hồ sơ). Quy trình mẻ y hệt nhau ở cả 2 chế độ. -->
           <button class="modebtn manual" id="modeBtn" onclick="toggleMode()">
-            <span class="ml" data-i18n="rang.mode">Chế độ</span><span class="mmode" id="modeVal">MANUAL</span></button>
-          <!-- APP LÁI (Bước C): app tự chỉnh gas bám mục tiêu — chỉ khi nối máy + PC control -->
-          <button class="modebtn ap" id="apBtn" onclick="toggleAutopilot()" title="App tự lái gas bám đường mục tiêu hồ sơ">
-            <span class="ml">🤖 App</span><span class="mmode">LÁI</span></button>
+            <span class="ml" data-i18n="rang.mode">Chế độ</span><span class="mmode" id="modeVal">THƯỜNG</span>
+            <span class="msrc" id="modeSrc"></span></button>
         </div>
 
         <div class="rangbody detail-only">
           <div class="chartcol">
             <div class="chartwrap"><canvas id="chart"></canvas>
               <div class="chartleg">
-                <div class="lg" id="lgTarget" style="display:none"><i class="dash" style="background:var(--c-bt)"></i><span data-i18n="chart.target">Mục tiêu</span></div>
+                <!-- NỀN: bấm để bật/tắt. Nhãn cho biết nền đang là mẻ thật hay đường kỳ vọng -->
+                <div class="lg lgbg" id="lgTarget" style="display:none" onclick="toggleBg()" title="Bật/tắt curve nền"><i class="dash" style="background:var(--c-bt)"></i><span id="lgTargetTxt">Nền</span></div>
                 <div class="lg"><i style="background:var(--c-bt)"></i>BT</div>
                 <div class="lg"><i style="background:var(--c-et)"></i>ET</div>
                 <div class="lg"><i style="background:var(--c-abt)"></i>ABT</div>
@@ -2210,6 +2220,10 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
       <div class="pefield"><span class="pel">Gas mồi đầu (%)</span><input class="peval" id="pe_pregas" type="text" inputmode="numeric" autocomplete="off" placeholder="—" onblur="peOpt(this,'preGas',0,100)" oninput="peOptIn(this,'preGas')"></div>
       <div class="pefield"><span class="pel">Mẻ nạp (kg)</span><input class="peval" id="pe_kg" type="text" inputmode="decimal" autocomplete="off" placeholder="tự theo máy" oninput="const v=this.value.trim();if(v==='')delete peTmp.kg;else peTmp.kg=parseFloat(v)||undefined"></div>
       <div class="pefield"><span class="pel">Loại cà</span><input class="peval" id="pe_bean" type="text" spellcheck="false" autocomplete="off" placeholder="chọn sau được" oninput="peTmp.bean=this.value"></div>
+      <!-- ── MẺ NỀN: mẻ đã rang ngon, ghim lại làm mẫu. Chế độ TỰ ĐỘNG phát lại
+           đúng đường gas/gió/trống của mẻ này. Không ghim thì chỉ rang THƯỜNG. -->
+      <div class="pehint">Rang tự động (để trống thì hồ sơ này chỉ rang thường)</div>
+      <div class="pefield"><span class="pel">Mẻ nền</span><button class="peval" id="pe_bg" onclick="peBgPick()"></button></div>
       <div class="pefield"><span class="pel">Ngày rang</span><input class="peval" id="pe_date" type="date" autocomplete="off" oninput="peTmp.date=peDateFromISO(this.value)"></div>
       <div class="pefield"><span class="pel">Thợ rang</span><input class="peval" id="pe_roaster" type="text" readonly tabindex="-1"></div>
       <div class="perow"><button class="bigbtn ghost" onclick="closeProfEdit()">Hủy</button>
@@ -2942,6 +2956,8 @@ function refreshPE(){document.getElementById('pe_name').value=peTmp.name||'';
   document.getElementById('pe_pregas').value=peTmp.preGas||'';
   document.getElementById('pe_kg').value=peTmp.kg||'';
   document.getElementById('pe_bean').value=peTmp.bean||'';
+  const bg=document.getElementById('pe_bg');
+  if(bg)bg.textContent=peTmp.bgBatch?peBgLabel(peTmp.bgBatch):'— chưa ghim —';
   document.getElementById('pe_date').value=peDateToISO(peTmp.date);
   // Thợ rang = user đang đăng nhập (chỉ đọc); hồ sơ cũ đã có tên thì giữ nguyên
   if(!peTmp.roaster && session) peTmp.roaster=session.name;
@@ -2971,6 +2987,32 @@ function peRoast(){
   document.getElementById('picker').classList.add('on');
 }
 function peRoastPick(v){peTmp.roast=v;refreshPE();document.getElementById('picker').classList.remove('on');}
+/* ── MẺ NỀN cho chế độ TỰ ĐỘNG ──────────────────────────────────────────────
+   Chỉ liệt kê mẻ THẬT (r.live) — mẻ mô phỏng không có đường gas/gió/trống để
+   phát lại. Ghim mẻ nào thì chế độ TỰ ĐỘNG chạy đúng bài của mẻ đó. */
+function peBgLabel(id){const r=HIST_ROWS.find(x=>x.id===+id);return r?(r.code||('#'+id)):('#'+id);}
+async function peBgPick(){
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.db_batch_list)){toast('Chỉ chọn mẻ nền được trong app');return;}
+  let rows=null;try{rows=await a.db_batch_list(50);}catch(e){}
+  if(Array.isArray(rows))HIST_ROWS=rows;          // để tra mã mẻ khi hiện nhãn
+  const live=(rows||[]).filter(r=>r.live);
+  if(!live.length){toast('Chưa có mẻ thật nào để làm nền — rang 1 mẻ ưng ý trước đã');return;}
+  document.getElementById('pkBox').innerHTML=
+    `<div class="pkopt ${peTmp.bgBatch?'':'sel'}" onclick="peBgSet(0)">— không ghim (chỉ rang thường) —</div>`+
+    live.map(r=>{
+      const dt=(r.started_at||'').slice(0,10).split('-').reverse().slice(0,2).join('/');
+      const tm=r.drop_sec!=null?fmtMMSS(r.drop_sec):'—';
+      const tp=r.drop_temp!=null?Math.round(r.drop_temp)+'°C':'—';
+      return `<div class="pkopt ${+peTmp.bgBatch===r.id?'sel':''}" onclick="peBgSet(${r.id})">${
+        esc(r.code||('#'+r.id))} · ${esc(r.prof_name||'—')} · ${tm} · ${tp} · ${esc(dt)}</div>`;
+    }).join('');
+  document.getElementById('picker').classList.add('on');
+}
+function peBgSet(id){
+  if(id)peTmp.bgBatch=+id; else delete peTmp.bgBatch;
+  refreshPE();document.getElementById('picker').classList.remove('on');
+}
 function closeProfEdit(){document.getElementById('profedit').classList.remove('on');}
 /* quản lý danh sách mức rang (tuỳ khách) */
 function openRoastMgr(){renderRoastMgr();document.getElementById('roastmgr').classList.add('on');}
@@ -3082,6 +3124,7 @@ let LANG='vi';
 function applyLang(){const d=I18N[LANG];
   document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(d[k]!=null)el.textContent=d[k];});
   document.documentElement.setAttribute('lang',LANG);
+  if(typeof syncModeBtn==='function')syncModeBtn();     // nhãn THƯỜNG/TỰ ĐỘNG theo ngôn ngữ
   document.getElementById('langLbl').innerHTML=LANG==='vi'?'<b>VI</b>/EN':'VI/<b>EN</b>';}
 function toggleLang(){LANG=LANG==='vi'?'en':'vi';localStorage.setItem('otl_lang',LANG);applyLang();updateBadge();renderAccounts();renderAudit();}
 
@@ -3501,7 +3544,7 @@ function applyMachine(d){
 
   R.elapsed=d.t_roast; R.prog=Math.min(1,R.elapsed/ROAST_SECS);
   machSample(d);
-  autopilotTick(d);      // APP LÁI (Bước C): tự chỉnh gas bám mục tiêu, nếu đang bật
+  autoTick(d);           // chế độ TỰ ĐỘNG: app chỉnh gas/gió/trống theo mẻ nền
   updateRoastLive();
 }
 /* Chốt 1 mẫu của máy: mốc + điểm cho curve (1 mẫu/giây).
@@ -3834,6 +3877,7 @@ async function cmdDrop(){
 const R={mode:'MANUAL',burner:40,air:80,drum:55,view:'detail',
          phase:'NOSEL',prog:0,elapsed:0,paused:false,
          profName:'',profColor:'#c97a1a',profNo:0,
+         bgOn:localStorage.getItem('otl_bg_on')!=='0',   // curve nền bật/tắt, nhớ qua lần mở sau
          mileT:{},mileD:{}};   // phase: NOSEL→IDLE→RUNNING→DONE; mileT/mileD = giờ+nhiệt các mốc THẬT
 /* Mốc + tổng-giây MẶC ĐỊNH (mẻ mẫu 10:42) — dùng khi CHƯA nạp hồ sơ nào.
    Khi nạp hồ sơ, buildTarget() thay MILES/ROAST_SECS/TGT theo setpoint hồ sơ. */
@@ -3924,11 +3968,7 @@ function curveAt(m){
 }
 const OUT_STEP=5;                                 // bước tăng/giảm
 const OUT_MAX={burner:100,air:100,drum:100};      // cả 3 đều %: 0–100, bước 5
-function toggleMode(){R.mode=R.mode==='MANUAL'?'AUTO':'MANUAL';
-  const b=document.getElementById('modeBtn');b.classList.toggle('manual',R.mode==='MANUAL');
-  document.getElementById('modeVal').textContent=R.mode;
-  document.querySelectorAll('.outrow .pm').forEach(p=>p.classList.toggle('dis',R.mode!=='MANUAL'));
-  document.getElementById('loopBtn').classList.toggle('dis',R.mode!=='AUTO');}  // Loop chỉ ở AUTO
+/* toggleMode/syncModeBtn nằm ở khối RANG TỰ ĐỘNG bên dưới */
 /* Chạm vào SỐ → gõ trực tiếp tại chỗ (Enter/rời ô = áp dụng, Esc = hủy) */
 function outEdit(k){
   if(R.mode!=='MANUAL')return;
@@ -3971,46 +4011,108 @@ function stepOut(btn){if(R.mode!=='MANUAL')return;
     machCmd(k==='burner'?'gas':k,v);               // gửi thẳng xuống máy, live đọc về sẽ tự khớp
   }
 }
-/* ════════ APP LÁI (Bước C) — app tự chỉnh gas bám đường mục tiêu hồ sơ ════════
-   App là bộ điều khiển: mỗi ~10s so BT thật với đường mục tiêu (TGT.btAt) → nhích
-   gas về phía mục tiêu (bậc nhỏ, có deadband, kẹp maxGas). Buồng đốt khói bật theo
-   nhiệt. Firmware GIỮ 2 chốt an toàn (watchdog mất-app + mồi-hụt) — xem PC_Link.h.
-   Choreography xi-lanh (charge/drop/escape/destoner) vẫn do firmware tự đóng theo
-   timer + lệnh app; đây lo phần LÁI GAS liên tục. Thợ tắt được bất cứ lúc nào. */
-const AP={on:false,lastMs:0};
-function toggleAutopilot(){
-  if(!AP.on){
-    if(!dsLive()){toast('APP LÁI chỉ chạy khi nối máy thật');return;}
-    if(!(DS.snap&&DS.snap.flags&&DS.snap.flags.pc_control)){toast('Bật "PC control" trên HMI trước đã');return;}
-    if(!TGT){toast('Chưa có đường mục tiêu — chọn hồ sơ có thời gian');return;}
-    if(!confirm('Để APP TỰ LÁI GAS bám đường mục tiêu hồ sơ?\nApp chỉnh gas mỗi ~10s; firmware vẫn giữ chốt an toàn (watchdog + mồi hụt). Thợ luôn tắt được.'))return;
-    AP.on=true;AP.lastMs=0;
-    opLog('AUTO','APP LÁI: BẬT — app tự chỉnh gas bám mục tiêu');
-    toast('🤖 APP LÁI: BẬT',true);
-  }else{
-    AP.on=false;opLog('AUTO','APP LÁI: TẮT — thợ chỉnh tay');toast('APP LÁI: TẮT',true);
+/* ════════ RANG TỰ ĐỘNG (Bước C) — app chỉnh gas/gió/trống theo MẺ NỀN ═════════
+   CHỈ CÓ 2 CHẾ ĐỘ, quy trình mẻ Y HỆT NHAU (mồi → charge → TP → DE → FCs → drop):
+     • THƯỜNG  — thợ tự chỉnh gas/gió/trống bằng nút ±.
+     • TỰ ĐỘNG — app phát lại đường gas/gió/trống của MẺ NỀN ghim trong hồ sơ, mỗi
+                 giây một điểm. Đúng cách firmware chạy sdGas[]/sdAirflow[]/sdDrum[]
+                 khi rang AUTO, chỉ khác nguồn: kho mẻ của app thay cho thẻ SD.
+   Gas còn được BÙ theo lệch nhiệt: BT thật nguội/nóng hơn BT mẻ nền → nhích gas
+   (chu kỳ 10s, bậc 2%, deadband 3°C) — y như bù gas AUTO của firmware.
+   Chốt an toàn: chưa có lửa thì KHÔNG tăng gas; mẻ nền để gas 0% (thợ cố ý tắt lửa
+   đoạn đó) thì GIỮ 0%, không tự cộng bù; mất PC control → tự về THƯỜNG.
+   Firmware vẫn giữ watchdog mất-app + mồi-hụt và tự đóng xi-lanh theo timer. */
+const AUTO={plan:null,srcId:null,srcName:'',lastMs:0,comp:0,
+            sent:{burner:null,air:null,drum:null}};
+const MODE_LBL={vi:{MANUAL:'THƯỜNG',AUTO:'TỰ ĐỘNG'},en:{MANUAL:'MANUAL',AUTO:'AUTO'}};
+function autoReset(){AUTO.lastMs=0;AUTO.comp=0;AUTO.sent={burner:null,air:null,drum:null};}
+/* Nạp MẺ NỀN của hồ sơ → bảng gas/gió/trống/BT theo từng giây (dạng sdGas[] firmware).
+   Không có mẻ nền / không lấy được curve → plan=null → không vào được TỰ ĐỘNG. */
+async function loadAutoPlan(p){
+  AUTO.plan=null;AUTO.srcId=null;AUTO.srcName='';autoReset();
+  const id=+(p&&p.bgBatch)||0;
+  if(!id){syncModeBtn();return;}
+  const a=window.pywebview&&window.pywebview.api;
+  if(!(a&&a.db_batch_curve)){syncModeBtn();return;}
+  let cv=null; try{cv=await a.db_batch_curve(id);}catch(e){}
+  if(!(cv&&cv.t&&cv.t.length>5)){
+    opLog('MẺ',`mẻ nền #${id} không có curve — chỉ rang được chế độ THƯỜNG`,'WARN');
+    syncModeBtn();return;
   }
-  const b=document.getElementById('apBtn');if(b)b.classList.toggle('on',AP.on);
+  AUTO.plan=_curveGrid(cv);           // trải ra từng giây, dùng chung hàm xuất CSV
+  AUTO.srcId=id;
+  AUTO.srcName=(HIST_ROWS.find(r=>r.id===id)||{}).code||('#'+id);
+  // MẺ NỀN thật thắng đường kỳ vọng: vẽ đúng BT+ET của mẻ đó làm nền (kiểu Artisan).
+  // Mốc/đếm ngược vẫn bám TGT của hồ sơ — nền chỉ để mắt so, không đổi kế hoạch mẻ.
+  R.bgCurve={t:cv.t.slice(),bt:cv.bt.slice(),et:(cv.et||[]).slice(),real:true};
+  opLog('MẺ',`mẻ nền: ${AUTO.srcName} (${AUTO.plan.length}s) — rang tự động sẵn sàng`);
+  syncModeBtn();syncBgLegend();drawChart();
 }
-function autopilotTick(d){
-  if(!AP.on||!TGT||R.phase!=='RUNNING'||!dsLive())return;
-  const fl=d.flags||{};
-  if(!fl.pc_control){                              // mất quyền điều khiển → nhả lái ngay
-    AP.on=false;const b=document.getElementById('apBtn');if(b)b.classList.remove('on');
-    opLog('AUTO','APP LÁI: tự tắt (mất PC control)','WARN');toast('Mất PC control — APP LÁI tự tắt');return;
+/* Vẽ lại nút Chế độ + khoá/mở nút ± theo chế độ đang chạy */
+function syncModeBtn(){
+  const b=document.getElementById('modeBtn');if(!b)return;
+  const auto=R.mode==='AUTO';
+  b.classList.toggle('manual',!auto);b.classList.toggle('auto',auto);
+  const v=document.getElementById('modeVal');
+  if(v)v.textContent=(MODE_LBL[LANG]||MODE_LBL.vi)[R.mode];
+  const s=document.getElementById('modeSrc');
+  if(s)s.textContent=auto?('nền: '+(AUTO.srcName||'—')):(AUTO.plan?'':'chưa có mẻ nền');
+  document.querySelectorAll('.outrow .pm').forEach(p=>p.classList.toggle('dis',auto));
+  const lb=document.getElementById('loopBtn');if(lb)lb.classList.toggle('dis',!auto);
+}
+function toggleMode(){
+  if(R.mode==='AUTO'){                              // TỰ ĐỘNG → THƯỜNG: trả tay cho thợ
+    R.mode='MANUAL';autoReset();syncModeBtn();
+    opLog('MẺ','chế độ THƯỜNG — thợ chỉnh gas/gió/trống');toast('Chế độ THƯỜNG',true);return;
   }
-  const abT=+MC.cur.afterburnerSet||350;           // buồng đốt khói theo nhiệt
-  if(d.bt>=abT && !fl.afterburner) machCmd('afterburner',1);
+  if(!AUTO.plan){toast('Hồ sơ chưa ghim MẺ NỀN — vào Hồ sơ ✎ chọn mẻ nền trước');return;}
+  if(!dsLive()){toast('Rang tự động cần nối máy thật');return;}
+  if(!(DS.snap&&DS.snap.flags&&DS.snap.flags.pc_control)){toast('Bật "PC control" trên HMI trước đã');return;}
+  if(!confirm(`Chuyển sang RANG TỰ ĐỘNG?\nApp sẽ tự chỉnh gas/gió/trống theo mẻ nền "${AUTO.srcName}".\nĐổi về THƯỜNG bất cứ lúc nào.`))return;
+  R.mode='AUTO';autoReset();syncModeBtn();
+  opLog('MẺ',`chế độ TỰ ĐỘNG — theo mẻ nền "${AUTO.srcName}"`);toast('Chế độ TỰ ĐỘNG',true);
+}
+/* Ghi 1 mức xuống máy — CHỈ khi đổi so với lệnh app gửi lần trước (đỡ nghẽn Modbus) */
+function autoSet(kind,v,cur){
+  if(v==null||isNaN(v))return;
+  const key=kind==='gas'?'burner':kind;
+  v=Math.max(0,Math.min(100,Math.round(v)));
+  if(AUTO.sent[key]===v)return;
+  AUTO.sent[key]=v;
+  if(cur!=null&&Math.round(cur)===v)return;         // máy đã đúng mức rồi, khỏi gửi
+  R[key]=v;OUT_HOLD[key]={v:v,until:Date.now()+3000};
+  machCmd(kind,v);
+  opLog('AUTO',`${CMD_LBL[kind]||kind} → ${v}%`);
+}
+function autoTick(d){
+  if(R.mode!=='AUTO'||!AUTO.plan||R.phase!=='RUNNING'||!dsLive())return;
+  const fl=d.flags||{};
+  if(!fl.pc_control){                                // mất quyền điều khiển → trả tay ngay
+    R.mode='MANUAL';autoReset();syncModeBtn();
+    opLog('MẺ','mất PC control → tự về chế độ THƯỜNG','WARN');
+    toast('Mất PC control — về chế độ THƯỜNG');return;
+  }
+  const pl=AUTO.plan, row=pl[Math.min(Math.max(0,d.t_roast|0),pl.length-1)];
+  if(!row)return;
+  const abT=+MC.cur.afterburnerSet||350;             // buồng đốt khói theo nhiệt
+  if(d.bt>=abT&&!fl.afterburner) machCmd('afterburner',1);
+  autoSet('air',row.air,d.air);                      // gió + trống: phát lại y mẻ nền
+  autoSet('drum',row.drum,d.drum);
+  // ── gas: mức mẻ nền + phần bù lệch nhiệt, tính lại mỗi 10s ──
   const now=Date.now();
-  if(now-AP.lastMs<10000)return;                    // chu kỳ gas ~10s (như calib)
-  if(!fl.flame){AP.lastMs=now;return;}              // CHƯA CÓ LỬA → không đổ thêm gas sống (chốt mồi-hụt firmware lo)
-  AP.lastMs=now;
-  const tgtBT=TGT.btAt(d.t_roast), err=tgtBT-d.bt;
-  if(Math.abs(err)<=3)return;                       // trong deadband 3°C → giữ nguyên
+  if(now-AUTO.lastMs>=10000){
+    AUTO.lastMs=now;
+    const err=row.bt-d.bt;                           // >0 = mẻ thật đang NGUỘI hơn nền
+    if(row.gas>0&&fl.flame&&Math.abs(err)>3){
+      AUTO.comp=Math.max(-20,Math.min(20,AUTO.comp+(err>0?2:-2)));   // kẹp bù ±20%
+      opLog('AUTO',`BT ${d.bt.toFixed(1)}° / nền ${row.bt.toFixed(1)}° → bù gas ${AUTO.comp>0?'+':''}${AUTO.comp}%`);
+    }
+  }
   const maxGas=Math.max(0,Math.min(100,+MC.cur.maxGasSet||100));
-  const cur=d.gas, g=Math.max(0,Math.min(maxGas, cur+(err>0?2:-2)));   // bậc 2%/chu kỳ (bảo thủ)
-  if(g!==cur){OUT_HOLD.burner={v:g,until:now+3000};machCmd('gas',g);
-    opLog('AUTO',`APP LÁI: BT ${d.bt.toFixed(1)}° / mục tiêu ${tgtBT.toFixed(1)}° → gas ${cur}→${g}%`);}
+  let g=row.gas;                                     // mẻ nền tắt lửa (0%) → GIỮ 0%
+  if(g>0)g=Math.max(0,Math.min(maxGas,g+AUTO.comp));
+  if(!fl.flame&&g>d.gas)g=d.gas;                     // chưa có lửa → không đổ gas sống
+  autoSet('gas',g,d.gas);
 }
 function toggleView(){R.view=R.view==='detail'?'simple':'detail';
   document.getElementById('pane-rang').classList.toggle('simple',R.view==='simple');drawChart();}
@@ -4051,6 +4153,8 @@ function renderIdlePlan(){
   const mkg=currentModelKg();
   h+=cell('Mẻ', p.kg?p.kg+'kg':(mkg?mkg+'kg'+est:'<span class="est">auto</span>'));
   if(p.bean)h+=cell('Cà', esc(p.bean));
+  // Rang được TỰ ĐỘNG hay không = có ghim mẻ nền hay không — cho thợ thấy TRƯỚC khi bấm
+  h+=cell('Rang tự động', AUTO.plan?esc(AUTO.srcName):'<span class="est">chưa có mẻ nền</span>');
   el.innerHTML=h;
 }
 /* Sửa thông số mẻ ngay từ màn chờ. CLONE-KHI-ĐÃ-RANG (Bước F): hồ sơ đã có curve
@@ -4130,7 +4234,7 @@ function togglePause(){
 }
 function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết thời gian
   if(R.phase!=='RUNNING')return;
-  if(AP.on){AP.on=false;const b=document.getElementById('apBtn');if(b)b.classList.remove('on');}  // xong mẻ → nhả APP LÁI
+  if(R.mode==='AUTO'){R.mode='MANUAL';autoReset();syncModeBtn();}   // xong mẻ → trả tay cho thợ
   clearInterval(roastTimer);roastTimer=null;R.paused=false;
   const dropSec=R.elapsed;      // giây xả thật (có thể xả sớm)
   R.prog=dropSec/ROAST_SECS;R.elapsed=dropSec;
@@ -4272,6 +4376,8 @@ function loadProfile(idx){
   const ps=loadProfiles(); const p=ps[idx]; if(!p)return;
   opLog('MẺ',`nạp hồ sơ "${p.name}" (No.${idx+1})`);
   R.profName=p.name; R.profColor=p.color||'#c97a1a'; R.profNo=idx+1; R.profRoast=p.roast||'';
+  // Đổi hồ sơ = đổi mẻ nền → luôn về chế độ THƯỜNG rồi nạp lại bảng gas/gió/trống
+  R.mode='MANUAL'; loadAutoPlan(p);
   // ── MÔ HÌNH MỤC TIÊU (Bước B): suy đường + mốc TỪ SETPOINT hồ sơ đang nạp ──
   TGT=buildTarget(p);
   if(TGT){
@@ -4289,7 +4395,7 @@ function loadProfile(idx){
     R.target={timeS:(m=>m?(+m[1])*60+(+m[2]):null)(/^(\d+):(\d\d)$/.exec(p.time||'')),
               temp:+p.temp||null, mile:(p.curve&&p.curve.mile)||null};
   }
-  const lgT=document.getElementById('lgTarget');if(lgT)lgT.style.display=R.bgCurve?'':'none';
+  syncBgLegend();
   // ── ngưỡng THẬT lấy từ hồ sơ ──
   // Nhiệt xả → ngưỡng DROP tự động (BT chạm là gửi lệnh xả, y hệt thợ cài chip)
   if(p.temp){R.mileSet.DROP=Math.max(100,Math.min(260,p.temp));
@@ -4424,49 +4530,11 @@ async function scLoader(){
 }
 document.getElementById('scalebox').addEventListener('click',e=>{if(e.target.id==='scalebox')closeScale();});
 
-/* ── RANG AUTO THẬT từ thẻ SD máy (PC_Link: profile/mode/auto) ──
-   Luồng: chọn slot 1-30 → firmware nạp file + validate (prof_pct/prof_ok)
-   → đặt mode AUTO → bật START. Từ đó firmware TỰ chạy trọn quy trình
-   (chờ nhiệt charge → tự nạp → calibProgram bám curve → tự xả). */
-let sdAutoBusy=false;
-function sdAutoAvail(){return dsLive()&&DS.mode!=='tuongthich'&&DS.snap&&DS.snap.prof_pct!=null;}
-async function sdAutoRoast(){
-  if(sdAutoBusy)return;
-  const d=DS.snap||{};
-  // đang chạy AUTO → nút thành DỪNG
-  if(d.flags&&d.flags.auto){
-    if(confirm('Máy đang chạy AUTO — DỪNG chương trình?')){
-      await pywebview.api.link_write('auto',0);toast('Đã dừng AUTO');}
-    return;
-  }
-  const raw=await openKb('');            // bàn phím sẵn có của app
-  const slot=parseInt(raw,10);
-  if(!raw||isNaN(slot)||slot<1||slot>30){if(raw)toast('Slot phải 1-30');return;}
-  sdAutoBusy=true;
-  try{
-    toast(`Nạp hồ sơ SD #${slot}…`,true);
-    await pywebview.api.link_write('profile',slot);
-    // chờ firmware đọc file + validate (tối đa 30s)
-    let ok=0;
-    for(let i=0;i<60;i++){
-      await new Promise(r=>setTimeout(r,500));
-      const s=DS.snap||{};
-      if(s.prof_ok===1){ok=1;break;}
-      if(s.prof_ok===2){ok=2;break;}
-    }
-    if(ok!==1){
-      toast(ok===2?`Hồ sơ SD #${slot} LỖI — thiếu CHARGE/TP/DROP, không rang auto được`
-                  :`Nạp hồ sơ SD #${slot} quá lâu — kiểm tra thẻ SD`);
-      return;
-    }
-    if(!confirm(`Hồ sơ SD #${slot} hợp lệ.\nBật RANG AUTO? Máy sẽ tự chờ nhiệt, tự nạp hạt, tự bám curve, tự xả.`))return;
-    await pywebview.api.link_write('mode',2);        // AUTO
-    await new Promise(r=>setTimeout(r,300));
-    await pywebview.api.link_write('auto',1);        // START — firmware chạy trọn quy trình
-    toast(`RANG AUTO #${slot} — máy tự chạy, app theo dõi`,true);
-    if(typeof pushAudit==='function'&&session)pushAudit('Rang AUTO','SD slot','',String(slot));
-  }finally{sdAutoBusy=false;}
-}
+/* ── ĐÃ GỠ: "RANG AUTO từ thẻ SD máy" (sdAutoRoast/sdAutoAvail) ──
+   Lý do: app KHÔNG đụng thẻ SD của máy (lệnh chủ máy 2026-07-25), và app chỉ có
+   ĐÚNG 2 chế độ — THƯỜNG / TỰ ĐỘNG. Rang tự động nay do APP phát lại đường
+   gas/gió/trống của MẺ NỀN ghim trong hồ sơ (xem khối RANG TỰ ĐỘNG), không nhờ
+   firmware đọc file SD nữa. Thợ vẫn bật AUTO thẳng trên HMI của máy nếu muốn. */
 /* Dòng "Nạp hạt tại XXX°C" ở màn chờ rang + gõ đổi ngay tại chỗ (như chip DROP) */
 function renderChargeRow(){
   const b=document.getElementById('riChargeT');
@@ -4511,13 +4579,6 @@ function mileDeg(m){
 }
 function updateRoastLive(){
   renderChargeRow();   // dòng "Nạp hạt tại …°C" ở màn chờ luôn theo R.chargeT
-  { // nút RANG AUTO SD: chỉ hiện khi nối máy PC_Link; đổi chữ khi máy đang AUTO
-    const b=document.getElementById('sdAutoBtn');
-    if(b){b.style.display=sdAutoAvail()?'':'none';
-      const run=DS.snap&&DS.snap.flags&&DS.snap.flags.auto;
-      b.textContent=run?'■ DỪNG RANG AUTO':'▶ RANG AUTO từ thẻ SD máy';
-      b.classList.toggle('running',!!run);}
-  }
   const started=(R.phase==='RUNNING'||R.phase==='DONE');   // đã bắt đầu mẻ?
   // đồng hồ thời gian mẻ
   txt('rangClock', started?fmtMMSS(R.elapsed):'00:00');
@@ -4602,6 +4663,29 @@ function updatePhaseBar(){
 
 /* ════════ CHART (canvas + DPR) ════════ */
 function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+/* ════════ CURVE NỀN ════════════════════════════════════════════════════════
+   LUÔN CÓ NỀN (chủ máy chốt 2026-07-29), bật/tắt bằng cách chạm nhãn "Nền" ở
+   góc đồ thị. Hai nguồn, ưu tiên từ trên xuống:
+     1. MẺ NỀN thật đã ghim trong hồ sơ → vẽ đúng curve BT + ET của mẻ đó, y như
+        background profile của Artisan.
+     2. Chưa ghim mẻ nào → vẽ ĐƯỜNG KỲ VỌNG nội suy từ mốc charge/TP/DE/FCs/DROP
+        của hồ sơ (buildTarget).
+   Cả hai đều vẽ nét đứt + mờ để không lẫn với đường thật đang chạy. Chưa nạp hồ
+   sơ thì KHÔNG vẽ gì — không bịa đường. */
+function toggleBg(){
+  R.bgOn=!R.bgOn;
+  localStorage.setItem('otl_bg_on',R.bgOn?'1':'0');
+  opLog('MẺ','curve nền: '+(R.bgOn?'BẬT':'TẮT'));
+  syncBgLegend();drawChart();
+}
+function syncBgLegend(){
+  const el=document.getElementById('lgTarget');if(!el)return;
+  const bg=R.bgCurve;
+  el.style.display=bg?'':'none';
+  el.classList.toggle('off',!R.bgOn);
+  const t=document.getElementById('lgTargetTxt');
+  if(t)t.textContent=bg?(bg.real?('Nền · '+(AUTO.srcName||'mẻ nền')):'Nền · kỳ vọng'):'Nền';
+}
 function drawChart(){
   const cv=document.getElementById('chart');if(!cv||!cv.clientWidth)return;
   const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
@@ -4615,9 +4699,21 @@ function drawChart(){
   // trục thời gian phải chốt TRƯỚC khi lấy mẫu (i ↔ thời gian), mẻ dài thì tự nới
   let tiMax = auto ? (liveChart?Math.max(15,up(R.elapsed/60+1,5)):15) : (+CFG.ch_time||15);
   // sinh đường cong TRƯỚC để tự-scale theo dữ liệu
-  let bt=[],et=[],abt=[],ror=[],burner=[],tbt=[],drop,i0=0;
+  let bt=[],et=[],abt=[],ror=[],burner=[],tbt=[],tet=[],drop,i0=0;
+  const span=tiMax*60;                               // giây trên toàn bề rộng
+  // ── CURVE NỀN: dựng ở MỌI trạng thái, kể cả màn chờ (trước đây chỉ dựng khi đã
+  //    có dữ liệu thật → màn chờ trắng trơn, đó là lý do "không có file nền") ──
+  if(R.bgOn&&R.bgCurve){
+    const bg=R.bgCurve, bgEnd=bg.t[bg.t.length-1], hasEt=!!(bg.et&&bg.et.length);
+    let k2=0;
+    for(let i=0;i<=N;i++){
+      const tt=i/N*span;
+      if(tt>bgEnd){tbt.push(null);tet.push(null);continue;}
+      while(k2+1<bg.t.length&&bg.t[k2+1]<=tt)k2++;
+      tbt.push(bg.bt[k2]); tet.push(hasEt?bg.et[k2]:null);
+    }
+  }
   if(liveChart){
-    const span=tiMax*60;                             // giây trên toàn bề rộng
     drop=Math.round(N*Math.min(1,R.elapsed/span));
     i0=Math.round(N*Math.min(1,SERIES.t[0]/span));   // mẫu THẬT đầu tiên — không kéo phẳng về 00:00
     let k=0;                                         // lấy mẫu SERIES vào lưới N điểm
@@ -4626,27 +4722,15 @@ function drawChart(){
       while(k+1<SERIES.t.length&&SERIES.t[k+1]<=tt)k++;
       bt.push(SERIES.bt[k]);et.push(SERIES.et[k]);ror.push(SERIES.ror[k]);burner.push(SERIES.gas[k]);
     }
-    // NỀN MỜ MỤC TIÊU: BT của curve hồ sơ trải lên cùng lưới thời gian — vẽ TOÀN
-    // bề rộng (thợ thấy đường phải đi tiếp), quá cuối curve hồ sơ thì null
-    if(R.bgCurve){
-      const bg=R.bgCurve, bgEnd=bg.t[bg.t.length-1];
-      let k2=0;
-      for(let i=0;i<=N;i++){
-        const tt=i/N*span;
-        if(tt>bgEnd){tbt.push(null);continue;}
-        while(k2+1<bg.t.length&&bg.t[k2+1]<=tt)k2++;
-        tbt.push(bg.bt[k2]);
-      }
-    }
   }else{
     drop=Math.round(N*Math.max(0,Math.min(1,R.prog)));   // now-line theo tiến độ mẻ mẫu
     for(let i=0;i<=N;i++){const c=curveAt(i/N);
       bt.push(c.bt);et.push(c.et);abt.push(c.abt);ror.push(c.ror);burner.push(c.burner);}
   }
   let tMax,rMin,rMax;
-  const tbtReal=tbt.filter(v=>v!=null);   // nền mờ cũng phải nằm trong khung
+  const tbtReal=tbt.filter(v=>v!=null), tetReal=tet.filter(v=>v!=null);  // nền cũng phải nằm trong khung
   if(auto){
-    tMax=Math.max(100,up(Math.max(...et,...bt,...tbtReal)+12,50));
+    tMax=Math.max(100,up(Math.max(...et,...bt,...tbtReal,...tetReal)+12,50));
     rMax=up(Math.max(...ror,10),10); rMin=Math.min(-10,dn(Math.min(...ror),10));
   }else{ tMax=+CFG.ch_tmax||300; rMax=+CFG.ch_rmax||40; rMin=-10; }
   ror=ror.map(v=>Math.max(rMin,Math.min(rMax,v)));
@@ -4680,12 +4764,16 @@ function drawChart(){
   const stepPlot=(arr,mapy,col,w)=>{g.beginPath();arr.forEach((v,i)=>{const X=x(i+i0),Y=mapy(v);if(!i)g.moveTo(X,Y);else{g.lineTo(X,Y);}if(i<arr.length-1)g.lineTo(x(i+i0+1),Y);});g.strokeStyle=col;g.lineWidth=w;g.stroke();};
   // NỀN MỜ MỤC TIÊU — vẽ TRƯỚC mọi đường thật để nằm phía sau; đứt khúc + mờ,
   // toàn bề rộng chứ không cắt ở now-line (mục tiêu là đường phải đi tiếp)
-  if(liveChart&&tbtReal.length){
-    g.save();g.setLineDash([9,8]);g.globalAlpha=.45;
-    g.beginPath();let pen=false;
-    tbt.forEach((v,i)=>{if(v==null){pen=false;return;}
-      const X=x(i),Y=yT(v);pen?g.lineTo(X,Y):g.moveTo(X,Y);pen=true;});
-    g.strokeStyle=css('--c-bt');g.lineWidth=3;g.lineJoin='round';g.stroke();g.restore();
+  if(tbtReal.length){
+    const penLine=(arr,col,w,al)=>{
+      g.save();g.setLineDash([9,8]);g.globalAlpha=al;
+      g.beginPath();let pen=false;
+      arr.forEach((v,i)=>{if(v==null){pen=false;return;}
+        const X=x(i),Y=yT(v);pen?g.lineTo(X,Y):g.moveTo(X,Y);pen=true;});
+      g.strokeStyle=col;g.lineWidth=w;g.lineJoin='round';g.stroke();g.restore();
+    };
+    if(tetReal.length)penLine(tet,css('--c-et'),2,.3);   // ET nền (chỉ mẻ nền thật mới có)
+    penLine(tbt,css('--c-bt'),3,.45);
   }
   if(hasData){
     // vùng nền dưới đường BT — gradient xanh mờ dần (tăng chiều sâu)
@@ -5489,8 +5577,8 @@ const HELP={
 function applyHelp(){
   document.querySelectorAll('.tbtn').forEach(b=>{const s=b.querySelector('[data-i18n]');const k=s&&s.dataset.i18n;
     if(k&&HELP[k])b.setAttribute('data-help',HELP[k]);});
-  const lb=document.getElementById('loopBtn');if(lb)lb.setAttribute('data-help','Lặp lại mẻ rang tự động — chỉ dùng ở chế độ AUTO.');
-  const mb=document.getElementById('modeBtn');if(mb)mb.setAttribute('data-help','Đổi AUTO ↔ MANUAL. AUTO: máy tự bám hồ sơ; MANUAL: chỉnh tay.');
+  const lb=document.getElementById('loopBtn');if(lb)lb.setAttribute('data-help','Lặp lại mẻ rang — chỉ dùng ở chế độ TỰ ĐỘNG.');
+  const mb=document.getElementById('modeBtn');if(mb)mb.setAttribute('data-help','Đổi THƯỜNG ↔ TỰ ĐỘNG. THƯỜNG: thợ chỉnh gas/gió/trống. TỰ ĐỘNG: app chỉnh theo mẻ nền ghim trong hồ sơ. Quy trình mẻ như nhau.');
   document.querySelectorAll('.outrow.burner .pm').forEach(b=>b.setAttribute('data-help','Chỉnh mức gas đầu đốt, bước 5%.'));
   document.querySelectorAll('.outrow.air .pm').forEach(b=>b.setAttribute('data-help','Chỉnh lưu lượng gió hút, bước 5%.'));
   document.querySelectorAll('.outrow.drum .pm').forEach(b=>b.setAttribute('data-help','Chỉnh tốc độ trống quay, bước 5%.'));

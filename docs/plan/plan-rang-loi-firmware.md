@@ -21,7 +21,7 @@
 | **G** Model máy (app) | ✅ XONG (app) | `MACHINE_MODELS` 3/6/12/30kg → `applyModel()` điền timer + kg mặc định vào form Cài đặt máy; `currentModelKg()` cấp kg auto cho hồ sơ trống. **Áp THẬT xuống máy = phần E.** |
 | **A'** Kho CSV | ✅ CODE XONG | `prof_load/prof_save` (Python) đọc/ghi `ho-so.csv` (16 cột) + di trú `profiles.json`→`.bak` một lần. Round-trip test PASS. Bỏ `profiles.csv` trùng phía JS. **CẦN test với exe** (kiểm di trú thật + web sync). |
 | **E** Handshake $M | ✅ CODE XONG | Khối `config` (reg 170-173) trong `pc_link.json` → gen 3 phía khớp (`--check` OK). `PC_Link.h::pcLinkConfigTask()` đọc/ghi `iMemHMI[idx]` (idx=$M 1..52, `iMemHMI[60]` an toàn), chặn ghi khi rang. Python `mc_read/mc_write` + `otl_link.cfg_op()` handshake. JS đọc auto khi mở tab + ghi auto từng ô có guard. **CẦN flash STM32 + test** (không có pio ở đây). |
-| **C** App lái | ✅ CODE XONG | Bộ `AUTOPILOT` (nút "🤖 App LÁI" cạnh Chế độ): mỗi ~10s so BT thật với `TGT.btAt` → nhích gas (bậc 2%, deadband 3°C, kẹp maxGas), AB theo nhiệt; chỉ chạy khi nối máy + PC control + CÓ LỬA; mất PC control/xong mẻ → tự nhả. Choreography xi-lanh vẫn firmware backstop. **CẦN test bench máy thật** (tune gas). |
+| **C** Rang tự động | ✅ CODE XONG (viết lại 2026-07-29) | **Chỉ 2 chế độ: THƯỜNG / TỰ ĐỘNG** — xem mục "Hai chế độ" bên dưới. Nút "🤖 App LÁI" và nút "RANG AUTO từ thẻ SD máy" **đã gỡ hẳn**. **CẦN test bench máy thật** (tune bù gas). |
 
 > Đã sửa `OTL Roast Lab.html` + `tools/{roast_lab_hmi,otl_link,pc_link_map}.py` + `protocol/{pc_link.json,gen_pc_link.py}` + `include/{PC_Link.h,PC_Link_Map.h}`. Kiểm: JS parse sạch, py_compile OK, gen --check khớp, CSV round-trip PASS. **Review code**: sửa 2 lỗi — (B) ép DE<FCs<xả cho đường mục tiêu đơn điệu; (C) không nâng gas khi chưa có lửa. **Review design**: giảm gap màn chờ IDLE + cho cuộn để bảng thông số không kẹp. **Chưa build exe/flash firmware, chưa commit.**
 
@@ -172,7 +172,79 @@ Ghi sai địa chỉ = ghi nhầm tham số vận hành → phải audit trướ
 
 ---
 
-## Bước C — RANG AUTO do APP LÁI (KHÔNG qua SD) — đã đổi hướng 2026-07-25
+## ✅ CHỐT 2026-07-29 — HAI CHẾ ĐỘ, KHÔNG CÓ CHẾ ĐỘ THỨ BA
+
+**Lệnh chủ máy:** *"app lái là sai và gây khó hiểu, chỉ có chế độ rang thường
+(manual) và rang auto."*
+
+Quy trình mẻ **y hệt nhau** ở cả hai chế độ (mồi → charge → TP → DE → FCs → drop
+→ làm nguội). Khác nhau **đúng một chỗ: ai chỉnh gas/gió/trống.**
+
+| | Rang THƯỜNG | Rang TỰ ĐỘNG |
+|---|---|---|
+| Quy trình mẻ | như nhau | như nhau |
+| Gas / gió / trống | thợ chỉnh tay (nút ±) | app tự chỉnh theo **mẻ nền** |
+
+**Mẻ nền** = một mẻ đã rang ngon, thợ **ghim** vào hồ sơ (trường `bgBatch` = id mẻ
+trong `batches.db`). Chế độ TỰ ĐỘNG phát lại **đúng đường gas/gió/trống của mẻ đó,
+mỗi giây một điểm** — chính là cách firmware chạy `sdGas[]/sdAirflow[]/sdDrum[]`
+khi rang AUTO, chỉ khác nguồn: kho mẻ của app thay cho thẻ SD.
+
+**Gì đã gỡ (vì là chế độ thứ ba trá hình):**
+- Nút "🤖 App LÁI" + bộ `AUTOPILOT` — gộp hẳn vào chế độ TỰ ĐỘNG.
+- Nút "▶ RANG AUTO từ thẻ SD máy" + `sdAutoRoast()/sdAutoAvail()` — vi phạm ràng
+  buộc CẤM SD ở trên, và là đường rang thứ ba. Thợ vẫn bật AUTO thẳng trên HMI máy.
+
+**Đã code (`OTL Roast Lab.html` + `tools/roast_lab_hmi.py`):**
+- Hồ sơ thêm cột `bgBatch` trong `ho-so.csv` (17 cột); CSV cũ 16 cột vẫn đọc được.
+- Form hồ sơ: ô **"Mẻ nền"** → xổ danh sách mẻ THẬT (`r.live`) để ghim / bỏ ghim.
+- `loadAutoPlan()` nạp curve mẻ nền → `_curveGrid()` trải ra từng giây (dùng chung
+  hàm xuất CSV). Không có mẻ nền → **không vào được chế độ TỰ ĐỘNG**.
+- `autoTick()` mỗi giây: gió/trống phát lại y mẻ nền; gas = mức nền **+ phần bù**
+  theo lệch BT (chu kỳ 10s, bậc 2%, deadband 3°C, kẹp bù ±20% và `maxGasSet`).
+- Chốt an toàn: chưa có lửa → không tăng gas; mẻ nền để gas 0% (thợ cố ý tắt lửa
+  đoạn đó) → **giữ 0%, không cộng bù**; mất PC control → tự về THƯỜNG; xong mẻ →
+  tự về THƯỜNG. Firmware vẫn giữ watchdog mất-app + mồi-hụt + timer xi-lanh.
+- Màn chờ IDLE hiện thêm dòng "Rang tự động: <mã mẻ nền>" / "chưa có mẻ nền".
+
+### Curve nền — LUÔN CÓ, bật/tắt được (chủ máy 2026-07-29)
+
+Yêu cầu: *"lúc nào cũng có file nền (bật tắt được), có hồ sơ rang thì load hồ sơ đó
+làm nền, không có thì dựa trên mốc charge/TP/DE/FCs/Drop vẽ curve kỳ vọng."*
+
+**Vì sao trước đây màn chờ trắng trơn** (3 lỗi chồng nhau, đã sửa cả 3):
+1. `drawChart()` chỉ dựng mảng nền **bên trong nhánh `liveChart`** → chưa có mẫu
+   thật từ máy thì không dựng, không vẽ. Nay dựng ở **mọi trạng thái**.
+2. `#pane-rang[data-phase="IDLE"] .chartwrap` bị `opacity:.28 + grayscale(.4) +
+   pointer-events:none` → vẽ ra cũng như không, và không chạm nổi nhãn để bật/tắt.
+   Nay IDLE để `opacity:.92`, còn NOSEL vẫn mờ (chưa chọn hồ sơ thì không có nền).
+3. Overlay màn chờ đục 62% + `blur(3px)` → nay 34% + `blur(1.5px)`, và
+   `pointer-events:none` (nội dung `.ri-inner` vẫn nhận chạm) để chạm xuyên xuống
+   nhãn "Nền".
+
+**Nguồn nền, ưu tiên từ trên xuống:**
+1. **Mẻ nền thật** đã ghim (`bgBatch`) → `R.bgCurve={t,bt,et,real:true}`, vẽ cả BT
+   lẫn ET như background profile của Artisan. Nhãn: `Nền · <mã mẻ>`.
+2. **Đường kỳ vọng** nội suy từ mốc charge/TP/DE/FCs/DROP (`buildTarget`). Nhãn:
+   `Nền · kỳ vọng`.
+3. Chưa nạp hồ sơ → không vẽ gì (không bịa đường), nhãn ẩn.
+
+**Bật/tắt:** chạm nhãn "Nền" ở góc đồ thị → gạch ngang + mờ khi tắt; nhớ qua lần
+mở sau (`localStorage otl_bg_on`). Mốc/đếm ngược vẫn bám hồ sơ, nền chỉ để mắt so.
+
+**Kiểm:** dump pixel canvas xác nhận đúng 1 đường: 180°(00:00) → đáy 93°(~1:40) →
+160°(DE 397s) → 191°(FCs 604s) → 210°(11:30) rồi dừng, không có đuôi thừa. Chạm
+bật/tắt chạy đúng ở app thật; nút BẮT ĐẦU vẫn bấm được sau khi đổi pointer-events.
+
+**Kiểm:** `node --check` sạch; `py_compile` OK; round-trip `ho-so.csv` có/không
+`bgBatch` PASS + CSV cũ 16 cột đọc được; **bench `autoTick` 12/12 PASS** (chưa lửa
+không tăng gas · phát đúng mức nền · đoạn tắt lửa giữ 0% · bù có kẹp maxGas · nóng
+hơn nền thì hạ gas · deadband không bù · mất PC control tự nhả · mẻ dài hơn nền
+không crash). **CHƯA test máy thật, chưa build exe, chưa commit.**
+
+---
+
+## Bước C (bản cũ 2026-07-25, giữ để tra lịch sử) — RANG AUTO do APP LÁI
 
 **Đổi hướng:** theo ràng buộc **không dùng SD**, BỎ ý "soạn profile ghi xuống thẻ SD".
 Thay bằng: app **tự lái mẻ AUTO** — stream setpoint theo đường mục tiêu (Bước B) xuống
