@@ -689,6 +689,15 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
   background:color-mix(in srgb,var(--bg) 55%,transparent);backdrop-filter:blur(12px)}
 .overlay.on{display:flex}
 #login{z-index:120;background:var(--bg)}   /* login che toàn bộ */
+/* Hộp HỎI LẠI của app — thay confirm() gốc (xem chú thích ở markup #askbox) */
+#askbox{z-index:130}                        /* trên mọi modal khác: nó chặn thao tác */
+.askcard{width:760px;max-width:92%;background:var(--panel);border:1px solid var(--hair-2);
+  border-radius:var(--r-xl);padding:38px 38px 30px;box-shadow:var(--elev),var(--edge)}
+.askcard .ask-t{font-family:var(--f-num);font-weight:700;font-size:var(--fs-36);
+  line-height:1.2;margin-bottom:10px}
+.askcard .ask-s{font-size:var(--fs-24);color:var(--dim);line-height:1.4;white-space:pre-line}
+.askcard .ask-row{display:flex;gap:16px;margin-top:30px}
+.askcard .ask-row .bigbtn{flex:1;min-height:88px}   /* nút to — đeo găng bấm trúng */
 .loginbox{width:1000px;max-width:92%;text-align:center}
 .loginbox .lmark{width:96px;height:96px;border-radius:var(--r-xl);margin:0 auto 18px;background:var(--accent);color:var(--accent-ink);
   display:flex;align-items:center;justify-content:center;font-family:var(--f-num);font-weight:700;font-size:var(--fs-52)}
@@ -2561,6 +2570,19 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
     <!-- ══════════ PICKER ══════════ -->
     <div class="overlay" id="picker"><div class="pkbox" id="pkBox"></div></div>
 
+    <!-- ══════════ HỎI LẠI (thay confirm() gốc trình duyệt) ══════════
+         confirm() gốc in ra dòng "127.0.0.1:42001 says" — lòi địa chỉ nội bộ, chữ
+         bé, không theo theme, và KHOÁ CỨNG luồng JS (đang rang thì nhịp poll đứng).
+         Hộp này dùng token app, nút to hợp găng tay, trả về Promise. -->
+    <div class="overlay" id="askbox"><div class="askcard">
+      <div class="ask-t" id="askTitle"></div>
+      <div class="ask-s" id="askSub"></div>
+      <div class="ask-row">
+        <button class="bigbtn ghost" id="askNo" onclick="askAnswer(false)">Thôi</button>
+        <button class="bigbtn primary" id="askYes" onclick="askAnswer(true)">Đồng ý</button>
+      </div>
+    </div></div>
+
     <!-- ══════════ SỬA HỒ SƠ ══════════ -->
     <div class="overlay" id="profedit"><div class="pebox wide">
       <div class="petitle">Sửa hồ sơ</div>
@@ -3532,9 +3554,12 @@ function newProfile(){
   refreshPE();document.getElementById('profedit').classList.add('on');
 }
 /* Xoá hồ sơ (có xác nhận) */
-function deleteProfile(i){
+async function deleteProfile(i){
   const ps=loadProfiles();const p=ps[i];if(!p)return;
-  if(!confirm((LANG==='vi'?'Xoá hồ sơ "':'Delete profile "')+p.name+'"?'))return;
+  if(!await askConfirm((LANG==='vi'?'Xoá hồ sơ "':'Delete profile "')+p.name+'"?',
+      LANG==='vi'?'Không lấy lại được. Các mẻ đã rang theo hồ sơ này vẫn giữ nguyên.'
+                 :'Cannot be undone. Roasted batches are kept.',
+      LANG==='vi'?'Xoá':'Delete', LANG==='vi'?'Thôi':'Cancel'))return;
   ps.splice(i,1);saveProfiles(ps);
   if(typeof pushAudit==='function'&&session)pushAudit('Xoá','Hồ sơ',p.name,'');
   renderProfiles();if(typeof toast==='function')toast(LANG==='vi'?'Đã xoá hồ sơ':'Profile deleted',true);
@@ -4403,8 +4428,18 @@ async function cmdCharge(opt){
       opLog('MẺ','CHẶN nạp hạt trong luồng mẻ — chưa có lửa','WARN');
       return;
     }
-    if(!confirm('CHƯA CÓ LỬA.\nVẫn mở cửa nạp?\n(Đổ hạt vào trống nguội là mẻ hỏng — chỉ nên làm khi đang thao tác máy, không phải vào mẻ.)'))return;
-    opLog('MẺ','thợ tự xác nhận: mở cửa nạp khi CHƯA CÓ LỬA','WARN');
+    /* Thợ bấm tay ở thanh công cụ = LỆNH MÁY THUẦN. Máy đang RẢNH (chưa vào mẻ)
+       thì đây là thao tác máy bình thường — vệ sinh, thử xi-lanh, canh cửa — nên
+       KHÔNG hỏi lại nữa (lệnh chủ máy: chưa bấm BẮT ĐẦU thì charge/xả/thoát bấm
+       như thường). Chỉ hỏi lại khi ĐANG TRONG MẺ, vì lúc đó mở cửa nạp lúc không
+       lửa đúng là đổ hạt vào trống nguội = mẻ hỏng. Vẫn ghi nhật ký cả 2 đường. */
+    if(R.phase==='RUNNING'){
+      if(!await askConfirm('CHƯA CÓ LỬA — vẫn mở cửa nạp?',
+        'Đang trong mẻ mà đổ hạt vào trống nguội là mẻ hỏng.','Vẫn mở','Thôi'))return;
+      opLog('MẺ','thợ tự xác nhận: mở cửa nạp khi CHƯA CÓ LỬA (đang trong mẻ)','WARN');
+    }else{
+      opLog('MÁY','mở cửa nạp khi chưa có lửa — máy đang rảnh (thao tác máy)');
+    }
   }
   try{snd('charge');}catch(err){}      // hơi trút xuống + thép cửa nạp
   await cmdLatch('charge','btnCharge');
@@ -4630,7 +4665,7 @@ function syncModeBtn(){
   const lb=document.getElementById('loopBtn');if(lb)lb.classList.toggle('dis',!auto);
   applyUiVis();     // Loop & Prof No. chỉ hiện ở chế độ TỰ ĐỘNG
 }
-function toggleMode(){
+async function toggleMode(){
   if(R.mode==='AUTO'){                              // TỰ ĐỘNG → THƯỜNG: trả tay cho thợ
     R.mode='MANUAL';autoReset();syncModeBtn();
     opLog('MẺ','chế độ THƯỜNG — thợ chỉnh gas/gió/trống');toast('Chế độ THƯỜNG',true);return;
@@ -4638,7 +4673,9 @@ function toggleMode(){
   if(!AUTO.plan){toast('Hồ sơ chưa ghim MẺ NỀN — vào Hồ sơ ✎ chọn mẻ nền trước');return;}
   if(!dsLive()){toast('Rang tự động cần nối máy thật');return;}
   if(!(DS.snap&&DS.snap.flags&&DS.snap.flags.pc_control)){toast('Bật "PC control" trên HMI trước đã');return;}
-  if(!confirm(`Chuyển sang RANG TỰ ĐỘNG?\nApp sẽ tự chỉnh gas/gió/trống theo mẻ nền "${AUTO.srcName}".\nĐổi về THƯỜNG bất cứ lúc nào.`))return;
+  if(!await askConfirm('Chuyển sang RANG TỰ ĐỘNG?',
+      `App sẽ tự chỉnh gas/gió/trống theo mẻ nền "${AUTO.srcName}".\nĐổi về THƯỜNG bất cứ lúc nào.`,
+      'Chuyển TỰ ĐỘNG','Thôi'))return;
   R.mode='AUTO';autoReset();syncModeBtn();
   opLog('MẺ',`chế độ TỰ ĐỘNG — theo mẻ nền "${AUTO.srcName}"`);toast('Chế độ TỰ ĐỘNG',true);
 }
@@ -4844,7 +4881,7 @@ function editCurrentProfile(){
   R._editFromIdle=true;
   refreshPE(); document.getElementById('profedit').classList.add('on');
 }
-function startRoast(){
+async function startRoast(){
   if(R.phase==='RUNNING')return;
   // Nối máy (máy chủ nhịp): BẮT ĐẦU = gửi lệnh Nạp hạt. Mẻ chỉ thật sự mở khi
   // firmware vào CHARGE — applyMachine thấy step chạy sẽ gọi lại hàm này.
@@ -4854,23 +4891,26 @@ function startRoast(){
     // Nút Nạp hạt ở toolbar vẫn nạp thẳng không hỏi — đường override của thợ.
     const bt=DS.snap?DS.snap.bt:0;
     if(R.chargeT&&bt>R.chargeT+3&&
-       !confirm(`BT ${bt.toFixed(1)}° CAO hơn nhiệt charge ${R.chargeT}° — dễ cháy mặt hạt. Vẫn nạp?`))return;
+       !await askConfirm(`BT ${bt.toFixed(1)}° CAO hơn nhiệt charge ${R.chargeT}°`,
+         'Trống nóng quá dễ cháy mặt hạt. Vẫn nạp?','Vẫn nạp','Thôi'))return;
     if(R.chargeT&&bt<R.chargeT-1){
       // đang chờ tự nạp mà bấm lần nữa = hủy chờ
       if(R._autoCharge){R._autoCharge=false;toast('Đã hủy chờ tự nạp');return;}
       // CHƯA CÓ LỬA → chờ là vô nghĩa (máy không nóng lên) — mời đánh lửa luôn.
       // OK = đánh lửa + arm tự nạp (lửa → nóng → tự nạp, trọn chuỗi); Hủy = thôi.
       if(!flagShow('flame')&&!flagShow('ignite')){
-        if(confirm(`BT ${bt.toFixed(1)}° còn nguội mà CHƯA ĐÁNH LỬA.\n`+
-            `Đánh lửa ngay và tự nạp khi tới ${R.chargeT}°?`)){
+        if(await askConfirm(`BT ${bt.toFixed(1)}° còn nguội mà CHƯA ĐÁNH LỬA`,
+            `Chờ suông thì máy không nóng lên.\nĐánh lửa ngay và tự nạp khi tới ${R.chargeT}°?`,
+            'Đánh lửa & chờ nạp','Thôi')){
           cmdIgnite(); R._autoCharge=true;
           toast(`Đã đánh lửa — chờ BT tới ${R.chargeT}° là TỰ NẠP`,true);
         }
         return;
       }
       // OK = nạp non luôn; Hủy = ARM chờ — máy nóng tới cửa là app TỰ gửi lệnh nạp
-      if(!confirm(`BT ${bt.toFixed(1)}° CHƯA TỚI nhiệt charge ${R.chargeT}° — máy chưa đủ nóng.\n`+
-          `OK = nạp luôn · Hủy = chờ tới ${R.chargeT}° tự nạp`)){
+      if(!await askConfirm(`BT ${bt.toFixed(1)}° CHƯA TỚI nhiệt charge ${R.chargeT}°`,
+          'Máy chưa đủ nóng — nạp bây giờ thì mẻ dễ ì.',
+          'Nạp luôn',`Chờ tới ${R.chargeT}° tự nạp`)){
         R._autoCharge=true;
         toast(`Chờ BT tới ${R.chargeT}° là TỰ NẠP — bấm BẮT ĐẦU lần nữa để hủy`,true);
         return;
@@ -4879,8 +4919,8 @@ function startRoast(){
     // BT đã trong cửa nhiệt nhưng CHƯA CÓ LỬA → mời đánh lửa, đừng chỉ báo lỗi cụt
     // (cmdCharge vẫn chặn lần nữa — đây chỉ là lối dẫn cho thợ đỡ phải đoán).
     if(!flagShow('flame')){
-      if(confirm(`BT ${bt.toFixed(1)}° đã tới cửa nạp nhưng CHƯA CÓ LỬA.\n`+
-                 `Đánh lửa ngay? (có lửa rồi bấm BẮT ĐẦU lần nữa để nạp)`)) cmdIgnite();
+      if(await askConfirm(`BT ${bt.toFixed(1)}° đã tới cửa nạp nhưng CHƯA CÓ LỬA`,
+          'Có lửa rồi bấm BẮT ĐẦU lần nữa để nạp.','Đánh lửa','Thôi')) cmdIgnite();
       return;
     }
     toast('Đã gửi lệnh Nạp hạt — mẻ bắt đầu khi máy vào CHARGE',true);
@@ -5290,7 +5330,8 @@ async function napAddFromLive(){
 }
 async function napDel(i){
   const n=NAPS[i];if(!n)return;
-  if(!confirm(`Xoá công thức nạp "${n.name}"?`))return;
+  if(!await askConfirm(`Xoá công thức nạp "${n.name}"?`,
+      'Không lấy lại được.','Xoá','Thôi'))return;
   NAPS.splice(i,1);await napStore();
   if(NAP_CUR&&NAP_CUR.name===n.name){NAP_CUR=null;localStorage.removeItem('otl_nap_cur');}
   renderNapRow();
@@ -6275,8 +6316,10 @@ async function mcLoadFile(){
   localStorage.setItem(LS_MC,JSON.stringify(MC.cur));
   renderMachineCfg();toast('Đã nạp cấu hình máy từ file',true);
 }
-function mcResetDefault(){
-  if(!confirm('Đưa mọi tham số về MẶC ĐỊNH gợi ý? (chỉ điền vào form, KHÔNG tự ghi xuống máy — bấm “Ghi xuống máy” mới áp dụng)'))return;
+async function mcResetDefault(){
+  if(!await askConfirm('Đưa mọi tham số về MẶC ĐỊNH gợi ý?',
+      'Chỉ điền vào form, KHÔNG tự ghi xuống máy — bấm “Ghi xuống máy” mới áp dụng.',
+      'Về mặc định','Thôi'))return;
   MC.cur=Object.assign({},MC_DEFAULTS);renderMachineCfg();toast('Đã đưa về mặc định gợi ý',true);
 }
 /* Danh sách [key, $M-addr] cho handshake — idx = số $M trong MACHINE_GROUPS */
@@ -6298,7 +6341,9 @@ async function mcWriteMachine(){
   if(!(a&&a.mc_write)){toast('Chỉ ghi máy được trong app');return;}
   if(mcRoasting()){toast('Đang rang — không ghi cấu hình máy');return;}
   const items=Object.keys(MC.cur).filter(k=>MC_ALL[k]).map(k=>[k,MC_ALL[k][1],MC.cur[k]]);
-  if(!confirm('GHI '+items.length+' tham số xuống MÁY? Sai tham số có thể ảnh hưởng vận hành. Chỉ ghi khi chắc chắn.'))return;
+  if(!await askConfirm('GHI '+items.length+' tham số xuống MÁY?',
+      'Sai tham số có thể ảnh hưởng vận hành. Chỉ ghi khi chắc chắn.',
+      'Ghi xuống máy','Thôi'))return;
   const r=await a.mc_write(items);
   if(r&&r.ok){const nf=(r.failed&&r.failed.length)?` (${r.failed.length} ô lỗi)`:'';
     toast('Đã ghi '+r.count+' tham số xuống máy'+nf,r.failed&&r.failed.length?false:true);
@@ -6426,7 +6471,9 @@ async function accToggle(nameEnc,wasOn){const name=decodeURIComponent(nameEnc);c
   const users=loadUsers();const s=users.list.find(x=>x.name===name);if(!s)return;const was=s.enabled;s.enabled=!s.enabled;saveUsers(users);
   pushAudit('Sửa','Trạng thái '+s.name,was?'Bật':'Khoá',s.enabled?'Bật':'Khoá');renderAccounts();}
 async function accDel(nameEnc){const name=decodeURIComponent(nameEnc);
-  if(!confirm((LANG==='vi'?'Xoá thợ ':'Delete ')+'"'+name+'"?'))return;
+  if(!await askConfirm((LANG==='vi'?'Xoá thợ ':'Delete ')+'"'+name+'"?',
+      LANG==='vi'?'Tài khoản này sẽ không đăng nhập được nữa.':'This account can no longer sign in.',
+      LANG==='vi'?'Xoá':'Delete', LANG==='vi'?'Thôi':'Cancel'))return;
   const a=pyAuth();
   if(a){const r=await a.auth_del_operator(name);if(r&&r.ok){await renderAccounts();toast((LANG==='vi'?'Đã xoá ':'Deleted ')+name,true);}
     else toast((LANG==='vi'?'Không xoá được: ':'Failed: ')+((r&&r.err)||'?'));return;}
@@ -6813,6 +6860,39 @@ document.addEventListener('click',ev=>{
   snd(kind);
 },true);
 document.addEventListener('DOMContentLoaded',sndSyncLabel);
+
+/* ════════ HỎI LẠI kiểu app (thay confirm() gốc) ════════
+   confirm() gốc: hiện "127.0.0.1:42001 says", chữ bé, không theo theme, và chặn
+   cứng luồng JS (đang rang thì nhịp poll/vẽ đứng lại). Hàm này trả Promise nên
+   chỗ gọi chỉ cần `if(!await askConfirm(...))return;`.
+   Mặc định là KHÔNG (Escape / bấm ra ngoài = huỷ) — hỏi lại thì lựa an toàn phải
+   là không làm gì. */
+let _askResolve=null;
+function askConfirm(title,sub,yes,no){
+  const box=document.getElementById('askbox');
+  if(!box)return Promise.resolve(window.confirm(title));   // dự phòng nếu thiếu markup
+  document.getElementById('askTitle').textContent=title||'';
+  document.getElementById('askSub').textContent=sub||'';
+  document.getElementById('askYes').textContent=yes||(LANG==='vi'?'Đồng ý':'OK');
+  document.getElementById('askNo').textContent =no ||(LANG==='vi'?'Thôi':'Cancel');
+  box.classList.add('on');
+  try{snd('warn');}catch(e){}
+  setTimeout(()=>{const b=document.getElementById('askNo');if(b)b.focus();},30);
+  return new Promise(res=>{ _askResolve=res; });
+}
+function askAnswer(v){
+  const box=document.getElementById('askbox');if(box)box.classList.remove('on');
+  const r=_askResolve; _askResolve=null;
+  if(r)r(!!v);
+}
+/* Escape = huỷ; chạm nền mờ ngoài thẻ = huỷ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&_askResolve)askAnswer(false);
+},true);
+document.addEventListener('DOMContentLoaded',()=>{
+  const box=document.getElementById('askbox');
+  if(box)box.addEventListener('click',e=>{if(e.target===box)askAnswer(false);});
+});
 
 /* ── toast ── */
 let toastTmr;function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(ok?' ok':'');
