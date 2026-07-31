@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 75">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke-width: 5px;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5 {
+        stroke: #231f20;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-1, .cls-5 {
+        fill: none;
+      }
+
+      .cls-2, .cls-3, .cls-4 {
+        fill: #231f20;
+      }
+
+      .cls-3 {
+        stroke-width: 2px;
+      }
+
+      .cls-4 {
+        stroke-width: .25px;
+      }
+
+      .cls-5 {
+        stroke-width: 7px;
+      }
+    </style>
+  </defs>
+  <path class="cls-5" d="M17.99,21.84v-7.96c.09-.47.39-1.82,1.59-2.94,1.53-1.43,3.39-1.42,3.78-1.41h20.34c.46.04,2.11.24,3.39,1.62.71.77,1.02,1.59,1.16,2.07v1.7"/>
+  <rect class="cls-4" x="43.56" y="29.08" width="9.38" height="3.54" rx=".8" ry=".8" transform="translate(79.1 -17.41) rotate(90)"/>
+  <rect class="cls-4" x="43.56" y="44.6" width="9.38" height="3.54" rx=".8" ry=".8" transform="translate(94.63 -1.88) rotate(90)"/>
+  <rect class="cls-3" x="22.84" y="7.15" width="31.98" height="4.75" rx="1.14" ry="1.14"/>
+  <rect class="cls-3" x="41.93" y="65.15" width="40.08" height="4.75" rx="1.14" ry="1.14"/>
+  <path class="cls-2" d="M48.02,7.93l-15.87,10.49c-.35.23-.19.78.23.78h31.75c.42,0,.59-.55.23-.78l-15.87-10.49c-.14-.09-.33-.09-.47,0Z"/>
+  <path class="cls-2" d="M48.82,68.77l11.53-13.64c.23-.28.04-.7-.32-.7h-23.05c-.36,0-.56.42-.32.7l11.53,13.64c.17.2.48.2.65,0Z"/>
+  <path class="cls-1" d="M51.09,65.71l13.59-14.98c.6-.66.93-1.51.93-2.39v-25.01c0-1.99-1.66-3.6-3.7-3.6h-27.18c-2.04,0-3.7,1.61-3.7,3.6v25.01c0,.88.33,1.73.93,2.39l13.59,14.98c1.47,1.62,4.07,1.62,5.54,0Z"/>
+  <rect class="cls-2" x="30.85" y="19.73" width="34.82" height="3.19" rx=".8" ry=".8"/>
+</svg>

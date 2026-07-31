@@ -69,3 +69,11 @@ _external/
 
 # Tài liệu PDF nhà sản xuất — nặng, không đưa vào git
 docs/ref/DELTA_IA-HMI_DOPSoft_UM_EN_20211230.pdf
+
+# Kết quả build / đóng gói
+build/
+dist/
+tools/build/
+tools/dist/
+tools/appdata/
+*.spec

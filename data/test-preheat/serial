@@ -1,0 +1,381 @@
+---- Closed serial port COM20 due to disconnection from the machine ----
+---- Opened the serial port COM20 ----
+PREHEAT-PID: pre-ignite
+PRE_IGNITE: done -> IGNITE
+STT=163
+TUNE SV_tune=187 (LowPV)
+PREHEAT-PID: gas on -> TUNE (SV chua co trong bang)
+STT=26
+[0:03] TUNE BT=94 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:06] TUNE BT=97 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:09] TUNE BT=102 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:12] TUNE BT=108 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:15] TUNE BT=113 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:18] TUNE BT=118 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:21] TUNE BT=123 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:24] TUNE BT=128 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:27] TUNE BT=132 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:30] TUNE BT=137 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:33] TUNE BT=141 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:36] TUNE BT=145 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:39] TUNE BT=149 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:42] TUNE BT=153 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:45] TUNE BT=155 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:48] TUNE BT=158 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:51] TUNE BT=161 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:54] TUNE BT=164 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:57] TUNE BT=167 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:00] TUNE BT=170 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:03] TUNE BT=172 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:06] TUNE BT=174 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:09] TUNE BT=177 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:12] TUNE BT=179 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:15] TUNE BT=181 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:18] TUNE BT=183 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:21] TUNE BT=184 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:24] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[1:27] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[1:30] TUNE BT=189 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[1:33] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[1:36] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+TUNE peak 1
+[1:39] TUNE BT=185 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:42] TUNE BT=183 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:45] TUNE BT=183 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:48] TUNE BT=184 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:51] TUNE BT=185 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:54] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:57] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[2:00] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[2:03] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+TUNE peak 2
+[2:09] TUNE BT=185 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[2:12] TUNE BT=184 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[2:15] TUNE BT=184 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[2:18] TUNE BT=185 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[2:21] TUNE BT=185 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[2:24] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[2:27] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+[2:30] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+TUNE peak 3
+PID table saved, n=1
+TUNE done a=40 Pu=27 -> kp=7500 ki=300 kd=15464
+[2:36] HEAT BT=186 e=396 [HEAT_g] P=243 I=0 D=10 dBT=7 out=100 gas=100 air=20
+[2:39] HEAT BT=184 e=414 [HEAT_g] P=252 I=-100 D=5 dBT=1 out=100 gas=100 air=20
+[2:42] HEAT BT=189 e=376 [HEAT_g] P=217 I=-100 D=-6 dBT=-26 out=100 gas=100 air=20
+[2:45] HEAT BT=195 e=323 [HEAT_g] P=172 I=-79 D=-25 dBT=-25 out=73 gas=73 air=20
+[2:48] HEAT BT=200 e=281 [HEAT_g] P=135 I=-62 D=-33 dBT=-24 out=44 gas=44 air=20
+[2:51] HEAT BT=205 e=240 [HEAT_g] P=99 I=-39 D=-24 dBT=-15 out=36 gas=36 air=20
+[2:54] HEAT BT=208 e=216 [HEAT_g] P=75 I=-19 D=-16 dBT=-9 out=39 gas=39 air=20
+[2:57] HEAT BT=210 e=200 [HEAT_g] P=63 I=-7 D=-13 dBT=-8 out=42 gas=42 air=20
+[3:00] HEAT BT=212 e=179 [HEAT_g] P=48 I=9 D=-10 dBT=-6 out=46 gas=46 air=20
+[3:03] HEAT BT=214 e=156 [HEAT_g] P=30 I=23 D=-11 dBT=-8 out=42 gas=42 air=20
+[3:06] HEAT BT=216 e=132 [HEAT_g] P=12 I=36 D=-11 dBT=-7 out=37 gas=37 air=20
+[3:09] HEAT BT=218 e=116 [HEAT_g] P=0 I=43 D=-11 dBT=-7 out=32 gas=32 air=20
+[3:12] HEAT BT=220 e=96 [HEAT_g] P=-14 I=52 D=-9 dBT=-6 out=29 gas=29 air=20
+[3:15] HEAT BT=221 e=83 [HEAT_g] P=-24 I=60 D=-6 dBT=-4 out=29 gas=29 air=20
+[3:18] HEAT BT=222 e=76 [HEAT_g] P=-29 I=65 D=-5 dBT=-3 out=30 gas=30 air=20
+[3:21] HEAT BT=223 e=66 [HEAT_g] P=-36 I=71 D=-4 dBT=-3 out=30 gas=30 air=20
+[3:24] HEAT BT=224 e=57 [HEAT_g] P=-43 I=76 D=-4 dBT=-3 out=29 gas=29 air=20
+[3:27] HEAT BT=224 e=51 [HEAT_g] P=-48 I=81 D=-3 dBT=-2 out=30 gas=30 air=20
+[3:30] HEAT BT=225 e=46 [HEAT_g] P=-51 I=84 D=-3 dBT=-2 out=30 gas=30 air=20
+[3:33] HEAT BT=226 e=40 [HEAT_g] P=-56 I=88 D=-3 dBT=-2 out=29 gas=29 air=20
+[3:36] HEAT BT=226 e=32 [HEAT_g] P=-62 I=91 D=-3 dBT=-2 out=26 gas=26 air=20
+HEATING -> HOLDING (bumpless, keep gas)
+STT=28
+[3:39] HOLD BT=227 e=27 [HOLD_g] P=-88 I=100 D=-8 dBT=-2 out=4 gas=4 air=20
+[3:42] HOLD BT=227 e=27 [HOLD_g] P=-88 I=100 D=0 dBT=2 out=10 gas=10 air=20
+[3:45] HOLD BT=225 e=42 [HOLD_g] P=-73 I=100 D=13 dBT=5 out=37 gas=37 air=20
+[3:48] HOLD BT=224 e=53 [HOLD_g] P=-62 I=100 D=11 dBT=2 out=48 gas=48 air=20
+[3:51] HOLD BT=225 e=48 [HOLD_g] P=-67 I=100 D=-3 dBT=-4 out=32 gas=32 air=20
+[3:54] HOLD BT=226 e=38 [HOLD_g] P=-77 I=100 D=-12 dBT=-5 out=13 gas=13 air=20
+[3:57] HOLD BT=226 e=33 [HOLD_g] P=-82 I=100 D=-5 dBT=0 out=12 gas=12 air=20
+[4:00] HOLD BT=226 e=40 [HOLD_g] P=-75 I=100 D=5 dBT=3 out=27 gas=27 air=20
+[4:03] HOLD BT=225 e=48 [HOLD_g] P=-67 I=100 D=8 dBT=2 out=40 gas=40 air=20
+[4:06] HOLD BT=225 e=47 [HOLD_g] P=-68 I=100 D=0 dBT=-2 out=33 gas=33 air=20
+[4:09] HOLD BT=226 e=38 [HOLD_g] P=-77 I=100 D=-7 dBT=-2 out=16 gas=16 air=20
+[4:12] HOLD BT=226 e=35 [HOLD_g] P=-80 I=100 D=-5 dBT=0 out=14 gas=14 air=20
+[4:15] HOLD BT=226 e=39 [HOLD_g] P=-76 I=100 D=3 dBT=3 out=25 gas=25 air=20
+[4:18] HOLD BT=225 e=45 [HOLD_g] P=-70 I=100 D=6 dBT=2 out=34 gas=34 air=20
+[4:21] HOLD BT=225 e=47 [HOLD_g] P=-68 I=100 D=2 dBT=0 out=34 gas=34 air=20
+[4:24] HOLD BT=225 e=44 [HOLD_g] P=-71 I=100 D=-3 dBT=-2 out=27 gas=27 air=20
+[4:27] HOLD BT=226 e=38 [HOLD_g] P=-77 I=100 D=-6 dBT=-3 out=18 gas=18 air=20
+[4:30] HOLD BT=226 e=38 [HOLD_g] P=-77 I=100 D=-2 dBT=0 out=20 gas=20 air=20
+[4:33] HOLD BT=226 e=38 [HOLD_g] P=-77 I=100 D=0 dBT=0 out=22 gas=22 air=20
+[4:36] HOLD BT=225 e=41 [HOLD_g] P=-74 I=100 D=2 dBT=1 out=27 gas=27 air=20
+[4:39] HOLD BT=225 e=44 [HOLD_g] P=-71 I=100 D=2 dBT=1 out=30 gas=30 air=20
+[4:42] HOLD BT=225 e=47 [HOLD_g] P=-68 I=100 D=2 dBT=0 out=34 gas=34 air=20
+[4:45] HOLD BT=225 e=47 [HOLD_g] P=-68 I=100 D=0 dBT=0 out=32 gas=32 air=20
+[4:48] HOLD BT=225 e=46 [HOLD_g] P=-69 I=100 D=-1 dBT=-1 out=30 gas=30 air=20
+[4:51] HOLD BT=225 e=43 [HOLD_g] P=-72 I=100 D=-2 dBT=-1 out=26 gas=26 air=20
+[4:54] HOLD BT=226 e=39 [HOLD_g] P=-76 I=100 D=-4 dBT=-2 out=21 gas=21 air=20
+[4:57] HOLD BT=226 e=36 [HOLD_g] P=-79 I=100 D=-4 dBT=-1 out=17 gas=17 air=20
+[5:00] HOLD BT=226 e=36 [HOLD_g] P=-79 I=100 D=0 dBT=0 out=20 gas=20 air=20
+[5:03] HOLD BT=226 e=36 [HOLD_g] P=-79 I=100 D=0 dBT=0 out=20 gas=20 air=20
+[5:09] HOLD BT=226 e=40 [HOLD_g] P=-75 I=100 D=2 dBT=1 out=26 gas=26 air=20
+[5:12] HOLD BT=225 e=42 [HOLD_g] P=-73 I=100 D=1 dBT=0 out=28 gas=28 air=20
+[5:15] HOLD BT=225 e=46 [HOLD_g] P=-69 I=100 D=3 dBT=1 out=33 gas=33 air=20
+[5:18] HOLD BT=225 e=46 [HOLD_g] P=-69 I=100 D=0 dBT=0 out=31 gas=31 air=20
+[5:21] HOLD BT=225 e=43 [HOLD_g] P=-72 I=100 D=-2 dBT=-1 out=26 gas=26 air=20
+[5:24] HOLD BT=226 e=39 [HOLD_g] P=-76 I=100 D=-4 dBT=-2 out=21 gas=21 air=20
+[5:27] HOLD BT=226 e=36 [HOLD_g] P=-79 I=100 D=-5 dBT=-2 out=17 gas=17 air=20
+[5:30] HOLD BT=226 e=36 [HOLD_g] P=-79 I=100 D=-1 dBT=0 out=19 gas=19 air=20
+[5:33] HOLD BT=226 e=37 [HOLD_g] P=-78 I=100 D=0 dBT=1 out=21 gas=21 air=20
+[5:36] HOLD BT=226 e=39 [HOLD_g] P=-76 I=100 D=3 dBT=2 out=25 gas=25 air=20
+[5:39] HOLD BT=225 e=41 [HOLD_g] P=-74 I=100 D=2 dBT=1 out=27 gas=27 air=20
+[5:42] HOLD BT=225 e=43 [HOLD_g] P=-72 I=100 D=2 dBT=1 out=29 gas=29 air=20
+[5:45] HOLD BT=225 e=43 [HOLD_g] P=-72 I=100 D=0 dBT=0 out=28 gas=28 air=20
+[5:48] HOLD BT=225 e=42 [HOLD_g] P=-73 I=100 D=-1 dBT=-1 out=26 gas=26 air=20
+[5:51] HOLD BT=225 e=41 [HOLD_g] P=-74 I=100 D=-1 dBT=-1 out=25 gas=25 air=20
+[5:54] HOLD BT=226 e=38 [HOLD_g] P=-77 I=100 D=-2 dBT=0 out=20 gas=20 air=20
+[5:57] HOLD BT=226 e=37 [HOLD_g] P=-78 I=100 D=-1 dBT=0 out=21 gas=21 air=20
+PID table saved, n=0
+PREHEAT-PID: tune BAD SV=230 (reachedHold=1 holdDev=4) -> re-tune mức n��y l���n sau
+PREHEAT-PID: done (time)
+STT=30
+STT=164
+PREHEAT-PID: pre-ignite
+PRE_IGNITE: done -> IGNITE
+STT=163
+PREHEAT-PID: BT>SV_tune, skip tune -> HEATING (Config gains)
+STT=26
+[0:03] HEAT BT=187 e=49 [HEAT_g] P=465 I=-100 D=19 dBT=6 out=100 gas=100 air=20
+[0:06] HEAT BT=187 e=52 [HEAT_g] P=459 I=-100 D=3 dBT=-5 out=100 gas=100 air=20
+[0:09] HEAT BT=194 e=-5 [HEAT_g] P=364 I=-100 D=-26 dBT=-25 out=100 gas=100 air=20
+[0:12] HEAT BT=202 e=-78 [HEAT_g] P=244 I=-100 D=-48 dBT=-28 out=100 gas=100 air=20
+[0:18] HEAT BT=213 e=-182 [HEAT_g] P=69 I=-100 D=-47 dBT=-23 out=-66 gas=0 air=86
+[0:21] HEAT BT=216 e=-202 [HEAT_g] P=28 I=-100 D=-23 dBT=-7 out=-93 gas=0 air=100
+[0:24] HEAT BT=216 e=-193 [HEAT_g] P=33 I=-100 D=-2 dBT=3 out=-72 gas=0 air=92
+[0:27] HEAT BT=215 e=-175 [HEAT_g] P=49 I=-100 D=6 dBT=6 out=-49 gas=0 air=69
+[0:30] HEAT BT=213 e=-150 [HEAT_g] P=76 I=-100 D=10 dBT=6 out=-17 gas=0 air=37
+[0:33] HEAT BT=212 e=-131 [HEAT_g] P=96 I=-100 D=8 dBT=3 out=2 gas=2 air=20
+[0:36] HEAT BT=211 e=-116 [HEAT_g] P=108 I=-100 D=5 dBT=2 out=12 gas=12 air=20
+[0:39] HEAT BT=210 e=-105 [HEAT_g] P=115 I=-100 D=3 dBT=2 out=17 gas=17 air=20
+[0:42] HEAT BT=210 e=-94 [HEAT_g] P=121 I=-100 D=2 dBT=1 out=22 gas=22 air=20
+[0:45] HEAT BT=210 e=-87 [HEAT_g] P=123 I=-100 D=0 dBT=0 out=23 gas=23 air=20
+[0:48] HEAT BT=210 e=-81 [HEAT_g] P=121 I=-100 D=0 dBT=0 out=21 gas=21 air=20
+[0:51] HEAT BT=210 e=-78 [HEAT_g] P=115 I=-100 D=-2 dBT=-2 out=14 gas=14 air=20
+[0:54] HEAT BT=211 e=-75 [HEAT_g] P=111 I=-100 D=-2 dBT=-1 out=9 gas=9 air=20
+[0:57] HEAT BT=211 e=-73 [HEAT_g] P=103 I=-100 D=-2 dBT=-1 out=1 gas=1 air=20
+[1:00] HEAT BT=211 e=-68 [HEAT_g] P=102 I=-100 D=0 dBT=0 out=1 gas=1 air=20
+[1:06] HEAT BT=211 e=-52 [HEAT_g] P=105 I=-100 D=1 dBT=1 out=5 gas=5 air=20
+[1:09] HEAT BT=211 e=-42 [HEAT_g] P=111 I=-100 D=2 dBT=2 out=11 gas=11 air=20
+[1:12] HEAT BT=210 e=-32 [HEAT_g] P=115 I=-100 D=2 dBT=1 out=16 gas=16 air=20
+[1:15] HEAT BT=210 e=-24 [HEAT_g] P=118 I=-100 D=2 dBT=1 out=19 gas=19 air=20
+[1:18] HEAT BT=210 e=-14 [HEAT_g] P=123 I=-100 D=2 dBT=1 out=24 gas=24 air=20
+[1:21] HEAT BT=210 e=-8 [HEAT_g] P=123 I=-100 D=0 dBT=0 out=23 gas=23 air=20
+[1:24] HEAT BT=210 e=-4 [HEAT_g] P=118 I=-100 D=-1 dBT=-1 out=17 gas=17 air=20
+[1:27] HEAT BT=211 e=-1 [HEAT_g] P=112 I=-100 D=-2 dBT=-1 out=10 gas=10 air=20
+[1:30] HEAT BT=211 e=-1 [HEAT_g] P=103 I=-100 D=-3 dBT=-2 out=1 gas=1 air=20
+[1:33] HEAT BT=211 e=5 [HEAT_g] P=102 I=-99 D=-2 dBT=-1 out=1 gas=1 air=20
+[1:36] HEAT BT=211 e=11 [HEAT_g] P=102 I=-99 D=0 dBT=0 out=2 gas=2 air=20
+[1:39] HEAT BT=211 e=20 [HEAT_g] P=105 I=-98 D=1 dBT=1 out=6 gas=6 air=20
+[1:45] HEAT BT=211 e=36 [HEAT_g] P=109 I=-96 D=1 dBT=1 out=13 gas=13 air=20
+[1:48] HEAT BT=211 e=45 [HEAT_g] P=112 I=-94 D=1 dBT=0 out=18 gas=18 air=20
+[1:51] HEAT BT=210 e=54 [HEAT_g] P=117 I=-92 D=1 dBT=1 out=25 gas=25 air=20
+[1:54] HEAT BT=210 e=61 [HEAT_g] P=117 I=-89 D=0 dBT=0 out=27 gas=27 air=20
+[1:57] HEAT BT=211 e=62 [HEAT_g] P=109 I=-86 D=-2 dBT=-2 out=21 gas=21 air=20
+[2:00] HEAT BT=212 e=60 [HEAT_g] P=96 I=-84 D=-5 dBT=-3 out=8 gas=8 air=20
+[2:03] HEAT BT=212 e=61 [HEAT_g] P=87 I=-81 D=-3 dBT=-1 out=2 gas=2 air=20
+[2:06] HEAT BT=212 e=66 [HEAT_g] P=85 I=-79 D=-1 dBT=0 out=4 gas=4 air=20
+[2:09] HEAT BT=212 e=73 [HEAT_g] P=85 I=-76 D=0 dBT=0 out=8 gas=8 air=20
+[2:12] HEAT BT=212 e=81 [HEAT_g] P=88 I=-72 D=0 dBT=1 out=15 gas=15 air=20
+[2:15] HEAT BT=212 e=90 [HEAT_g] P=91 I=-68 D=1 dBT=1 out=22 gas=22 air=20
+[2:18] HEAT BT=212 e=98 [HEAT_g] P=93 I=-66 D=0 dBT=0 out=26 gas=26 air=20
+[2:21] HEAT BT=212 e=103 [HEAT_g] P=91 I=-61 D=0 dBT=-1 out=29 gas=29 air=20
+[2:24] HEAT BT=213 e=101 [HEAT_g] P=78 I=-56 D=-5 dBT=-3 out=18 gas=18 air=20
+[2:27] HEAT BT=214 e=97 [HEAT_g] P=63 I=-52 D=-6 dBT=-4 out=6 gas=6 air=20
+[2:30] HEAT BT=214 e=99 [HEAT_g] P=55 I=-48 D=-3 dBT=-1 out=3 gas=3 air=20
+[2:33] HEAT BT=214 e=105 [HEAT_g] P=55 I=-45 D=-1 dBT=0 out=8 gas=8 air=20
+[2:36] HEAT BT=214 e=116 [HEAT_g] P=61 I=-40 D=2 dBT=2 out=21 gas=21 air=20
+[2:39] HEAT BT=214 e=126 [HEAT_g] P=66 I=-34 D=2 dBT=1 out=32 gas=32 air=20
+[2:42] HEAT BT=214 e=128 [HEAT_g] P=60 I=-28 D=-2 dBT=-2 out=30 gas=30 air=20
+[2:45] HEAT BT=215 e=122 [HEAT_g] P=40 I=-23 D=-7 dBT=-4 out=11 gas=11 air=20
+[2:48] HEAT BT=216 e=120 [HEAT_g] P=28 I=-19 D=-7 dBT=-3 out=2 gas=2 air=20
+[2:51] HEAT BT=216 e=124 [HEAT_g] P=24 I=-14 D=-2 dBT=0 out=7 gas=7 air=20
+[2:54] HEAT BT=216 e=131 [HEAT_g] P=24 I=-8 D=0 dBT=0 out=15 gas=15 air=20
+[3:00] HEAT BT=216 e=136 [HEAT_g] P=31 I=1 D=1 dBT=0 out=32 gas=32 air=20
+[3:03] HEAT BT=216 e=131 [HEAT_g] P=24 I=7 D=-2 dBT=-3 out=30 gas=30 air=20
+[3:06] HEAT BT=218 e=120 [HEAT_g] P=7 I=13 D=-6 dBT=-4 out=15 gas=15 air=20
+[3:09] HEAT BT=219 e=109 [HEAT_g] P=-9 I=18 D=-6 dBT=-3 out=3 gas=3 air=20
+[3:12] HEAT BT=219 e=106 [HEAT_g] P=-13 I=23 D=-2 dBT=0 out=6 gas=6 air=20
+[3:15] HEAT BT=219 e=106 [HEAT_g] P=-13 I=26 D=0 dBT=0 out=12 gas=12 air=20
+[3:18] HEAT BT=219 e=110 [HEAT_g] P=-7 I=31 D=1 dBT=1 out=23 gas=23 air=20
+[3:21] HEAT BT=218 e=114 [HEAT_g] P=-1 I=36 D=2 dBT=1 out=35 gas=35 air=20
+[3:24] HEAT BT=219 e=109 [HEAT_g] P=-9 I=41 D=-2 dBT=-3 out=31 gas=31 air=20
+[3:30] HEAT BT=221 e=86 [HEAT_g] P=-43 I=48 D=-8 dBT=-4 out=-1 gas=0 air=21
+[3:33] HEAT BT=221 e=81 [HEAT_g] P=-51 I=52 D=-3 dBT=0 out=-3 gas=0 air=23
+[3:36] HEAT BT=221 e=85 [HEAT_g] P=-45 I=55 D=1 dBT=2 out=9 gas=9 air=20
+[3:39] HEAT BT=221 e=89 [HEAT_g] P=-39 I=59 D=2 dBT=1 out=21 gas=21 air=20
+[3:42] HEAT BT=220 e=93 [HEAT_g] P=-33 I=62 D=3 dBT=2 out=30 gas=30 air=20
+[3:45] HEAT BT=220 e=94 [HEAT_g] P=-31 I=66 D=1 dBT=0 out=35 gas=35 air=20
+[3:48] HEAT BT=221 e=86 [HEAT_g] P=-43 I=70 D=-4 dBT=-3 out=24 gas=24 air=20
+[3:51] HEAT BT=222 e=74 [HEAT_g] P=-61 I=74 D=-6 dBT=-3 out=7 gas=7 air=20
+[3:54] HEAT BT=223 e=68 [HEAT_g] P=-70 I=77 D=-4 dBT=-1 out=2 gas=2 air=20
+[4:00] HEAT BT=222 e=72 [HEAT_g] P=-64 I=82 D=2 dBT=2 out=18 gas=18 air=20
+[4:03] HEAT BT=222 e=77 [HEAT_g] P=-57 I=85 D=2 dBT=1 out=29 gas=29 air=20
+[4:06] HEAT BT=222 e=78 [HEAT_g] P=-55 I=89 D=0 dBT=0 out=33 gas=33 air=20
+[4:09] HEAT BT=222 e=71 [HEAT_g] P=-66 I=92 D=-3 dBT=-3 out=24 gas=24 air=20
+[4:12] HEAT BT=224 e=60 [HEAT_g] P=-82 I=95 D=-6 dBT=-4 out=8 gas=8 air=20
+[4:15] HEAT BT=224 e=54 [HEAT_g] P=-91 I=97 D=-5 dBT=-2 out=1 gas=1 air=20
+[4:18] HEAT BT=224 e=54 [HEAT_g] P=-91 I=99 D=0 dBT=1 out=6 gas=6 air=20
+[4:21] HEAT BT=224 e=59 [HEAT_g] P=-84 I=100 D=2 dBT=2 out=16 gas=16 air=20
+[4:24] HEAT BT=223 e=65 [HEAT_g] P=-75 I=100 D=3 dBT=2 out=26 gas=26 air=20
+[4:27] HEAT BT=223 e=67 [HEAT_g] P=-72 I=100 D=1 dBT=0 out=29 gas=29 air=20
+[4:30] HEAT BT=223 e=66 [HEAT_g] P=-73 I=100 D=0 dBT=-1 out=27 gas=27 air=20
+[4:33] HEAT BT=224 e=59 [HEAT_g] P=-84 I=100 D=-3 dBT=-3 out=14 gas=14 air=20
+[4:36] HEAT BT=224 e=52 [HEAT_g] P=-94 I=100 D=-4 dBT=-2 out=3 gas=3 air=20
+[4:42] HEAT BT=224 e=53 [HEAT_g] P=-93 I=100 D=0 dBT=1 out=6 gas=6 air=20
+[4:45] HEAT BT=224 e=59 [HEAT_g] P=-84 I=100 D=3 dBT=2 out=17 gas=17 air=20
+[4:48] HEAT BT=223 e=65 [HEAT_g] P=-75 I=100 D=4 dBT=3 out=27 gas=27 air=20
+[4:51] HEAT BT=223 e=68 [HEAT_g] P=-70 I=100 D=1 dBT=0 out=31 gas=31 air=20
+[4:54] HEAT BT=223 e=63 [HEAT_g] P=-78 I=100 D=-2 dBT=-3 out=22 gas=22 air=20
+[4:57] HEAT BT=224 e=54 [HEAT_g] P=-91 I=100 D=-5 dBT=-3 out=5 gas=5 air=20
+[5:00] HEAT BT=225 e=50 [HEAT_g] P=-97 I=100 D=-2 dBT=0 out=0 gas=0 air=20
+[5:03] HEAT BT=224 e=52 [HEAT_g] P=-94 I=100 D=0 dBT=2 out=4 gas=4 air=20
+[5:06] HEAT BT=224 e=58 [HEAT_g] P=-85 I=100 D=3 dBT=2 out=16 gas=16 air=20
+[5:09] HEAT BT=223 e=64 [HEAT_g] P=-76 I=100 D=3 dBT=2 out=25 gas=25 air=20
+[5:12] HEAT BT=223 e=67 [HEAT_g] P=-72 I=100 D=1 dBT=0 out=29 gas=29 air=20
+[5:15] HEAT BT=223 e=64 [HEAT_g] P=-76 I=100 D=-1 dBT=-3 out=24 gas=24 air=20
+[5:18] HEAT BT=224 e=57 [HEAT_g] P=-87 I=100 D=-3 dBT=-2 out=11 gas=11 air=20
+[5:21] HEAT BT=224 e=52 [HEAT_g] P=-94 I=100 D=-3 dBT=-1 out=3 gas=3 air=20
+[5:24] HEAT BT=224 e=52 [HEAT_g] P=-94 I=100 D=0 dBT=0 out=5 gas=5 air=20
+[5:27] HEAT BT=224 e=56 [HEAT_g] P=-88 I=100 D=2 dBT=2 out=12 gas=12 air=20
+[5:30] HEAT BT=224 e=60 [HEAT_g] P=-82 I=100 D=2 dBT=1 out=19 gas=19 air=20
+[5:33] HEAT BT=223 e=64 [HEAT_g] P=-76 I=100 D=2 dBT=1 out=25 gas=25 air=20
+[5:36] HEAT BT=223 e=64 [HEAT_g] P=-76 I=100 D=0 dBT=0 out=24 gas=24 air=20
+[5:39] HEAT BT=223 e=61 [HEAT_g] P=-81 I=100 D=-1 dBT=-2 out=19 gas=19 air=20
+[5:42] HEAT BT=224 e=58 [HEAT_g] P=-85 I=100 D=-2 dBT=-2 out=14 gas=14 air=20
+[5:45] HEAT BT=224 e=54 [HEAT_g] P=-91 I=100 D=-2 dBT=-1 out=7 gas=7 air=20
+[5:48] HEAT BT=224 e=53 [HEAT_g] P=-93 I=100 D=0 dBT=0 out=6 gas=6 air=20
+[5:51] HEAT BT=224 e=54 [HEAT_g] P=-91 I=100 D=0 dBT=0 out=8 gas=8 air=20
+[5:54] HEAT BT=224 e=56 [HEAT_g] P=-88 I=100 D=1 dBT=1 out=12 gas=12 air=20
+[5:57] HEAT BT=224 e=59 [HEAT_g] P=-84 I=100 D=1 dBT=1 out=16 gas=16 air=20
+PREHEAT-PID: tune BAD SV=230 (reachedHold=0 holdDev=0) -> re-tune m���c n��y l���n sau
+PREHEAT-PID: done (time)
+STT=30
+STT=164
+PREHEAT-PID: pre-ignite
+PRE_IGNITE: done -> IGNITE
+STT=163
+TUNE SV_tune=187 (LowPV)
+PREHEAT-PID: gas on -> TUNE (SV chua co trong bang)
+STT=26
+[0:03] TUNE BT=169 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:06] TUNE BT=170 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:09] TUNE BT=173 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:12] TUNE BT=176 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:15] TUNE BT=179 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:18] TUNE BT=183 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:21] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=0 cyc=0
+[0:24] TUNE BT=189 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:27] TUNE BT=191 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:30] TUNE BT=191 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:33] TUNE BT=191 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:39] TUNE BT=190 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:42] TUNE BT=189 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:45] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:48] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:51] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+[0:54] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=0 cyc=0
+TUNE peak 1
+[0:57] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:00] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=1 cyc=0
+[1:03] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[1:06] TUNE BT=189 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[1:09] TUNE BT=190 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[1:12] TUNE BT=190 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[1:15] TUNE BT=189 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[1:21] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[1:24] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+[1:27] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=1 cyc=0
+TUNE peak 2
+[1:30] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[1:33] TUNE BT=186 SVt=187 HI gas=25 air=20 peak=2 cyc=1
+[1:36] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+[1:42] TUNE BT=189 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+[1:45] TUNE BT=189 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+[1:48] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+[1:51] TUNE BT=188 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+[1:54] TUNE BT=187 SVt=187 LO gas=0 air=100 peak=2 cyc=1
+TUNE peak 3
+PID table saved, n=1
+TUNE done a=36 Pu=28 -> kp=7500 ki=300 kd=17822
+[1:57] HEAT BT=186 e=297 [HEAT_g] P=239 I=0 D=3 dBT=2 out=100 gas=100 air=20
+[2:00] HEAT BT=186 e=308 [HEAT_g] P=242 I=-100 D=2 dBT=1 out=100 gas=100 air=20
+[2:03] HEAT BT=190 e=276 [HEAT_g] P=213 I=-100 D=-6 dBT=-25 out=100 gas=100 air=20
+[2:06] HEAT BT=198 e=202 [HEAT_g] P=152 I=-79 D=-34 dBT=-29 out=47 gas=47 air=20
+[2:09] HEAT BT=204 e=147 [HEAT_g] P=105 I=-64 D=-38 dBT=-23 out=8 gas=8 air=20
+[2:12] HEAT BT=207 e=126 [HEAT_g] P=84 I=-56 D=-29 dBT=-13 out=0 gas=0 air=20
+[2:15] HEAT BT=209 e=107 [HEAT_g] P=64 I=-46 D=-17 dBT=-7 out=0 gas=0 air=20
+[2:18] HEAT BT=211 e=100 [HEAT_g] P=54 I=-37 D=-9 dBT=-4 out=7 gas=7 air=20
+[2:24] HEAT BT=212 e=101 [HEAT_g] P=43 I=-22 D=-4 dBT=-2 out=16 gas=16 air=20
+[2:27] HEAT BT=213 e=101 [HEAT_g] P=38 I=-13 D=-4 dBT=-3 out=20 gas=20 air=20
+[2:30] HEAT BT=213 e=105 [HEAT_g] P=36 I=-6 D=-2 dBT=-2 out=27 gas=27 air=20
+[2:33] HEAT BT=214 e=104 [HEAT_g] P=30 I=2 D=-4 dBT=-3 out=28 gas=28 air=20
+[2:36] HEAT BT=215 e=99 [HEAT_g] P=21 I=11 D=-6 dBT=-4 out=26 gas=26 air=20
+[2:42] HEAT BT=217 e=93 [HEAT_g] P=5 I=26 D=-7 dBT=-4 out=24 gas=24 air=20
+[2:45] HEAT BT=219 e=88 [HEAT_g] P=-3 I=34 D=-7 dBT=-4 out=23 gas=23 air=20
+[2:48] HEAT BT=220 e=85 [HEAT_g] P=-11 I=41 D=-5 dBT=-3 out=24 gas=24 air=20
+[2:51] HEAT BT=220 e=85 [HEAT_g] P=-16 I=46 D=-5 dBT=-3 out=24 gas=24 air=20
+[2:54] HEAT BT=221 e=83 [HEAT_g] P=-24 I=54 D=-5 dBT=-4 out=25 gas=25 air=20
+[2:57] HEAT BT=222 e=72 [HEAT_g] P=-32 I=61 D=-6 dBT=-4 out=23 gas=23 air=20
+[3:03] HEAT BT=224 e=56 [HEAT_g] P=-44 I=70 D=-5 dBT=-3 out=21 gas=21 air=20
+[3:06] HEAT BT=225 e=48 [HEAT_g] P=-50 I=75 D=-5 dBT=-4 out=20 gas=20 air=20
+[3:09] HEAT BT=226 e=40 [HEAT_g] P=-56 I=79 D=-4 dBT=-3 out=19 gas=19 air=20
+HEATING -> HOLDING (bumpless, keep gas)
+STT=28
+[3:15] HOLD BT=227 e=28 [HOLD_g] P=-87 I=100 D=-7 dBT=-2 out=6 gas=6 air=20
+[3:18] HOLD BT=227 e=24 [HOLD_g] P=-91 I=100 D=-4 dBT=-1 out=4 gas=4 air=20
+[3:21] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=1 out=10 gas=10 air=20
+[3:24] HOLD BT=227 e=28 [HOLD_g] P=-87 I=100 D=2 dBT=1 out=14 gas=14 air=20
+[3:27] HOLD BT=226 e=32 [HOLD_g] P=-83 I=100 D=3 dBT=1 out=19 gas=19 air=20
+[3:30] HOLD BT=226 e=36 [HOLD_g] P=-79 I=100 D=3 dBT=1 out=23 gas=23 air=20
+[3:33] HOLD BT=226 e=37 [HOLD_g] P=-78 I=100 D=1 dBT=0 out=23 gas=23 air=20
+[3:36] HOLD BT=226 e=37 [HOLD_g] P=-78 I=100 D=0 dBT=0 out=22 gas=22 air=20
+[3:42] HOLD BT=226 e=35 [HOLD_g] P=-80 I=100 D=-1 dBT=0 out=19 gas=19 air=20
+[3:45] HOLD BT=226 e=33 [HOLD_g] P=-82 I=100 D=-1 dBT=-1 out=17 gas=17 air=20
+[3:48] HOLD BT=226 e=31 [HOLD_g] P=-84 I=100 D=-2 dBT=-1 out=14 gas=14 air=20
+[3:54] HOLD BT=227 e=27 [HOLD_g] P=-88 I=100 D=-2 dBT=-1 out=10 gas=10 air=20
+[3:57] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=-1 dBT=0 out=9 gas=9 air=20
+[4:00] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:03] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:06] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:09] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:15] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:18] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:21] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:24] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:27] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:33] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:36] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:42] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:45] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:48] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=0 dBT=0 out=10 gas=10 air=20
+[4:51] HOLD BT=227 e=25 [HOLD_g] P=-90 I=100 D=-1 dBT=-1 out=9 gas=9 air=20
+[4:54] HOLD BT=227 e=25 [HOLD_g] P=-90 I=100 D=0 dBT=0 out=9 gas=9 air=20
+[4:57] HOLD BT=227 e=25 [HOLD_g] P=-90 I=100 D=0 dBT=0 out=9 gas=9 air=20
+[5:03] HOLD BT=227 e=25 [HOLD_g] P=-90 I=100 D=0 dBT=0 out=9 gas=9 air=20
+[5:06] HOLD BT=227 e=23 [HOLD_g] P=-92 I=100 D=-1 dBT=-1 out=7 gas=7 air=20
+[5:09] HOLD BT=227 e=23 [HOLD_g] P=-92 I=100 D=0 dBT=0 out=7 gas=7 air=20
+[5:12] HOLD BT=227 e=22 [HOLD_g] P=-93 I=100 D=-1 dBT=-1 out=6 gas=6 air=20
+[5:15] HOLD BT=227 e=22 [HOLD_g] P=-93 I=100 D=0 dBT=0 out=6 gas=6 air=20
+[5:18] HOLD BT=227 e=23 [HOLD_g] P=-92 I=100 D=1 dBT=1 out=8 gas=8 air=20
+[5:21] HOLD BT=227 e=25 [HOLD_g] P=-90 I=100 D=1 dBT=1 out=10 gas=10 air=20
+[5:24] HOLD BT=227 e=26 [HOLD_g] P=-89 I=100 D=1 dBT=1 out=11 gas=11 air=20
+[5:27] HOLD BT=227 e=27 [HOLD_g] P=-88 I=100 D=1 dBT=0 out=12 gas=12 air=20
+[5:30] HOLD BT=227 e=28 [HOLD_g] P=-87 I=100 D=1 dBT=1 out=13 gas=13 air=20
+[5:33] HOLD BT=227 e=30 [HOLD_g] P=-85 I=100 D=1 dBT=1 out=15 gas=15 air=20
+[5:36] HOLD BT=226 e=31 [HOLD_g] P=-84 I=100 D=1 dBT=1 out=16 gas=16 air=20
+[5:39] HOLD BT=226 e=32 [HOLD_g] P=-83 I=100 D=1 dBT=1 out=17 gas=17 air=20
+[5:42] HOLD BT=226 e=34 [HOLD_g] P=-81 I=100 D=2 dBT=1 out=20 gas=20 air=20
+[5:45] HOLD BT=226 e=35 [HOLD_g] P=-80 I=100 D=0 dBT=0 out=20 gas=20 air=20
+[5:48] HOLD BT=226 e=36 [HOLD_g] P=-79 I=100 D=0 dBT=0 out=21 gas=21 air=20
+[5:51] HOLD BT=226 e=37 [HOLD_g] P=-78 I=100 D=0 dBT=0 out=22 gas=22 air=20
+[5:54] HOLD BT=226 e=37 [HOLD_g] P=-78 I=100 D=0 dBT=0 out=22 gas=22 air=20
+[5:57] HOLD BT=226 e=35 [HOLD_g] P=-80 I=100 D=-1 dBT=-1 out=19 gas=19 air=20
+PID table saved, n=0
+PREHEAT-PID: tune BAD SV=230 (reachedHold=1 holdDev=3) -> re-tune m���c n��y l���n sau
+PREHEAT-PID: done (time)
+STT=30
+STT=164

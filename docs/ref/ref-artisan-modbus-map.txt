@@ -1,0 +1,87 @@
+========================================================================
+ OTL-06ALS — BẢN ĐỒ THANH GHI MODBUS ĐỂ KẾT NỐI ARTISAN
+========================================================================
+ Máy rang cà phê OTL-06ALS (O TESLA)
+ Tài liệu dành cho khách hàng cấu hình Artisan.
+========================================================================
+
+1) THÔNG SỐ KẾT NỐI (mặc định)
+------------------------------------------------------------------------
+ - Giao thức     : Modbus RTU (Serial)
+ - Vai trò       : Máy rang là SLAVE, Artisan (PC) là MASTER
+ - Slave ID      : 1
+ - Baudrate      : 9600
+ - Khung truyền  : 8 data bits, No parity, 1 stop bit (8N1)
+ - Loại thanh ghi: Holding Register (đọc bằng FC03, ghi bằng FC06/FC16)
+
+ Ghi chú:
+ - Slave ID và Baudrate có thể đổi từ màn hình HMI. Giá trị trên là
+   mặc định khi chưa cài đặt.
+ - Địa chỉ thanh ghi bên dưới đánh số từ 0 (0-based).
+   Một số phần mềm/thiết bị master đánh số từ 1 — nếu vậy cộng thêm 1
+   vào địa chỉ (ví dụ BT ở địa chỉ 0 sẽ thành 1). Trong Artisan thường
+   dùng đúng số 0-based như bảng này.
+
+2) QUY ƯỚC ĐƠN VỊ (rất quan trọng khi cài Symbolic/divider trong Artisan)
+------------------------------------------------------------------------
+ - Nhiệt độ (BT, ET, SV): lưu dạng ×10.
+     Ví dụ 1850 = 185.0 °C  →  trong Artisan đặt "divider = 10".
+ - Gas / Airflow / Drum : phần trăm nguyên 0–100 (không nhân hệ số).
+ - Áp suất âm (Underpressure): đơn vị Pa (số nguyên, giá trị âm).
+
+3) THANH GHI ĐỌC — DỮ LIỆU MÁY RANG GỬI LÊN ARTISAN (FC03)
+------------------------------------------------------------------------
+ Addr | Tên              | Ý nghĩa                        | Đơn vị
+ -----+------------------+--------------------------------+-----------
+   0  | BT               | Nhiệt độ hạt (Bean Temp)       | °C ×10
+   1  | ET               | Nhiệt độ môi trường (Env Temp) | °C ×10
+   2  | AIR              | Quạt gió hiện tại              | % (0–100)
+   3  | GAS              | Gas hiện tại                   | % (0–100)
+   4  | DRUM             | Tốc độ lồng rang hiện tại      | % (0–100)
+   9  | UNDER            | Áp suất âm buồng (đo được)     | Pa
+  19  | SV               | Nhiệt độ đặt (Set Value)       | °C ×10
+  21  | vacuumC_show     | Áp suất âm đang đặt (hiển thị) | Pa
+
+ (Các địa chỉ 5,6,7,8 — CHAMBER/CYCLONE/AIR_BURNER/COOLING — có khai báo
+  sẵn nhưng hiện chưa xuất dữ liệu, có thể bỏ qua.)
+
+4) THANH GHI GHI — ARTISAN ĐIỀU KHIỂN MÁY RANG (FC06/FC16)
+------------------------------------------------------------------------
+ Muốn Artisan điều khiển được máy, phải BẬT chế độ PC_CONTROL trên HMI.
+ Nếu không bật, các lệnh ghi bên dưới chỉ dùng để hiển thị/đồng bộ.
+
+ 4a) Setpoint (giá trị đặt)
+ Addr | Tên              | Ý nghĩa                        | Đơn vị / Giới hạn
+ -----+------------------+--------------------------------+-------------------
+  10  | AIR_W            | Đặt quạt gió                   | % (0–100)
+  11  | GAS_W            | Đặt gas                        | % (0–100)
+  20  | DRUM_W           | Đặt tốc độ lồng rang           | % (0–100)
+  18  | SV_W             | Đặt nhiệt độ (Set Value)       | °C ×10 (tối đa 3000 = 300°C)
+  22  | vacuumC_W        | Đặt áp suất âm                 | Pa (90–250)
+
+ 4b) Nút nhấn ảo (ghi 1 = nhấn). Chỉ tác dụng khi PC_CONTROL = 1.
+ Addr | Tên              | Ý nghĩa
+ -----+------------------+--------------------------------
+  12  | IGNITION_W       | Mồi lửa / bật gas
+  13  | MI_COOL_W        | Làm mát (cooling)
+  14  | CHARGE_W         | Đổ mẻ (Charge)
+  15  | DROP_W           | Xả mẻ (Drop)
+  16  | ESCAPE_W         | Thoát / hủy
+  17  | START_W          | Start (đọc/ghi trạng thái chạy)
+
+5) GỢI Ý CẤU HÌNH TRONG ARTISAN
+------------------------------------------------------------------------
+ Menu: Config → Device → chọn "Modbus".
+ - Cổng COM, Baud 9600, Parity None, Bytesize 8, Stopbits 1.
+ - Slave ID = 1, function = 3 (Read Holding Registers).
+ - Gán kênh:
+     BT  = register 0, divider 10
+     ET  = register 1, divider 10
+ - Extra devices cho AIR/GAS/DRUM/SV/áp suất theo bảng mục 3 & 4.
+ - Nếu Artisan hiển thị số gấp 10 lần nhiệt độ thật → kiểm tra lại
+   divider = 10.
+
+========================================================================
+ Tổng số thanh ghi khai báo: 27 (địa chỉ 0–26). Các địa chỉ không liệt
+ kê ở trên hiện dành riêng/chưa dùng.
+========================================================================

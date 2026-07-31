@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 600">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #c8c8c8;
+        stroke: #231f20;
+        stroke-miterlimit: 10;
+      }
+    </style>
+  </defs>
+  <rect class="cls-1" x="0" y="0" width="1024" height="600"/>
+  <image width="880" height="223" transform="translate(384 267.56) scale(.29)" xlink:href="D:\File-AI\74_Otesla_logo_vector\OTL\print_transparent den.png"/>
+</svg>
