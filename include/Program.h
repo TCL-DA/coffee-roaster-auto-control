@@ -51,6 +51,8 @@ void timerPoll_1000ms(){
     handleTimer(cleanFeederTiEn, cleanFeederTi, timerLimit);   // Đếm thời gian hút sạch cà phê
     handleTimer(delCyFeederTiEn, delCyFeederTi, timerLimit);   // Đếm thời gian delay xóa cycle feeder
     handleTimer(fillerTiEn, fillerTi, timerLimit);             // Đếm thời gian tự động tắt fill cà phê vào bồn chứa
+    handleTimer(gasWaitTiEn, gasWaitTi, timerLimit);           // Đếm giây chờ lửa bắt (STP_GAS)
+    handleTimer(loop2TiEn, loop2Ti, timerLimit);               // Đếm giây đứng ở STP_LOOP_2
 
     if(updateNetWTiEn&&SerialBluetooth.available()==0){
         updateNetWTi++;
@@ -1420,8 +1422,28 @@ void programScan(){
         fireCutFlag = false;
     }
 
+    /* ⛔ R5 (2026-07-30): SẤY LỒNG và FACTORY TUNE GIÓ dùng CHUNG ô tiến trình
+       tunePercent (PID_Airflow.h ghi 3 chỗ, Preheat*.h ghi 6 chỗ). Trước đây không có gì
+       chặn hai cái cùng chạy → thanh tiến trình trên HMI nhảy qua nhảy lại giữa hai
+       nguồn, thợ không biết đang xem cái nào. Trọng tài đặt ở đây vì chỉ programScan()
+       thấy cả ftState (PID_Airflow.h) lẫn wuState (Preheat*.h) — hai file kia include
+       lệch nhau nên không tự biết về nhau.
+       Ai chạy trước thì thắng: đang sấy lồng thì factory tune bị huỷ. */
+    if (ftState != FT_IDLE && wuState != WU_IDLE) {
+        pidFactoryTuneStop();
+        setMachineStatus(STT_WARN_TUNE_BUSY);
+        nodeHMI.writeSingleRegister(AUTO_PID_AIR_TU_W - 1, 0);   // nhả nút tuning trên HMI
+        if (enDebug) SerialComputer.println("Factory tune cancelled: preheat is running");
+    }
+    // R3: bảng feed-forward gió đầy giữa lúc quét → báo mã, đừng để tune báo xong 100%
+    // như không có gì. Báo một lần rồi hạ cờ.
+    if (ffTableFull) {
+        ffTableFull = false;
+        setMachineStatus(STT_WARN_FF_TABLE_FULL);
+    }
+
     // preheat — chạy độc lập, không phụ thuộc AUTO mode
-    if (START_BTN_R == 0) {  // only allow preheat when not roasting
+    if (START_BTN_R == 0 && ftState == FT_IDLE) {  // không sấy lồng khi đang tune gió
         preheat();
     }
 
@@ -1498,6 +1520,11 @@ void programScan(){
                 timeDROPAbsolute = 0;
 
                 timeRoast = 0;
+                // Reset các chốt an toàn của mẻ (2026-07-30) — mẻ mới phải bắt đầu sạch,
+                // không mang cờ cảnh báo hay bộ đếm của mẻ trước sang
+                gasWaitTiEn = false; gasWaitTi = 0;
+                loop2TiEn   = false; loop2Ti   = 0;
+                devWarned   = false;
                 rorCtrl_reset(); // Reset RoR control state khi bắt đầu mẻ mới
                 trendPreStarted = false; // Cho phép bật lại trend sớm ở mẻ mới
 
@@ -1534,14 +1561,40 @@ void programScan(){
 
             //Kiểm tra bếp
             case STP_GAS:
+                /* ⛔ CHỐT THỜI GIAN CHỜ LỬA (R1, 2026-07-30)
+                   Trước đây bếp thường chờ READ_CH1 xuống LOW VÔ THỜI HẠN, mà bước
+                   trước đã mở gas 50% — mồi hụt là xả gas không cháy vào buồng đốt cho
+                   tới khi có người để ý. preheat() đã có chốt PH_IGNITE_TMO từ lâu,
+                   luồng rang thì chưa. Dùng LẠI cùng hằng số cho nhất quán.
+                   Hết hạn thì CẮT GAS rồi về DATA — không tự mồi lại, vì mồi hụt lặp
+                   lại là dấu hiệu hỏng bếp, cần người xem chứ không phải thử tiếp. */
+                if(!gasWaitTiEn){ gasWaitTiEn = true; gasWaitTi = 0; }
                 //Nếu là bếp NP thì chờ gas on
                 if(burnerPremix_R == 0){
                     if(READ_CH1==LOW){
                         naviSourceGAS = SOURCE_AI_AUTO; //Đổi source gas
                         gasPercent = preGas_R; //Set gas charge
                         STEP_STRING = "WAITGAS";
+                        gasWaitTiEn = false; gasWaitTi = 0;
                         setMachineStatus(STT_ROAST_CHECK); progStep = STP_CHECK; //Chuyển trạng thái
-                    }    
+                    }else if(gasWaitTi >= PH_IGNITE_TMO){
+                        nodeHMI.writeSingleRegister(START_GAS_BTN_W-1, 0);  //CẮT GAS
+                        gasPercent = 0;
+                        naviSourceGAS = SOURCE_AI_VR;                      //trả quyền cho thợ
+                        gasWaitTiEn = false; gasWaitTi = 0;
+                        buzzerTimerEn = 1;
+                        setMachineStatus(STT_ERR_IGNITION_FAIL);
+                        setMachineStatus(STT_ERR_GAS_WAIT_TMO);
+                        STEP_STRING = "GASFAIL";
+                        if(enDebug) SerialComputer.println("!!! WAITGAS timeout: GAS CUT, roast aborted !!!");
+                        // PHẢI tắt START, không thì về STP_DATA là chạy lại vòng
+                        // COOL_DOWN→GAS→chờ lửa, tức mồi lại vô hạn — đúng cái vừa nói
+                        // là không làm. Mở khoá HMI để thợ vào xem bếp.
+                        nodeHMI.writeSingleRegister(START_BTN_W-1, 0);
+                        nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);
+                        progStep = STP_DATA;
+                        delay(1);
+                    }
                 }
                 //Nếu là bếp premix thì không cần chờ
                 else{
@@ -1623,9 +1676,9 @@ void programScan(){
                 STEP_STRING = "WAIT TP";
                 if(timeRoast>ulimitTPTime && Temperature_BT<ulimitTPTemp){
                     if(Temperature_BT<=BT_TP_Pre){
-                        BT_TP_Pre = Temperature_BT; //Lưu biến nhiệt để check TP  
+                        BT_TP_Pre = Temperature_BT; //Lưu biến nhiệt để check TP
                         STEP_STRING = "CHECK TP";
-                        
+
                     }else{
                         BT_TP_SAVE = BT_TP_Pre; //Set nhiệt TP
                         TIME_TP_SAVE = timeRoast;
@@ -1636,7 +1689,24 @@ void programScan(){
                         setMachineStatus(STT_ROAST_YELLOW); progStep = STP_YELLOW; // Next to check yellow
                     }
                 }
-                
+                /* ⛔ CỨU TP KHI TRƯỢT CỬA SỔ (R2 lớp 1, 2026-07-30)
+                   Hai điều kiện trên là AND. Nếu BT vượt ulimitTPTemp TRƯỚC khi timeRoast
+                   qua ulimitTPTime (mẻ nhẹ, lồng nóng, hoặc ulimitTPTime cài quá dài) thì
+                   cửa sổ dò KHÔNG BAO GIỜ mở → kẹt ở đây suốt mẻ, các mốc sau không có,
+                   và auto-drop cũng chết theo. Chốt TP theo đáy ĐÃ ghi được (BT_TP_Pre là
+                   đáy thật, chỉ là chưa thấy nhịp bật lên) rồi đi tiếp, kèm mã cảnh báo
+                   để hồ sơ biết số TP này là ước lượng. */
+                else if(timeRoast>ulimitTPTime && Temperature_BT>=ulimitTPTemp){
+                    BT_TP_SAVE = BT_TP_Pre;
+                    TIME_TP_SAVE = timeRoast;
+                    TIME_TP_MIN_SAVE = TIME_TP_SAVE/60;
+                    TIME_TP_SEC_SAVE = TIME_TP_SAVE%60;
+                    strcpy(sdCsvPendingEvent, "TP");
+                    setMachineStatus(STT_WARN_TP_ASSUMED);
+                    setMachineStatus(STT_EVENT_TP_REACHED);
+                    if(enDebug) SerialComputer.println("TP window missed -> assumed TP from BT_TP_Pre");
+                    setMachineStatus(STT_ROAST_YELLOW); progStep = STP_YELLOW;
+                }
                 break;
 
             case STP_YELLOW:
@@ -1674,7 +1744,19 @@ void programScan(){
                 TIME_DEV_MIN_SAVE = TIME_DEV_SAVE/60;
                 TIME_DEV_SEC_SAVE = TIME_DEV_SAVE%60;
                 PER_DEV_SAVE = (TIME_DEV_SAVE*1000)/timeRoast;
-                break; 
+                /* ⚠ TRẦN PHA PHÁT TRIỂN (R3, 2026-07-30) — chỉ BÁO, KHÔNG tự xả.
+                   Bước này không có điều kiện thoát; DROP_PRO_R cài 0 hoặc quá cao là
+                   rang mãi tới khi thợ để ý. Nhưng tự xả một mẻ chưa tới nhiệt là làm
+                   hỏng mẻ, nên chốt ở mức kêu chuông + báo mã, để thợ quyết.
+                   Ngưỡng theo TỈ LỆ (phần nghìn) cho khớp cách thợ nghĩ, không theo giây. */
+                if(!devWarned && PER_DEV_SAVE >= DEV_WARN_PERMIL){
+                    devWarned = true;
+                    buzzerTimerEn = 1;
+                    setMachineStatus(STT_WARN_DEV_TOO_LONG);
+                    if(enDebug){ SerialComputer.print("DEV too long: "); SerialComputer.print(PER_DEV_SAVE/10);
+                                 SerialComputer.println("% — check drop temperature"); }
+                }
+                break;
 
             case STP_LOOP_1:
                 setMachineStatus(STT_ROAST_LOOP1);
@@ -1714,9 +1796,28 @@ void programScan(){
 
             case STP_LOOP_2:
                 setMachineStatus(STT_ROAST_LOOP2);
+                if(!loop2TiEn){ loop2TiEn = true; loop2Ti = 0; }   // R4: đếm tổng thời gian đứng đây
                 if(DROP_BTN_R == 0){
                     //Khởi động trình đếm để chờ drop đóng lại hoàn toàn
                     waitDropcloseTiEn = 1;
+                }
+                /* ⛔ CỬA XẢ KẸT MỞ (R4, 2026-07-30)
+                   waitDropcloseTi chỉ chạy khi THẤY cửa xả đã đóng. Cửa kẹt mở (hoặc mất
+                   tín hiệu đọc nút) thì không bao giờ đếm → đứng ở WCANCEL mãi. Mẻ đã xả
+                   xong nên không nguy hiểm, nhưng TUYỆT ĐỐI không nạp mẻ mới khi cửa xả
+                   còn mở. Hết hạn thì dừng hẳn và báo mã cho thợ vào xem xi-lanh. */
+                if(loop2Ti >= LOOP2_STUCK_SEC && DROP_BTN_R == 1){
+                    setMachineStatus(STT_ERR_DROP_STUCK_OPEN);
+                    buzzerTimerEn = 1;
+                    nodeHMI.writeSingleRegister(START_BTN_W-1, 0);
+                    nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);
+                    loop2TiEn = false; loop2Ti = 0;
+                    waitDropcloseTiEn = false; waitDropcloseTi = 0;
+                    if(enDebug) SerialComputer.println("!!! DROP cylinder stuck open — next batch cancelled !!!");
+                    progStep = STP_DATA;
+                    STEP_STRING = "NONE";
+                    delay(1);
+                    break;
                 }
                 //Trong thời gian này, khách hàng có thể huỷ auto
                 STEP_STRING = "WCANCEL";
@@ -1767,8 +1868,13 @@ void programScan(){
             }
         }
 
-        //Check drop
-        if(progStep>=STP_YELLOW){
+        /* Check drop
+           ⛔ R2 LỚP 2 (2026-07-30): hạ cổng từ STP_YELLOW xuống STP_CHARGE. Auto-drop
+           theo nhiệt là CHỐT AN TOÀN CUỐI — nó phải đúng bất kể máy có bắt được mốc hay
+           không. Gác ở STP_YELLOW nghĩa là một lỗi bắt mốc (xem lớp 1) làm mất luôn khả
+           năng tự xả → cháy mẻ. Về lý thuyết BT không thể tới DROP_PRO_R trước khi qua
+           DE/FCs nên nới cổng này không đổi hành vi mẻ bình thường. */
+        if(progStep>=STP_CHARGE){
             //Xử lí các tình huống trong khi rang auto
             if(progStatus == STT_PROGRAM_AUTO){
                 //Phát hiện auto drop khi rang auto
@@ -1844,9 +1950,23 @@ void programScan(){
             timeRoastEn = 0;    //Time roast off
             timeAbsoluteEn = 0; //Dừng đếm wall time
 
+            /* ⚠ R5 (2026-07-30): huỷ giữa mẻ mà vẫn để lửa cháy là có hạt trong lồng
+               tiếp tục ăn nhiệt. Áp ĐÚNG luật đã có ở lúc DROP: chỉ tắt gas khi chủ máy
+               bật autoOff_R. Ai để autoOff_R = 0 là cố ý muốn giữ nhiệt lồng để can
+               thiệp tay — không giành quyền đó của thợ. */
+            if(autoOff_R == 1){
+                nodeHMI.writeSingleRegister(START_GAS_BTN_W-1, 0);
+                gasPercent = 0;
+                if(enDebug) SerialComputer.println("Roast cancelled: gas off (autoOff)");
+            }
             //Các bước rang về 0
             progStep = 0;       //Program step off
-            
+
+            //Reset chốt an toàn của mẻ
+            gasWaitTiEn = false; gasWaitTi = 0;
+            loop2TiEn   = false; loop2Ti   = 0;
+            devWarned   = false;
+
             //Trạng thái auto loader về 0
             aLoaderStep = STP_NONE_LOADER;
 
@@ -2178,7 +2298,11 @@ void programScan(){
         destonerTimerEn = 0; //Resetncounter
     }
 
-    if(PC_CONTROL_BTN_R==1){
+    /* ⛔ R6 (2026-07-30): khối escape này chỉ dành cho lúc APP/PC mở escape ngoài chuỗi
+       làm mát. Thêm điều kiện coolStep==0 vì khi chuỗi COOL_STEP_ESCAPE_OFF đang chạy thì
+       CHÍNH NÓ lo đóng escape; hai khối cùng reset escapeTimer là chuỗi cooling có thể
+       không bao giờ thoát. Một việc, một chỗ chịu trách nhiệm. */
+    if(PC_CONTROL_BTN_R==1 && coolStep==0){
         //Huỷ auto close escape
         if(escapeTimerEn>=1 && ESCAPE_BTN_R==0 && escapeTimer>=1){
             STEP_COOLING_STRING = "OFFESC";

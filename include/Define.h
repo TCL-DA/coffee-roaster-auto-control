@@ -76,6 +76,10 @@ uint16_t abTimer = 0;
 uint16_t buzzerTimer = 0;
 uint16_t timerLimit = 3000;
 uint16_t waitDropcloseTi = 0;
+// ── Chốt an toàn máy trạng thái rang (thêm 2026-07-30) ──
+uint16_t gasWaitTi = 0;             // Giây chờ lửa bắt ở bước STP_GAS — quá hạn thì cắt gas
+uint16_t loop2Ti   = 0;             // Giây đứng ở STP_LOOP_2 — bắt cửa xả kẹt mở
+bool     devWarned = false;         // Đã cảnh báo pha phát triển quá dài (mỗi mẻ một lần)
 uint8_t drumHzTimer = 0;            // Timer for updating Drum Hz
 uint8_t airHzTimer = 0;             // Timer for updating Airflow Hz
 uint8_t gasTimer = 0;             // Timer for updating Gas

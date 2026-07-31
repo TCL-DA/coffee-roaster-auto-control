@@ -344,6 +344,13 @@
 #define STT_ERR_LOADER_FAULT        411 // Bộ nạp liệu tự động bị lỗi nghiêm trọng
 #define STT_ERR_VACUUM_FAULT        412 // Hệ thống áp hút bị lỗi — kiểm tra cảm biến áp suất
 #define STT_ERR_ROR_BT_EXTREME      413 // BÁO CHÁY: tốc độ tăng nhiệt BT > 500°C/min — đã tắt lửa
+// ── Chốt an toàn máy trạng thái rang (thêm 2026-07-30) ──
+#define STT_ERR_GAS_WAIT_TMO        414 // Chờ lửa quá lâu ở bước WAITGAS — đã cắt gas, huỷ mẻ
+#define STT_WARN_TP_ASSUMED         415 // Trượt cửa sổ bắt TP — chốt TP theo đáy đã ghi (số ước lượng)
+#define STT_WARN_DEV_TOO_LONG       416 // Pha phát triển vượt ngưỡng — kiểm nhiệt xả
+#define STT_ERR_DROP_STUCK_OPEN     417 // Cửa xả không đóng lại sau khi xả — đã dừng, không nạp mẻ mới
+#define STT_WARN_TUNE_BUSY          418 // Đang sấy lồng — đã huỷ factory tune gió (dùng chung ô tiến trình)
+#define STT_WARN_FF_TABLE_FULL      419 // Bảng feed-forward gió đã đầy — dữ liệu quét bị thiếu
 
 // Tổng cộng: ~380 mã trạng thái, bắt đầu từ 1
 

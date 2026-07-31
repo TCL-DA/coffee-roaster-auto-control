@@ -10,7 +10,7 @@ BAUD_DEFAULT = 9600
 SLAVE_DEFAULT = 1
 
 R_BASE, R_COUNT = 100, 22
-W_BASE, W_COUNT = 140, 21
+W_BASE, W_COUNT = 140, 22
 
 # tên → chỉ số trong khối GHI (offset từ W_BASE)
 W_INDEX = {
@@ -35,6 +35,7 @@ W_INDEX = {
     "mode": 18,
     "scale_tg": 19,
     "autoloader": 20,
+    "vacen": 21,
 }
 
 # giới hạn kẹp phía PC (firmware kẹp lần nữa — clamp 2 tầng)
@@ -60,10 +61,11 @@ W_RANGE = {
     "mode": (0, 2),   # chế độ rang: 1=SAVE (rang lưu), 2=AUTO (phát lại profile) — đặt TRƯỚC khi bật auto
     "scale_tg": (0, 990),   # cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R)
     "autoloader": (0, 1),   # bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)
+    "vacen": (0, 1),   # bật/tắt PID gió theo áp hút (vacuumSetFlag). Thêm 2026-07-30: trước đây app phải đi đường $M reg 47 vì khối GHI thiếu ô này
 }
 
 # hệ số ghi: giá trị kỹ thuật × scale = số gửi xuống máy
-W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1, "drumfan": 1, "mixer": 1, "afterburner": 1, "loader": 1, "destoner": 1, "profile": 1, "mode": 1, "scale_tg": 10, "autoloader": 1}
+W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1, "drumfan": 1, "mixer": 1, "afterburner": 1, "loader": 1, "destoner": 1, "profile": 1, "mode": 1, "scale_tg": 10, "autoloader": 1, "vacen": 1}
 
 PHASE_BITS = {
     "dry": 0x01,   # đã qua TP  (progStep >= STP_TP)

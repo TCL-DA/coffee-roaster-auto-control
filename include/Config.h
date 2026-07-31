@@ -401,6 +401,13 @@
 // Số lần thử mồi tối đa trước khi báo lỗi IGNITE_FAIL
 #define PH_IGNITE_RETRY                   3
 
+// ── Chốt an toàn máy trạng thái rang (thêm 2026-07-30, xem skill quy-trinh-dieu-khien-may-rang) ──
+// Trần pha phát triển, PHẦN NGHÌN (300 = 30%). Chỉ kêu chuông + báo mã, KHÔNG tự xả —
+// tự xả một mẻ chưa tới nhiệt là làm hỏng mẻ.
+#define DEV_WARN_PERMIL                 300
+// Giây đứng ở STP_LOOP_2 mà cửa xả vẫn mở → coi là xi-lanh kẹt, dừng, không nạp mẻ mới.
+#define LOOP2_STUCK_SEC                  60
+
 #if MACHINE_VR_SOURCE_FROM_HMI
 #define SOURCE_AI_VR_FROM_HMI true
 #endif

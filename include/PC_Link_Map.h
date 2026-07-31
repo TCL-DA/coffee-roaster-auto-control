@@ -58,7 +58,7 @@
 #define PCLF_DESTONER    0x4000   // DESTONER_BTN_R — tách đá đang bật
 #define PCLF_AUTOLOADER  0x8000   // autoLoader_R — chế độ tự cân đang bật
 
-// ── Khối GHI (app → máy) — 140..160 ──
+// ── Khối GHI (app → máy) — 140..161 ──
 // App → máy. CHỈ áp dụng khi PC_CONTROL_BTN_R == 1 (cờ pc_control). Base 140 vì khối ĐỌC đã lấn tới 121 — base 120 cũ làm RORKG/SCALETG đè nát ô lệnh gas/gió mỗi vòng loop (bug 2026-07-23).
 #define PCL_W_BASE     140
 #define PCL_W_GAS          (PCL_W_BASE + 0 )  // gas %  [0..100]
@@ -82,11 +82,12 @@
 #define PCL_W_MODE         (PCL_W_BASE + 18)  // chế độ rang: 1=SAVE (rang lưu), 2=AUTO (phát lại profile) — đặt TRƯỚC khi bật auto  [0..2]
 #define PCL_W_SCALETG      (PCL_W_BASE + 19)  // cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R) ×10  [0..990]
 #define PCL_W_AUTOLOADER   (PCL_W_BASE + 20)  // bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)  [0..1]
-#define PCL_W_COUNT    21
+#define PCL_W_VACEN        (PCL_W_BASE + 21)  // bật/tắt PID gió theo áp hút (vacuumSetFlag). Thêm 2026-07-30: trước đây app phải đi đường $M reg 47 vì khối GHI thiếu ô này  [0..1]
+#define PCL_W_COUNT    22
 
 // Giới hạn kẹp phía firmware — tầng 2 của clamp 2 tầng (app kẹp tầng 1)
-static const int16_t PCL_W_MIN[PCL_W_COUNT] = {0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1, 1, 1, 1, 32767, 1, 1, 1, 1, 1, 30, 2, 990, 1};
+static const int16_t PCL_W_MIN[PCL_W_COUNT] = {0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1, 1, 1, 1, 32767, 1, 1, 1, 1, 1, 30, 2, 990, 1, 1};
 
 // ── Khối CẤU HÌNH $M (handshake app↔máy) — 170..173 ──
 // Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi đang rang. Xem khối config trong PC_Link.h.

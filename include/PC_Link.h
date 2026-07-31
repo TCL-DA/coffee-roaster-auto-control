@@ -420,6 +420,16 @@ void handle_PC_Link(){
         autoLoader_R = v; autoLoader_R_CP = v;
         nodeHMI.writeSingleRegister(autoLoader_W + 2000, v);
     }
+    /* Bật/tắt PID gió theo áp hút — ô THÊM 2026-07-30.
+       Trước đây khối GHI không có ô này, nên app OTL Roast Lab muốn đổi chế độ phải ghi
+       thẳng $M reg 47 qua đường cấu hình HMI — chậm và không dùng được lúc đang rang.
+       Bật thì gọi pidAirflowReset() để snap tới mức gió đã học cho setpoint hiện hành,
+       giống hệt nhánh setpoint ở pclChanged(4). */
+    if (pclChanged(21, v) && MACHINE_HAS_VACUUM_SENSOR) {
+        vacuumSetFlag_R = v; vacuumSetFlag_R_CP = v;
+        nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, v);
+        if (v == 1) pidAirflowReset();
+    }
 }
 
 #else   // PC_LINK_EN == 0 — vô hiệu, không tốn gì
