@@ -407,6 +407,10 @@
 #define DEV_WARN_PERMIL                 300
 // Giây đứng ở STP_LOOP_2 mà cửa xả vẫn mở → coi là xi-lanh kẹt, dừng, không nạp mẻ mới.
 #define LOOP2_STUCK_SEC                  60
+// R7: giây tối thiểu kể từ lúc NẠP mới cho auto-drop và bồn nguội sớm được kích.
+// Không mẻ nào xả trong 2 phút đầu; chặn này phòng hồ sơ có nhiệt xả THẤP HƠN nhiệt nạp
+// (rang nhẹ / ca cao) làm máy bắn lệnh xả ngay khi vừa đổ hạt.
+#define DROP_MIN_SEC                    120
 
 #if MACHINE_VR_SOURCE_FROM_HMI
 #define SOURCE_AI_VR_FROM_HMI true

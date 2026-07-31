@@ -1875,11 +1875,25 @@ void programScan(){
            năng tự xả → cháy mẻ. Về lý thuyết BT không thể tới DROP_PRO_R trước khi qua
            DE/FCs nên nới cổng này không đổi hành vi mẻ bình thường. */
         if(progStep>=STP_CHARGE){
+            /* ⛔ R7 (2026-07-30): CỔNG "ĐÃ CÓ HẠT TRONG LỒNG"
+               Lớp 2 của R2 hạ cổng khối này xuống STP_CHARGE — nhưng STP_CHARGE là bước
+               CHỜ THỢ NẠP, lồng đang ở nhiệt nạp mà hạt CHƯA vào. Auto-drop chỉ xét nhiệt
+               nên nó mở cửa xả khi lồng còn trống. Bung ở 3 ca thật:
+                 · hồ sơ ca cao xả THẤP HƠN nhiệt nạp (nạp 180 / xả 150)
+                 · charge tay giữ nóng tới 220 °C
+                 · ngay sau khi nạp, BT chưa kịp tụt (nạp 200 / xả 195) → mất trắng mẻ
+               Lý lẽ cũ "BT không thể tới DROP_PRO_R trước khi qua DE/FCs" chỉ đúng khi
+               nhiệt xả cao hơn nhiệt nạp — SAI với rang nhẹ.
+               timeRoastEn bật đúng lúc bấm nạp và tắt lúc xả/huỷ nên nó là cờ "đang có hạt"
+               chính xác hơn progStep. Chặn thêm DROP_MIN_SEC phòng hồ sơ xả thấp hơn nạp.
+               KHÔNG gác nhánh xả TAY bên dưới — thợ phải bấm xả được mọi lúc. */
+            bool batchRunning = (timeRoastEn == 1 && timeRoast > DROP_MIN_SEC);
+
             //Xử lí các tình huống trong khi rang auto
-            if(progStatus == STT_PROGRAM_AUTO){
+            if(progStatus == STT_PROGRAM_AUTO && batchRunning){
                 //Phát hiện auto drop khi rang auto
                 if(Temperature_BT>=DROP_PRO_R && progStep<STP_LOOP_1){
-                    setMachineStatus(STT_ROAST_DROP); nodeHMI.writeSingleRegister(DROP_BTN_W-1, 1); //Turn on drop    
+                    setMachineStatus(STT_ROAST_DROP); nodeHMI.writeSingleRegister(DROP_BTN_W-1, 1); //Turn on drop
                 }
                 //Tự bật cooling trước khi drop
                 if(Temperature_BT>=(DROP_PRO_R-preCool_R_CV)&&preCool_R_CV>0){
