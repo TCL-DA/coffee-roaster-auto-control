@@ -63,3 +63,9 @@ desktop.ini
 
 # Build PlatformIO
 .pio/
+
+# Kho ngoài dự án (skill tải về, repo tham chiếu)
+_external/
+
+# Tài liệu PDF nhà sản xuất — nặng, không đưa vào git
+docs/ref/DELTA_IA-HMI_DOPSoft_UM_EN_20211230.pdf
