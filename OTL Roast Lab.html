@@ -208,7 +208,13 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;
 .chartwrap{flex:1;min-height:0;background:var(--inset);border:1px solid var(--hair);border-radius:var(--r-lg);position:relative;overflow:hidden}
 .chartwrap canvas{width:100%;height:100%;display:block}
 /* z-index 25 > overlay màn chờ (20): nút bật/tắt nền phải bấm được cả khi chưa vào mẻ */
-.chartleg{position:absolute;top:16px;right:20px;z-index:25;display:flex;gap:20px;background:color-mix(in srgb,var(--panel) 70%,transparent);
+/* Khối này neo bên phải nên nó nong sang TRÁI khi thêm nhãn. Từ khi có ΔET là 8 nhãn,
+   một hàng thẳng sẽ vắt ngang gần hết đồ thị → cho xuống hàng và chặn bề ngang. */
+/* right = 128px (không phải 20px): lề phải của canvas dành 112px cho SỐ TRỤC RoR, neo
+   sát mép là khối này che mất vạch trên cùng của trục đó. */
+.chartleg{position:absolute;top:16px;right:128px;z-index:25;display:flex;flex-wrap:wrap;
+  justify-content:flex-end;max-width:58%;gap:10px 20px;
+  background:color-mix(in srgb,var(--panel) 70%,transparent);
   padding:10px 16px;border-radius:var(--r-sm);border:1px solid var(--hair)}
 .chartleg .lg{display:flex;align-items:center;gap:8px;font-size:var(--fs-16);color:var(--dim);font-weight:600}
 .chartleg .lg i{width:22px;height:5px;border-radius:var(--r-xs);display:inline-block}
@@ -1065,6 +1071,12 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 /* Rang: nút Loop khoá khi không AUTO + màu Drum */
 .tbtn.dis{opacity:.34;pointer-events:none}
 .outrow.drum .ov{color:var(--green-ink)}
+/* Nút đổi chế độ hàng gió: %/Pa. Sáng màu áp hút khi đang ở chế độ áp hút để nhìn
+   một cái là biết cột số đang là Pa chứ không phải %. */
+.outrow .cap .vcbtn{margin-left:8px;padding:2px 9px;border-radius:var(--r-xs);
+  border:1px solid var(--hair);background:transparent;color:var(--mute);
+  font-family:var(--f-num);font-weight:700;font-size:var(--fs-16);cursor:pointer}
+.outrow .cap .vcbtn.on{border-color:var(--c-vac);background:var(--c-vac);color:#fff}
 
 /* ══════════ DỄ ĐỌC cho panel FHD 1920×1080 (co 0.75×) + người lớn tuổi ══════════
    Phóng nhóm chữ NHỎ để ở 0.75× vẫn ≥16px thật. Số lớn giữ nguyên. */
@@ -1971,7 +1983,8 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                 <div class="lg lgser" data-ser="bt"     onclick="toggleSeries('bt')"     title="Ẩn/hiện đường BT"><i style="background:var(--c-bt)"></i>BT</div>
                 <div class="lg lgser" data-ser="et"     onclick="toggleSeries('et')"     title="Ẩn/hiện đường ET"><i style="background:var(--c-et)"></i>ET</div>
                 <div class="lg lgser" data-ser="abt"    onclick="toggleSeries('abt')"    title="Ẩn/hiện đường ABT"><i style="background:var(--c-abt)"></i>ABT</div>
-                <div class="lg lgser" data-ser="ror"    onclick="toggleSeries('ror')"    title="Ẩn/hiện đường RoR"><i style="background:var(--c-ror)"></i>RoR</div>
+                <div class="lg lgser" data-ser="ror"    onclick="toggleSeries('ror')"    title="Ẩn/hiện đường RoR của BT"><i style="background:var(--c-ror)"></i>ΔBT</div>
+                <div class="lg lgser" data-ser="rorET"  onclick="toggleSeries('rorET')"  title="Ẩn/hiện đường RoR của ET (nét đứt, cùng trục RoR)"><i class="dash" style="background:var(--c-ror)"></i>ΔET</div>
                 <div class="lg lgser" data-ser="burner" onclick="toggleSeries('burner')" title="Ẩn/hiện đường Burner"><i style="background:var(--c-burner)"></i>Burner</div>
                 <div class="lg lgser lgvac" data-ser="vac" style="display:none" onclick="toggleSeries('vac')" title="Ẩn/hiện đường áp hút"><i style="background:var(--c-vac)"></i>Vacuum</div>
               </div>
@@ -2029,9 +2042,15 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                   <span class="flamebadge" id="burnerFlame"><svg class="fic ot" aria-hidden="true"><use href="#i-ignite"/></svg><span class="ft">—</span></span></div>
                 <button class="pm" data-out="burner" data-d="1" onclick="stepOut(this)">+</button>
               </div>
-              <div class="outrow air">
+              <!-- Hàng GIÓ có hai chế độ: chỉnh % gió trực tiếp (như cũ), hoặc chỉnh
+                   ÁP HÚT đặt (Pa) rồi để bộ PID gió của máy tự tìm % gió. Bấm nhãn Pa/%
+                   để đổi. Nút chỉ hiện khi Cài đặt khai báo máy CÓ bộ hút. -->
+              <div class="outrow air" id="rowAir">
                 <button class="pm" data-out="air" data-d="-1" onclick="stepOut(this)">−</button>
-                <div class="oinfo" onclick="outEdit('air')"><div class="cap">Airflow</div><div class="ov num"><span id="ovAir">80</span><small>%</small></div></div>
+                <div class="oinfo" onclick="outEdit('air')">
+                  <div class="cap"><span id="airCap">Airflow</span><button class="vcbtn" id="vcBtn" style="display:none"
+                    onclick="event.stopPropagation();vacModeToggle()" title="Đổi giữa chỉnh % gió và chỉnh áp hút đặt (Pa)">Pa</button></div>
+                  <div class="ov num"><span id="ovAir">80</span><small id="airUnit">%</small></div></div>
                 <button class="pm" data-out="air" data-d="1" onclick="stepOut(this)">+</button>
               </div>
               <div class="outrow drum">
@@ -2375,6 +2394,39 @@ input.peval[readonly]:focus{border-color:var(--hair);box-shadow:none}
                     <div class="field" data-num="ch_rmin" data-label="RoR tối thiểu" data-unit="°C/ph" data-min="-100" data-max="0" data-step="5" data-dec="0"></div></div>
                   <div class="frow"><label>RoR tối đa</label>
                     <div class="field" data-num="ch_rmax" data-label="RoR tối đa" data-unit="°C/ph" data-min="10" data-max="100" data-step="5" data-dec="0"></div></div>
+                  <!-- ══ TÍNH RoR ══ Khác hẳn hai ô trên: hai ô trên là BỀ CAO TRỤC VẼ,
+                       mấy ô dưới đây là CÁCH TÍNH ra con số RoR. Chuỗi 4 tầng theo
+                       Artisan: làm mượt đường → tính trên cửa sổ → làm mượt RoR → trần.
+                       Đổi ô nào cũng tính lại cả mẻ ngay, không cần rang lại. -->
+                  <div class="section-t">Tính RoR (kiểu Artisan)</div>
+                  <div class="frow"><label>Nguồn RoR <span class="q" title="App: tự tính từ chuỗi BT/ET theo kiểu Artisan, chỉnh được mọi ô dưới. Máy: dùng thẳng số rorBT/rorET của firmware (cửa sổ 3 giây + Kalman, kẹp ±95) — chọn cái này nếu muốn số khớp y HMI.">?</span></label>
+                    <div class="pick" data-cfg="ro_src" data-label="Nguồn RoR" onclick="openPick(this,['App (kiểu Artisan)','Máy (firmware)'])"><span class="pv">App (kiểu Artisan)</span><span class="car">▾</span></div></div>
+                  <div class="frow"><label>Cửa sổ tính <span class="q" title="Khoảng thời gian lấy hai đầu để tính RoR. Ngắn thì nhạy nhưng ồn (firmware dùng 3 giây), dài thì mượt nhưng trễ. Artisan mặc định 20 giây.">?</span></label>
+                    <div class="field" data-num="ro_span" data-label="Cửa sổ tính RoR" data-unit="giây" data-min="3" data-max="60" data-step="1" data-dec="0"></div></div>
+                  <div class="frow"><label>Thuật toán <span class="q" title="Hai điểm mút: lấy hiệu hai đầu cửa sổ — rẻ, ăn trọn nhiễu của đúng 2 điểm đó. Hồi quy bậc 1: khớp đường thẳng qua TOÀN BỘ cửa sổ — chịu nhiễu tốt hơn rõ rệt, tốn tính hơn.">?</span></label>
+                    <div class="pick" data-cfg="ro_algo" data-label="Thuật toán RoR" onclick="openPick(this,['Hai điểm mút','Hồi quy bậc 1'])"><span class="pv">Hai điểm mút</span><span class="car">▾</span></div></div>
+                  <div class="frow"><label>Làm mượt đường trước <span class="q" title="Làm mượt BT/ET TRƯỚC khi tính RoR — đây là điểm cốt lõi của Artisan: RoR tính từ đường đã mượt, không phải số thô. 0 = tắt. Số này là bậc, nội bộ = số×2+1 mẫu.">?</span></label>
+                    <div class="field" data-num="ro_csmooth" data-label="Làm mượt đường trước khi tính RoR" data-unit="bậc" data-min="0" data-max="10" data-step="1" data-dec="0"></div></div>
+                  <div class="frow"><label>Làm mượt RoR <span class="q" title="Làm mượt chính con số RoR (trung bình trọng số tăng dần — mẫu mới nặng hơn). Tăng thì đường đẹp nhưng PHẢN ỨNG TRỄ, thợ chỉnh gas sai nhịp. 0 = tắt. Nội bộ = số×2+1.">?</span></label>
+                    <div class="field" data-num="ro_smooth" data-label="Làm mượt RoR" data-unit="bậc" data-min="0" data-max="30" data-step="1" data-dec="0"></div></div>
+                  <div class="frow"><label>Vượt trần thì <span class="q" title="Bỏ điểm: đường ĐỨT ở chỗ số không tin được — kiểu Artisan, thấy ngay là có vấn đề. Kẹp về biên: đường liền nhưng phẳng đầu, dễ đọc nhầm là RoR đang ổn định (firmware đang làm thế). Không giới hạn: vẽ hết, kể cả gai.">?</span></label>
+                    <div class="pick" data-cfg="ro_lim" data-label="Xử lý RoR vượt trần" onclick="openPick(this,['Bỏ điểm','Kẹp về biên','Không giới hạn'])"><span class="pv">Bỏ điểm</span><span class="car">▾</span></div></div>
+                  <div class="frow"><label>Trần dưới <span class="q" title="RoR thấp hơn ngần này coi như không tin được. Artisan mặc định −10: sau TP thì BT chỉ tăng, RoR âm sâu là nhiễu. Trước TP thì hạt lạnh vào lồng nên RoR âm là THẬT — cần nới nếu muốn thấy đoạn đó.">?</span></label>
+                    <div class="field" data-num="ro_lmin" data-label="Trần dưới RoR" data-unit="°C/ph" data-min="-100" data-max="0" data-step="5" data-dec="0"></div></div>
+                  <div class="frow"><label>Trần trên <span class="q" title="RoR cao hơn ngần này coi như không tin được. Artisan mặc định +45; firmware đang dùng +95 (rộng hơn nhiều nên gai vẫn lọt).">?</span></label>
+                    <div class="field" data-num="ro_lmax" data-label="Trần trên RoR" data-unit="°C/ph" data-min="10" data-max="150" data-step="5" data-dec="0"></div></div>
+                  <!-- ══ ĐIỀU KHIỂN THEO ÁP HÚT ══ Chỉ dùng được khi đã tích "Bộ hút"
+                       ở "Thiết bị máy có" phía trên. Bật/tắt ngay trên màn Rang bằng
+                       nút %/Pa ở hàng gió; mấy ô dưới đây khai báo dải THEO MÁY. -->
+                  <div class="section-t">Điều khiển theo áp hút (Vacuum Control)</div>
+                  <div class="frow"><label>Áp hút đặt mặc định <span class="q" title="Giá trị Pa dùng lần đầu khi bật chế độ áp hút. Sau đó app nhớ mức thợ đã chỉnh.">?</span></label>
+                    <div class="field" data-num="vc_sp" data-label="Áp hút đặt mặc định" data-unit="Pa" data-min="0" data-max="300" data-step="5" data-dec="0"></div></div>
+                  <div class="frow"><label>Áp hút tối thiểu <span class="q" title="Chặn dưới khi bấm −. Cầu PC_Link chỉ nhận 90–250 Pa; đặt ngoài dải đó là lệnh bị chặn.">?</span></label>
+                    <div class="field" data-num="vc_min" data-label="Áp hút tối thiểu" data-unit="Pa" data-min="0" data-max="300" data-step="5" data-dec="0"></div></div>
+                  <div class="frow"><label>Áp hút tối đa <span class="q" title="Chặn trên khi bấm +. Quạt và lưới lọc mỗi máy khác nhau nên dải dùng thật thường hẹp hơn 90–250.">?</span></label>
+                    <div class="field" data-num="vc_max" data-label="Áp hút tối đa" data-unit="Pa" data-min="0" data-max="300" data-step="5" data-dec="0"></div></div>
+                  <div class="frow"><label>Bậc chỉnh <span class="q" title="Mỗi lần bấm ± thì áp hút đặt đổi ngần này Pa. Bậc nhỏ thì chỉnh mịn nhưng bấm nhiều lần.">?</span></label>
+                    <div class="field" data-num="vc_step" data-label="Bậc chỉnh áp hút" data-unit="Pa" data-min="1" data-max="50" data-step="1" data-dec="0"></div></div>
                 </div>
               </div>
               <!-- Cài đặt máy (tham số firmware $M) -->
@@ -3800,8 +3852,132 @@ if(window._OTL_WEBCLONE){
   }catch(e){}
 }
 /* chuỗi thời gian mẻ đang chạy: 1 mẫu/giây, dùng để vẽ curve thật */
-const SERIES={t:[],bt:[],et:[],ror:[],gas:[],air:[],drum:[],vac:[]};
-function seriesReset(){for(const k in SERIES)SERIES[k].length=0;}
+const SERIES={t:[],bt:[],et:[],ror:[],rorET:[],gas:[],air:[],drum:[],vac:[]};
+function seriesReset(){for(const k in SERIES)SERIES[k].length=0;rorReset();}
+
+/* ════════════ RoR — BỘ TÍNH KIỂU ARTISAN ════════════════════════════════════
+   Trước đây app chỉ hiện lại con số rorBT của firmware: cửa sổ 3 giây cố định,
+   lọc Kalman, kẹp ±95. Con số đó nhạy nhưng ồn, và KHÔNG khớp Artisan nên thợ so
+   hai màn ra hai số khác nhau. Giờ app tự tính được theo đúng chuỗi 4 tầng của
+   Artisan, mọi tham số cho thợ chỉnh trong Cài đặt → Model nhiệt → Tính RoR.
+
+   Chuỗi 4 tầng (thứ tự này là bắt buộc, xem skill artisan-ror):
+     1. làm mượt BT/ET trước      ← Artisan tính RoR TỪ ĐƯỜNG ĐÃ MƯỢT, không phải số thô
+     2. tính RoR trên cửa sổ span (hai điểm mút hoặc hồi quy bậc 1)
+     3. làm mượt RoR
+     4. giới hạn trần
+
+   Khác Artisan một điểm CÓ Ý: Artisan sau khi rang dùng cửa sổ đối xứng (hanning /
+   Savitzky-Golay) cho mượt hơn, nhưng cửa sổ đối xứng cần biết dữ liệu TƯƠNG LAI.
+   App chạy trực tiếp trong lúc rang nên chỉ dùng lọc nhân quả (trọng số tăng dần) —
+   đúng đường chạy trực tiếp của Artisan (canvas.py:5079). Không có Savitzky-Golay.
+
+   Nguồn "Máy" giữ nguyên số firmware (để đối chiếu / máy cũ), nguồn "App" thì tính
+   lại từ chuỗi BT/ET thô. Đổi cài đặt là tính lại cả mẻ ngay, không phải rang lại. */
+const ROR={bt:[],et:[]};
+function rorReset(){ROR.bt.length=0;ROR.et.length=0;}
+const rorCfg=k=>(CFG&&CFG[k]!=null)?CFG[k]:(CFG_DEFAULT?CFG_DEFAULT[k]:null);
+/* Cửa sổ làm mượt: thợ nhập số trên UI, nội bộ = UI×2+1 (phải LẺ) — đúng quy đổi
+   của Artisan (curves.py:2422). 0 = tắt làm mượt. */
+function rorWin(ui){const n=Math.max(0,Math.round(+ui||0));return n?n*2+1:0;}
+/* Trung bình trọng số TĂNG DẦN (1,2,3…n) — mẫu càng mới càng nặng. Nhân quả nên
+   chạy được trực tiếp; bỏ qua mẫu rỗng để một lần mất tín hiệu không kéo lệch cả đoạn. */
+function rorDecay(v,win){
+  if(!(win>1))return v.slice();
+  const out=new Array(v.length);
+  for(let i=0;i<v.length;i++){
+    if(v[i]==null||!isFinite(v[i])){out[i]=null;continue;}
+    let sw=0,sv=0;
+    for(let k=Math.max(0,i-win+1);k<=i;k++){
+      const x=v[k];if(x==null||!isFinite(x))continue;
+      const w=win-(i-k);sw+=w;sv+=w*x;                 // trọng số 1..win, mới nhất nặng nhất
+    }
+    out[i]=sw?sv/sw:v[i];
+  }
+  return out;
+}
+/* RoR thô trên cửa sổ spanS giây. Mép trái cửa sổ được lấy TRUNG BÌNH 3 mẫu quanh nó
+   (mẹo compute_ror_simple của Artisan, canvas.py:4682) — giảm nhiễu nửa cửa sổ mà
+   KHÔNG thêm trễ cho số hiện tại, vì mép phải vẫn là mẫu mới nhất nguyên bản.
+   Chưa đủ một cửa sổ thì trả null: đầu mẻ không có RoR là đúng, đừng bịa số. */
+function rorRaw(t,v,spanS,poly){
+  const n=Math.min(t.length,v.length), out=new Array(n).fill(null);
+  let j=0;
+  for(let i=0;i<n;i++){
+    while(j<i&&t[i]-t[j+1]>=spanS)j++;                 // j = mẫu cũ nhất còn trong cửa sổ
+    const dt=t[i]-t[j];
+    if(j>=i||dt<=0||v[i]==null||v[j]==null)continue;
+    /* CHƯA ĐỦ MỘT CỬA SỔ thì bỏ, đừng tính trên cửa sổ ngắn hơn. Thiếu chốt này thì
+       mẫu thứ 2 của mẻ được tính trên hiệu 1 GIÂY — chia cho khoảng bé xíu nên ra gai
+       khổng lồ, vẽ thành cột dựng đứng ở đầu mẻ. Artisan tránh đúng chuyện này bằng
+       cách bỏ 10 mẫu đầu sau CHARGE (canvas.py:9115). Nới 10% cho nhịp đọc không đều. */
+    if(dt<spanS*0.9)continue;
+    if(poly){
+      // hồi quy bậc 1 trên TOÀN BỘ cửa sổ → độ dốc (polyRoR, util.py:1215)
+      let st=0,sv=0,c=0;
+      for(let k=j;k<=i;k++){if(v[k]==null||!isFinite(v[k]))continue;st+=t[k];sv+=v[k];c++;}
+      if(c<2)continue;
+      const mt=st/c,mv=sv/c;let num=0,den=0;
+      for(let k=j;k<=i;k++){if(v[k]==null||!isFinite(v[k]))continue;
+        const dtk=t[k]-mt;num+=dtk*(v[k]-mv);den+=dtk*dtk;}
+      if(den>0)out[i]=num/den*60;
+    }else{
+      let left=v[j],c=1;                                // trung bình mép trái 3 mẫu
+      if(j>0&&v[j-1]!=null){left+=v[j-1];c++;}
+      if(j+1<i&&v[j+1]!=null){left+=v[j+1];c++;}
+      out[i]=(v[i]-left/c)/(dt/60);
+    }
+  }
+  return out;
+}
+/* Tính lại toàn bộ RoR của mẻ. Gọi mỗi mẫu mới và mỗi lần đổi cài đặt.
+   Tính lại cả mảng (không cộng dồn) vì đổi span/làm mượt là đổi cả quá khứ — đúng
+   cách recomputeDeltas của Artisan, và với mẻ 40 phút vẫn chỉ vài nghìn phép. */
+function rorRecalc(){
+  const t=SERIES.t;
+  if(String(rorCfg('ro_src')||'').indexOf('Máy')===0){   // nguồn MÁY: dùng thẳng số firmware
+    ROR.bt=SERIES.ror.slice(); ROR.et=SERIES.rorET.slice(); return;
+  }
+  if(t.length<2){rorReset();return;}
+  const spanS=Math.max(1,+rorCfg('ro_span')||20);
+  const poly=String(rorCfg('ro_algo')||'').indexOf('Hồi quy')===0;
+  const wT=rorWin(rorCfg('ro_csmooth'));                 // làm mượt đường trước khi trừ
+  const wR=rorWin(rorCfg('ro_smooth'));
+  // Cửa sổ lọc RoR lúc chạy trực tiếp là MỘT NỬA cửa sổ nội bộ (util.py:1337)
+  const winR=wR?Math.round(wR/2):0;
+  const lim=String(rorCfg('ro_lim')||'Bỏ điểm');
+  const lo=+rorCfg('ro_lmin'), hi=+rorCfg('ro_lmax');
+  const apply=arr=>{
+    if(lim==='Không giới hạn')return arr;
+    return arr.map(x=>{
+      if(x==null)return null;
+      if(x>lo&&x<hi)return x;
+      // "Bỏ điểm" = đường ĐỨT ở chỗ số không tin được (kiểu Artisan, util.py:1343);
+      // "Kẹp về biên" cho đường liền nhưng phẳng đầu, dễ đọc nhầm là RoR đang ổn định.
+      return lim==='Kẹp về biên'?Math.max(lo,Math.min(hi,x)):null;
+    });
+  };
+  /* Bỏ thêm ĐÚNG BỀ RỘNG CỬA SỔ LÀM MƯỢT ở đầu chuỗi. Bỏ mỗi cửa sổ tính là chưa đủ:
+     mấy mẫu đầu tiên còn là ĐÀ LÊN của bộ lọc (cửa sổ chưa đầy, vẫn còn ngậm cú tụt
+     nhiệt lúc nạp) nên chạy vọt từ −9 lên +27 trong 6 giây, vẽ ra một cột dựng đứng ở
+     đầu mẻ trông như máy lỗi. Artisan bỏ head đúng bằng filter/2 + span (canvas.py:5111). */
+  const dropHead=arr=>{
+    const i0=arr.findIndex(v=>v!=null);
+    if(i0<0||winR<1)return arr;
+    for(let k=i0;k<Math.min(arr.length,i0+winR);k++)arr[k]=null;
+    return arr;
+  };
+  ROR.bt=dropHead(apply(rorDecay(rorRaw(t,rorDecay(SERIES.bt,wT),spanS,poly),winR)));
+  ROR.et=dropHead(apply(rorDecay(rorRaw(t,rorDecay(SERIES.et,wT),spanS,poly),winR)));
+}
+function rorArr(k){return (ROR[k]&&ROR[k].length)?ROR[k]:[];}
+/* Số RoR hiện tại: điểm cuối còn giá trị. Rỗng (đầu mẻ / vừa vượt trần) thì trả null
+   để chỗ hiển thị in "—" thay vì một số 0 giả. */
+function rorNow(k){
+  const a=rorArr(k);
+  for(let i=a.length-1;i>=Math.max(0,a.length-5);i--) if(a[i]!=null&&isFinite(a[i]))return a[i];
+  return null;
+}
 function dsLive(){return DS.state==='connected'&&!!DS.snap;}
 function dsBridge(){return !!(window.pywebview&&window.pywebview.api&&window.pywebview.api.link_snapshot);}
 
@@ -3908,7 +4084,10 @@ function faultCheck(d){
   if(!el)return;
   const vi=LANG==='vi';
   let key='',text='',warn=false;
-  const inBatch=R.phase==='RUNNING'&&R._machRun;
+  /* _machRun chỉ được set ở nhánh "máy chủ nhịp" (pclink). Chế độ tương thích thì nó
+     luôn false → băng đỏ mất-kết-nối KHÔNG BAO GIỜ hiện, đúng lúc cần nhất. Ở chế độ
+     đó chính app bấm nạp/xả nên phase RUNNING đã đủ nghĩa "đang trong mẻ". */
+  const inBatch=R.phase==='RUNNING'&&(R._machRun||DS.mode==='tuongthich');
   if(inBatch&&DS.state!=='connected'&&DS.state!=='nobridge'){
     key='link';
     text=vi?'MẤT KẾT NỐI GIỮA MẺ — máy vẫn tự rang theo firmware, kiểm tra cáp!'
@@ -4053,8 +4232,14 @@ function applyMachine(d){
   // ovSet: KHÔNG đè khi thợ đang gõ inline (dataset.editing)
   const ovSet=(id,val)=>{const e=document.getElementById(id);if(e&&!e.dataset.editing)e.textContent=val;};
   ovSet('ovBurner',outShow('burner',d.gas).toFixed(0));
-  ovSet('ovAir',   outShow('air',d.air).toFixed(0));
+  // Chế độ áp hút: cột số là SETPOINT do thợ đặt, KHÔNG phải % gió của máy — máy tự
+  // đổi % gió liên tục để giữ áp, đè số máy vào đây là ô số nhảy loạn không bấm nổi.
+  if(vacModeOn()){
+    if(R.vacSp==null)R.vacSp=vacSpClamp(d.vac>0?d.vac:vacCfg('vc_sp',120));
+    ovSet('ovAir',String(R.vacSp));
+  }else ovSet('ovAir',outShow('air',d.air).toFixed(0));
   ovSet('ovDrum',  outShow('drum',d.drum).toFixed(0));
+  vacSyncRow();          // nhãn %/Pa + % gió thật của máy hiện cạnh nhãn
   // Nút Nạp/Xả sáng theo trạng thái THẬT của xi lanh (firmware tự đóng là nút tự tắt);
   // flagShow = có cầu lạc quan 3s sau khi bấm để không chớp trong lúc chờ cờ về
   const bc=document.getElementById('btnCharge'),be=document.getElementById('btnEscape'),
@@ -4089,7 +4274,12 @@ function applyMachine(d){
     // CHỈ chốt mẻ khi máy từng chạy thật — bấm BẮT ĐẦU lúc máy đứng yên
     // không được chốt mẻ rỗng 00:00
     if(!running&&R.phase==='RUNNING'&&R._machRun){
-      R._machRun=false; machSample(d); finishRoast(); return; }  // chốt mẫu đúng giây DROP
+      R._machRun=false; machSample(d);
+      // progStep KHÔNG BAO GIỜ bằng 10, nên MILE_STEP.DROP chỉ khớp nhờ AUTO nhảy sang
+      // LOOP_1(13). Chế độ chỉ-ghi-hồ-sơ firmware đặt progStep=0 lúc xả → mốc DROP rơi
+      // mất, bảng tổng kết và bản ghi SQLite thiếu. Chốt tay ở đây cho chắc.
+      if(R.mileT.DROP==null){R.mileT.DROP=d.t_roast;R.mileD.DROP=d.bt;}
+      finishRoast(); return; }                                  // chốt mẫu đúng giây DROP
   }
   if(R.phase!=='RUNNING'){ updateRoastLive(); return; }
 
@@ -4117,8 +4307,10 @@ function machSample(d){
   const last=SERIES.t.length?SERIES.t[SERIES.t.length-1]:-1;
   if(d.t_roast>last){SERIES.t.push(d.t_roast);SERIES.bt.push(d.bt);
     SERIES.et.push(d.et);SERIES.ror.push(d.ror_bt);SERIES.gas.push(d.gas);
+    SERIES.rorET.push(d.ror_et!=null?d.ror_et:null);   // RoR của ET từ máy (đối chiếu với bản app tính)
     SERIES.vac.push(d.vac!=null?d.vac:0);          // áp hút (option) — luôn ghi để mẻ cũ xem lại được
-    SERIES.air.push(d.air);SERIES.drum.push(d.drum);}
+    SERIES.air.push(d.air);SERIES.drum.push(d.drum);
+    rorRecalc();}                                  // có mẫu mới → tính lại RoR cả mẻ
 }
 /* Nhịp poll bật ở cuối phần INIT (sau khi R/CFG đã khai báo) — xem dsStart() */
 function dsStart(){ dsTick(); setInterval(dsTick,1000);
@@ -4285,7 +4477,7 @@ async function portGateAfterLogin(){
    KHÔNG đọc được trạng thái nút đó, nên không hứa suông: báo "đã gửi", còn máy
    có nhận hay không thì nhìn số live đổi mới biết. */
 const CMD_LBL={ignite:'Đánh lửa',charge:'Nạp hạt',drop:'Kết thúc mẻ',escape:'Xả liệu',
-  cool:'Làm nguội',gas:'Gas',air:'Gió',drum:'Trống',sv:'SV',vac:'Áp hút',
+  cool:'Làm nguội',gas:'Gas',air:'Gió',drum:'Trống',sv:'SV',vac:'Áp hút',vacen:'PID hút',
   drumfan:'Quạt trống',mixer:'Cánh khuấy',afterburner:'Afterburner',loader:'Nạp liệu',destoner:'Tách đá'};
 async function machCmd(name,value){
   const lbl=CMD_LBL[name]||name, v=value===undefined?1:value;
@@ -4456,12 +4648,34 @@ async function cmdDrop(){
     if(want && R.phase==='RUNNING') finishRoast();   // đang rang mới chốt mẻ
   }
 }
+/* TỰ XẢ (ngưỡng nhiệt) — GHI THẲNG 1, tuyệt đối không dùng cmdDrop().
+   cmdDrop là TOGGLE cho ngón tay thợ. Nếu cửa xả ĐÃ mở bởi tác nhân khác (firmware
+   tự xả ở chế độ AUTO theo DROP_PRO_R, hoặc thợ vừa bấm trên HMI 1-2s trước) thì
+   toggle tính ra want=0 → app ĐÓNG CỬA XẢ NON, hạt còn nằm trong trống, và firmware
+   huỷ luôn dropTimer ở nhánh DROP_BTN_R==0. Ngưỡng xả tự bật theo hồ sơ nên đây là
+   cấu hình mặc định, không phải góc hiếm. */
+async function autoDrop(){
+  if(!dsBridge()){ finishRoast(); return; }              // demo trong trình duyệt
+  if(flagShow('drop')){                                  // đã mở rồi → chỉ chốt mẻ
+    opLog('MẺ','tự xả: cửa xả đã mở sẵn — chỉ chốt mẻ, không đụng xi lanh');
+    if(R.phase==='RUNNING')finishRoast();
+    return;
+  }
+  if(await machCmd('drop',1)){
+    BTN_HOLD.drop={v:1,until:Date.now()+3000};
+    CONFIRM_WAIT.drop={want:1,t0:Date.now()};
+    const b=document.getElementById('btnDrop');if(b)b.classList.add('on');
+    if(R.phase==='RUNNING')finishRoast();
+  }
+}
 
 /* ════════ RANG: mode / output ± / view ════════ */
 const R={mode:'MANUAL',burner:40,air:80,drum:55,view:'detail',
          phase:'NOSEL',prog:0,elapsed:0,paused:false,
          profName:'',profColor:'#c97a1a',profNo:0,
          bgOn:localStorage.getItem('otl_bg_on')!=='0',   // curve nền bật/tắt, nhớ qua lần mở sau
+         vacMode:localStorage.getItem('otl_vacmode')==='1',  // hàng gió đang chỉnh Pa hay %
+         vacSp:null,                                     // áp hút đặt (Pa) — lấy mặc định từ Cài đặt
          mileT:{},mileD:{}};   // phase: NOSEL→IDLE→RUNNING→DONE; mileT/mileD = giờ+nhiệt các mốc THẬT
 /* Mốc + tổng-giây MẶC ĐỊNH (mẻ mẫu 10:42) — dùng khi CHƯA nạp hồ sơ nào.
    Khi nạp hồ sơ, buildTarget() thay MILES/ROAST_SECS/TGT theo setpoint hồ sơ. */
@@ -4590,6 +4804,13 @@ function outEdit(k){
     let v=parseInt(inp.value,10);
     inp.remove();
     if(!commit||isNaN(v)){span.textContent=old;return;}
+    // Gõ thẳng vào hàng gió lúc đang ở chế độ áp hút: số nhập là Pa, kẹp theo dải đã
+    // khai báo cho máy và gửi ô 'vac' (không phải 'air')
+    if(k==='air'&&vacModeOn()){
+      const sp=vacSpClamp(v);R.vacSp=sp;span.textContent=sp;
+      if(dsBridge())machCmd('vac',sp);
+      return;
+    }
     v=Math.max(0,Math.min(OUT_MAX[k],v));
     R[k]=v;span.textContent=v.toFixed(0);
     if(dsBridge()){OUT_HOLD[k]={v:v,until:Date.now()+3000};machCmd(k==='burner'?'gas':k,v);}
@@ -4600,9 +4821,97 @@ function outEdit(k){
   inp.addEventListener('blur',()=>done(true));
   inp.addEventListener('click',e=>e.stopPropagation());   // đừng mở lại chính mình
 }
+/* ════════ ĐIỀU KHIỂN THEO ÁP HÚT (Vacuum Control) ══════════════════════════════
+   TẮT  — hàng "gió" chỉnh % gió trực tiếp, y như trước.
+   BẬT  — hàng đó chỉnh ÁP HÚT ĐẶT (Pa); máy tự tìm % gió bằng bộ điều khiển bậc +
+          bảng feed-forward trong PID_Airflow.h (xem skill pid-analysis). App KHÔNG
+          tự bò từng bước 1% — firmware làm việc đó tốt hơn vì nó đọc áp mỗi vòng
+          loop (~130 ms) còn app chỉ thấy dữ liệu mỗi giây.
+
+   Hai lệnh, HAI Ô RIÊNG của PC_Link — cả hai ghi được TRONG LÚC RANG:
+     • Setpoint (Pa) → ô 'vac'.   Firmware gọi luôn pidAirflowReset() để snap tới mức
+       gió đã học cho áp đó (PC_Link.h:330-335).
+     • Bật/tắt PID  → ô 'vacen'. Thêm vào giao thức 2026-07-30; trước đó phải ghi thẳng
+       $M reg 47 qua khối cấu hình HMI — chậm, và bị chặn khi đang rang. */
+const VAC_WIRE_MIN=90, VAC_WIRE_MAX=250;                // giới hạn ô 'vac' của PC_Link
+/* Đọc số từ Cài đặt. KHÔNG loại giá trị 0 — "bậc 0" hay "min 0" là cài đặt hợp lệ của
+   thợ, coi 0 là "chưa cài" thì app âm thầm dùng mặc định khác hẳn ý người ta. */
+function vacCfg(k,def){const raw=CFG&&CFG[k];if(raw===''||raw==null)return def;
+  const v=+raw;return isFinite(v)?v:def;}
+/* Kẹp hai lần: theo dải thợ khai báo cho máy, RỒI theo dải ô 'vac' của cầu nối.
+   Cầu nối kẹp IM LẶNG (otl_link.py:299 `v = max(lo, min(hi, v))`) — không kẹp ở đây
+   thì app hiện 60 Pa trong khi máy nhận 90 Pa, tức app báo sai điều vừa gửi. */
+function vacSpClamp(v){
+  const lo=Math.max(VAC_WIRE_MIN,vacCfg('vc_min',VAC_WIRE_MIN));
+  const hi=Math.min(VAC_WIRE_MAX,vacCfg('vc_max',VAC_WIRE_MAX));
+  return Math.max(lo,Math.min(Math.max(lo,hi),Math.round(v)));
+}
+function vacModeOn(){return !!R.vacMode&&vacOn();}       // máy không có bộ hút thì luôn tắt
+/* Vẽ lại hàng gió theo chế độ đang chạy */
+function vacSyncRow(){
+  const btn=document.getElementById('vcBtn'),cap=document.getElementById('airCap'),
+        unit=document.getElementById('airUnit'),row=document.getElementById('rowAir');
+  if(btn)btn.style.display=vacOn()?'':'none';            // khai báo máy không có bộ hút → ẩn hẳn
+  const on=vacModeOn();
+  if(btn)btn.classList.toggle('on',on);
+  if(btn)btn.textContent=on?'Pa':'%';
+  if(unit)unit.textContent=on?'Pa':'%';
+  if(row)row.classList.toggle('vacmode',on);
+  // Đơn vị vừa đổi sang Pa thì cột số phải đổi theo NGAY. Trước đây chỉ applyMachine
+  // ghi số này, nên khoảnh khắc đầu (chưa có gói dữ liệu nào về) hàng hiện số % cũ kèm
+  // chữ "Pa" — sai đơn vị ngay trên mặt thợ.
+  const ov=document.getElementById('ovAir');
+  if(on&&ov&&!ov.dataset.editing){
+    if(R.vacSp==null)R.vacSp=vacSpClamp(vacCfg('vc_sp',120));
+    ov.textContent=String(R.vacSp);
+  }
+  if(cap){
+    // Ở chế độ áp hút, cột số là SETPOINT (thứ mình ra lệnh); % gió thật của máy hiện
+    // nhỏ ngay cạnh nhãn, còn áp hút THẬT nằm ở thẻ Vacuum. Đặt vs thật không trộn.
+    const d=DS.snap;
+    // Giữ nhãn NGẮN: hàng này hẹp và cả màn đang bị transform:scale, nhãn dài là tràn
+    cap.textContent=on?('Áp hút'+(dsLive()&&d&&d.air!=null?' · gió '+Math.round(d.air)+'%':'')):'Airflow';
+  }
+}
+async function vacModeToggle(){
+  if(!vacOn()){toast('Cài đặt đang khai báo máy KHÔNG có bộ hút — bật ở Cài đặt → Model nhiệt');return;}
+  const want=!R.vacMode;
+  if(want){
+    if(!dsLive()){toast('Điều khiển theo áp hút cần nối máy thật');return;}
+    if(!(DS.snap&&DS.snap.flags&&DS.snap.flags.pc_control)){
+      toast('Bật "PC control" trên HMI trước đã — máy đang không nhận lệnh từ app');return;}
+  }
+  if(dsBridge()&&dsLive()){
+    /* Cờ PID hút giờ đi ô 'vacen' của PC_Link (thêm vào giao thức 2026-07-30) — ghi
+       được TRONG LÚC RANG, nhanh, và firmware tự gọi pidAirflowReset() khi bật.
+       Trước đây phải đi đường $M reg 47 qua khối cấu hình HMI: chậm và bị chặn khi rang.
+       Ghi hụt thì KHÔNG đổi chế độ — đổi nhãn trên app mà máy vẫn chạy chế độ cũ là kiểu
+       sai tệ nhất: thợ chỉnh Pa trong khi máy vẫn ăn % gió. */
+    if(!await machCmd('vacen',want?1:0)){
+      opLog('HÚT','đổi chế độ THẤT BẠI — máy không nhận lệnh vacen','WARN');return;}
+    if(MC&&MC.cur)MC.cur.vacuumSetFlag=want?1:0;
+  }
+  R.vacMode=want;
+  try{localStorage.setItem('otl_vacmode',want?'1':'0');}catch(e){}
+  if(want){
+    if(R.vacSp==null)R.vacSp=vacSpClamp(vacCfg('vc_sp',120));
+    await machCmd('vac',R.vacSp);                        // đẩy setpoint hiện hành xuống máy
+    toast(`Điều khiển theo ÁP HÚT — đặt ${R.vacSp} Pa`,true);
+  }else toast('Điều khiển theo % GIÓ',true);
+  opLog('HÚT','chế độ '+(want?`ÁP HÚT (${R.vacSp} Pa)`:'% GIÓ'));
+  vacSyncRow();updateRoastLive();
+}
 function stepOut(btn){if(R.mode!=='MANUAL')return;
   const k=btn.dataset.out,d=+btn.dataset.d,map={burner:'ovBurner',air:'ovAir',drum:'ovDrum'};
   const el=document.getElementById(map[k]);
+  // Hàng gió ở chế độ áp hút: bậc là Pa, gửi ô 'vac' — KHÔNG gửi 'air', gửi cả hai là
+  // hai bộ điều khiển giành nhau cùng một cái quạt.
+  if(k==='air'&&vacModeOn()){
+    const sp=vacSpClamp((R.vacSp!=null?R.vacSp:vacCfg('vc_sp',120))+d*vacCfg('vc_step',5));
+    R.vacSp=sp; el.textContent=sp;
+    if(dsBridge())machCmd('vac',sp);
+    return;
+  }
   // nối máy: bậc dựa trên giá trị LIVE đang hiển thị (máy là nguồn sự thật),
   // không dựa R[k] — R[k] chỉ là bản nháp cho chế độ mô phỏng
   const cur=dsLive()?(parseFloat(el.textContent)||0):R[k];
@@ -4626,10 +4935,21 @@ function stepOut(btn){if(R.mode!=='MANUAL')return;
    Firmware vẫn giữ watchdog mất-app + mồi-hụt và tự đóng xi-lanh theo timer. */
 const AUTO={plan:null,srcId:null,srcName:'',lastMs:0,comp:0,
             sent:{burner:null,air:null,drum:null},    // mức máy ĐÃ NHẬN (xác nhận)
-            busy:{burner:0,air:0,drum:0}};            // đang có lệnh bay, chống chồng
+            busy:{burner:0,air:0,drum:0},             // đang có lệnh bay, chống chồng
+            abApp:false, abWarned:false};             // AB do APP bật (app phải tự tắt)
 const MODE_LBL={vi:{MANUAL:'THƯỜNG',AUTO:'TỰ ĐỘNG'},en:{MANUAL:'MANUAL',AUTO:'AUTO'}};
 function autoReset(){AUTO.lastMs=0;AUTO.comp=0;
   AUTO.sent={burner:null,air:null,drum:null};AUTO.busy={burner:0,air:0,drum:0};}
+/* Tắt AB do APP bật — chạy thêm afterburnerNext_R giây (khói còn tồn trong ống) rồi
+   tắt, giống hệt nhánh abTimerEn của firmware. AB do thợ/firmware bật thì không đụng. */
+function abAppOff(){
+  if(!AUTO.abApp)return;
+  AUTO.abApp=false;
+  const wait=Math.max(0,Math.min(120,+MC.cur.afterburnerNext||0));
+  const off=()=>{ if(flagShow('afterburner'))machCmd('afterburner',0); };
+  opLog('AUTO',wait?`AB: tắt sau ${wait}s (khói tồn trong ống)`:'AB: tắt ngay');
+  if(wait)setTimeout(off,wait*1000); else off();
+}
 /* Nạp MẺ NỀN của hồ sơ → bảng gas/gió/trống/BT theo từng giây (dạng sdGas[] firmware).
    Không có mẻ nền / không lấy được curve → plan=null → không vào được TỰ ĐỘNG. */
 async function loadAutoPlan(p){
@@ -4713,9 +5033,23 @@ function autoTick(d){
   }
   const pl=AUTO.plan, row=pl[Math.min(Math.max(0,d.t_roast|0),pl.length-1)];
   if(!row)return;
-  const abT=+MC.cur.afterburnerSet||350;             // buồng đốt khói theo nhiệt
-  if(d.bt>=abT&&!fl.afterburner) machCmd('afterburner',1);
-  autoSet('air',row.air,d.air);                      // gió + trống: phát lại y mẻ nền
+  /* Buồng đốt khói theo nhiệt. Trước đây `||350` — chưa cài là thành 350°C, BT không
+     bao giờ tới nên AB ÂM THẦM không chạy cả mẻ. Giờ chưa cài thì nói thẳng 1 lần. */
+  const abT=+MC.cur.afterburnerSet||0;
+  if(abT<=0){
+    if(!AUTO.abWarned){AUTO.abWarned=true;
+      opLog('AUTO','chưa cài "Nhiệt chạy buồng đốt khói" — app không bật AB','WARN');}
+  }else if(d.bt>=abT&&!fl.afterburner&&!AUTO.abApp){
+    /* APP BẬT THÌ APP PHẢI TẮT: firmware chỉ tự tắt AB khi chính nó kích abStep
+       (cần afterburnerSet_R_CV>0 trên máy + progStep trong khoảng TP→LOOP_1). App
+       ghi thẳng AB_BTN thì abStep vẫn 0, abTimerEn không bao giờ bật → AB chạy mãi
+       sau khi hết mẻ. Đánh dấu abApp để abAppOff() dọn lúc chốt mẻ. */
+    AUTO.abApp=true; machCmd('afterburner',1);
+  }
+  // Chế độ áp hút đang bật → KHÔNG phát lại % gió của mẻ nền. Hai bộ cùng lái một cái
+  // quạt là app ghi %, firmware lại kéo về theo áp, quạt giật qua giật lại cả mẻ.
+  // Áp hút giữ theo setpoint thợ đặt; mẻ nền chỉ còn lái gas + trống.
+  if(!vacModeOn())autoSet('air',row.air,d.air);
   autoSet('drum',row.drum,d.drum);
   // ── gas: mức mẻ nền + phần bù lệch nhiệt, tính lại mỗi 10s ──
   const now=Date.now();
@@ -4886,6 +5220,14 @@ async function startRoast(){
   // Nối máy (máy chủ nhịp): BẮT ĐẦU = gửi lệnh Nạp hạt. Mẻ chỉ thật sự mở khi
   // firmware vào CHARGE — applyMachine thấy step chạy sẽ gọi lại hàm này.
   if(dsLive()&&DS.mode!=='tuongthich'&&!R._machRun){
+    /* Kiểm "PC control" NGAY ĐẦU, như toggleMode đã làm. Tắt nút đó thì máy lơ mọi
+       lệnh ghi, mà app vẫn báo "đã gửi lệnh Nạp hạt" → thợ đứng chờ một mẻ không bao
+       giờ mở, chỉ sau 10s mới có một dòng WARN chìm trong nhật ký. */
+    if(!(DS.snap&&DS.snap.flags&&DS.snap.flags.pc_control)){
+      toast('Bật "PC control" trên HMI trước đã — máy đang không nhận lệnh từ app');
+      opLog('MẺ','CHẶN bắt đầu rang — PC control đang TẮT','WARN');
+      return;
+    }
     // Gác cổng theo nhiệt charge hồ sơ: cửa nạp = [charge−1°, charge+3°]
     // (nóng quá → cháy mặt hạt; nguội quá → mẻ ì) — ngoài cửa thì hỏi lại.
     // Nút Nạp hạt ở toolbar vẫn nạp thẳng không hỏi — đường override của thợ.
@@ -4954,6 +5296,7 @@ function togglePause(){
 }
 function finishRoast(){          // gọi khi bấm "Xả mẻ" hoặc hết thời gian
   if(R.phase!=='RUNNING')return;
+  abAppOff();                                                       // AB do app bật → app tắt
   if(R.mode==='AUTO'){R.mode='MANUAL';autoReset();syncModeBtn();}   // xong mẻ → trả tay cho thợ
   clearInterval(roastTimer);roastTimer=null;R.paused=false;
   // GĐ5: xả tay thì mốc DROP không vào R.mileT — vẫn phải kêu "hết mẻ"
@@ -5184,14 +5527,19 @@ function checkMileSets(bt){
   if(R.phase!=='RUNNING')return;
   // Máy thật: BT lúc nạp còn nóng sẵn (180°+) — chưa qua đáy TP thì chưa xét
   // ngưỡng, không thì DE/FCs/DROP bị chấm bậy ngay giây đầu mẻ.
-  if(dsLive()&&R.mileT.TP==null)return;
   const S=R.mileSet;
-  if(S.DE  &&R.mileT.DE ==null&&bt>=S.DE ){R.mileT.DE =R.elapsed;R.mileD.DE =bt;}
-  if(S.FCs &&R.mileT.FCs==null&&bt>=S.FCs){R.mileT.FCs=R.elapsed;R.mileD.FCs=bt;}
+  // Chốt TP chỉ gác DE/FCs, KHÔNG gác xả. Ở pclink mốc TP suy từ progStep=7, nên
+  // firmware kẹt ở STP_TP (rủi ro R2) là mileT.TP mãi null — mà firmware cũng gác
+  // auto-drop sau STP_YELLOW. Gác cả xả theo TP = mất cả hai lớp cùng một lỗi.
+  const afterTP=!(dsLive()&&R.mileT.TP==null);
+  if(afterTP){
+    if(S.DE  &&R.mileT.DE ==null&&bt>=S.DE ){R.mileT.DE =R.elapsed;R.mileD.DE =bt;}
+    if(S.FCs &&R.mileT.FCs==null&&bt>=S.FCs){R.mileT.FCs=R.elapsed;R.mileD.FCs=bt;}
+  }
   if(S.DROP&&!R._dropFired&&bt>=S.DROP){
     R._dropFired=true;
     toast(`BT ${bt.toFixed(1)}° ≥ ${S.DROP}° — tự KẾT THÚC MẺ`,true);
-    cmdDrop();                                         // mở xi lanh, firmware tự đóng
+    autoDrop();                                        // GHI THẲNG 1, xem chú thích autoDrop
   }
 }
 /* Nhiệt charge từ hồ sơ: máy nóng tới ngưỡng (CHƯA vào mẻ) → báo thợ + nút Nạp hạt
@@ -5528,11 +5876,14 @@ function updateRoastLive(){
   // Nối máy thì hiện số máy KỂ CẢ khi chưa rang — trước đây màn chờ vẫn treo số
   // mẫu (198.4/214.0) trong khi máy báo số khác hẳn, nhìn là tưởng máy sai.
   if(started||dsLive()){
-    const sgn=v=>(v>=0?'+':'')+v.toFixed(1);
+    const sgn=v=>(v==null||!isFinite(v))?'—':((v>=0?'+':'')+v.toFixed(1));
     if(dsLive()){
       const d=DS.snap;
-      txt('liveBT', d.bt.toFixed(1));   txt('liveBTror', sgn(d.ror_bt));
-      txt('liveET', d.et.toFixed(1));   txt('liveETror', sgn(d.ror_et));
+      // RoR lấy từ bộ tính của app (nguồn "Máy" thì rorRecalc trả thẳng số firmware).
+      // Chưa đủ một cửa sổ span thì rorNow trả null → hiện "—", không in số 0 giả.
+      const rb=rorNow('bt'), re=rorNow('et');
+      txt('liveBT', d.bt.toFixed(1));   txt('liveBTror', sgn(rb!=null?rb:d.ror_bt));
+      txt('liveET', d.et.toFixed(1));   txt('liveETror', sgn(re!=null?re:d.ror_et));
       // RPM trống = Hz × (RPM@50Hz ÷ 50). Ưu tiên tần số THẬT từ biến tần (drum_hz,
       // khối PC_Link); máy cũ chưa có thì suy từ % theo map firmware 0-100% → 30-50Hz.
       {
@@ -5613,7 +5964,7 @@ function toggleBg(){
    5 đường chồng nhau lúc rang rất rối; thợ thường chỉ cần soi BT + RoR. Nhớ lựa
    chọn qua lần mở sau. Dữ liệu KHÔNG mất — chỉ thôi vẽ, bật lại là có ngay. */
 const SER=(()=>{
-  const d={bt:1,et:1,abt:1,ror:1,burner:1,vac:1};
+  const d={bt:1,et:1,abt:1,ror:1,rorET:1,burner:1,vac:1};
   try{const j=JSON.parse(localStorage.getItem('otl_series')||'null');
       if(j)Object.keys(d).forEach(k=>{if(k in j)d[k]=j[k]?1:0;});}catch(e){}
   return d;
@@ -5662,7 +6013,7 @@ function drawChart(){
     while(R.elapsed/60+1>tiMax && guard++<200) tiMax+=grow;
   }
   // sinh đường cong TRƯỚC để tự-scale theo dữ liệu
-  let bt=[],et=[],abt=[],ror=[],burner=[],vac=[],tbt=[],tet=[],drop,i0=0;
+  let bt=[],et=[],abt=[],ror=[],rorET=[],burner=[],vac=[],tbt=[],tet=[],drop,i0=0;
   const span=tiMax*60;                               // giây từ mốc nạp tới mép phải
   const tSpan=span+T_PRE;                            // tổng bề ngang (kể cả −0:30)
   const tAt=i=>-T_PRE+i/N*tSpan;                     // ô lưới i  → giây (âm = trước nạp)
@@ -5682,11 +6033,14 @@ function drawChart(){
   if(liveChart){
     drop=Math.round(iAt(Math.min(R.elapsed,span)));
     i0=Math.round(iAt(Math.max(0,SERIES.t[0])));     // mẫu THẬT đầu tiên — không kéo phẳng về 00:00
+    const rBT=rorArr('bt'), rET=rorArr('et');        // RoR do bộ tính app (hoặc số máy) cấp
     let k=0;                                         // lấy mẫu SERIES vào lưới N điểm
     for(let i=0;i<=N;i++){
       const tt=Math.max(0,tAt(i));
       while(k+1<SERIES.t.length&&SERIES.t[k+1]<=tt)k++;
-      bt.push(SERIES.bt[k]);et.push(SERIES.et[k]);ror.push(SERIES.ror[k]);burner.push(SERIES.gas[k]);
+      bt.push(SERIES.bt[k]);et.push(SERIES.et[k]);burner.push(SERIES.gas[k]);
+      ror.push(rBT[k]!=null?rBT[k]:null);
+      rorET.push(rET[k]!=null?rET[k]:null);
       vac.push(SERIES.vac[k]!=null?SERIES.vac[k]:null);
     }
   }else{
@@ -5694,7 +6048,8 @@ function drawChart(){
     i0=Math.round(iAt(0));   // mẻ mẫu cũng bắt đầu ở mốc NẠP, không phải mép trái —
                              // thiếu dòng này thì vùng −0:30 vẽ ra một vệt cụt vô nghĩa
     for(let i=0;i<=N;i++){const c=curveAt(Math.max(0,Math.min(1,tAt(i)/span)));
-      bt.push(c.bt);et.push(c.et);abt.push(c.abt);ror.push(c.ror);burner.push(c.burner);vac.push(null);}
+      bt.push(c.bt);et.push(c.et);abt.push(c.abt);ror.push(c.ror);burner.push(c.burner);vac.push(null);
+      rorET.push(null);}   // mẻ mẫu không có RoR của ET — để trống, không vẽ đường bịa
   }
   // ── TRỤC NHIỆT: min/max luôn theo cài đặt; "Tự động" chỉ NỚI TRẦN LÊN khi đường
   //    vượt trần (không bao giờ mất đường), chứ không co lại dưới mức đã cài. ──
@@ -5707,7 +6062,10 @@ function drawChart(){
   }
   // ── TRỤC RoR: LUÔN cố định theo cài đặt, không bao giờ tự nới ──
   const rMin=Math.min(-1,+CFG.ch_rmin||-20), rMax=Math.max(rMin+10,+CFG.ch_rmax||40);
-  ror=ror.map(v=>Math.max(rMin,Math.min(rMax,v)));
+  // Kẹp cho VỪA TRỤC VẼ (khác với trần lọc RoR ở Cài đặt): giữ null nguyên vẹn để
+  // chỗ bị bỏ điểm vẫn hở, đừng biến nó thành 0 rồi vẽ thành đường đâm xuống đáy.
+  const fitAxis=v=>(v==null||!isFinite(v))?null:Math.max(rMin,Math.min(rMax,v));
+  ror=ror.map(fitAxis); rorET=rorET.map(fitAxis);
   const yT=v=>H-B-(H-B-T)*(v-tMin)/(tMax-tMin),
         yR=v=>H-B-(H-B-T)*(v-rMin)/(rMax-rMin), yG=v=>H-B-(H-B-T)*v/100;
   const hair=css('--hair'), dim=css('--dim'), cror=css('--c-ror'), mid=(T+H-B)/2;
@@ -5741,6 +6099,16 @@ function drawChart(){
   const hasData=drop>i0;   // chưa bắt đầu → không vẽ đường
   const plot=(arr,mapy,col,w,glow)=>{g.save();if(glow){g.shadowColor=col;g.shadowBlur=14;}g.beginPath();arr.forEach((v,i)=>{const X=x(i+i0),Y=mapy(v);i?g.lineTo(X,Y):g.moveTo(X,Y);});
     g.strokeStyle=col;g.lineWidth=w;g.lineJoin='round';g.lineCap='round';g.stroke();g.restore();};
+  /* Vẽ đường CÓ THỂ HỞ: mẫu null thì nhấc bút lên. Cần cho RoR vì chế độ "Bỏ điểm"
+     (kiểu Artisan) trả null ở chỗ vượt trần — đường phải ĐỨT để thợ thấy ngay là số
+     không tin được, thay vì nối thẳng qua như thể vẫn liền mạch. */
+  const plotGap=(arr,mapy,col,w,dash)=>{
+    g.save();if(dash)g.setLineDash(dash);
+    g.beginPath();let pen=false;
+    arr.forEach((v,i)=>{if(v==null){pen=false;return;}
+      const X=x(i+i0),Y=mapy(v);pen?g.lineTo(X,Y):g.moveTo(X,Y);pen=true;});
+    g.strokeStyle=col;g.lineWidth=w;g.lineJoin='round';g.lineCap='round';g.stroke();g.restore();
+  };
   const stepPlot=(arr,mapy,col,w)=>{g.beginPath();arr.forEach((v,i)=>{const X=x(i+i0),Y=mapy(v);if(!i)g.moveTo(X,Y);else{g.lineTo(X,Y);}if(i<arr.length-1)g.lineTo(x(i+i0+1),Y);});g.strokeStyle=col;g.lineWidth=w;g.stroke();};
   // NỀN MỜ MỤC TIÊU — vẽ TRƯỚC mọi đường thật để nằm phía sau; đứt khúc + mờ,
   // toàn bề rộng chứ không cắt ở now-line (mục tiêu là đường phải đi tiếp)
@@ -5770,13 +6138,21 @@ function drawChart(){
     if(SER.vac&&vacOn()){
       const vv=cut(vac).filter(v=>v!=null);
       if(vv.length){
+        // h = chiều cao vùng vẽ. TRƯỚC ĐÂY THIẾU DÒNG NÀY → hễ Cài đặt khai báo "máy có
+        // bộ hút" là drawChart ném ReferenceError và cả đồ thị mất trắng. Nhánh này chưa
+        // bao giờ chạy thật vì dv_vacuum mặc định tắt.
+        const h=H-B-T;
         const lo=Math.min(...vv), hi=Math.max(...vv), sp=Math.max(20,hi-lo);
         const yV=v=>T+h*(1-((v-lo)/sp)*0.34+0.02);   // ép vào dải 34% dưới đáy
         plot(cut(vac),yV,css('--c-vac'),2.5);
       }
     }
     if(SER.burner)stepPlot(cut(burner),yG,css('--c-burner'),3);
-    if(SER.ror)plot(cut(ror),yR,css('--c-ror'),3);
+    // Hai đường RoR dùng CHUNG trục phải và chung màu --c-ror: ΔBT liền nét, ΔET nét
+    // đứt + mảnh hơn. Cùng màu vì cùng đại lượng (°C/phút); phân biệt bằng KIỂU NÉT
+    // chứ không thêm màu mới — đồ thị đã 6 đường, thêm hue nữa là loạn.
+    if(SER.rorET)plotGap(cut(rorET),yR,css('--c-ror'),2,[7,6]);
+    if(SER.ror)plotGap(cut(ror),yR,css('--c-ror'),3);
     if(SER.abt&&!liveChart)plot(cut(abt),yT,css('--c-abt'),3);   // máy thật chưa có ABT — không vẽ đường bịa
     if(SER.et)plot(cut(et),yT,css('--c-et'),4,true);
     if(SER.bt)plot(cut(bt),yT,css('--c-bt'),5,true);
@@ -5817,10 +6193,21 @@ function pushAudit(action,field,ov,nv){
   localStorage.setItem(LS_AUDIT,JSON.stringify(a.slice(0,500)));}
 
 /* ── config ── */
-const CFG_FIELDS={ketnoi:['cn_artisan','cn_bt','cn_baud','cn_rpm50'],calib:['cg_db_pre','cg_db_fcs','cg_step','cg_period','cg_cap'],model:['mn_preset','mn_gasbal','mn_sens','mn_loss','ch_auto','ch_tmin','ch_tmax','ch_rmin','ch_rmax','ch_time','ch_grow','ui_view','ig_tmo']};
+const CFG_FIELDS={ketnoi:['cn_artisan','cn_bt','cn_baud','cn_rpm50'],calib:['cg_db_pre','cg_db_fcs','cg_step','cg_period','cg_cap'],model:['mn_preset','mn_gasbal','mn_sens','mn_loss','ch_auto','ch_tmin','ch_tmax','ch_rmin','ch_rmax','ch_time','ch_grow','ro_src','ro_span','ro_algo','ro_csmooth','ro_smooth','ro_lim','ro_lmin','ro_lmax','vc_min','vc_max','vc_step','vc_sp','ui_view','ig_tmo']};
 const CFG_DEFAULT={cn_artisan:'COM3',cn_bt:'COM5',cn_baud:'38400',cn_rpm50:'71',
   dv_drumfan:'1',dv_mixer:'1',dv_cooling:'1',dv_afterburner:'1',dv_loader:'1',dv_destoner:'1',dv_vacuum:'0',cg_db_pre:'1.0',cg_db_fcs:'0.6',cg_step:'5',cg_period:'10',cg_cap:'10',mn_preset:'Cacao 30kg (anh Hiếu)',mn_gasbal:'22',mn_sens:'1.0',mn_loss:'0.35',ch_auto:'Tự động',ch_tmin:'0',ch_tmax:'300',ch_rmin:'-20',ch_rmax:'40',
-  ch_time:'15',ch_grow:'2',ui_view:'Chi tiết',ui_loopprof:'1',ig_tmo:'45'};
+  ch_time:'15',ch_grow:'2',ui_view:'Chi tiết',ui_loopprof:'1',ig_tmo:'45',
+  /* Tính RoR — mặc định theo Artisan, KHÔNG theo firmware:
+     span 20 s (firmware 3 s, ồn hơn nhiều), làm mượt 3 (nội bộ 7), vượt trần thì bỏ
+     điểm. Trần −10…+45 °C/phút là mặc định hiện tại của Artisan (canvas.py:2016-2017),
+     bất đối xứng có chủ ý: sau TP thì BT chỉ tăng, RoR âm sâu là nhiễu chứ không phải
+     hiện tượng rang. Thợ nào muốn số y như HMI thì đổi Nguồn về "Máy (firmware)". */
+  ro_src:'App (kiểu Artisan)',ro_span:'20',ro_algo:'Hai điểm mút',
+  ro_csmooth:'1',ro_smooth:'3',ro_lim:'Bỏ điểm',ro_lmin:'-10',ro_lmax:'45',
+  /* Điều khiển theo áp hút — dải Pa khai báo THEO MÁY. Mặc định 90–250 khớp giới hạn
+     ô 'vac' của PC_Link (protocol/pc_link.json: min 90, max 250); đặt ngoài dải đó là
+     cầu nối chặn lệnh. Quạt/lưới lọc mỗi máy khác nhau nên dải dùng thật thường hẹp hơn. */
+  vc_min:'90',vc_max:'250',vc_step:'5',vc_sp:'120'};
 let CFG={};       // giá trị đã lưu
 let CFG_EDIT={};  // giá trị đang sửa (chưa lưu)
 function loadCfg(){try{return Object.assign({},CFG_DEFAULT,JSON.parse(localStorage.getItem(LS_CFG))||{});}catch(e){return Object.assign({},CFG_DEFAULT);}}
@@ -5856,6 +6243,10 @@ function applyVacVisibility(){
   const on=vacOn();
   const c=document.getElementById('vacCard'); if(c)c.style.display=on?'':'none';
   document.querySelectorAll('.chartleg .lgvac').forEach(el=>{el.style.display=on?'':'none';});
+  // Bỏ khai báo "máy có bộ hút" → tắt luôn chế độ điều khiển theo áp hút, không để
+  // treo một chế độ đang bật mà nút đổi đã bị ẩn (thợ không còn đường tắt nó).
+  if(!on&&R.vacMode){R.vacMode=false;try{localStorage.setItem('otl_vacmode','0');}catch(e){}}
+  if(typeof vacSyncRow==='function')vacSyncRow();
 }
 function initConfig(){CFG=loadCfg();CFG_EDIT=Object.assign({},CFG);renderConfigUI();applyDevVisibility();applyVacVisibility();}
 function renderConfigUI(){
@@ -5900,6 +6291,7 @@ function settingsSave(persist){
   CFG=Object.assign({},CFG_EDIT);
   if(persist)localStorage.setItem(LS_CFG,JSON.stringify(CFG));
   dirty=false;document.getElementById('setNote').textContent=I18N[LANG]['set.note'];
+  rorRecalc();                 // đổi span/làm mượt/trần → tính lại RoR cả mẻ, không chờ mẫu mới
   renderAudit();drawChart();   // áp dụng cấu hình trục biểu đồ ngay
   applyDevVisibility();        // ẩn/hiện nút thiết bị theo máy
   // Đẩy Cổng + Baud xuống cầu Modbus (otl_link tự ngắt & nối lại nóng, không cần mở lại app)
@@ -6180,7 +6572,10 @@ const MACHINE_GROUPS=[
     ['destonerSet',19,'Thời gian tách đá','giây',0,120,0,10],
     ['coolTimer',22,'Thời gian làm nguội & khuấy','giây',0,600,0,180],
     ['destonerPre',26,'Offset bật tách đá','giây',0,60,0,2],
-    ['afterburnerNext',27,'Trễ bật buồng đốt khói','giây',0,120,0,5],
+    // KHÔNG phải "trễ bật": firmware dùng ô này làm thời gian AB CHẠY THÊM sau khi xả
+    // rồi tắt (abTimer >= afterburnerNext_R → AB_BTN_W = 0). Nhãn cũ ghi "trễ bật"
+    // khiến thợ cài ngược ý nghĩa.
+    ['afterburnerNext',27,'AB chạy thêm sau xả rồi tắt','giây',0,120,0,5],
     ['autoFill_Time',46,'Thời gian tự đổ tách đá → silo','giây',0,120,0,10],
   ]},
   {name:'Gas & mồi lửa', ps:[
