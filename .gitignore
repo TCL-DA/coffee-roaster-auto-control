@@ -57,3 +57,9 @@ ui-ux-pro-max-website/*
 tools/_otl_secret.key
 # File license của từng máy khách (sinh ra khi bán, không thuộc mã nguồn)
 *.lic
+
+# Rác Windows Explorer
+desktop.ini
+
+# Build PlatformIO
+.pio/

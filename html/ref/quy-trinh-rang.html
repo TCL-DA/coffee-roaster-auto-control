@@ -1,0 +1,498 @@
+<title>Quy trình rang — OTL-06ALS</title>
+<style>
+  :root{
+    --ground:#EDEFF2; --panel:#F7F8FA; --panel-2:#E4E7EC;
+    --ink:#171C22; --ink-2:#454E58; --ink-3:#6C7580;
+    --rule:#C9CFD7; --rule-soft:#DDE2E8;
+    --ember:#A84A14; --ember-soft:#F0E0D4;
+    --cool:#186B78; --cool-soft:#D8E8EA;
+    --alarm:#94191B; --alarm-soft:#F2DCDC;
+    --amber:#8A6206;
+    --fs-xs:.72rem; --fs-sm:.83rem; --fs-base:.95rem; --fs-lg:1.12rem;
+    --fs-xl:1.5rem; --fs-2xl:2.1rem; --fs-3xl:2.9rem;
+    --sans:"Segoe UI",system-ui,-apple-system,"Noto Sans",sans-serif;
+    --serif:Cambria,"Noto Serif",Georgia,serif;
+    --mono:Consolas,"Cascadia Mono",ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ground:#12161A; --panel:#1A1F25; --panel-2:#232A31;
+      --ink:#E6EAEF; --ink-2:#AEB8C2; --ink-3:#7E8895;
+      --rule:#333C45; --rule-soft:#262E36;
+      --ember:#E08A4C; --ember-soft:#3A2417;
+      --cool:#5FBECB; --cool-soft:#143135;
+      --alarm:#E5787A; --alarm-soft:#3A1D1E;
+      --amber:#D4A93C;
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#EDEFF2; --panel:#F7F8FA; --panel-2:#E4E7EC;
+    --ink:#171C22; --ink-2:#454E58; --ink-3:#6C7580;
+    --rule:#C9CFD7; --rule-soft:#DDE2E8;
+    --ember:#A84A14; --ember-soft:#F0E0D4;
+    --cool:#186B78; --cool-soft:#D8E8EA;
+    --alarm:#94191B; --alarm-soft:#F2DCDC;
+    --amber:#8A6206;
+  }
+  :root[data-theme="dark"]{
+    --ground:#12161A; --panel:#1A1F25; --panel-2:#232A31;
+    --ink:#E6EAEF; --ink-2:#AEB8C2; --ink-3:#7E8895;
+    --rule:#333C45; --rule-soft:#262E36;
+    --ember:#E08A4C; --ember-soft:#3A2417;
+    --cool:#5FBECB; --cool-soft:#143135;
+    --alarm:#E5787A; --alarm-soft:#3A1D1E;
+    --amber:#D4A93C;
+  }
+
+  body{background:var(--ground);color:var(--ink);font-family:var(--sans);
+    font-size:var(--fs-base);line-height:1.6;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:63rem;margin:0 auto;padding:clamp(1.5rem,4vw,3.5rem) clamp(1rem,4vw,2rem) 4rem;}
+
+  /* ── nhịp dọc ── */
+  .stack{display:flex;flex-direction:column;}
+  .stack.g1{gap:.4rem} .stack.g2{gap:.85rem} .stack.g3{gap:1.6rem} .stack.g4{gap:2.75rem}
+
+  h1,h2,h3,h4{text-wrap:balance;margin:0;line-height:1.22;font-weight:600;}
+  h1{font-size:var(--fs-3xl);letter-spacing:-.022em;}
+  h2{font-size:var(--fs-xl);letter-spacing:-.012em;}
+  h3{font-size:var(--fs-lg);}
+  p{margin:0;}
+  .lead{font-family:var(--serif);font-size:var(--fs-lg);color:var(--ink-2);max-width:60ch;line-height:1.62;}
+  .note{font-family:var(--serif);color:var(--ink-2);max-width:64ch;}
+  .eyebrow{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.15em;
+    color:var(--ink-3);font-weight:600;}
+  code,.m{font-family:var(--mono);font-size:.88em;}
+  code{background:var(--panel-2);padding:.08em .34em;border-radius:2px;}
+  a{color:var(--ember);}
+
+  /* ── đầu trang ── */
+  header{border-bottom:2px solid var(--ink);padding-bottom:1.4rem;}
+  .meta{display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;font-family:var(--mono);
+    font-size:var(--fs-xs);color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;}
+
+  /* ── băng an toàn ── */
+  .safety{border:1px solid var(--alarm);border-left:4px solid var(--alarm);
+    background:var(--alarm-soft);padding:1.1rem 1.25rem;}
+  .safety .eyebrow{color:var(--alarm);}
+  .safety ol{margin:0;padding-left:1.3rem;display:flex;flex-direction:column;gap:.35rem;
+    font-size:var(--fs-sm);color:var(--ink);}
+
+  /* ── xương sống trình tự ── */
+  .phase{display:grid;grid-template-columns:auto 1fr;gap:0 1.5rem;}
+  .rail{width:2px;background:var(--rule);position:relative;justify-self:center;grid-row:2;}
+  .phase-tag{grid-column:1/-1;display:flex;align-items:baseline;gap:.9rem;
+    border-top:1px solid var(--rule);padding-top:.55rem;margin-bottom:1.1rem;}
+  .phase-tag .n{font-family:var(--mono);font-size:var(--fs-xs);color:var(--ink-3);}
+  .phase-tag .t{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.16em;font-weight:700;}
+  .p-prep .t{color:var(--cool)} .p-roast .t{color:var(--ember)} .p-end .t{color:var(--amber)}
+  .steps{display:flex;flex-direction:column;gap:1.1rem;grid-row:2;}
+
+  .step{background:var(--panel);border:1px solid var(--rule-soft);
+    border-left:3px solid var(--rule);padding:1rem 1.15rem;}
+  .p-prep .step{border-left-color:var(--cool)}
+  .p-roast .step{border-left-color:var(--ember)}
+  .p-end .step{border-left-color:var(--amber)}
+  .step-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem .85rem;
+    margin-bottom:.7rem;}
+  .step-head .id{font-family:var(--mono);font-weight:700;font-size:var(--fs-base);
+    font-variant-numeric:tabular-nums;}
+  .step-head .name{font-weight:600;}
+  .hmi{font-family:var(--mono);font-size:var(--fs-xs);background:var(--panel-2);
+    color:var(--ink-2);padding:.14em .45em;border-radius:2px;}
+  .step dl{display:grid;grid-template-columns:5.2rem 1fr;gap:.45rem .9rem;margin:0;
+    font-size:var(--fs-sm);}
+  .step dt{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.09em;
+    color:var(--ink-3);font-weight:600;padding-top:.18em;}
+  .step dd{margin:0;color:var(--ink-2);}
+  .step dd strong{color:var(--ink);font-weight:600;}
+  .step ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.28rem;}
+
+  .chip{display:inline-flex;align-items:center;gap:.35rem;font-size:var(--fs-xs);
+    font-weight:600;padding:.16em .5em;border-radius:2px;border:1px solid;}
+  .chip::before{content:"";width:.42em;height:.42em;border-radius:50%;background:currentColor;}
+  .c-ok{color:var(--cool);border-color:var(--cool);background:var(--cool-soft);}
+  .c-warn{color:var(--amber);border-color:var(--amber);background:transparent;}
+  .c-bad{color:var(--alarm);border-color:var(--alarm);background:var(--alarm-soft);}
+  /* mục đã vá: viền liền, nền êm — khác hẳn chip cảnh báo */
+  .c-fix{color:var(--ember);border-color:var(--ember);background:var(--ember-soft);}
+  .fresh{color:var(--ember);}
+  .was{display:block;margin-top:.3rem;color:var(--ink-3);font-size:var(--fs-xs);}
+  .was b{color:var(--ink-3);font-weight:600;}
+  /* việc CHƯA có trên máy — phải nhìn là biết đây là ý định, không phải hành vi thật */
+  .todo{display:block;margin-top:.4rem;padding-left:.6rem;border-left:2px solid var(--amber);
+    color:var(--ink-2);font-size:var(--fs-xs);}
+  .todo b{color:var(--amber);text-transform:uppercase;letter-spacing:.08em;}
+  .todo::before{content:"🔧 ";}
+  /* lỗi đang tồn tại trên máy — phải nổi hơn mọi thứ khác trong trang */
+  .warn-box{margin:.9rem 0 0;padding:.7rem .9rem;border-radius:var(--r-md);
+    border:1px solid color-mix(in srgb, var(--ember) 55%, transparent);
+    background:color-mix(in srgb, var(--ember) 10%, transparent);
+    color:var(--ink-1);font-size:var(--fs-sm);line-height:1.55;}
+  .warn-box b{color:var(--ember);}
+
+  /* ── khối xả ── */
+  .drop{border:1px dashed var(--ember);background:var(--panel);padding:1.15rem 1.25rem;}
+
+  /* ── máy phụ ── */
+  .par{display:grid;gap:1.1rem;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));}
+  .sub{background:var(--panel);border:1px solid var(--rule-soft);border-top:3px solid var(--cool);
+    padding:1rem 1.1rem;}
+  .sub.ab{border-top-color:var(--amber)} .sub.ld{border-top-color:var(--ember)}
+  .sub ol{margin:0;padding-left:1.2rem;font-size:var(--fs-sm);color:var(--ink-2);
+    display:flex;flex-direction:column;gap:.4rem;}
+  .sub ol strong{color:var(--ink);font-family:var(--mono);font-size:.9em;}
+
+  /* ── bảng ── */
+  .scroll{overflow-x:auto;border:1px solid var(--rule-soft);}
+  table{border-collapse:collapse;width:100%;font-size:var(--fs-sm);min-width:36rem;}
+  caption{text-align:left;font-size:var(--fs-xs);color:var(--ink-3);padding:.6rem .8rem;
+    text-transform:uppercase;letter-spacing:.1em;font-weight:600;background:var(--panel-2);}
+  th,td{text-align:left;padding:.5rem .8rem;border-top:1px solid var(--rule-soft);
+    vertical-align:top;}
+  th{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);
+    font-weight:600;background:var(--panel);}
+  td{color:var(--ink-2);} td:first-child{color:var(--ink);font-weight:600;}
+  td .m{color:var(--ink);font-variant-numeric:tabular-nums;}
+  tbody tr:nth-child(odd){background:var(--panel);}
+
+  footer{border-top:1px solid var(--rule);padding-top:1.2rem;font-size:var(--fs-sm);color:var(--ink-3);}
+  footer .m{color:var(--ink-2);}
+  @media (max-width:34rem){
+    .phase{grid-template-columns:1fr;} .rail{display:none;}
+    .steps{grid-row:auto;} .step dl{grid-template-columns:1fr;gap:.15rem;}
+    .step dt{padding-top:.4rem;}
+  }
+</style>
+
+<div class="wrap stack g4">
+
+  <header class="stack g2">
+    <p class="eyebrow">OTL-06ALS · máy trạng thái <span class="m">progStep</span></p>
+    <h1>Quy trình rang cà phê tự động</h1>
+    <p class="lead">Máy tự bắt mốc theo nhiệt lồng (BT) và tự chuyển bước. Thợ chỉ cài ngưỡng qua thanh ghi <span class="m">$M</span> trên HMI, rồi nạp nhân khi máy gọi.</p>
+    <p class="meta">
+      <span>Nguồn: include/Program.h · programScan()</span>
+      <span>13 bước · 3 máy phụ</span>
+      <span>Rà ngày 2026-07-30</span>
+      <span class="fresh">Bản đã vá 6 chốt an toàn — nạp máy 30/07/2026</span>
+    </p>
+  </header>
+
+  <!-- CHỐT AN TOÀN -->
+  <section class="safety stack g2">
+    <p class="eyebrow">Chạy trước mọi bước — đúng cả khi máy trạng thái kẹt</p>
+    <ol>
+      <li><strong>Nóng thì phải quay trống.</strong> BT hoặc ET vượt 80&nbsp;°C mà trống/quạt đang tắt → bật cưỡng chế, tránh cháy cục bộ thành lồng.</li>
+      <li><strong>Cắt gas khi nhiệt bất thường.</strong> BT&nbsp;&gt;&nbsp;250&nbsp;°C → báo cháy (401). ET&nbsp;&gt;&nbsp;300&nbsp;°C mà BT&nbsp;&lt;&nbsp;150&nbsp;°C → nghi tuột đầu dò BT (267). ET&nbsp;&gt;&nbsp;350&nbsp;°C → quá nhiệt gió (264).</li>
+      <li><strong>Sấy lồng và rang loại trừ nhau.</strong> <span class="m">preheat()</span> chỉ chạy khi chưa bấm Start.</li>
+    </ol>
+  </section>
+
+  <!-- ══ A. CHUẨN BỊ ══ -->
+  <section class="phase p-prep">
+    <div class="phase-tag">
+      <span class="n">A</span><span class="t">Chuẩn bị lồng — chưa có hạt, chưa đếm giờ</span>
+    </div>
+    <div class="rail"></div>
+    <div class="steps">
+
+      <article class="step">
+        <div class="step-head"><span class="id">0</span><span class="name">Reset dữ liệu mẻ</span>
+          <span class="hmi">RESET DATA</span></div>
+        <dl>
+          <dt>Làm</dt><dd><ul>
+            <li>Xoá sạch mốc mẻ cũ: nhiệt và thời gian <strong>CHARGE / TP / DE / FCs / DROP</strong>, đồng hồ mẻ về 0.</li>
+            <li>Rang tự động có hồ sơ → áp <strong>trần gas</strong> của hồ sơ lên máy.</li>
+            <li>Xoá đồ thị HMI, <strong>khoá các nút</strong> trên HMI để không bấm nhầm giữa mẻ.</li>
+          </ul></dd>
+          <dt>Thoát</dt><dd>Ngay lập tức → bước 1.</dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-ok">Không</span></dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">1</span><span class="name">Hạ nhiệt về ngưỡng nạp</span>
+          <span class="hmi">BT COOLS DOWN</span></div>
+        <dl>
+          <dt>Làm</dt><dd>Lồng còn nóng hơn ngưỡng đủ nguội thì <strong>giữ gas tắt</strong> cho nguội xuống. Đủ nguội mà chưa có lửa → <strong>mở gas mồi 50 %</strong> rồi sang bước 3 chờ lửa bắt.
+            <span class="todo"><b>Sắp làm</b> — chờ nguội thì <strong>đẩy gió lên 100 %</strong> cho nhanh, và <strong>hạ gió về mức cũ trước khi mồi lửa</strong> (mồi với gió max là thổi tắt lửa). Thợ xoay gió trong quãng này không có tác dụng.</span>
+            <span class="todo"><b>Sắp làm</b> — bếp <strong>NP mồi 2 lần</strong>: lần đầu 50 %, không bắt thì xả khí 10 giây rồi mồi lần hai 60 %. Bếp <strong>premix mồi 1 lần</strong>, không thử lại. Chuỗi mồi chi tiết ở bước 3.</span></dd>
+          <dt>Đủ nguội</dt><dd><span class="m">BT ≤ nhiệt nạp − lùi nhiệt bật gas</span>. Ví dụ nạp 200 °C, lùi 20 °C → đủ nguội ở <strong>180 °C</strong>. Máy đang cài nạp 150–230 và lùi 10–30, nên ngưỡng luôn rơi vào <strong>120–220 °C</strong>.</dd>
+          <dt>Gas mồi</dt><dd>50 % này là mức để bộ đánh lửa bắt được, <strong>chỉ có tác dụng với bếp NP</strong> (giữ suốt quãng chờ lửa ở bước 3). Bếp premix không chờ lửa nên bước 3 đặt đè bằng <span class="m">preGas</span> ngay vòng quét sau.</dd>
+          <dt>Thoát</dt><dd>Đủ nguội → bước 3. Nếu <span class="m">chargeTemp = 0</span> thì <strong>bỏ hẳn auto-charge</strong>, nhảy thẳng bước 5 chờ thợ bấm tay.</dd>
+          <dt>Vì sao có bước này</dt><dd>Mẻ liên tiếp: xả xong lồng còn ~180–200 °C, thấp hơn ngưỡng nên máy <strong>đi thẳng qua trong một vòng quét</strong>, không mất thời gian chờ. Bước này chỉ thật sự dừng lại khi lồng đang nóng <strong>hơn</strong> nhiệt nạp quá mức lùi — tức sấy quá tay — bắt tụt xuống rồi mới đốt lại.</dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-warn">Chỉ khi cài sai</span> Lùi nhiệt ≥ nhiệt nạp thì ngưỡng thành số âm, BT không bao giờ chạm → máy đứng im, gas tắt, mà không báo gì.</dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">3</span><span class="name">Chờ lửa bắt</span>
+          <span class="hmi">WAITGAS</span></div>
+        <dl>
+          <dt>Làm</dt><dd>Gas mồi đang mở từ bước 1. Máy chờ <strong>cảm biến lửa</strong> xác nhận bếp đã bắt. Máy không có ngõ đánh lửa riêng — "mồi" chính là bật relay gas, nên mồi lại = tắt rồi bật lại relay đó.
+            <span class="todo"><b>Sắp làm</b> — bếp premix hiện <strong>không chờ</strong> cảm biến, mở gas là đi thẳng sang bước 4; sẽ đổi thành chờ một lần như NP.</span></dd>
+          <dt>Có lửa</dt><dd>Hạ gas về đúng <span class="m">preGas</span> đã cài rồi sang bước 4. Từ đây tới lúc nạp, <strong>quyền gas thuộc máy</strong>: biến trở của thợ và lệnh gas từ app đều không chen vào được.</dd>
+          <dt>Mồi hụt — NP</dt><dd><span class="todo" style="margin:0"><b>Sắp làm</b> — hai lần, mỗi lần 10 giây:</span>
+            <ul>
+              <li>giây <strong>0</strong>: relay gas bật, <strong>gas 50 %</strong> — lần mồi 1, chờ 10 giây;</li>
+              <li>giây <strong>10</strong>: chưa có lửa → <strong>tắt gas, xả khí 10 giây</strong>, gió <strong>+10 %</strong> so với mức đang chạy (2 bậc 5 %) và <strong>không dưới 25 %</strong>, xong trả gió về mức cũ;</li>
+              <li>giây <strong>20</strong>: relay bật lại, <strong>gas 60 %</strong> — lần mồi 2, chờ 10 giây;</li>
+              <li>giây <strong>30</strong>: vẫn không lửa → <strong>cắt gas, tắt Start, mở khoá HMI</strong>, chuông, nhãn <span class="m">GASFAIL</span>, về bước 0 và <em>đứng đó</em>.</li>
+            </ul>
+            Không có lần ba: mồi hụt hai lần là dấu hiệu hỏng bếp, cần người xem. Trần <strong>60 giây</strong> giữ lại làm lớp ngoài, phòng cảm biến lửa chập chờn làm chuỗi mồi không thoát.</dd>
+          <dt>Mồi hụt — premix</dt><dd><span class="todo" style="margin:0"><b>Sắp làm</b> — một lần, chờ 65 giây</span> (premix mồi chậm ~40 giây nên phải cho rộng). Không có lửa nghĩa là <strong>bộ điều khiển bếp đã tự khoá</strong> → cắt gas, tắt Start, chuông, nhãn <span class="m">BURNER LOCK</span>, và báo rõ: <strong>bấm nút đỏ RESET BURNER trên cửa tủ điện</strong> rồi chạy lại. Máy <strong>không thử lại</strong> — thử bằng phần mềm không có tác dụng khi bếp đã khoá.</dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-fix">Đã vá — R1</span> Máy không chờ lửa vô thời hạn nữa.
+            <span class="was"><b>Trước 30/07:</b> chờ lửa vô thời hạn trong khi gas vẫn mở 50 %.</span></dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">4</span><span class="name">Gia nhiệt tới nhiệt nạp</span>
+          <span class="hmi">BT HEATUP</span></div>
+        <dl>
+          <dt>Làm</dt><dd>Theo dõi BT leo lên. Gas giữ nguyên <span class="m">preGas</span> — bước này không đổi gas, và quyền gas đang thuộc máy nên <strong>thợ không tăng được</strong>.
+            <span class="todo"><b>Sắp làm</b> — chờ <strong>60 giây</strong> từ lúc có lửa mà chưa nạp → <strong>+10 % gas, một lần duy nhất</strong>. Bỏ qua cú tăng nếu BT đã vào <strong>10 °C cuối</strong> trước nhiệt nạp: thêm gas ở đoạn đó chỉ làm dễ vọt.</span></dd>
+          <dt>Cho nạp khi</dt><dd><span class="todo" style="margin:0"><b>Sắp làm</b> — BT nằm <strong>trong dải theo loại hạt</strong> (cà phê 150–230, ca cao 130–230): nút Nạp hạt trên app <strong>nhấp nháy</strong>, máy kêu một nhịp chuông. Ngoài dải thì nút <strong>xám</strong> và firmware bỏ qua lệnh charge. Thợ <strong>bấm nạp sớm lúc nào cũng được</strong> — hồ sơ ghi nhiệt charge, đồng hồ mẻ và đường cong <strong>theo đúng lúc bấm</strong> (hiện bấm sớm ở bước này là mất dữ liệu mẻ).</span></dd>
+          <dt>Thoát — auto</dt><dd>BT vào vùng <span class="m">chargeTemp ± chTolerange</span> → <strong>máy tự mở cửa nạp + kêu chuông</strong> gọi thợ → bước 5.<br>BT vọt quá 5 lần dung sai (không kịp bắt) → tắt gas, <strong>quay về bước 0</strong> làm lại.
+            <span class="todo"><b>Sắp làm</b> — điều kiện mở cửa nạp đổi thành <strong>một chiều</strong> <span class="m">BT ≥ nhiệt nạp − dung sai</span>; ngưỡng vọt thành <strong>+10 °C cố định</strong> và quay về <strong>bước 1</strong> (không phải bước 0); <strong>vọt 2 lần trong một mẻ → khoá máy</strong>. Trần <strong>5 phút</strong> từ lúc có lửa: chưa nạp thì cắt gas, báo lỗi, khoá.</span></dd>
+          <dt>Thoát — charge tay</dt><dd><span class="todo" style="margin:0"><b>Sắp làm</b> — máy <strong>giữ lồng nóng chờ thợ nạp</strong>, dao động trong dải có trễ: BT <strong>≥ 220 °C</strong> thì tắt lửa cho nguội dần, BT <strong>&lt; 150 °C</strong> thì mồi lại. <strong>Không có trần thời gian</strong> — thợ chờ bao lâu cũng được. BT <strong>&gt; 230 °C</strong> (đã tắt gas mà vẫn leo) → cắt gas, <strong>khoá máy</strong>, phải bấm Xoá lỗi trên app.</span></dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-warn">Sắp bịt</span> Hiện cả hai nhánh ra đều đòi BT phải <em>đi tiếp</em>:
+            <ul>
+              <li><strong>Không có trần thời gian.</strong> Bếp yếu, gió quá lớn, lồng hở → BT lên tới một mức rồi <strong>cân bằng nhiệt và đứng đó</strong>, không lên cũng không vọt → máy chờ vô thời hạn, gas vẫn đốt, HMI vẫn báo đang gia nhiệt. → trần 5 phút bịt chỗ này.</li>
+              <li><strong>Cửa sổ bắt nhiệt nạp có hai đầu</strong>, rộng đúng 6 °C với dung sai 3. Lồng rỗng gas cao, BT leo 2–3 °C mỗi giây thì <strong>hai lần đọc liên tiếp nhảy qua cửa sổ</strong> → không bắt được, chỉ còn nhánh vọt cứu. Đúng cái bẫy đã làm hỏng mốc TP (R2). → điều kiện một chiều bịt chỗ này.</li>
+            </ul></dd>
+        </dl>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══ B. RANG ══ -->
+  <section class="phase p-roast">
+    <div class="phase-tag">
+      <span class="n">B</span><span class="t">Rang — đồng hồ mẻ chạy từ lúc nạp</span>
+    </div>
+    <div class="rail"></div>
+    <div class="steps">
+
+      <article class="step">
+        <div class="step-head"><span class="id">5</span><span class="name">Nạp nhân — Charge</span>
+          <span class="hmi">WAIT CHARGE</span></div>
+        <dl>
+          <dt>Làm</dt><dd>Chuyển quyền điều khiển gas/gió/trống: <strong>máy lái</strong> nếu rang tự động, <strong>về biến trở cho thợ</strong> nếu chỉ ghi hồ sơ.</dd>
+          <dt>Thoát</dt><dd>Thợ (hoặc máy) mở cửa nạp → lưu nhiệt charge, hẹn giờ <strong>tự đóng cửa nạp</strong>, bật ghi đường cong, <strong>đồng hồ mẻ bắt đầu chạy từ đây</strong> — không phải từ lúc bấm Start → bước 6.</dd>
+          <dt>Chốt trước khi nạp</dt><dd><span class="todo" style="margin:0"><b>Sắp làm</b> — hiện bấm là nhận, <strong>không kiểm gì cả</strong>. Sẽ thêm:
+            <ul>
+              <li><strong>Cửa xả đang mở → từ chối + chuông.</strong> Nạp lúc đó là hạt rơi thẳng xuống bồn nguội. Máy <em>không</em> tự đóng cửa xả — đóng cơ cấu cơ khí mà không nhìn thấy hiện trường có thể kẹp tay thợ.</li>
+              <li><strong>Trống/quạt chưa chạy → máy tự bật rồi nhận nạp.</strong> Hạt đổ vào lồng đứng im thì cháy cục bộ mặt dưới. Việc này vô hại nên máy tự xử, đúng tinh thần chốt cưỡng chế bật trống khi BT&nbsp;&gt;&nbsp;80&nbsp;°C.</li>
+              <li><strong>BT phải trong dải theo loại hạt</strong> (xem bước 4) — ngoài dải thì firmware bỏ qua lệnh, nút trên app xám.</li>
+            </ul>
+            Chủ máy <strong>không</strong> kiểm cân: mẻ rỗng là chuyện của app, firmware không cản.</span></dd>
+          <dt>Xi-lanh nạp</dt><dd>Tự đóng sau <span class="m">chargeDuration</span> giây, có nhánh huỷ đầy đủ khi thợ nhả nút sớm.
+            <span class="todo"><b>Sắp làm</b> — <strong>sàn 10 giây</strong> (dải 10–60): cài 0 thì cửa đóng gần như tức thì, hạt chưa vào hết đã đóng. Mặc định đổi 5 → 10, nên <strong>máy đang cài 5 sẽ bị kẹp lên 10</strong> — cửa nạp mở lâu gấp đôi bây giờ.</span></dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-ok">Chờ có ý</span> — thợ chủ động nạp.</dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">6</span><span class="name">Bắt điểm quay đầu — TP</span>
+          <span class="hmi">WAIT TP / CHECK TP</span></div>
+        <dl>
+          <dt>Làm</dt><dd>Hạt lạnh vào lồng làm BT tụt. Máy dò <strong>đáy</strong>: BT còn giảm thì hạ mốc đáy theo; khi BT <strong>bật tăng lại</strong> thì chốt đáy đó là TP. Chỉ dò sau <span class="m">ulimitTPTime</span> và khi BT còn dưới <span class="m">ulimitTPTemp</span>, để không bắt TP giả.</dd>
+          <dt>Thoát</dt><dd>Bắt được TP → bước 7. <strong>Cứu TP:</strong> hết <span class="m">ulimitTPTime</span> mà BT đã trượt qua <span class="m">ulimitTPTemp</span> (không kịp thấy nhịp bật lên) → chốt luôn <strong>đáy đang giữ</strong> làm TP, ghi kèm dấu <em>TP suy đoán</em> để hồ sơ biết số này không chắc, rồi sang bước 7.</dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-fix">Đã vá hai lớp — R2</span> Ngoài lớp cứu TP ở trên, <strong>lệnh xả tự động đã hạ cổng xuống bước 5</strong>: BT đạt nhiệt xả là máy mở cửa xả, bất kể có bắt được mốc nào hay không.
+            <span class="was"><b>Trước 30/07:</b> trượt cửa sổ là đứng ở TP suốt mẻ, và vì lệnh xả chỉ chạy từ bước 7 nên máy không tự xả — cháy mẻ. Đây là lỗi nặng nhất đã tìm ra.</span></dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">7</span><span class="name">Kết thúc pha sấy — DE / Yellow</span>
+          <span class="hmi">WAIT YELLOW</span></div>
+        <dl>
+          <dt>Thoát</dt><dd>BT đạt <span class="m">yellowPhase</span> → nhân chuyển vàng, hết pha sấy, ghi mốc <strong>DRY End</strong> → bước 8.</dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-warn">Chờ nếu gas quá thấp</span> — không nguy hiểm: lệnh xả đã hoạt động từ bước 5, thợ luôn còn đường ra.</dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">8</span><span class="name">Chờ nứt lần 1 — First Crack</span>
+          <span class="hmi">WAIT FCS</span></div>
+        <dl>
+          <dt>Thoát</dt><dd>BT đạt <span class="m">fcsPhase</span> → ghi mốc <strong>FCs</strong> → bước 9.</dd>
+          <dt>Kèm</dt><dd><strong>Hút hạt cho mẻ sau</strong> khởi động đúng tại bước này (rang tự động, còn mẻ trong hàng đợi): mẻ đang chạy đã qua pha nhạy nhất mà vẫn còn đủ thời gian hút xong trước khi xả. Cân lỗi hoặc phễu nguồn thiếu liệu → đánh dấu lỗi, huỷ mẻ tiếp ở bước 13.</dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">9</span><span class="name">Pha phát triển — Development</span>
+          <span class="hmi">DEV</span></div>
+        <dl>
+          <dt>Làm</dt><dd>Tính liên tục thời gian sau FCs và <strong>tỉ lệ phát triển</strong> trên tổng thời gian mẻ.</dd>
+          <dt>Thoát</dt><dd><strong>Không có điều kiện thoát trong bước này</strong> — ra khỏi DEV bằng lệnh xả bên dưới.</dd>
+          <dt>Cảnh báo</dt><dd>Tỉ lệ phát triển vượt ngưỡng cài (<span class="m">DEV_WARN_PERMIL</span>, phần nghìn) → <strong>chuông + báo trạng thái</strong> một lần trong mẻ.</dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-fix">Đã vá — R3</span> Máy <strong>chỉ báo, không tự xả</strong>: tự xả một mẻ chưa tới nhiệt là làm hỏng mẻ, quyết định vẫn là của thợ.
+            <span class="was"><b>Trước 30/07:</b> nhiệt xả cài 0 hoặc quá cao là rang mãi, không một tiếng động nào.</span></dd>
+        </dl>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══ C. XẢ & LẶP ══ -->
+  <section class="phase p-end">
+    <div class="phase-tag">
+      <span class="n">C</span><span class="t">Xả mẻ &amp; lặp</span>
+    </div>
+    <div class="rail"></div>
+    <div class="steps">
+
+      <article class="drop stack g2">
+        <div class="step-head" style="margin:0">
+          <span class="id m" style="color:var(--ember)">XẢ</span>
+          <span class="name">Lệnh xả — nằm ngoài chuỗi bước</span>
+          <span class="hmi">DROP</span>
+        </div>
+        <p class="note">Đặt ngoài chuỗi để bấm xả được ở <strong>bất kỳ lúc nào từ bước 5 trở đi</strong> — tức ngay khi hạt vào lồng, không phải chờ tới DEV. Cổng này <strong>hạ từ bước 7 xuống bước 5 ngày 30/07</strong>: xả là chốt an toàn cuối cùng, không được phụ thuộc vào việc máy có bắt được mốc TP hay không.</p>
+        <p class="warn-box"><b>⛔ Lỗi đang có trên máy — R7, phát hiện 30/07.</b> Cổng "từ bước 5" gồm cả lúc <strong>đang chờ thợ nạp</strong>, mà khối tự xả chỉ xét nhiệt chứ không xét đã nạp hay chưa → <strong>cửa xả có thể mở khi lồng còn trống</strong>. Bung ở ba trường hợp: hồ sơ ca cao xả thấp hơn nhiệt nạp · charge tay giữ nóng tới 220 °C · ngay sau khi nạp lúc BT chưa kịp tụt (mất trắng mẻ). Ghép với chốt mới "cửa xả mở thì từ chối nạp" thì máy <strong>kẹt cứng</strong>. Cách sửa: gác vào <span class="m">đồng hồ mẻ đang chạy</span> (⟺ đã nạp) cộng <span class="m">quá 2 phút từ lúc nạp</span>, thay vì gác vào số bước. <b>Đừng chạy mẻ tự động cho tới khi sửa.</b></p>
+        <dl>
+          <dt>Tự xả</dt><dd>Rang tự động: BT đạt <span class="m">DROP_PRO</span> → máy tự mở cửa xả.</dd>
+          <dt>Nguội sớm</dt><dd>BT còn cách nhiệt xả đúng <span class="m">preCool</span> → <strong>bồn nguội chạy trước</strong>, để sẵn sàng khi hạt rơi xuống.</dd>
+          <dt>Khi xả</dt><dd><ul>
+            <li>Lưu nhiệt và thời gian xả, ghi mốc <strong>DROP</strong> ra thẻ ngay (kịp có dấu thời gian trước khi dừng đồng hồ).</li>
+            <li>Tắt gas nếu chủ máy đã bật tuỳ chọn đó.</li>
+            <li><strong>Trả quyền gas/gió/trống về biến trở</strong> cho thợ, khôi phục chế độ hút gió như trước mẻ.</li>
+            <li>Bật chuỗi làm nguội, hẹn giờ <strong>tự đóng cửa xả</strong>, dừng đồng hồ mẻ và ngừng ghi đường cong.</li>
+          </ul></dd>
+          <dt>Rồi</dt><dd>Rang tự động → bước 13. Chỉ ghi hồ sơ → kết thúc hẳn, đóng file, mở khoá HMI.</dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">13</span><span class="name">Quyết định có rang tiếp</span>
+          <span class="hmi">LOOP</span></div>
+        <dl>
+          <dt>Xét</dt><dd><ul>
+            <li>Hút hạt <strong>báo lỗi</strong> → huỷ: tắt Start, mở khoá HMI, về bước 0.</li>
+            <li><strong>Hết số mẻ</strong> → dừng, mở khoá HMI, về bước 0.</li>
+            <li>Còn mẻ → trừ 1 mẻ, cập nhật số còn lại lên HMI → bước 14.</li>
+          </ul></dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-ok">Không</span> — thoát ngay trong một vòng quét.</dd>
+        </dl>
+      </article>
+
+      <article class="step">
+        <div class="step-head"><span class="id">14</span><span class="name">Chờ cửa xả đóng — cửa sổ huỷ</span>
+          <span class="hmi">WCANCEL</span></div>
+        <dl>
+          <dt>Làm</dt><dd>Thấy cửa xả đã đóng thì đếm <strong>20 giây</strong>. Trong lúc này thợ còn kịp tắt Start để dừng hẳn.</dd>
+          <dt>Thoát</dt><dd>Hết 20 giây → về bước 0 và <strong>tự khởi động mẻ mới</strong>.</dd>
+          <dt>Cửa kẹt</dt><dd>Đếm song song một trần <strong>60 giây</strong> từ lúc vào bước, bất kể nút báo gì. Hết 60 giây mà cửa xả vẫn mở → <strong>báo cửa xả kẹt, tắt Start</strong>, về bước 0 — <em>không</em> nạp mẻ mới khi cửa còn mở.</dd>
+          <dt>Kẹt?</dt><dd><span class="chip c-fix">Đã vá — R4</span>
+            <span class="was"><b>Trước 30/07:</b> cửa xả kẹt mở là không bao giờ đếm, đứng ở WCANCEL tới khi thợ tắt Start.</span></dd>
+        </dl>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══ MÁY PHỤ ══ -->
+  <section class="stack g3">
+    <div class="stack g1">
+      <p class="eyebrow">Chạy song song</p>
+      <h2>Ba chuỗi tự động khác</h2>
+      <p class="note">Không nằm trong chuỗi bước rang, nên vẫn chạy tiếp sau khi mẻ kết thúc — cố ý, vì làm nguội và xả hạt phải xong việc của nó.</p>
+    </div>
+    <div class="par">
+
+      <article class="sub stack g2">
+        <h3>Làm nguội → xả hạt</h3>
+        <ol>
+          <li><strong>Bật bồn nguội</strong> + cánh đảo, bắt đầu đếm thời gian nguội.</li>
+          <li>Trước khi hết giờ nguội <strong>đúng khoảng cài</strong> → bật <strong>tách đá</strong> trước, cho quạt kịp đạt tốc độ. Còn 5 giây → chuông báo thợ tránh xa cửa xả.</li>
+          <li>Hết giờ nguội → <strong>mở cửa xả hạt</strong>, hẹn giờ đóng.</li>
+          <li>Hết giờ xả (hoặc thợ tắt tay) → đóng cửa xả, tắt bồn nguội, chuông báo, kết thúc chuỗi.</li>
+        </ol>
+      </article>
+
+      <article class="sub ab stack g2">
+        <h3>Đốt khói — Afterburner</h3>
+        <ol>
+          <li>Kích khi đã qua TP, mẻ chạy hơn 1 phút, và BT đạt ngưỡng cài. Chặn 1 phút để không bật ngay lúc vừa nạp.</li>
+          <li><strong>Bật buồng đốt khói</strong>, chờ tới lúc xả.</li>
+          <li>Lúc xả: có cài thời gian chạy thêm thì <strong>tắt trễ</strong> (còn khói tồn trong ống), không thì tắt ngay.</li>
+        </ol>
+      </article>
+
+      <article class="sub ld stack g2">
+        <h3>Hút hạt cho mẻ sau</h3>
+        <ol>
+          <li>Kích ở bước 8 (FCs) khi còn mẻ trong hàng đợi và phễu nguồn còn đủ liệu.</li>
+          <li><strong>Bật hút</strong>, theo cân tụt dần.</li>
+          <li>Cắt sớm theo <strong>lượng cà còn rơi</strong> trong lúc xy-lanh đóng — trị số này máy <strong>tự học</strong> theo từng ô (cân, tốc độ tụt) và lưu lại, nên càng chạy càng đúng.</li>
+          <li>Mất tín hiệu cân, hết thời gian hút mà chưa đủ, hoặc phễu thiếu liệu → <strong>báo lỗi</strong>, mẻ tiếp bị huỷ ở bước 13.</li>
+        </ol>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══ TIMER ══ -->
+  <section class="stack g3">
+    <div class="stack g1">
+      <p class="eyebrow">Cơ cấu tự đóng</p>
+      <h2>Cái gì tự đóng sau bao lâu</h2>
+      <p class="note">Mỗi cơ cấu đều có <strong>nhánh huỷ</strong> khi thợ nhả nút bằng tay — thiếu nhánh đó là bộ hẹn giờ vẫn bắn lệnh đóng, gây kẹt van.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <caption>11 bộ hẹn giờ, đếm bằng giây</caption>
+        <thead><tr><th>Cơ cấu</th><th>Đóng khi</th><th>Việc lúc đóng</th></tr></thead>
+        <tbody>
+          <tr><td>Cửa nạp</td><td><span class="m">chargeDuration</span></td><td>Đóng cửa, xoá ô lệnh từ app, chuông</td></tr>
+          <tr><td>Cửa xả</td><td><span class="m">dropDuration</span></td><td>Đóng cửa, xoá ô lệnh từ app, chuông; nạp lại danh sách hồ sơ cho mẻ sau</td></tr>
+          <tr><td>Đốt khói</td><td><span class="m">afterburnerNext</span></td><td>Tắt buồng đốt, kết thúc chuỗi</td></tr>
+          <tr><td>Tách đá</td><td><span class="m">destonerSet</span></td><td>Tắt tách đá; nếu bật tuỳ chọn thì <strong>tự nạp silo</strong></td></tr>
+          <tr><td>Cửa xả hạt (escape)</td><td><span class="m">escapeDuration</span></td><td>Đóng cửa, xoá ô lệnh từ app, chuông</td></tr>
+          <tr><td>Hút hạt</td><td><span class="m">feederSet</span></td><td>Tắt hút; đang trong chuỗi tự động thì <strong>báo lỗi hút</strong></td></tr>
+          <tr><td>Nạp silo</td><td><span class="m">autoFill_Time</span></td><td>Tắt nạp</td></tr>
+          <tr><td>Dọn sạch phễu hút</td><td><span class="m">10 s</span></td><td>Tắt hút, coi như hút xong</td></tr>
+          <tr><td>Chờ cửa xả đóng</td><td><span class="m">20 s</span></td><td>Về bước 0 → mẻ mới</td></tr>
+          <tr><td>Chờ lửa bắt <span class="fresh">mới</span></td><td><span class="m">60 s</span></td><td>Cắt gas, tắt Start, mở khoá HMI, báo <span class="m">GASFAIL</span></td></tr>
+          <tr><td>Trần cửa sổ huỷ <span class="fresh">mới</span></td><td><span class="m">60 s</span></td><td>Báo cửa xả kẹt, tắt Start, về bước 0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ RỦI RO ══ -->
+  <section class="stack g3">
+    <div class="stack g1">
+      <p class="eyebrow">Sáu chỗ kẹt đã rà ra</p>
+      <h2>Đã vá hết — nạp máy 30/07/2026</h2>
+      <p class="note">Cột cuối là <strong>cách xử lý đã chốt</strong>. Còn lại việc <em>chạy thử máy thật</em>: mỗi mục cần một mẻ có ý ép vào tình huống đó mới coi là nghiệm thu xong.</p>
+      <p class="note">Chỗ nào trong trang có dấu 🔧 <strong>sắp làm</strong> là quyết định đã chốt <em>nhưng máy chưa chạy</em> — chốt ngày 30/07: chuỗi mồi 2 lần cho bếp NP, chốt kiểm lửa một lần cho bếp premix, và siết dải cài <span class="m">nhiệt nạp 150–230</span> / <span class="m">lùi nhiệt bật gas 10–30</span>.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Mã</th><th>Chỗ nào</th><th>Triệu chứng cũ trên máy thật</th><th>Đã xử lý thế nào</th></tr></thead>
+        <tbody>
+          <tr><td>R2</td><td>Bắt TP (bước 6)</td><td>Đứng ở <span class="m">WAIT TP</span> suốt mẻ, không mốc nào hiện, <strong>máy không tự xả</strong> → cháy mẻ</td><td>Cứu TP theo đáy đã ghi <em>và</em> hạ cổng lệnh xả xuống bước 5</td></tr>
+          <tr><td>R1</td><td>Chờ lửa (bước 3)</td><td>Đứng ở <span class="m">WAITGAS</span> mãi, gas mở 50 % mà không có lửa</td><td>Trần 60 s → cắt gas, tắt Start, báo <span class="m">GASFAIL</span></td></tr>
+          <tr><td>R3</td><td>Pha phát triển (bước 9)</td><td>Nhiệt xả cài sai → rang mãi, không tự xả</td><td>Vượt ngưỡng phát triển → chuông + báo trạng thái; <strong>không</strong> tự xả</td></tr>
+          <tr><td>R5</td><td>Tắt Start giữa mẻ</td><td>Trả quyền cho thợ nhưng <strong>không tắt gas</strong> — có hạt trong lồng</td><td>Tắt gas nếu chủ máy đã bật tuỳ chọn <span class="m">autoOff</span>, giống lúc xả</td></tr>
+          <tr><td>R4</td><td>Cửa sổ huỷ (bước 14)</td><td>Cửa xả kẹt mở → đứng ở <span class="m">WCANCEL</span>, không sang mẻ mới</td><td>Trần 60 s → báo cửa kẹt, tắt Start, về bước 0</td></tr>
+          <tr><td>R6</td><td>Cửa xả hạt xử lý ở hai nơi</td><td>Điều khiển bằng máy tính thì hai khối cùng chạy, có thể reset chéo bộ đếm</td><td>Khối máy tính chỉ chạy khi chuỗi làm nguội đang rảnh</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="stack g1">
+    <p>Spec đầy đủ kèm tên thanh ghi và số dòng code: skill <span class="m">quy-trinh-dieu-khien-may-rang</span>.</p>
+    <p>Quy ước: <strong>sửa spec trước, rồi mới áp vào</strong> <span class="m">include/Program.h</span>.</p>
+    <p>Trang này dựng từ <span class="m">html/ref/quy-trinh-rang.html</span> trong repo — sửa file đó rồi publish lại là trang tự cập nhật, link không đổi.</p>
+    <p>Firmware bản đã vá: build 30/07/2026, RAM 81,4 % · đã nạp STM32 · <strong>chưa chạy nghiệm thu trên mẻ thật</strong>.</p>
+  </footer>
+
+</div>
