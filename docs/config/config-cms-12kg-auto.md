@@ -1,3 +1,38 @@
+# Cấu hình máy rang tự động CMS 12kg Auto
+
+File này lưu snapshot cấu hình để copy **đè toàn bộ** vào `include/Config.h` khi build
+firmware cho máy rang tự động **CMS 12kg Auto**.
+
+> Cập nhật: **2026-08-09** — đồng bộ theo Config.h tại thời điểm build thành công
+> (RAM 81.4%, Flash 38.8%). Copy cả khối là build được ngay.
+
+## Đặc thù máy này
+
+| Mục | Giá trị |
+|-----|---------|
+| Tên máy | Máy rang tự động CMS 12kg Auto |
+| Dung tích | 12 kg (`MACHINE_BATCH_KG 12`) |
+| Board | V400 |
+| Vacuum control | Có — đọc từ **biến tần airflow** (`MACHINE_VACUUM_FROM_DRUM 0`) |
+| Điều khiển gió/gas/drum | **VR vật lý trên board** (`MACHINE_VR_SOURCE_FROM_HMI 0`) |
+| Tốc độ trống | Có biến tần drum (`MACHINE_HAS_DRUM_SPEED_CONTROL 1`) |
+| Cân loadcell / auto-loader | **KHÔNG** (`MACHINE_HAS_SCALE_FEEDER 0`) — feeder chạy theo timer |
+| IO relay module | Không (`MACHINE_HAS_IO_RELAY_MODULE 0`) — relay qua GPIO onboard |
+| BT / ET thermocouple | Có, Modbus RS485 |
+| Preheat | PID kiểu Artisan (`PREHEAT_USE_PID 1`) |
+| Debug | Tắt hết (production) |
+
+## Kết quả build (2026-08-09)
+
+```
+RAM:   [========  ]  81.4% (used 40000 bytes from 49152 bytes)
+Flash: [====      ]  38.8% (used 101596 bytes from 262144 bytes)
+[SUCCESS]
+```
+
+## Nội dung Config.h
+
+```cpp
 #pragma once
 
 /*
@@ -424,3 +459,15 @@
 //       control trên HMI. Chốt MỒI HỤT ĐÓNG GAS vẫn hoạt động bình thường.
 // ---------------------------------------------------------------------------
 #define PCL_APP_WATCHDOG_EN               0
+```
+
+## Checklist trước khi flash
+
+- [ ] Xác nhận board version (V400)
+- [ ] Xác nhận Modbus ID drum (4) / gió (5) đúng dây đấu thực tế
+- [ ] Xác nhận `ARTISAN_MODBUS_BAUD_DEFAULT` khớp baud app/Artisan đang dùng
+- [ ] `enDebug = 0` (Define.h) + `PREHEAT_DEBUG_EN = 0` + `PIDTUNE_DEBUG_EN = 0` — ĐÃ ĐẠT
+- [ ] Kiểm RAM <= ~85% — ĐÃ ĐẠT (81.4%)
+- [ ] Chạy factory tune airflow (dựng bảng FF `/pid_ff.txt`)
+- [ ] Chạy preheat để autotune PID -> lưu `/pid_pre.txt`
+- [ ] Chạy thử mẻ nháp trước khi rang AUTO (kiểm chốt `DROP_MIN_SEC` chống auto-drop sớm)
