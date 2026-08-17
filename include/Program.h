@@ -1325,6 +1325,9 @@ void loaderAdapt(){
     }else{
         result = (err100 > 0) ? "UNDER" : "OVER";      // dư cà(hút thiếu)→dif cần nhỏ hơn ; hút dư→dif cần lớn hơn
         // Học dif cho Ô (cân, ror) của mẻ này. dif lẽ ra đúng = dif đã dùng − err. Cần ror & cân đủ lớn.
+        // FEEDER_DIF_FIXED > 0 → dif do người đặt, KHÔNG học và KHÔNG ghi SD (tránh làm hỏng bảng
+        // + tránh ghi thẻ khi thẻ đang dở chứng). Vẫn chấm điểm & ghi log để theo dõi.
+#if (FEEDER_DIF_FIXED == 0)
         if(adaptRorMag >= 100 && adaptStartW100 >= 100){
             int32_t difReal100 = adaptDif100 - err100;
             if(difReal100 < 0) difReal100 = 0;
@@ -1348,6 +1351,7 @@ void loaderAdapt(){
             }
             difNew100 = cfgDif100[ci]; loaderCfgSave();  // ci luôn ≥0 giờ → luôn lưu
         }
+#endif
     }
 
     loaderLogEvent(final100, target100, err100, score_x10, result, difOld100, difNew100, secHut);
@@ -2095,6 +2099,10 @@ void programScan(){
     if (ci < 0) ci = loaderCfgNearest(qw, qr10);
     if (ci >= 0) dif100 = cfgDif100[ci];                                   // dif đã học
     else dif100 = (int32_t)((int64_t)rorMag * feederTkg * adaptStartW100 / 60000000LL);
+#if (FEEDER_DIF_FIXED > 0)
+    // dif SỐ CỨNG: bỏ qua giá trị vừa tra ở trên (qw/qr10/ci vẫn tính để in log đối chiếu).
+    dif100 = (int32_t)FEEDER_DIF_FIXED;
+#endif
     if (dif100 > (int32_t)FEEDER_DIF_MAX * 10) dif100 = (int32_t)FEEDER_DIF_MAX * 10;
     if (dif100 < 0) dif100 = 0;
 #endif
@@ -2135,7 +2143,7 @@ void programScan(){
 
 #if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)
     // --- Debug loader: tự bật khi bấm loader; tắt 10s sau khi off (và đã ghi log xong); in 1s/lần ---
-    if(FEEDER_BTN_R == 1 && enDebug){                   // chỉ bật debug khi enDebug=1 (mặc định TẮT)
+    if(FEEDER_BTN_R == 1 && (enDebug || LOADER_DEBUG_EN)){   // enDebug toàn cục HOẶC cờ log loader riêng
         loaderDbgEn = true;
         loaderDbgOffMs = 0;                              // đang chạy → hoãn đếm tắt
     }else if(loaderDbgEn){
@@ -2160,7 +2168,11 @@ void programScan(){
         SerialComputer.print(" ph=");      SerialComputer.print(loaderAdaptPhase);
         SerialComputer.print(" arm=");     SerialComputer.print(adaptArmed);
         SerialComputer.print(" stp=");     SerialComputer.print(aLoaderStep);
-        SerialComputer.print(" cfg=");     SerialComputer.println(cfgCount);
+        SerialComputer.print(" cfg=");     SerialComputer.print(cfgCount);
+        // Ô lưới đang dùng: qw=cân snap (kg), qr10=ror snap (×10 kg/phút), ci=chỉ số ô (-1 = dùng công thức)
+        SerialComputer.print(" qw=");      SerialComputer.print(qw);
+        SerialComputer.print(" qr=");      SerialComputer.print(qr10);
+        SerialComputer.print(" ci=");      SerialComputer.println(ci);
     }
 #endif
 

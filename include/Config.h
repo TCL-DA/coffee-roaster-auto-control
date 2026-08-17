@@ -2,9 +2,9 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang 12kg CMS — KHÔNG cân loadcell (feeder chạy theo timer),
- * không IO module (relay onboard), CÓ vacuum control đọc từ biến tần gió, có drum speed.
- * Điều khiển bằng biến trở vật lý: gió/drum/gas đọc từ VR trên board.
+ * Cấu hình hiện tại: máy rang 30kg auto của anh Danh — rang cacao. CÓ cân loadcell +
+ * auto-loader tự học dif, không IO module (relay onboard), vacuum đọc từ biến tần gió,
+ * có drum speed. Điều khiển bằng biến trở vật lý: gió/drum/gas đọc từ VR trên board.
  *
  * Đổi file này khi build firmware cho từng model máy rang khác nhau.
  * Các tùy chọn dạng bật/tắt nên giữ giá trị 0/1, trừ khi dòng chú thích
@@ -29,11 +29,11 @@
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió có nối RS485 Modbus (cần cho vacuum)
 #define MACHINE_HAS_VACUUM_SENSOR         1  // Có cảm biến áp suất hút/vacuum, dùng PID gió
-#define MACHINE_HAS_SCALE_FEEDER          0  // KHÔNG có cân loadcell/Bluetooth — feeder chạy theo timer
+#define MACHINE_HAS_SCALE_FEEDER          1  // CÓ cân loadcell/Bluetooth + auto-loader tự học dif
 #define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  12 // Khối lượng mẻ rang danh định (kg) — máy 12kg (dùng suy ngưỡng auto-loader)
+#define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30kg (dùng suy ngưỡng auto-loader)
 // Loại đầu đốt do HMI chọn lúc chạy qua thanh ghi burnerPremix_R (địa chỉ 29):
 //   0 = đầu đốt thường (khuếch tán), 1 = đầu đốt premix (khí+gió trộn sẵn).
 // KHÔNG có cờ compile — 1 firmware chạy cả 2 loại. Bộ tham số preheat tự đổi theo
@@ -146,6 +146,28 @@
                                                 // (cửa mở ~5s, cà rớt) nếu không sẽ chốt nhằm lúc giao thời
 #define FEEDER_OFFSET_MAX100              30    // ×100 kg: trần offset lực hút hợp lệ (0.30kg),
                                                 // kẹp để mẫu đo lỗi không làm cắt quá sớm/muộn
+// Log loader ra SerialComputer KHÔNG cần bật enDebug toàn cục (bản đi khảo sát sai lệch hút
+// liệu 2026-08-17). In 1 dòng/giây CHỈ trong lúc nút feeder bật → không nặng vòng quét.
+// Đặt về 0 khi giao máy production.
+#define LOADER_DEBUG_EN                   0
+
+// ── dif CỐ ĐỊNH (2026-08-17) ────────────────────────────────────────────────
+// >0  = dùng thẳng số này làm dif (×100 kg), BỎ QUA bảng /loadcfg.csv lẫn công thức T_kg,
+//       và KHÔNG học/ghi bảng nữa. Hằng số nên ngưỡng cắt đứng yên suốt mẻ.
+// 0   = quay lại y hệt hành vi cũ (tra bảng + tự học). Đổi 1 số này là lùi được ngay.
+//
+// Vì sao 100 (=1.00 kg): coast — lượng cà còn rời phễu SAU lệnh cắt — đo trên 7 mẻ log
+// serial ngày 2026-08-17 ra 0.94/0.98/0.98/0.98/1.00/1.04/1.08 → trung bình đúng 1.00,
+// lệch chuẩn 0.05. Suy ngược từ 18 lần cân tay của thợ rang (mức 5/10/20 kg) cũng khớp:
+// coast ≈ 1.00 ở CẢ BA mức. Sai số = dif − coast, nên dif = 1.00 → sai số ≈ 0.
+//
+// NGHIỆM THU TRÊN MÁY 2026-08-17 (7 mẻ, mức 15 và 20 kg): lệch +3/−2/−1/+10/−3/+2/−1
+// (×0.01 kg) → 6/7 mẻ dưới 30 gam, tệ nhất 100 gam, điểm trung bình 9.7. Trước khi sửa:
+// điểm 2.6–9.7, lệch tới 760 gam. dif in ra đứng yên suốt mẻ, ngưỡng cắt hết dao động.
+//
+// CHỈNH KHI LỆCH ĐỀU MỘT CHIỀU: hút thiếu → giảm số này; hút dư → tăng. Đúng bằng lượng
+// lệch (0.20 kg = 20). KHÔNG cần đụng gì khác.
+#define FEEDER_DIF_FIXED                  100
 #define LOADER_CSV_MAX                    400   // số dòng hút gần nhất tối đa giữ trong loader.csv
 #define FEEDER_MIN_BATCH100               50    // ×100 kg: mẻ hút nhỏ hơn 0.5kg coi là nhiễu → bỏ học+log (mẻ thật tối thiểu 1kg)
 // Ngưỡng cho auto-loader chạy: phễu nguồn phải còn ≥ LOADER_MIN_BATCH_PCT% của 1 mẻ rang.
