@@ -149,6 +149,10 @@ uint16_t lastTimeSD = 0;
 //Scale-related declarations
 // dif fallback when table empty: feederTkg = T_kg default (x10 ms/kg), no self-learning.
 int16_t  feederTkg = FEEDER_TKG_DEFAULT;
+
+// SD card health: false = thẻ hỏng/không có → mọi thao tác thẻ bỏ qua, thử lại mỗi SD_RETRY_MS.
+bool     sdOK = false;
+uint32_t sdRetryMs = 0;
 // Self-learned dif table by operating point (weight, ror) - load/save /loadcfg.csv, sparse (learned cells only).
 int16_t  cfgW[FEEDER_CFG_MAX];        // cell center: weight (kg, multiple of FEEDER_W_BUCKET)
 int16_t  cfgRor10[FEEDER_CFG_MAX];    // cell center: ror (x10 kg/min, multiple of FEEDER_ROR_BUCKET10)

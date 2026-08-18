@@ -189,6 +189,18 @@ void timerPoll_1000ms(){
 
 }
 
+/* Thẻ SD hỏng lúc chạy → thử khởi tạo lại, giãn cách SD_RETRY_MS (không chặn vòng quét).
+   Trả về true nếu thẻ dùng được. Mọi thao tác thẻ nên hỏi hàm này trước, đừng gọi thẳng
+   SD.open khi sdOK=false — thẻ lỗi làm thư viện chờ timeout, vòng quét khựng theo. */
+bool sdEnsure(){
+    if(sdOK) return true;
+    if(millis() - sdRetryMs < SD_RETRY_MS) return false;
+    sdRetryMs = millis();
+    sdOK = SD.begin(chipSelect);
+    if(sdOK && enDebug) SerialComputer.println("SD: card back online");
+    return sdOK;
+}
+
 void sdLogWrite(){
     snprintf(strProfileName, sizeof(strProfileName), "%u.csv", (unsigned)SELECT_FILE_R);
 
@@ -1148,6 +1160,7 @@ void loaderCfgSave();   // forward decl: loaderCfgLoad tạo file mới khi thi�
 // Không thấy file / file hỏng → tạo file rỗng; bảng rỗng = dùng công thức T_kg default tới khi học được.
 void loaderCfgLoad(){
     cfgCount = 0;
+    if(!sdOK) return;              // thẻ hỏng → bảng rỗng; với dif cố định thì bảng không dùng tới
     File f = SD.open("loadcfg.csv");
     if(f){
         char line[48];
@@ -1204,6 +1217,7 @@ void loaderCfgLoad(){
 
 // Lưu toàn bộ bảng dif ra /loadcfg.csv (ghi đè, ≤FEEDER_CFG_MAX dòng → nhanh).
 void loaderCfgSave(){
+    if(!sdEnsure()) return;        // thẻ hỏng → bỏ qua, KHÔNG ngồi chờ timeout giữa lúc hút
     SD.remove("loadcfg.csv");
     File f = SD.open("loadcfg.csv", FILE_WRITE);
     if(!f) return;
@@ -1217,6 +1231,7 @@ void loaderCfgSave(){
     f.close();
 }
 
+#if LOADER_SD_LOG_EN
 // Cắt /loader.csv chỉ giữ LOADER_CSV_MAX dòng dữ liệu gần nhất (luôn giữ header).
 // Stream qua /loader.tmp để không phải nạp cả file vào RAM (20KB rất hạn chế).
 void loaderLogTrim(){
@@ -1260,8 +1275,13 @@ void loaderLogTrim(){
 //      offset(lực hút), target(đích), final(thực tế), err(lệch >0=thiếu), score(0-10), result, Told, Tnew.
 void loaderLogEvent(int32_t final100, int32_t target100, int32_t err100,
                     int16_t score_x10, const char* result, int16_t difOld100, int16_t difNew100, uint16_t secHut){
+    if(!sdEnsure()){ if(loaderDbgEn) SerialComputer.println("LDR >>> LOG SKIP: no SD card"); return; }
     File f = SD.open("loader.csv", FILE_WRITE);
-    if(!f){ if(loaderDbgEn) SerialComputer.println("LDR >>> LOG FAIL: SD.open loader.csv FAILED"); return; }
+    if(!f){
+        sdOK = false;   // thẻ vừa rớt → ngừng đụng thẻ, sdEnsure sẽ thử lại sau SD_RETRY_MS
+        if(loaderDbgEn) SerialComputer.println("LDR >>> LOG FAIL: SD.open loader.csv FAILED");
+        return;
+    }
     // Ghi header CHỈ khi file rỗng thật (size 0). Không dùng SD.exists() vì sau chu kỳ
     // remove/recreate của loaderLogTrim() nó hay trả false-negative → chèn header vào giữa.
     if(f.size() == 0) f.print("STT,s,wStart,batch,set,secHut,rorKG,dif,offset,target,final,err,score,result,difOld,difNew\r\n");
@@ -1284,6 +1304,7 @@ void loaderLogEvent(int32_t final100, int32_t target100, int32_t err100,
     f.close();
     loaderLogTrim();   // giữ tối đa LOADER_CSV_MAX dòng gần nhất
 }
+#endif  // LOADER_SD_LOG_EN
 
 // Vòng tự học: sau khi cắt feeder, chờ cân ổn định → chấm điểm → chỉnh dif của Ô (cân,ror) nếu thất bại.
 // Điểm = 10.0 − lệch_kg×10 (lệch 0.05kg=9.5đ, 0.10kg=9.0đ). Hút OK = >9.0đ (lệch ≤0.09kg).
@@ -1354,7 +1375,11 @@ void loaderAdapt(){
 #endif
     }
 
+#if LOADER_SD_LOG_EN
     loaderLogEvent(final100, target100, err100, score_x10, result, difOld100, difNew100, secHut);
+#else
+    (void)difOld100; (void)difNew100; (void)secHut;   // loader không ghi thẻ (xem LOADER_SD_LOG_EN)
+#endif
     if(loaderDbgEn){
         SerialComputer.print("LDR >>> LOG: result="); SerialComputer.print(result);
         SerialComputer.print(" score="); SerialComputer.print(score_x10);   // ×10 (98=9.8đ)

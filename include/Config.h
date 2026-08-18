@@ -151,6 +151,19 @@
 // Đặt về 0 khi giao máy production.
 #define LOADER_DEBUG_EN                   0
 
+// ── THẺ SD: chống treo máy (2026-08-17, sau ca treo giữa lúc hút) ───────────
+// LOADER_SD_LOG_EN: 0 = loader KHÔNG đụng thẻ SD nữa (không ghi loader.csv, không trim).
+//   Với dif cố định thì log này chỉ để xem, KHÔNG tham gia điều khiển — bỏ đi thì đường
+//   hút liệu sạch bóng thao tác thẻ, thẻ dở chứng cũng không kéo được vòng quét.
+//   Cần xem lại thì bật 1 (và nên bật LOADER_DEBUG_EN thay vì ghi thẻ).
+// SD_INIT_RETRY: số lần thử khởi tạo thẻ lúc boot. HẾT lượt thì BÁO LỖI RỒI CHẠY TIẾP,
+//   KHÔNG treo máy — mất log còn hơn mất cả ngày rang. (Trước đây while(!SD.begin())
+//   quay vô hạn kèm còi → thẻ chết là máy không vào nổi chương trình.)
+// SD_RETRY_MS: lúc chạy, thẻ hỏng thì cứ chừng này ms thử khởi tạo lại một lần.
+#define LOADER_SD_LOG_EN                  0
+#define SD_INIT_RETRY                     5
+#define SD_RETRY_MS                       10000UL
+
 // ── dif CỐ ĐỊNH (2026-08-17) ────────────────────────────────────────────────
 // >0  = dùng thẳng số này làm dif (×100 kg), BỎ QUA bảng /loadcfg.csv lẫn công thức T_kg,
 //       và KHÔNG học/ghi bảng nữa. Hằng số nên ngưỡng cắt đứng yên suốt mẻ.

@@ -150,6 +150,7 @@ void loop() {
   if (enDebug) debug();
   errorCount = 0;
 
+  sdEnsure();          // thẻ rớt giữa chừng → tự thử khởi tạo lại (tự giãn cách, không chặn)
   pidSelfTuneTask();   // xử lý self-tune ngoài ISR
   pidSDTask();
 

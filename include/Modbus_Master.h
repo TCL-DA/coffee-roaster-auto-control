@@ -1193,14 +1193,23 @@ void checkError() {
     // SD card
     if (chSDFlag) {
         sendSTT(STT_STARTUP_CHECK_SD);
-        while (!SD.begin(chipSelect)) {
+        // KHÔNG treo ở đây: thử SD_INIT_RETRY lần, hết lượt thì báo lỗi rồi chạy tiếp.
+        // Máy rang được mà không có log còn hơn đứng im cả ngày vì một cái thẻ hỏng.
+        sdOK = false;
+        for (uint8_t i = 0; i < SD_INIT_RETRY; i++) {
+            if (SD.begin(chipSelect)) { sdOK = true; break; }
             sendSTT(STT_SD_INIT_FAIL);
             SerialComputer.println(" LOI SD");
             buzzN(1, 500);
             delay(buzzer_delay);
         }
-        SerialComputer.println("=> SD OK");
-        sendSTT(STT_STARTUP_SD_OK);
+        if (sdOK) {
+            SerialComputer.println("=> SD OK");
+            sendSTT(STT_STARTUP_SD_OK);
+        } else {
+            SerialComputer.println("=> SD FAIL - running without card (no logs)");
+            sendSTT(STT_SD_INIT_FAIL);
+        }
     }
 
     // All OK
