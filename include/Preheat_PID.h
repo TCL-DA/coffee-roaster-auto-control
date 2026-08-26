@@ -31,7 +31,6 @@ static volatile uint16_t  wuIgniteTimer = 0;   // giây trong IGNITE
 static int16_t  wuGasPercent    = 0;   // gas% hiện tại (mirror ra gasPercent)
 static int16_t  wuAirPercent     = 0;  // airflow% hiện tại
 static uint16_t wuDeadTimer      = 0;  // hiển thị debug (đếm purge/cooling)
-static uint8_t  wuVacFlagSaved   = 0;  // lưu cờ vacuum PID để khôi phục khi xong
 static uint8_t  wuIgniteRetry    = 0;  // số lần thử mồi lửa
 
 // Giá trị gas/gió/drum đã đẩy lên HMI lần cuối — chỉ ghi lại khi đổi (change-gated).
@@ -66,6 +65,16 @@ static int32_t  phKd             = PH_PID_KD;
 static int32_t  phKpH            = PH_PID_KP_HOLD;
 static int32_t  phKiH            = PH_PID_KI_HOLD;
 static int32_t  phKdH            = PH_PID_KD_HOLD;
+
+// ── Loại đầu đốt — chọn LÚC CHẠY, không có cờ compile ────────────
+// burnerPremix_R (thanh ghi HMI 29): 0 = thường (khuếch tán), 1 = premix (trộn sẵn).
+// Premix turndown họp + mồi chậm ~40s → 4 tham số phải đổi: gas mức HI khi tune,
+// timeout chờ lửa, và Kp/Kd của vòng HOLD (P/D mạnh làm gas đập 0↔35% → limit-cycle).
+// Chốt 1 lần ở WU_IDLE rồi giữ nguyên cả run — thợ đổi ô HMI giữa chừng không
+// làm hệ số nhảy giữa vòng PID. Chi tiết: docs/config/config-preheat-premix.md
+static bool     phPremix        = false;
+static int16_t  phTuneGasHi     = PH_TUNE_GAS_HI;   // gas% mức HI của relay autotune
+static uint16_t phIgniteTmo     = PH_IGNITE_TMO;    // giây chờ tín hiệu lửa
 
 // ── Bảng gain scheduling theo SV: mỗi mức nhiệt 1 bộ HEAT gain (kp/ki/kd) ────
 // HOLD gains dùng Config chung. Lưu/đọc từ /pid_pre.txt, mỗi dòng "SV,kp,ki,kd".
@@ -209,6 +218,34 @@ void phFFLoad() {
     if (enDebug) { SerialComputer.print("PID table loaded, n="); SerialComputer.println(phSvCount); }
 }
 
+// ── Trọng tài quyền lái gió: PREHEAT ưu tiên hơn vacuum PID ─────────────
+// Cả hai cùng ghi airflowPercent, mà analogIn() chạy TRƯỚC analogOut() nên nếu
+// cờ vacuum còn bật thì pidAirflowUpdate() đè giá trị của preheat ngay đầu vòng
+// loop, lệnh gió của preheat không bao giờ ra tới DAC. Nên preheat phải cướp
+// quyền: tắt cờ vacuum lúc vào, trả lại đúng trạng thái cũ lúc xong.
+// Bắt buộc ghi tắt CẢ TRÊN HMI — rwMemHMI() mỗi vòng đồng bộ _CP ngược về
+// vacuumSetFlag_R, nếu HMI vẫn giữ 1 thì vacuum PID giành lại gió sau 1 vòng.
+static void phVacTakeOver() {
+    if (phVacTaken) return;       // đã cướp rồi — giữ nguyên cờ gốc đã lưu
+    phVacTaken     = true;
+    phVacFlagSaved = (uint8_t)vacuumSetFlag_R;
+    if (vacuumSetFlag_R == 1) {
+        vacuumSetFlag_R = 0;      // preheat tự lái gió từ đây
+        nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, 0);
+    }
+}
+
+static void phVacRelease() {
+    if (!phVacTaken) return;      // chưa từng cướp → đừng chạm cờ của người khác
+    phVacTaken      = false;
+    vacuumSetFlag_R = phVacFlagSaved;
+    phVacFlagSaved  = 0;
+    if (vacuumSetFlag_R == 1) {
+        nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, 1);
+        pidAirflowReset();        // gió khởi lại từ bảng FF của setpoint hiện tại
+    }
+}
+
 // ── wuReset: trả về IDLE, khôi phục vacuum PID, đóng gas ─────────────────────
 void wuReset() {
     wuState         = WU_IDLE;
@@ -237,13 +274,7 @@ void wuReset() {
     airflowPercent  = 0;
     naviSourceGAS   = 0;
     naviSourceAIR   = 0;
-    vacuumSetFlag_R = wuVacFlagSaved;
-    if (vacuumSetFlag_R == 1) {
-        // Khôi phục cả trên HMI để _CP đồng bộ, tránh vòng quét ép tắt lại.
-        nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, 1);
-        pidAirflowReset();
-    }
-    wuVacFlagSaved  = 0;
+    phVacRelease();               // trả quyền gió cho vacuum PID nếu trước đó đang bật
     nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);
     tunePercent     = 0;
     // Xoá mốc HMI để lần preheat sau tick đầu luôn ghi lại gas/gió/drum
@@ -310,13 +341,23 @@ void preheat() {
     case WU_IDLE: {
         naviSourceGAS  = SOURCE_AI_AUTO;
         naviSourceAIR  = SOURCE_AI_AUTO;
-        wuVacFlagSaved = vacuumSetFlag_R;
-        if (vacuumSetFlag_R == 1) {
-            // Cưỡng ép TẮT cả trên HMI để _CP đồng bộ về 0, tránh vòng quét HMI
-            // (Modbus_Master rwMemHMI) ép vacuumSetFlag_R bật lại giữa preheat —
-            // nếu bật lại, analogIn() chạy vacuum PID và tranh quyền gió với preheat.
-            vacuumSetFlag_R = 0;           // tắt vacuum PID — preheat tự lái gió
-            nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, 0);
+        phVacTakeOver();               // preheat cướp quyền airflowPercent
+
+        // Chốt bộ tham số theo loại đầu đốt đang cài trên HMI.
+        // KI_HOLD và toàn bộ hệ số HEATING dùng chung — Config không có bản PREMIX.
+        phPremix    = (burnerPremix_R != 0);
+        phTuneGasHi = phPremix ? PH_TUNE_GAS_HI_PREMIX   : PH_TUNE_GAS_HI;
+        phIgniteTmo = phPremix ? PH_IGNITE_TMO_PREMIX    : PH_IGNITE_TMO;
+        phKpH       = phPremix ? PH_PID_KP_HOLD_PREMIX   : PH_PID_KP_HOLD;
+        phKdH       = phPremix ? PH_PID_KD_HOLD_PREMIX   : PH_PID_KD_HOLD;
+        phKiH       = PH_PID_KI_HOLD;
+        if (enPhDebug) {
+            SerialComputer.print("PREHEAT-PID: burner=");
+            SerialComputer.print(phPremix ? "PREMIX" : "NORMAL");
+            SerialComputer.print(" tuneGasHi="); SerialComputer.print(phTuneGasHi);
+            SerialComputer.print(" igniteTmo="); SerialComputer.print(phIgniteTmo);
+            SerialComputer.print(" kpH=");       SerialComputer.print(phKpH);
+            SerialComputer.print(" kdH=");       SerialComputer.println(phKdH);
         }
         gasPercent = 0;
         nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);
@@ -409,7 +450,7 @@ void preheat() {
             } else if (bt10 < phTuneSV) {
                 phUsingStored = false;
                 wuState = WU_TUNE;
-                wuGasPercent  = PH_TUNE_GAS_HI;
+                wuGasPercent  = phTuneGasHi;
                 wuAirPercent  = PH_TUNE_AIR_HI;
                 if (enPhDebug) {
                     SerialComputer.print("TUNE SV_tune="); SerialComputer.print(phTuneSV/10);
@@ -480,7 +521,7 @@ void preheat() {
             if (phTuneRelayHi == 0) {
                 // Vừa cắt qua SV_tune xuống dưới → kết thúc 1 nửa chu kỳ (đáy)
                 phTuneRelayHi = 1;
-                wuGasPercent  = PH_TUNE_GAS_HI;
+                wuGasPercent  = phTuneGasHi;
                 wuAirPercent  = PH_TUNE_AIR_HI;
                 // Ghi 1 đỉnh dao động (cặp max−min) + đo chu kỳ
                 if (phTunePeaks > 0) {
@@ -535,7 +576,7 @@ void preheat() {
         if (phTunePuCount >= PH_TUNE_CYCLES) {
             int32_t aAvg = phTuneAmpSum / phTunePuCount;       // biên độ đỉnh−đáy (0.1°C)
             int32_t puAvg = phTunePuSum / phTunePuCount;       // chu kỳ (giây)
-            int32_t d = (PH_TUNE_GAS_HI - PH_TUNE_GAS_LO) / 2; // biên độ relay (%)
+            int32_t d = (phTuneGasHi - PH_TUNE_GAS_LO) / 2; // biên độ relay (%)
             // Ku = 4·d / (π·a),  a = biên độ BT 1 phía (°C)
             // a_tenthC (0.1°C) → a_C = a_tenthC/10
             // Ku×1000 = 4·d·1000 / (π · a_C) = 4·d·10000 / (π · a_tenthC)

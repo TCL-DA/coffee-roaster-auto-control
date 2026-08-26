@@ -1474,6 +1474,23 @@ void programScan(){
     // preheat — chạy độc lập, không phụ thuộc AUTO mode
     if (START_BTN_R == 0 && ftState == FT_IDLE) {  // không sấy lồng khi đang tune gió
         preheat();
+    } else if (START_BTN_R == 1 && wuState != WU_IDLE) {
+        /* Vào mẻ rang khi còn đang sấy lồng: preheat() không được gọi nữa nên nó không
+           tự dọn được — wuState treo giữa chừng, phVacTaken treo theo và khóa luôn cờ
+           vacuum của HMI/app tới lần khởi động sau. Còn phRunLearn() thì sẽ học trên
+           dữ liệu cả mẻ rang khi preheat chạy lại — bảng FF bị bẩn.
+           Đóng sấy lồng tại đây, TRƯỚC khối STP_DATA bên dưới để roastVacFlagSaved
+           chụp đúng cờ vacuum đã được trả về. */
+        /* wuReset() cắt luôn nút gas trên HMI — đúng cho lúc thuộc preheat, nhưng ở
+           đây sẽ cướp lửa của luồng rang. Đường charge tay (chargeTemp_R = 0) không
+           có bước tự mồi nào, cắt là thợ mất lửa giữa mẻ. Giữ nguyên trạng nút gas,
+           để STP_COOL_DOWN/STP_GAS tự quyết định đóng hay mở. */
+        uint16_t gasBtnBefore = START_GAS_BTN_R;
+        wuReset();
+        if (gasBtnBefore == 1) nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 1);
+        nodeHMI.writeSingleRegister(WU_W - 1, 0);
+        setMachineStatus(STT_PREHEAT_CANCELLED);
+        if (enDebug) SerialComputer.println("Preheat closed: roast started");
     }
 
     if(calibGasProgramEn){

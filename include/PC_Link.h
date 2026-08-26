@@ -426,9 +426,15 @@ void handle_PC_Link(){
        Bật thì gọi pidAirflowReset() để snap tới mức gió đã học cho setpoint hiện hành,
        giống hệt nhánh setpoint ở pclChanged(4). */
     if (pclChanged(21, v) && MACHINE_HAS_VACUUM_SENSOR) {
-        vacuumSetFlag_R = v; vacuumSetFlag_R_CP = v;
         nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, v);
-        if (v == 1) pidAirflowReset();
+        if (phVacTaken) {
+            // Đang sấy lồng: preheat ưu tiên. Nhận lệnh nhưng để dành, preheat
+            // xong thì phVacRelease() áp — tránh tranh quyền airflowPercent.
+            phVacFlagSaved = (uint8_t)v;
+        } else {
+            vacuumSetFlag_R = v; vacuumSetFlag_R_CP = v;
+            if (v == 1) pidAirflowReset();
+        }
     }
 }
 

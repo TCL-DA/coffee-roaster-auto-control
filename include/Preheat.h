@@ -11,7 +11,6 @@ static volatile uint16_t  wuElapsed       = 0;
 static uint16_t  wuDeadTimer     = 0;
 static int16_t   wuGasPercent    = 0;
 static int16_t   wuAirPercent    = 0;
-static uint8_t   wuVacFlagSaved  = 0;
 static volatile uint16_t  wuIgniteTimer   = 0;
 static int16_t   phRorAtStep     = 0;
 static uint16_t  phBTNoRiseCount = 0;
@@ -902,6 +901,34 @@ int8_t preheatBurnerControl(uint8_t mode, int16_t targetBT10, uint16_t heatDeadl
     return step;
 }
 
+// ── Trọng tài quyền lái gió: PREHEAT ưu tiên hơn vacuum PID ─────────────
+// Cả hai cùng ghi airflowPercent, mà analogIn() chạy TRƯỚC analogOut() nên nếu
+// cờ vacuum còn bật thì pidAirflowUpdate() đè giá trị của preheat ngay đầu vòng
+// loop, lệnh gió của preheat không bao giờ ra tới DAC. Nên preheat phải cướp
+// quyền: tắt cờ vacuum lúc vào, trả lại đúng trạng thái cũ lúc xong.
+// Bắt buộc ghi tắt CẢ TRÊN HMI — rwMemHMI() mỗi vòng đồng bộ _CP ngược về
+// vacuumSetFlag_R, nếu HMI vẫn giữ 1 thì vacuum PID giành lại gió sau 1 vòng.
+static void phVacTakeOver() {
+    if (phVacTaken) return;       // đã cướp rồi — giữ nguyên cờ gốc đã lưu
+    phVacTaken     = true;
+    phVacFlagSaved = (uint8_t)vacuumSetFlag_R;
+    if (vacuumSetFlag_R == 1) {
+        vacuumSetFlag_R = 0;      // preheat tự lái gió từ đây
+        nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, 0);
+    }
+}
+
+static void phVacRelease() {
+    if (!phVacTaken) return;      // chưa từng cướp → đừng chạm cờ của người khác
+    phVacTaken      = false;
+    vacuumSetFlag_R = phVacFlagSaved;
+    phVacFlagSaved  = 0;
+    if (vacuumSetFlag_R == 1) {
+        nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, 1);
+        pidAirflowReset();        // gió khởi lại từ bảng FF của setpoint hiện tại
+    }
+}
+
 // ── wuReset ──────────────────────────────────────────────────────────────────
 
 void wuReset(bool normalEnd = false) {
@@ -953,9 +980,7 @@ void wuReset(bool normalEnd = false) {
     wuAirPercent    = 0;
     naviSourceGAS   = 0;
     naviSourceAIR   = 0;
-    vacuumSetFlag_R = wuVacFlagSaved;
-    if (vacuumSetFlag_R == 1) pidAirflowReset();
-    wuVacFlagSaved = 0;
+    phVacRelease();   // trả quyền gió cho vacuum PID nếu trước đó đang bật
     nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);
     tunePercent = 0;
 }
@@ -1092,7 +1117,7 @@ void preheat() {
             wuState = WU_COOLING;
             naviSourceGAS = SOURCE_AI_AUTO; naviSourceAIR = SOURCE_AI_AUTO;
             wuGasPercent = gasPercent; wuDeadTimer = 0; wuAirPercent = 0;
-            wuVacFlagSaved = vacuumSetFlag_R; vacuumSetFlag_R = 0;
+            phVacTakeOver();   // preheat cướp quyền airflowPercent
             gasPercent = 0;
             nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);
             if (enDebug) { SerialComputer.print("PREHEAT: BT>target, cooling BT="); SerialComputer.println(Temperature_BT/10); }
@@ -1140,7 +1165,7 @@ void preheat() {
         phStableCount = 0;
         phRunStart(targetBT10);
         naviSourceGAS = SOURCE_AI_AUTO; naviSourceAIR = SOURCE_AI_AUTO;
-        wuVacFlagSaved = vacuumSetFlag_R; vacuumSetFlag_R = 0;
+        phVacTakeOver();   // preheat cướp quyền airflowPercent
         gasPercent = 0;
         phPreIgniteStartMs = 0;  // sẽ được set khi vào WU_PRE_IGNITE
         wuState = WU_PRE_IGNITE;

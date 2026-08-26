@@ -922,6 +922,14 @@ int16_t airflowAUTO, drumAUTO, gasAUTO;            //Source AUTO
 bool    autoVacPIDEn = false;   // true = use pressure PID (from SD profile)
 int16_t autoVacSP    = 0;       // Pa setpoint for PID in AUTO roast
 
+// Trọng tài quyền lái airflowPercent: PREHEAT ưu tiên hơn vacuum PID.
+// Khai báo ở đây (không nằm trong Preheat*.h) vì Modbus_Master.h và PC_Link.h
+// include TRƯỚC Preheat*.h nên không thấy được biến static bên trong đó —
+// mà chính hai file kia mới là chỗ có thể bật lại cờ vacuum giữa lúc sấy lồng.
+// Logic cướp/trả quyền: phVacTakeOver() / phVacRelease() trong Preheat*.h
+bool    phVacTaken     = false;  // preheat đang giữ quyền airflowPercent
+uint8_t phVacFlagSaved = 0;      // cờ vacuum sẽ được trả lại khi preheat xong
+
 // uint16_t f_airflowAI;
 int16_t airflowPercent, drumPercent, gasPercent;    //Source VR
 

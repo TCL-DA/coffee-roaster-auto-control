@@ -377,7 +377,13 @@ void rwMemHMI(){
         }
 
         if(MACHINE_HAS_VACUUM_SENSOR && vacuumSetFlag_R != vacuumSetFlag_R_CP){
-            vacuumSetFlag_R = vacuumSetFlag_R_CP;  
+            if (phVacTaken) {
+                // Đang sấy lồng: preheat giữ quyền airflowPercent. Cất lệnh mới lại,
+                // phVacRelease() sẽ áp khi preheat xong — đừng để vacuum PID tranh gió.
+                phVacFlagSaved = (uint8_t)vacuumSetFlag_R_CP;
+            } else {
+                vacuumSetFlag_R = vacuumSetFlag_R_CP;
+            }
         }
 
         if (MACHINE_HAS_VACUUM_SENSOR && vacuumSetpoint_R != vacuumSetpoint_R_CP) {
