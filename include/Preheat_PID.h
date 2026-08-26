@@ -408,9 +408,9 @@ void preheat() {
     }
     break;
 
-    // ── IGNITE: mở 30% gas mồi lửa, chờ gasSignal, thử lại tối đa 3 lần ─────
+    // ── IGNITE: mở PH_IGNITE_GAS% gas mồi lửa, chờ gasSignal, thử lại tối đa 3 lần ─────
     case WU_IGNITE: {
-        gasPercent     = 30;
+        gasPercent     = PH_IGNITE_GAS;
         airflowPercent = 30;
         if (gasSignal == 1) {
             // Mồi thành công. Chưa có file SD → relay autotune trước; có rồi → HEATING.
@@ -439,7 +439,7 @@ void preheat() {
                 phKp = phKpTab[svIdx]; phKi = phKiTab[svIdx]; phKd = phKdTab[svIdx];
                 phUsingStored = true;
                 wuState = WU_HEATING;
-                wuGasPercent = 30;
+                wuGasPercent = PH_IGNITE_GAS;
                 setMachineStatus(STT_PREHEAT_IGNITE_OK);
                 if (enPhDebug) {
                     SerialComputer.print("PREHEAT-PID: stored gains SV="); SerialComputer.print(targetBT10/10);
@@ -470,13 +470,13 @@ void preheat() {
                 phKp = PH_PID_KP; phKi = PH_PID_KI; phKd = PH_PID_KD;
                 phUsingStored = false;
                 wuState = WU_HEATING;
-                wuGasPercent = 30;
+                wuGasPercent = PH_IGNITE_GAS;
                 setMachineStatus(STT_PREHEAT_IGNITE_OK);
                 if (enPhDebug) SerialComputer.println("PREHEAT-PID: BT>SV_tune, skip tune -> HEATING (Config gains)");
             }
             break;
         }
-        if (wuIgniteTimer >= PH_IGNITE_TMO) {
+        if (wuIgniteTimer >= phIgniteTmo) {
             wuIgniteTimer = 0;
             nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);
             if (++wuIgniteRetry >= PH_IGNITE_RETRY) {
@@ -505,7 +505,7 @@ void preheat() {
         if (wuElapsed >= PH_TUNE_TIMEOUT_SEC) {
             if (enPhDebug) SerialComputer.println("TUNE timeout -> use Config kp/ki/kd");
             wuState = WU_HEATING;
-            wuGasPercent = 30; phTick = phPidEvalTick = 0;
+            wuGasPercent = PH_IGNITE_GAS; phTick = phPidEvalTick = 0;
             phPidInteg = 0; phPidPrevBT = bt10;
             phBtStart = bt10;      // reset gốc lookahead theo vị trí BT hiện tại
             phEmaD = 0; phEmaOut = 0; phEmaInit = false;
@@ -550,7 +550,7 @@ void preheat() {
         if (phTuneRelayHi == 0 && phTuneLoSec >= PH_TUNE_STUCK_SEC) {
             if (enPhDebug) SerialComputer.println("TUNE STUCK (BT khong tut duoi SVt, may nong) -> dung Config gains");
             wuState = WU_HEATING;
-            wuGasPercent = 30; phTick = phPidEvalTick = 0;
+            wuGasPercent = PH_IGNITE_GAS; phTick = phPidEvalTick = 0;
             phPidInteg = 0; phPidPrevBT = bt10;
             phBtStart = bt10; phEmaD = 0; phEmaOut = 0; phEmaInit = false;
             break;
@@ -604,7 +604,7 @@ void preheat() {
                 SerialComputer.print(" kd="); SerialComputer.println(phKd);
             }
             wuState = WU_HEATING;
-            wuGasPercent = 30; phTick = phPidEvalTick = 0;
+            wuGasPercent = PH_IGNITE_GAS; phTick = phPidEvalTick = 0;
             phPidInteg = 0; phPidPrevBT = bt10;
             phBtStart = bt10;      // reset gốc lookahead theo BT lúc tune xong
             phEmaD = 0; phEmaOut = 0; phEmaInit = false;

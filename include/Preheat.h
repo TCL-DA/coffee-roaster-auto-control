@@ -1206,7 +1206,7 @@ void preheat() {
     break;
 
     case WU_IGNITE: {
-        gasPercent = 30;  // mở 30% gas tối thiểu để mồi lửa — relay đã mở, DAC cần đủ áp
+        gasPercent = PH_IGNITE_GAS;  // gas tối thiểu để mồi lửa — relay đã mở, DAC cần đủ áp
         if (gasSignal == 1) {
             setMachineStatus(STT_PREHEAT_IGNITE_OK);
             wuState = WU_HEATING; wuElapsed = 0; wuDeadTimer = 5; wuIgniteTimer = 0;

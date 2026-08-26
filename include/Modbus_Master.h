@@ -285,9 +285,14 @@ void rwMemHMI(){
         if(maxGasSet_R<0) maxGasSet_R=0;
 
         //Báo type bếp
+#if MACHINE_BURNER_FORCE_STANDARD
+        //Build khoá bếp THƯỜNG: kệ HMI ghi gì vào reg 29, luôn giữ 0.
+        burnerPremix_R = 0;
+#else
         if(burnerPremix_R !=burnerPremix_R_CP){
             burnerPremix_R = burnerPremix_R_CP;    
         }
+#endif
 
         //Khoảng rơ bật gas
         if(preCool_R !=preCool_R_CP){
