@@ -219,6 +219,14 @@ int16_t dif = 0;  //Adjust weighing offset
 uint8_t progStep = 0;   //Manual save step
 uint8_t coolStep = 0;   //Cooling step
 uint8_t abStep = 0;   //Afterburner step
+// Thợ/khách CƯỠNG CHẾ tắt buồng đốt khói giữa mẻ: chốt lại để trình tự tự động
+// KHÔNG bật lên lại trong mẻ đó (BT vẫn trên ngưỡng nên nếu không chốt sẽ bật lại ngay).
+// Xoá chốt khi: sang mẻ mới, huỷ mẻ, hoặc chính người dùng bật AB lên lại bằng tay.
+bool abUserOff = false;
+// Đã ĐỌC NGƯỢC từ HMI xác nhận AB thật sự bật. Cần cờ này vì lệnh ghi AB=1 phải
+// chờ vòng đọc kế tiếp mới thấy; thiếu nó thì đúng nhịp giao thời AB_BTN_R còn 0
+// sẽ bị hiểu nhầm là người dùng vừa tắt, chốt oan và AB không bao giờ bật được.
+bool abSeenOn = false;
 uint8_t aLoaderStep = 0; //Auto Loader
 uint16_t BT_TP_Pre = 0;
 uint8_t ulimitTPTime = 20; //Allowed time to check TP

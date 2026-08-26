@@ -1826,6 +1826,8 @@ void programScan(){
                 }else{
                     //Tiếp tục rang
                     aLoaderStep = STP_NONE_LOADER; //Trạng thái auto loader về 0
+                    //Mẻ mới: bỏ chốt cưỡng chế tắt AB của mẻ vừa xong
+                    abStep = 0; abUserOff = false; abSeenOn = false;
                     progStep = STP_LOOP_2; //Chờ drop đóng lại và rang tiếp
                     STEP_STRING = "LOOP";
                 }
@@ -2039,6 +2041,10 @@ void programScan(){
             //Trạng thái auto loader về 0
             aLoaderStep = STP_NONE_LOADER;
 
+            //Trình tự AB về 0 — huỷ mẻ mà để abStep treo là mẻ sau mất buồng đốt khói
+            abStep = 0; abUserOff = false; abSeenOn = false;
+            abTimerEn = 0; abTimer = 0;
+
             //Trả gió gas trống về biến trở
             naviSourceGAS = SOURCE_AI_VR; //Đổi source sang VR
             naviSourceDRUM = SOURCE_AI_VR;
@@ -2055,9 +2061,14 @@ void programScan(){
         //Tự động bật afterburner
         if(afterburnerSet_R_CV>0 && timeRoast>60 && progStep>=STP_TP && progStep<STP_LOOP_1){
             STEP_AB_STRING = "WABHU"; //Wait AB heatup
+            //Người dùng tự bật AB lên lại bằng tay → bỏ chốt, nhận lại quyền tự đóng lúc drop
+            if(abUserOff && AB_BTN_R == 1){
+                abUserOff = false; abSeenOn = true; abStep = STP_WAIT_AB;
+            }
             //Kiểm tra nhiệt và trạng thái trình tự AB
-            if(Temperature_BT>=afterburnerSet_R_CV && abStep==0){
+            if(Temperature_BT>=afterburnerSet_R_CV && abStep==0 && !abUserOff){
                 abStep = STP_ON_AB;
+                abSeenOn = false;   //chờ HMI xác nhận bật thật rồi mới nhận lệnh tắt tay
             }    
         }
     }   
@@ -2443,11 +2454,21 @@ void programScan(){
         //Trạng thái chờ drop cà phê
         case STP_WAIT_AB:
             STEP_AB_STRING = "WDO"; //Wait drop on
-            //Huỷ AB step trước khi nó tự tắt
-            if(AB_BTN_R == 0&&dropTimerEn==1){
+            if(AB_BTN_R == 1) abSeenOn = true;   //đọc ngược từ HMI: AB đã bật thật
+
+            /* NGƯỜI DÙNG CƯỠNG CHẾ TẮT AB (sửa 2026-08-26)
+               Trước đây nhánh này còn đòi dropTimerEn==1, tức CHỈ dọn được khi đang ở
+               đúng lúc drop. Mà AB tự bật từ sau TP — tắt lúc đó thì điều kiện không bao
+               giờ đúng, abStep kẹt ở STP_WAIT_AB. Kẹt rồi thì mẻ SAU không tự bật AB nữa
+               (nhánh tự bật đòi abStep==0), im lặng, không mã lỗi nào.
+               Nay tắt lúc nào dọn lúc đó. Phải chốt abUserOff kèm theo: BT vẫn đang trên
+               ngưỡng nên chỉ dọn abStep về 0 là vòng quét sau máy bật AB lại ngay, giành
+               nút với người đang đứng máy. */
+            if(AB_BTN_R == 0 && abSeenOn){
                 abTimerEn = 0; //Tắt timer
                 abTimer = 0;   //Reset counter 
                 abStep = 0; //Reset bước
+                abUserOff = true;   //chốt: không tự bật lại trong mẻ này
                 STEP_AB_STRING = "NONE";
             }
 
