@@ -1895,6 +1895,7 @@ void programScan(){
         if(progStep==STP_FCS){
             //Xử lí các tình huống trong khi rang auto
             if(progStatus == STT_PROGRAM_AUTO){
+#if MACHINE_HAS_SCALE_FEEDER
                 if(autoLoader_R == 1 && aLoaderStep == 0 && loop_R>1){
                     //Chỉ cho auto cân khi phễu nguồn còn ≥ LOADER_MIN_BATCH_PCT% của 1 mẻ (LOADER_MIN_NETW ×10 kg)
                     //Nếu không sẽ auto tắt start
@@ -1911,6 +1912,14 @@ void programScan(){
                     } 
                     
                 }
+#else
+                /* Máy KHÔNG có auto-loader (không cân): khối trên không được biên dịch.
+                   Nếu để nguyên, thanh ghi HMI 33 đọc ra 1 (HMI đời cũ không có ô này)
+                   là máy vào nhánh loader, thấy scaleDataValid=false rồi bắn
+                   STT_SCALE_DATA_INVALID + STT_LOADER_FAIL — báo lỗi và huỷ mẻ ở
+                   STP_LOOP_1, trên một cái máy vốn không có bộ hút liệu nào. */
+                (void)autoLoader_R;
+#endif
             }
         }
 
