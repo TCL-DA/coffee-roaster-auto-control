@@ -11,7 +11,8 @@ float smoothedGasAI = 0;
 #define AI_CAL_MIN_RAW           500
 #define AI_CAL_MAX_RAW           4095
 #define AI_CAL_MIN_SPAN_RAW      80
-#define AI_CAL_LOW_PERCENT       8
+#define AI_CAL_LOW_PERCENT       2   // chỉ coi là "đáy VR" khi về sát 0 (8% cũ ôm luôn mức 4% thợ đỗ)
+#define AI_CAL_ZERO_MAX_PERCENT  3   // mốc 0% không bao giờ được nằm cao hơn 3% thang đo
 #define AI_CAL_HIGH_PERCENT      90
 #define AI_CAL_STABLE_MS         12000UL
 #define AI_CAL_DELTA_RAW         8
@@ -81,6 +82,12 @@ void analogCalLoadFromSD() {
     }
 
     if (fields == 3 || fields == 6) {
+        // Mốc 0% cũ trên thẻ có thể đã bị học sai do thợ đỗ VR ở mức thấp lâu.
+        // Đáy thật chỉ lệch vài count; cao hơn 3% thang đo là rác → bỏ, lần lưu sau ghi đè file.
+        if (airMin  > (uint16_t)(((uint32_t)airMax  * AI_CAL_ZERO_MAX_PERCENT) / 100)) { airMin  = 0; aiCalSavePending = true; }
+        if (drumMin > (uint16_t)(((uint32_t)drumMax * AI_CAL_ZERO_MAX_PERCENT) / 100)) { drumMin = 0; aiCalSavePending = true; }
+        if (gasMin  > (uint16_t)(((uint32_t)gasMax  * AI_CAL_ZERO_MAX_PERCENT) / 100)) { gasMin  = 0; aiCalSavePending = true; }
+
         if (analogCalValidRange(airMin, airMax)) {
             aiCalMinRaw[0] = airMin;
             CH1AInMax = airMax;
@@ -127,7 +134,8 @@ static void analogCalTrackRange(uint8_t channel, uint16_t rawValue, uint16_t *ma
             aiCalStableLowMillis[channel] = now;
         } else if (now - aiCalStableLowMillis[channel] >= AI_CAL_STABLE_MS) {
             uint16_t learnedMin = (aiCalStableLowRaw[channel] > AI_CAL_MARGIN_RAW) ? aiCalStableLowRaw[channel] - AI_CAL_MARGIN_RAW : 0;
-            if (learnedMin + AI_CAL_MIN_SPAN_RAW < *maxValue && abs((int)learnedMin - (int)(*minValue)) >= AI_CAL_DELTA_RAW) {
+            uint16_t zeroCap = (uint16_t)(((uint32_t)(*maxValue) * AI_CAL_ZERO_MAX_PERCENT) / 100);
+            if (learnedMin <= zeroCap && learnedMin + AI_CAL_MIN_SPAN_RAW < *maxValue && abs((int)learnedMin - (int)(*minValue)) >= AI_CAL_DELTA_RAW) {
                 *minValue = learnedMin;
                 aiCalSavePending = true;
 
