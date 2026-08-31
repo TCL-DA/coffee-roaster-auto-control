@@ -2,11 +2,6 @@
   <img src="assets/banner/otl-roaster-banner.png" alt="OTL Roaster — Coffee Roaster Auto Control" width="100%">
 </p>
 
-<p align="center">
-  <a href="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/release.yml"><img alt="Release" src="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/release.yml/badge.svg"></a>
-  <a href="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/smoke-stacks.yml"><img alt="Smoke test" src="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/smoke-stacks.yml/badge.svg"></a>
-  <a href="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/check-asset-sync.yml"><img alt="Asset sync" src="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/check-asset-sync.yml/badge.svg"></a>
-</p>
 
 <p align="center">
   <img alt="MCU" src="https://img.shields.io/badge/MCU-STM32F103RC-FC2424?style=flat-square">
