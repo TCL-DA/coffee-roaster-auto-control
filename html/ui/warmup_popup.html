@@ -1,0 +1,238 @@
+
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--font-sans);}
+  .backdrop{
+    background:#2a2d30;
+    border-radius:6px;
+    padding:16px;
+    width:320px;
+    margin:2rem auto;
+    border:2px solid #4a4d50;
+  }
+  .titlebar{
+    background:#1a1d1f;
+    border:1px solid #555;
+    border-radius:4px 4px 0 0;
+    padding:6px 12px;
+    display:flex;align-items:center;justify-content:space-between;
+    margin:-16px -16px 14px -16px;
+    border-radius:4px 4px 0 0;
+  }
+  .titlebar-text{font-size:13px;font-weight:500;color:#e0ddd8;letter-spacing:0.05em;}
+  .titlebar-close{
+    width:22px;height:22px;border-radius:3px;
+    background:#555;border:1px solid #777;
+    color:#ccc;font-size:14px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    user-select:none;
+  }
+  .titlebar-close:hover{background:#888;}
+  .row{display:flex;gap:8px;margin-bottom:10px;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:4px;flex:1;}
+  .field label{font-size:11px;color:#aaa;letter-spacing:0.04em;}
+  .field-inner{
+    display:flex;align-items:center;
+    background:#1a1d1f;
+    border:1px solid #555;
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .field-inner:focus-within{border-color:#D85A30;}
+  .spin-up,.spin-dn{
+    width:28px;height:36px;
+    background:#333638;border:none;
+    color:#ccc;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;user-select:none;transition:background .1s;
+  }
+  .spin-up:hover,.spin-dn:hover{background:#4a4d50;}
+  .spin-up:active,.spin-dn:active{background:#D85A30;color:#fff;}
+  .val-display{
+    flex:1;text-align:center;
+    font-size:22px;font-weight:500;
+    color:#e0ddd8;font-variant-numeric:tabular-nums;
+    line-height:36px;
+  }
+  .unit{
+    padding:0 7px;font-size:11px;color:#888;
+    border-left:1px solid #444;height:36px;
+    display:flex;align-items:center;
+  }
+  .prog-label-row{display:flex;justify-content:space-between;margin-bottom:5px;}
+  .prog-label{font-size:11px;color:#aaa;}
+  .prog-pct{font-size:12px;font-weight:500;color:#e0ddd8;font-variant-numeric:tabular-nums;}
+  .prog-track{
+    height:18px;background:#1a1d1f;
+    border:1px solid #555;border-radius:3px;overflow:hidden;
+    margin-bottom:6px;
+  }
+  .prog-fill{
+    height:100%;width:0%;background:#D85A30;
+    transition:width .4s ease;
+    display:flex;align-items:center;justify-content:flex-end;
+    padding-right:4px;
+  }
+  .prog-fill.done{background:#1D9E75;}
+  .prog-fill span{font-size:10px;color:#fff;font-weight:500;white-space:nowrap;}
+  .status-row{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+  .sdot{width:7px;height:7px;border-radius:50%;background:#555;flex-shrink:0;}
+  .sdot.heat{background:#D85A30;}
+  .sdot.done{background:#1D9E75;}
+  .stext{font-size:11px;color:#aaa;}
+  .stime{margin-left:auto;font-size:12px;color:#e0ddd8;font-variant-numeric:tabular-nums;}
+  .btn-row{display:flex;gap:8px;}
+  .btn{
+    height:38px;border-radius:4px;border:none;
+    font-size:13px;font-weight:500;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    transition:background .1s,transform .08s;user-select:none;
+    flex:1;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-go{background:#D85A30;color:#fff;}
+  .btn-go:hover{background:#993C1D;}
+  .btn-go:disabled{background:#333638;color:#666;cursor:default;transform:none;}
+  .btn-sec{background:#333638;border:1px solid #555;color:#aaa;}
+  .btn-sec:hover{background:#4a4d50;}
+  .divider{height:1px;background:#3a3d40;margin:10px 0;}
+  .cur-temp-row{display:flex;align-items:baseline;gap:6px;margin-bottom:10px;}
+  .cur-temp-num{font-size:36px;font-weight:500;color:#EF9F27;font-variant-numeric:tabular-nums;}
+  .cur-temp-unit{font-size:14px;color:#888;}
+  .cur-temp-label{font-size:11px;color:#aaa;margin-left:auto;text-align:right;line-height:1.4;}
+</style>
+
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Popup Warm Up OTL</h2>
+
+<div class="backdrop">
+  <div class="titlebar">
+    <span class="titlebar-text"><i class="ti ti-flame" aria-hidden="true" style="font-size:13px;margin-right:5px;color:#D85A30"></i>WARM UP</span>
+    <div class="titlebar-close" onclick="doReset()" title="Đóng / Reset">✕</div>
+  </div>
+
+  <div class="cur-temp-row">
+    <div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:2px">Nhiệt độ hiện tại</div>
+      <div style="display:flex;align-items:baseline;gap:4px">
+        <span class="cur-temp-num" id="cur-t">25</span>
+        <span class="cur-temp-unit">°C</span>
+      </div>
+    </div>
+    <div style="margin-left:auto;text-align:right">
+      <div style="font-size:11px;color:#aaa;margin-bottom:2px">Mục tiêu</div>
+      <div style="font-size:22px;font-weight:500;color:#D85A30;font-variant-numeric:tabular-nums" id="tgt-show">180°C</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="row">
+    <div class="field">
+      <label>Nhiệt độ mong muốn</label>
+      <div class="field-inner">
+        <button class="spin-dn" onclick="spin('t',-10)" aria-label="Giảm">−</button>
+        <span class="val-display" id="v-temp">180</span>
+        <button class="spin-up" onclick="spin('t',10)" aria-label="Tăng">+</button>
+        <span class="unit">°C</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Thời gian warm up</label>
+      <div class="field-inner">
+        <button class="spin-dn" onclick="spin('m',-1)" aria-label="Giảm">−</button>
+        <span class="val-display" id="v-min">10</span>
+        <button class="spin-up" onclick="spin('m',1)" aria-label="Tăng">+</button>
+        <span class="unit">phút</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="prog-label-row">
+    <span class="prog-label">Tiến trình</span>
+    <span class="prog-pct" id="pct-txt">0%</span>
+  </div>
+  <div class="prog-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="p-track">
+    <div class="prog-fill" id="p-fill"><span id="p-inner"></span></div>
+  </div>
+  <div class="status-row">
+    <div class="sdot" id="sdot"></div>
+    <span class="stext" id="stext">Chờ khởi động</span>
+    <span class="stime" id="stime"></span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-go" id="btn-go" onclick="doStart()">
+      <i class="ti ti-flame" aria-hidden="true"></i> Bắt đầu
+    </button>
+    <button class="btn btn-sec" onclick="doStop()">
+      <i class="ti ti-player-stop" aria-hidden="true"></i> Dừng
+    </button>
+    <button class="btn btn-sec" onclick="doReset()" style="flex:0.6">
+      <i class="ti ti-refresh" aria-hidden="true"></i>
+    </button>
+  </div>
+</div>
+
+<script>
+  let vt=180,vm=10,running=false,elapsed=0,total=0,simT=25,tid=null;
+  function spin(f,d){
+    if(running)return;
+    if(f==='t'){vt=Math.min(300,Math.max(80,vt+d));document.getElementById('v-temp').textContent=vt;document.getElementById('tgt-show').textContent=vt+'°C';}
+    else{vm=Math.min(60,Math.max(1,vm+d));document.getElementById('v-min').textContent=vm;}
+  }
+  function doStart(){
+    if(running)return;
+    total=vm*60;elapsed=0;simT=25;running=true;
+    document.getElementById('btn-go').disabled=true;
+    document.getElementById('sdot').className='sdot heat';
+    document.getElementById('stext').textContent='Đang gia nhiệt...';
+    document.getElementById('tgt-show').textContent=vt+'°C';
+    tid=setInterval(function(){
+      elapsed++;
+      const pct=Math.min(Math.round(elapsed/total*100),100);
+      simT=Math.min(Math.round(25+(vt-25)*Math.pow(elapsed/total,0.72)),vt);
+      const rem=total-elapsed,rm=Math.floor(rem/60),rs=rem%60;
+      document.getElementById('cur-t').textContent=simT;
+      document.getElementById('p-fill').style.width=pct+'%';
+      document.getElementById('p-track').setAttribute('aria-valuenow',pct);
+      document.getElementById('pct-txt').textContent=pct+'%';
+      document.getElementById('p-inner').textContent=pct>12?pct+'%':'';
+      document.getElementById('stime').textContent=rem>0?rm+':'+String(rs).padStart(2,'0'):'';
+      if(elapsed>=total){
+        clearInterval(tid);running=false;
+        document.getElementById('p-fill').classList.add('done');
+        document.getElementById('sdot').className='sdot done';
+        document.getElementById('stext').textContent='Hoàn tất — Máy sẵn sàng rang';
+        document.getElementById('stime').textContent='';
+        document.getElementById('btn-go').disabled=false;
+        document.getElementById('btn-go').innerHTML='<i class="ti ti-check" aria-hidden="true"></i> Xong';
+        document.getElementById('btn-go').style.background='#0F6E56';
+      }
+    },80);
+  }
+  function doStop(){
+    if(!running)return;
+    clearInterval(tid);running=false;
+    document.getElementById('btn-go').disabled=false;
+    document.getElementById('sdot').className='sdot';
+    document.getElementById('stext').textContent='Đã dừng';
+    document.getElementById('stime').textContent='';
+  }
+  function doReset(){
+    clearInterval(tid);running=false;elapsed=0;simT=25;
+    document.getElementById('p-fill').style.width='0%';
+    document.getElementById('p-fill').classList.remove('done');
+    document.getElementById('p-track').setAttribute('aria-valuenow',0);
+    document.getElementById('pct-txt').textContent='0%';
+    document.getElementById('p-inner').textContent='';
+    document.getElementById('cur-t').textContent='25';
+    document.getElementById('sdot').className='sdot';
+    document.getElementById('stext').textContent='Chờ khởi động';
+    document.getElementById('stime').textContent='';
+    document.getElementById('btn-go').disabled=false;
+    document.getElementById('btn-go').style.background='#D85A30';
+    document.getElementById('btn-go').innerHTML='<i class="ti ti-flame" aria-hidden="true"></i> Bắt đầu';
+  }
+</script>

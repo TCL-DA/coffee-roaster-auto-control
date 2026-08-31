@@ -7,6 +7,7 @@ vẫn nằm ở thư mục gốc vì công cụ cần đọc chúng ở đó.
 ## ref/ — Tài liệu tham chiếu (sơ đồ, bảng tra)
 - [ref-hmi-profile-date-map.md](ref/ref-hmi-profile-date-map.md)
 - [ref-sim-interface.md](ref/ref-sim-interface.md)
+- [ref-loader-nguyen-ly.md](ref/ref-loader-nguyen-ly.md) — bộ nạp liệu: phần A cho kỹ thuật viên, phần B cho người sửa firmware
 - [ref-loader-autolearn.md](ref/ref-loader-autolearn.md)
 - [ref-hmi-delta-dop.md](ref/ref-hmi-delta-dop.md)
 - [ref-hmi-lua-macro.md](ref/ref-hmi-lua-macro.md)
@@ -34,6 +35,9 @@ vẫn nằm ở thư mục gốc vì công cụ cần đọc chúng ở đó.
 - [config-6kg-auto-philipines.md](config/config-6kg-auto-philipines.md)
 - [config-30kg-cacao-dailoan.md](config/config-30kg-cacao-dailoan.md)
 - [config-3kg-auto-io.md](config/config-3kg-auto-io.md)
+
+## 30kg/ — Hồ sơ kỹ thuật máy 30 kg
+- [Tính toán nguồn 24 VDC cho trạm Weidmüller UR20 — R00](30kg/OTL-30KG_Tinh-toan-nguon-24VDC_UR20_R00.pdf)
 
 ## notes/ — Ghi chú phiên làm việc theo ngày
 - [notes-2026-05-25.md](notes/notes-2026-05-25.md)

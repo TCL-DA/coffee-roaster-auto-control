@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<!-- saved from url=(0146)file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html -->
+<html lang="vi"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>PID Preheat tự học — OTL-06ALS | O TESLA</title>
+<style>
+  :root{
+    --bg:#060a10;
+    --bg2:#08131f;
+    --panel:#101923cc;
+    --panel2:#111f2d;
+    --stroke:#26384a;
+    --stroke2:#36506a;
+    --text:#eaf2ff;
+    --muted:#9eb0c7;
+    --muted2:#76879d;
+    --blue:#45a3ff;
+    --cyan:#39d7ff;
+    --green:#50e08a;
+    --gold:#ffc857;
+    --orange:#ff8a3d;
+    --red:#ff6b6b;
+    --shadow:0 22px 70px rgba(0,0,0,.42);
+    --radius:22px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Segoe UI",Arial,sans-serif;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 14% 7%,rgba(69,163,255,.25),transparent 32rem),
+      radial-gradient(circle at 92% 15%,rgba(255,138,61,.18),transparent 28rem),
+      radial-gradient(circle at 50% 92%,rgba(80,224,138,.12),transparent 26rem),
+      linear-gradient(180deg,#05080d 0%,#071018 42%,#080c12 100%);
+    color:var(--text);
+    line-height:1.72;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;z-index:-3;
+    background-image:
+      linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:linear-gradient(to bottom,rgba(0,0,0,.88),rgba(0,0,0,.10));
+  }
+  body::after{
+    content:"";
+    position:fixed;inset:-30%;z-index:-2;pointer-events:none;
+    background:conic-gradient(from 140deg at 50% 50%,transparent 0 18%,rgba(69,163,255,.10) 24%,transparent 32%,rgba(255,200,87,.08) 48%,transparent 62%,rgba(57,215,255,.08) 78%,transparent 100%);
+    animation:slowSpin 34s linear infinite;
+    filter:blur(34px);
+  }
+  @keyframes slowSpin{to{transform:rotate(360deg)}}
+  a{color:inherit}
+  .progressbar{position:fixed;left:0;top:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--gold));z-index:50;box-shadow:0 0 18px rgba(57,215,255,.7)}
+  .brand-bar{
+    position:relative;
+    max-width:1180px;
+    margin:26px auto 0;
+    padding:0 20px;
+    z-index:2;
+  }
+  .brand-card{
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:18px;
+    align-items:center;
+    border:1px solid rgba(87,117,148,.55);
+    background:linear-gradient(135deg,rgba(17,31,45,.90),rgba(8,17,28,.78));
+    backdrop-filter:blur(18px);
+    border-radius:26px;
+    padding:18px 20px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    position:relative;
+  }
+  .brand-card::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(69,163,255,.14),transparent 30%,rgba(255,138,61,.12) 72%,transparent);pointer-events:none}
+  .logo-mark{
+    width:74px;height:74px;border-radius:22px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,#0e2940,#123d5f 52%,#ff8a3d);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 14px 38px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.2);
+    font-weight:900;font-size:24px;letter-spacing:-1px;color:white;
+    position:relative;z-index:1;
+  }
+  .brand-main{position:relative;z-index:1}
+  .brand-main .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.18em;color:var(--cyan);font-weight:800;margin-bottom:2px}
+  .brand-main h3{font-size:18px;margin:0;color:#fff;letter-spacing:.02em}
+  .company-grid{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:8px;color:var(--muted);font-size:13px}
+  .company-grid span{display:inline-flex;align-items:center;gap:6px;white-space:normal}
+  .company-grid b{color:#d9e8ff;font-weight:750}
+  .hero{
+    position:relative;
+    margin:24px auto 0;
+    max-width:1180px;
+    background:
+      linear-gradient(135deg,rgba(69,163,255,.20),rgba(8,17,28,.55) 42%,rgba(255,138,61,.14)),
+      radial-gradient(circle at 80% 10%,rgba(57,215,255,.26),transparent 23rem);
+    border:1px solid rgba(87,117,148,.52);
+    border-radius:32px;
+    padding:64px 34px 52px;
+    text-align:center;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(110deg,transparent 0%,rgba(255,255,255,.10) 48%,transparent 58%);
+    transform:translateX(-105%);
+    animation:sheen 8s ease-in-out infinite;
+    pointer-events:none;
+  }
+  .hero::after{content:"PID";position:absolute;right:-18px;bottom:-58px;font-size:180px;line-height:1;font-weight:900;letter-spacing:-.08em;color:rgba(255,255,255,.035);pointer-events:none}
+  @keyframes sheen{0%,55%{transform:translateX(-105%)}74%,100%{transform:translateX(105%)}}
+  .hero h1{
+    position:relative;
+    display:inline-block;
+    font-size:clamp(36px,7vw,70px);
+    line-height:1.02;
+    font-weight:900;
+    color:#fff;
+    letter-spacing:-1.8px;
+    text-shadow:0 18px 45px rgba(0,0,0,.4);
+  }
+  .hero h1::after{
+    content:"";display:block;height:4px;width:64%;margin:16px auto 0;border-radius:99px;
+    background:linear-gradient(90deg,var(--blue),var(--cyan),var(--gold),var(--orange));
+    box-shadow:0 0 20px rgba(57,215,255,.55);
+  }
+  .hero .sub{font-size:clamp(15px,2vw,18px);color:#c5d2e3;margin-top:18px;max-width:870px;margin-left:auto;margin-right:auto}
+  .hero .badges{margin-top:24px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .badge{
+    background:rgba(6,14,22,.52);
+    border:1px solid rgba(91,139,177,.55);
+    border-radius:999px;
+    padding:8px 15px;
+    font-size:13px;
+    color:#dcecff;
+    font-weight:800;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 9px 25px rgba(0,0,0,.2);
+  }
+  .badge:nth-child(2n){border-color:rgba(255,200,87,.42);color:#fff1c8}
+  .page-shell{max-width:1180px;margin:0 auto;padding:24px 20px 82px;display:grid;grid-template-columns:245px minmax(0,1fr);gap:26px;align-items:start}
+  .toc{
+    position:sticky;top:18px;
+    border:1px solid rgba(87,117,148,.42);
+    border-radius:24px;
+    background:rgba(12,22,33,.66);
+    backdrop-filter:blur(16px);
+    padding:16px;
+    box-shadow:0 18px 46px rgba(0,0,0,.26);
+  }
+  .toc .toc-title{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--cyan);font-weight:900;margin-bottom:10px}
+  .toc a{display:block;text-decoration:none;color:var(--muted);font-size:13px;line-height:1.35;padding:8px 9px;border-radius:12px;border:1px solid transparent}
+  .toc a:hover{color:#fff;background:rgba(69,163,255,.10);border-color:rgba(69,163,255,.22)}
+  .wrap{max-width:920px;margin:0;padding:0 0 20px}
+  .lead{
+    position:relative;
+    font-size:17px;color:#d5e4f5;
+    border:1px solid rgba(87,117,148,.45);
+    background:linear-gradient(135deg,rgba(16,31,45,.76),rgba(14,20,30,.68));
+    border-radius:24px;
+    padding:22px 24px 22px 28px;
+    box-shadow:0 18px 50px rgba(0,0,0,.26);
+    margin:6px 0 20px;
+  }
+  .lead::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:5px;border-radius:999px;background:linear-gradient(var(--blue),var(--gold))}
+  h2{
+    font-size:clamp(22px,3vw,30px);
+    color:#fff;
+    margin:48px 0 12px;
+    padding-top:18px;
+    display:flex;align-items:center;gap:12px;
+    letter-spacing:-.4px;
+    scroll-margin-top:18px;
+  }
+  h2 .n{
+    display:inline-flex;width:42px;height:42px;border-radius:14px;
+    background:linear-gradient(135deg,var(--blue),#1a5bb8 60%,var(--cyan));
+    color:#fff;align-items:center;justify-content:center;font-size:18px;font-weight:900;flex-shrink:0;
+    box-shadow:0 12px 30px rgba(69,163,255,.28), inset 0 1px 0 rgba(255,255,255,.24)
+  }
+  h3{font-size:18px;color:var(--gold);margin:25px 0 10px;letter-spacing:.01em}
+  p{margin:10px 0;color:#cbd8e8}
+  b{color:#ffffff}
+  code{font-family:"Consolas","SFMono-Regular",monospace;background:#07111c;color:#7ee787;padding:2px 7px;border-radius:7px;font-size:13px;border:1px solid rgba(80,224,138,.25)}
+  .formula{
+    position:relative;
+    background:linear-gradient(135deg,rgba(5,12,20,.96),rgba(12,24,36,.90));
+    border:1px solid rgba(87,117,148,.50);
+    border-left:5px solid var(--blue);
+    border-radius:18px;
+    padding:18px 20px;margin:17px 0;
+    font-family:"Consolas","SFMono-Regular",monospace;font-size:15px;color:#edf6ff;overflow-x:auto;
+    box-shadow:0 15px 42px rgba(0,0,0,.24);
+  }
+  .formula::after{content:"CODE";position:absolute;right:14px;top:10px;font-size:11px;color:#5f7188;letter-spacing:.18em;font-weight:900}
+  .formula b{color:var(--gold)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin:20px 0}
+  .card{
+    background:linear-gradient(145deg,rgba(18,32,47,.86),rgba(9,17,27,.86));
+    border:1px solid rgba(87,117,148,.42);
+    border-radius:22px;
+    padding:20px;
+    box-shadow:0 16px 38px rgba(0,0,0,.24);
+    transition:transform .28s ease,border-color .28s ease,box-shadow .28s ease;
+    position:relative;overflow:hidden;
+  }
+  .card::before{content:"";position:absolute;inset:auto -40% -55% -40%;height:80%;background:radial-gradient(circle,rgba(69,163,255,.16),transparent 62%);transition:opacity .28s ease;opacity:.6}
+  .card:hover{transform:translateY(-6px);border-color:rgba(69,163,255,.68);box-shadow:0 26px 60px rgba(0,0,0,.33)}
+  .card .ic{font-size:31px;margin-bottom:10px;filter:drop-shadow(0 12px 18px rgba(0,0,0,.3))}
+  .card h4{font-size:16px;color:#fff;margin-bottom:7px}
+  .card p{font-size:13.8px;color:var(--muted);margin:0}
+  table{border-collapse:separate;border-spacing:0;width:100%;margin:18px 0;font-size:14px;border:1px solid rgba(87,117,148,.42);border-radius:18px;overflow:hidden;box-shadow:0 16px 42px rgba(0,0,0,.23)}
+  th,td{border-bottom:1px solid rgba(87,117,148,.34);padding:12px 14px;text-align:left;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  th{background:linear-gradient(135deg,rgba(31,111,235,.22),rgba(17,31,45,.84));color:#b9ddff;font-weight:800}
+  td{background:rgba(12,22,33,.70)}
+  tr:hover td{background:rgba(23,42,61,.72)}
+  td .ok{color:var(--green);font-weight:800}
+  .box{border-radius:20px;padding:18px 20px;margin:18px 0;box-shadow:0 14px 38px rgba(0,0,0,.20)}
+  .box.win{background:linear-gradient(135deg,rgba(13,39,26,.88),rgba(8,22,16,.78));border:1px solid rgba(80,224,138,.43)}
+  .box.win b{color:#7dffaf}
+  .box.note{background:linear-gradient(135deg,rgba(51,36,9,.86),rgba(24,18,10,.78));border:1px solid rgba(255,200,87,.44)}
+  .box.note b{color:var(--gold)}
+  .timeline{border-left:2px solid rgba(87,117,148,.58);margin:22px 0 22px 18px;padding-left:28px}
+  .tl{position:relative;margin-bottom:22px;background:rgba(16,29,43,.50);border:1px solid rgba(87,117,148,.32);border-radius:18px;padding:14px 16px}
+  .tl::before{content:'';position:absolute;left:-38px;top:18px;width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--gold));border:3px solid #071018;box-shadow:0 0 0 5px rgba(69,163,255,.10)}
+  .tl h4{font-size:16px;color:#fff;margin-bottom:4px}
+  .tl p{font-size:13.8px;color:var(--muted);margin:0}
+  .tl .t{font-family:Consolas,"SFMono-Regular",monospace;font-size:12px;color:#72c4ff;font-weight:800;letter-spacing:.02em}
+  ul{margin:12px 0 12px 22px}li{margin:8px 0;color:#cbd8e8}li::marker{color:var(--cyan)}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin:22px 0}
+  .kpi .k{background:linear-gradient(145deg,rgba(16,31,45,.88),rgba(9,17,27,.86));border:1px solid rgba(87,117,148,.42);border-radius:22px;padding:19px;text-align:center;box-shadow:0 16px 42px rgba(0,0,0,.24);position:relative;overflow:hidden}
+  .kpi .k::before{content:"";position:absolute;left:18px;right:18px;top:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--green),var(--gold));border-radius:999px}
+  .kpi .v{font-size:32px;font-weight:900;color:#7dffaf;font-family:Consolas,"SFMono-Regular",monospace;text-shadow:0 0 18px rgba(80,224,138,.18)}
+  .kpi .l{font-size:12.8px;color:var(--muted);margin-top:6px}
+  .tag{display:inline-block;font-size:11px;background:rgba(31,111,235,.16);color:#bfe2ff;border:1px solid rgba(69,163,255,.42);border-radius:999px;padding:2px 8px;margin-left:7px;vertical-align:middle;font-weight:800;letter-spacing:.02em}
+  .foot{
+    text-align:center;color:#8a9bb2;font-size:13px;margin-top:54px;padding:28px 20px;
+    border:1px solid rgba(87,117,148,.35);border-radius:24px;
+    background:linear-gradient(135deg,rgba(16,31,45,.70),rgba(8,15,24,.72));
+  }
+  .foot b{color:#fff}
+  .to-top{position:fixed;right:18px;bottom:18px;width:44px;height:44px;border-radius:16px;border:1px solid rgba(87,117,148,.55);background:rgba(14,26,39,.76);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 14px 36px rgba(0,0,0,.35);opacity:0;transform:translateY(12px);transition:.25s ease;z-index:30;backdrop-filter:blur(12px)}
+  .to-top.show{opacity:1;transform:translateY(0)}
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .55s ease,transform .55s ease}
+  .reveal.show{opacity:1;transform:translateY(0)}
+  @media (max-width:980px){
+    .page-shell{display:block;max-width:940px}
+    .toc{position:relative;top:auto;margin:0 0 20px;display:block}
+    .toc nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:2px}
+  }
+  @media (max-width:640px){
+    .brand-bar{margin-top:14px;padding:0 12px}.brand-card{grid-template-columns:1fr;padding:16px}.logo-mark{width:62px;height:62px;border-radius:18px}
+    .hero{margin:16px 12px 0;padding:44px 20px 38px;border-radius:24px}.hero::after{font-size:110px;bottom:-34px}
+    .page-shell{padding:18px 12px 64px}.lead{padding:18px 18px 18px 22px}.wrap{width:100%}h2{gap:10px}.company-grid{display:block}.company-grid span{display:block;margin-top:6px}
+    table{font-size:13px}th,td{padding:10px 11px}
+  }
+  @media print{
+    body{background:#fff;color:#111}body::before,body::after,.progressbar,.toc,.to-top{display:none}.page-shell{display:block}.hero,.brand-card,.lead,.card,.box,.kpi .k,.foot,.formula,table{box-shadow:none;background:#fff;color:#111;border-color:#ccc}.hero h1,.card h4,h2,h3,b{color:#111}p,.lead,.card p,td,li,.tl p{color:#333}.badge{color:#111;border-color:#bbb;background:#f6f6f6}
+  }
+</style>
+<meta content="#071018" name="theme-color"></head>
+<body><div class="progressbar" id="progressbar" style="width: 0%;"></div>
+<div class="brand-bar">
+<div class="brand-card">
+<div class="logo-mark">OT</div>
+<div class="brand-main">
+<div class="eyebrow">Hồ sơ kỹ thuật · O TESLA</div>
+<h3 class="reveal show">CÔNG TY TNHH CÔNG NGHIỆP O TESLA</h3>
+<div class="company-grid">
+<span><b>MST:</b> 0314844413</span>
+<span><b>Địa chỉ:</b> Số 44 Đường N5, Khu phố Tân Phước, Phường Tân Đông Hiệp, Thành phố Hồ Chí Minh, Việt Nam</span>
+<span><b>Email:</b> otesla.vn@gmail.com</span>
+<span><b>SDT:</b> 0333879199 - Thành</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="hero">
+<h1>PID Preheat Tự Học</h1>
+<div class="sub">Hệ điều khiển làm nóng máy rang cà phê OTL-06ALS — tự dò tham số, giữ nhiệt độ chính xác, thích nghi mọi đầu đốt. Chạy trên vi điều khiển STM32F103 (72 MHz, không FPU, 20 KB RAM).</div>
+<div class="badges">
+<span class="badge">2-DOF PID</span>
+<span class="badge">Relay Autotune</span>
+<span class="badge">Gain Scheduling</span>
+<span class="badge">Tự đánh giá &amp; tự sửa</span>
+<span class="badge">Số nguyên 100%</span>
+</div>
+</div>
+<div class="page-shell"><aside class="toc"><div class="toc-title">Mục lục nhanh</div><nav><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-1">1 Bài toán</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-2">2 Nền tảng — Bộ điều khiển PID 2-DOF</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-3">3 Nhìn trước — Lookahead</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-4">4 Tự dò tham số — Relay Autotune</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-5">5 Tự đánh giá &amp; tự sửa điểm khác biệt</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-6">6 Nhiều mức nhiệt — Gain Scheduling</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-7">7 An toàn nhiều lớp</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-8">8 Kết quả đo thực tế</a><a href="file:///C:/Users/truon/AppData/Local/Temp/MicrosoftEdgeDownloads/282abd38-3fd3-4555-b2aa-e9f619db0299/preheat_pid_gioi_thieu_otesla_sinh_dong.html#section-9">9 Ứng dụng tương lai</a></nav></aside><div class="wrap">
+<p class="lead reveal show">Tài liệu này dành cho kỹ sư: giải thích nguyên lý, công bố ưu điểm và định hướng phát triển của tính năng PID Preheat — kết quả của quá trình hiệu chỉnh trên máy rang thật.</p>
+<!-- 1 -->
+<h2 id="section-1" class="reveal show"><span class="n">1</span> Bài toán</h2>
+<p class="reveal show">Trước mỗi mẻ rang, máy cần <b>làm nóng buồng rang tới một nhiệt độ đặt (SV)</b> — ví dụ 190°C — rồi <b>giữ ổn định</b> ở đó. Nghe đơn giản, nhưng máy rang gas là một đối tượng điều khiển <b>khó</b>:</p>
+<div class="grid">
+<div class="card reveal show"><div class="ic">🔥</div><h4>Quán tính nhiệt lớn</h4><p class="reveal show">Tắt gas rồi nhiệt độ vẫn trôi lên vài chục độ do trống và buồng đốt tích nhiệt.</p></div>
+<div class="card reveal show"><div class="ic">📈</div><h4>Phi tuyến</h4><p class="reveal show">Đặc tính ở 160°C khác hẳn 240°C — một bộ tham số khó phục vụ cả dải.</p></div>
+<div class="card reveal show"><div class="ic">🌬️</div><h4>Nhiễu &amp; xáo trộn</h4><p class="reveal show">Gió, áp gas, cảm biến trễ — output dễ dao động nếu điều khiển thô.</p></div>
+<div class="card reveal show"><div class="ic">⚙️</div><h4>Mỗi máy một khác</h4><p class="reveal show">Đầu đốt, công suất, kích cỡ trống khác nhau giữa các máy.</p></div>
+</div>
+<p class="reveal show">Cách cũ: kỹ thuật viên chỉnh gas bằng tay, dựa kinh nghiệm — chậm, không lặp lại được, mỗi người một kiểu. Mục tiêu của tính năng này: <b>máy tự làm nóng đến đúng SV và giữ trong ±2°C, không cần can thiệp tay.</b></p>
+<!-- 2 -->
+<h2 id="section-2" class="reveal show"><span class="n">2</span> Nền tảng — Bộ điều khiển PID 2-DOF</h2>
+<p class="reveal show">Lõi là bộ PID (Proportional–Integral–Derivative) — chuẩn công nghiệp. Mỗi giây tính sai số và điều chỉnh gas:</p>
+<div class="formula reveal show">
+output = <b>P</b> + <b>I</b> + <b>D</b><br>
+<b>P</b> = Kp · (β·SV − BT) &nbsp;&nbsp;<span style="color:#6e7681">// tỉ lệ — phản ứng theo độ lệch hiện tại</span><br>
+<b>I</b> = Ki · Σ(sai_số·dt) &nbsp;&nbsp;<span style="color:#6e7681">// tích phân — triệt tiêu lệch tĩnh</span><br>
+<b>D</b> = Kd · (−ΔBT/dt) &nbsp;&nbsp;&nbsp;<span style="color:#6e7681">// vi phân trên đo lường (DoM) — phanh trước khi vọt</span>
+</div>
+<p class="reveal show">Output &gt; 0 → mở gas theo %; output &lt; 0 → cắt gas và tăng gió để hạ nhiệt. Tín hiệu ra DAC 0–10V (0–100%).</p>
+<h3 class="reveal show">Những tinh chỉnh mượn từ Artisan &amp; Hanyoung</h3>
+<table class="reveal show">
+<tbody><tr><th>Kỹ thuật</th><th>Vai trò</th></tr>
+<tr><td><b>2-DOF (trọng số β)</b></td><td>Làm dịu phản ứng khi SV lớn → giảm vọt lố lúc đi lên, không hy sinh khả năng giữ.</td></tr>
+<tr><td><b>DoM</b> (Derivative on Measurement)</td><td>Tính vi phân trên BT thay vì trên sai số → tránh "derivative kick" khi đổi setpoint.</td></tr>
+<tr><td><b>Anti-windup + back-calculation</b></td><td>Chặn tích phân phình to khi gas đã bão hòa → không vọt lố sau khi tới đích.</td></tr>
+<tr><td><b>Trần tích phân động</b></td><td>Nâng giới hạn I đúng bằng phần β làm hụt → giữ chính xác kể cả ở nhiệt độ cao.</td></tr>
+<tr><td><b>Lọc EMA</b> (D &amp; output)</td><td>Thay bộ lọc IIR của Artisan — nhẹ cho vi điều khiển, vẫn lọc nhiễu cảm biến.</td></tr>
+<tr><td><b>Phát hiện spike</b></td><td>BT nhảy bất thường (nhiễu) → giảm tác động D 70%, tránh giật.</td></tr>
+</tbody></table>
+<p class="tag reveal show">Toàn bộ tính bằng số nguyên 32-bit (hệ số ×1000) vì STM32F103 không có bộ tính số thực.</p>
+<!-- 3 -->
+<h2 id="section-3" class="reveal show"><span class="n">3</span> Nhìn trước — Lookahead</h2>
+<p class="reveal show">Thay vì để PID đợi BT lệch khỏi target mới phản ứng, hệ thống dựng <b>đường tiến độ tuyến tính</b> từ nhiệt độ hiện tại tới SV trong 3 phút, và điều khiển PID bám theo <b>điểm phía trước 6 giây</b>. Hiệu quả: máy "biết" nó cần ở đâu sắp tới → đốt sớm, lên đúng nhịp, đạt SV gọn gàng đúng phút thứ 3 rồi chuyển sang giữ nhiệt.</p>
+<!-- 4 -->
+<h2 id="section-4" class="reveal show"><span class="n">4</span> Tự dò tham số — Relay Autotune</h2>
+<p class="reveal show">Đây là điểm cốt lõi: <b>máy tự tìm ra Kp, Ki, Kd</b> thay vì người chỉnh tay. Dùng phương pháp <b>relay (Ziegler-Nichols / limit cycle)</b> — đúng nguyên lý đồng hồ công nghiệp Hanyoung VX4:</p>
+<div class="timeline reveal show">
+<div class="tl"><div class="t">Bước 1 — Mồi lửa</div><h4>Thổi sạch buồng đốt rồi mồi</h4><p class="reveal show">Đảm bảo an toàn trước khi cấp nhiệt.</p></div>
+<div class="tl"><div class="t">Bước 2 — Dao động đo</div><h4>Cho gas nhảy 2 mức quanh điểm dò</h4><p class="reveal show">BT dao động hình sin. Đo biên độ <code>a</code> và chu kỳ <code>Pu</code> qua vài chu kỳ → suy ra "tính cách nhiệt" của máy.</p></div>
+<div class="tl"><div class="t">Bước 3 — Tính hệ số</div><h4>Ziegler-Nichols → Kp, Ki, Kd</h4><p class="reveal show"><code>Ku = 4d/(π·a)</code> → Kp=0.6Ku, Ki=2Kp/Pu, Kd=0.125·Kp·Pu.</p></div>
+<div class="tl"><div class="t">Bước 4 — Lưu &amp; chạy</div><h4>Ghi vào thẻ SD, chuyển sang giữ nhiệt</h4><p class="reveal show">Lần sau dùng lại, không dò lại nữa.</p></div>
+</div>
+<div class="box note reveal show"><b>Low PV mode:</b> việc dò được thực hiện ở nhiệt độ <b>thấp hơn SV</b> (theo công thức Hanyoung) để an toàn — tránh vọt nhiệt khi đang thử nghiệm. Dò xong PID mới kéo lên SV thật.</div>
+<!-- 5 -->
+<h2 id="section-5" class="reveal show"><span class="n">5</span> Tự đánh giá &amp; tự sửa <span class="tag">điểm khác biệt</span></h2>
+<p class="reveal show">Khác với autotune thông thường (dò một lần rồi thôi), hệ thống này <b>tự chấm điểm chính nó</b> sau mỗi lần preheat:</p>
+<ul>
+<li>Đo độ lệch lớn nhất khi giữ nhiệt (sau khi đã ổn định).</li>
+<li><b>Đạt ±2°C</b> → giữ bộ hệ số.</li>
+<li><b>Lệch quá ±2°C</b> → tự xóa hệ số mức đó → lần sau <b>tự dò lại</b>.</li>
+</ul>
+<div class="box win reveal show"><b>Hệ quả thực tế:</b> Người vận hành chỉ bấm một nút "Preheat". Đổi đầu đốt, đổi điều kiện → PID cũ không còn chuẩn → máy tự nhận ra và tự hiệu chỉnh lại. <b>Không cần kỹ thuật viên, không cần đụng vào thẻ nhớ.</b></div>
+<!-- 6 -->
+<h2 id="section-6" class="reveal show"><span class="n">6</span> Nhiều mức nhiệt — Gain Scheduling</h2>
+<p class="reveal show">Vì máy phi tuyến, một bộ hệ số không phục vụ tốt cả 160°C lẫn 240°C. Hệ thống lưu <b>bảng hệ số theo từng mức SV</b> (giống cơ chế n.PID 4 bộ của Hanyoung):</p>
+<div class="formula reveal show">
+/pid_pre.txt:<br>
+&nbsp;&nbsp;240, kp, ki, kd<br>
+&nbsp;&nbsp;170, kp, ki, kd
+  </div>
+<p class="reveal show">Khách luân phiên 240/170: mỗi mức dò <b>một lần duy nhất</b>, sau đó tra bảng dùng lại — <b>không bao giờ phải dò lại</b> khi đổi qua lại.</p>
+<!-- 7 -->
+<h2 id="section-7" class="reveal show"><span class="n">7</span> An toàn nhiều lớp</h2>
+<div class="grid">
+<div class="card reveal show"><div class="ic">🛡️</div><h4>Trần riêng cho PID</h4><p class="reveal show">BT vượt SV+15°C → cắt gas, thổi gió mạnh ngay.</p></div>
+<div class="card reveal show"><div class="ic">⚠️</div><h4>Bảo vệ chênh lệch</h4><p class="reveal show">|ET − BT| &gt; 160°C → hủy preheat, đóng gas.</p></div>
+<div class="card reveal show"><div class="ic">🔻</div><h4>Cắt cứng phần cứng (ISR)</h4><p class="reveal show">BT&gt;250°C hoặc ET&gt;350°C → ngắt gas tức thì.</p></div>
+<div class="card reveal show"><div class="ic">⏱️</div><h4>Chống kẹt</h4><p class="reveal show">Dò không tiến triển → tự bỏ, dùng hệ số dự phòng.</p></div>
+</div>
+<!-- 8 -->
+<h2 id="section-8" class="reveal show"><span class="n">8</span> Kết quả đo thực tế</h2>
+<div class="kpi reveal show">
+<div class="k"><div class="v">±0.4°C</div><div class="l">Độ ổn định khi giữ nhiệt (đo thật, mục tiêu ±2°C)</div></div>
+<div class="k"><div class="v">1 nút</div><div class="l">Thao tác của người vận hành</div></div>
+<div class="k"><div class="v">~3 phút</div><div class="l">Đạt setpoint (tùy công suất đầu đốt)</div></div>
+<div class="k"><div class="v">20 KB</div><div class="l">Toàn bộ chạy gọn trong RAM vi điều khiển</div></div>
+</div>
+<div class="box win reveal show"><b>Ưu điểm tổng hợp:</b> chính xác (±2°C), lặp lại được giữa các mẻ, tự thích nghi máy/đầu đốt, không phụ thuộc kinh nghiệm thợ, và minh bạch (ghi log từng bước để kỹ sư kiểm chứng).</div>
+<!-- 9 -->
+<h2 id="section-9" class="reveal show"><span class="n">9</span> Ứng dụng tương lai</h2>
+<div class="grid">
+<div class="card reveal show"><div class="ic">🤖</div><h4>Tự thích nghi mức tune</h4><p class="reveal show">Tự điều chỉnh biên độ relay theo công suất đầu đốt thực tế — autotune chạy tốt trên mọi máy không cần chỉnh tay.</p></div>
+<div class="card reveal show"><div class="ic">📊</div><h4>Học theo profile rang</h4><p class="reveal show">Mở rộng PID để bám đường cong rang động (ramp/soak) thay vì chỉ giữ một điểm — điều khiển toàn mẻ rang.</p></div>
+<div class="card reveal show"><div class="ic">🌡️</div><h4>Đa cảm biến / đa vùng</h4><p class="reveal show">Áp dụng cùng kiến trúc cho ET, drum, gió — điều khiển phối hợp nhiều biến.</p></div>
+<div class="card reveal show"><div class="ic">☁️</div><h4>Đám mây &amp; theo dõi từ xa</h4><p class="reveal show">Gửi log hệ số &amp; chất lượng tune lên server → giám sát đội máy, cảnh báo khi đầu đốt suy giảm.</p></div>
+<div class="card reveal show"><div class="ic">🔁</div><h4>Nhân rộng nhiều model máy</h4><p class="reveal show">Kiến trúc cấu hình hóa — chuyển sang model rang khác chỉ bằng đổi file cấu hình.</p></div>
+<div class="card reveal show"><div class="ic">🧠</div><h4>Học liên tục</h4><p class="reveal show">Tích lũy dữ liệu nhiều mẻ để tinh chỉnh hệ số ngày càng tối ưu theo thời gian sử dụng.</p></div>
+</div>
+<div class="foot reveal show">
+    OTL-06ALS Coffee Roaster CMS — PID Preheat tự học · Tài liệu kỹ thuật<br>
+    Lõi điều khiển port &amp; hiệu chỉnh từ Artisan PID (2-DOF) và Hanyoung VX4 (relay autotune), tối ưu cho STM32F103.
+  <br><br><b>CÔNG TY TNHH CÔNG NGHIỆP O TESLA</b> · MST: 0314844413 · 0333879199 - Thành · otesla.vn@gmail.com</div>
+</div></div>
+<button aria-label="Lên đầu trang" class="to-top" id="toTop">↑</button><script>
+(function(){
+  const bar = document.getElementById('progressbar');
+  const toTop = document.getElementById('toTop');
+  function onScroll(){
+    const h = document.documentElement;
+    const max = h.scrollHeight - h.clientHeight;
+    const pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
+    if(bar) bar.style.width = pct + '%';
+    if(toTop) toTop.classList.toggle('show', h.scrollTop > 500);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+  if(toTop) toTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+  const targets = document.querySelectorAll('h2,h3,p,.card,.box,.timeline,.formula,table,.kpi,.lead,.foot');
+  targets.forEach(el=>el.classList.add('reveal'));
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('show'); io.unobserve(e.target); } });
+    },{threshold:.08,rootMargin:'0px 0px -8% 0px'});
+    targets.forEach(el=>io.observe(el));
+  } else {
+    targets.forEach(el=>el.classList.add('show'));
+  }
+})();
+</script>
+
+</body></html>

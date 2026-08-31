@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nguyên lý PID Preheat — Tài liệu kỹ thuật nội bộ | OTL-06ALS</title>
+<style>
+
+  :root{
+    --bg:#07090f;
+    --bg2:#0d1117;
+    --panel:#111827cc;
+    --panel2:#161b22;
+    --panel3:#0b1220;
+    --line:#263244;
+    --line2:#334155;
+    --text:#e6edf3;
+    --muted:#9aa7b6;
+    --soft:#c9d1d9;
+    --blue:#58a6ff;
+    --cyan:#2dd4bf;
+    --green:#3fb950;
+    --yellow:#e3b341;
+    --orange:#ffa657;
+    --red:#ff7b72;
+    --violet:#a78bfa;
+    --shadow:0 24px 70px rgba(0,0,0,.38);
+    --radius:22px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Segoe UI",Arial,sans-serif;
+    background:
+      radial-gradient(circle at 12% 5%,rgba(88,166,255,.22),transparent 34%),
+      radial-gradient(circle at 85% 8%,rgba(45,212,191,.16),transparent 32%),
+      radial-gradient(circle at 74% 45%,rgba(167,139,250,.12),transparent 28%),
+      linear-gradient(180deg,#07090f 0%,#0d1117 38%,#090d14 100%);
+    color:var(--soft);
+    line-height:1.75;
+    font-size:15px;
+    overflow-x:hidden;
+  }
+  body:before{
+    content:"";
+    position:fixed;inset:0;pointer-events:none;opacity:.22;z-index:-1;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:linear-gradient(to bottom,black 0%,transparent 82%);
+  }
+  .reading-progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));z-index:1000;box-shadow:0 0 24px rgba(45,212,191,.55)}
+  .wrap{max-width:1050px;margin:0 auto;padding:0 24px 96px;position:relative}
+  header{
+    position:relative;
+    padding:34px 20px 32px;
+    border-bottom:1px solid rgba(148,163,184,.18);
+    margin-bottom:22px;
+    overflow:hidden;
+  }
+  header:before{
+    content:"";position:absolute;inset:18px 24px auto 24px;height:260px;border-radius:34px;
+    background:linear-gradient(135deg,rgba(31,111,235,.24),rgba(45,212,191,.10) 48%,rgba(255,166,87,.08));
+    border:1px solid rgba(148,163,184,.18);
+    box-shadow:var(--shadow);
+    z-index:-1;
+  }
+  header:after{
+    content:"PID";position:absolute;right:7%;top:42px;font-size:128px;line-height:1;font-weight:900;letter-spacing:-10px;color:rgba(255,255,255,.035);z-index:-1;
+  }
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+  .brand-left{display:flex;align-items:center;gap:14px}
+  .logo-mark{width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#58a6ff,#2dd4bf);display:grid;place-items:center;color:#07111f;font-weight:1000;font-size:23px;box-shadow:0 14px 36px rgba(88,166,255,.24)}
+  .brand-name{font-size:16px;font-weight:900;color:#fff;letter-spacing:.3px;text-transform:uppercase}
+  .brand-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .brand-pill{font-size:12px;color:#b7f7ed;border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.10);padding:7px 12px;border-radius:999px;backdrop-filter:blur(10px)}
+  header h1{font-size:clamp(30px,5vw,54px);color:#fff;font-weight:950;letter-spacing:-1.8px;line-height:1.05;max-width:860px;text-shadow:0 12px 34px rgba(0,0,0,.28)}
+  header .meta{color:#9fb5cc;font-size:13px;margin-top:12px;font-family:Consolas,"SFMono-Regular",monospace;letter-spacing:.15px}
+  header .scope{margin-top:18px;background:rgba(7,12,21,.62);border:1px solid rgba(148,163,184,.24);border-left:5px solid var(--cyan);border-radius:18px;padding:16px 18px;font-size:14px;color:#d5dde8;box-shadow:0 14px 34px rgba(0,0,0,.20);backdrop-filter:blur(14px)}
+  .company-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px;background:rgba(13,17,23,.65);border:1px solid rgba(148,163,184,.20);border-radius:20px;padding:16px;box-shadow:0 16px 44px rgba(0,0,0,.22);backdrop-filter:blur(12px)}
+  .company-card .item{display:flex;gap:10px;align-items:flex-start;color:#dbeafe;font-size:13px;min-width:0}
+  .company-card .ico{width:26px;height:26px;border-radius:9px;background:rgba(88,166,255,.12);display:grid;place-items:center;flex:0 0 auto}
+  .company-card b{color:#fff;font-weight:800}
+  .company-card span:last-child{overflow-wrap:anywhere}
+  .toc{position:relative;top:auto;z-index:1;background:rgba(17,24,39,.86);border:1px solid rgba(148,163,184,.22);border-radius:22px;padding:18px 22px;margin:28px 0 32px;box-shadow:0 18px 55px rgba(0,0,0,.26);backdrop-filter:blur(16px)}
+  .toc h4{color:#fff;margin:0 0 10px;font-size:16px;display:flex;align-items:center;gap:8px}
+  .toc h4:before{content:"☰";font-size:16px;color:var(--cyan)}
+  .toc ol{margin-left:20px;columns:2;column-gap:32px}.toc li{break-inside:avoid;margin:4px 0}.toc a{color:#9bd5ff;text-decoration:none;border-bottom:1px dashed transparent;transition:.2s}.toc a:hover{color:#fff;border-bottom-color:rgba(45,212,191,.7)}
+  h2{font-size:clamp(22px,3vw,31px);color:#fff;margin:48px 0 10px;padding-top:26px;border-top:1px solid rgba(148,163,184,.16);letter-spacing:-.4px;display:flex;align-items:center;gap:10px;scroll-margin-top:135px}
+  h2:before{content:"";width:11px;height:30px;border-radius:999px;background:linear-gradient(180deg,var(--blue),var(--cyan));box-shadow:0 0 26px rgba(45,212,191,.35);flex:0 0 auto}
+  h3{font-size:19px;color:#f3cd68;margin:28px 0 8px;letter-spacing:-.1px}
+  h4{font-size:15.5px;color:#8fd3ff;margin:18px 0 6px;font-weight:800}
+  p{margin:11px 0;color:#d2d9e4}
+  b{color:#fff}
+  code{font-family:Consolas,"SFMono-Regular",monospace;background:rgba(7,12,21,.72);color:#8df5a6;padding:2px 7px;border-radius:7px;font-size:13px;border:1px solid rgba(148,163,184,.18);white-space:nowrap}
+  pre{position:relative;background:linear-gradient(180deg,#07101e,#070b13);border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:18px 18px;margin:16px 0;overflow-x:auto;font-family:Consolas,"SFMono-Regular",monospace;font-size:13px;color:#e6edf3;line-height:1.55;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 16px 40px rgba(0,0,0,.18)}
+  pre:before{content:"CODE";position:absolute;right:14px;top:8px;color:rgba(148,163,184,.45);font-size:10px;letter-spacing:.12em}
+  pre .c{color:#7d8590} pre .k{color:#ff8a80} pre .n{color:#91d7ff}
+  .formula{position:relative;background:linear-gradient(135deg,rgba(7,12,21,.95),rgba(15,23,42,.92));border:1px solid rgba(88,166,255,.28);border-left:5px solid var(--blue);border-radius:18px;padding:17px 20px;margin:16px 0;font-family:Consolas,"SFMono-Regular",monospace;font-size:14.5px;color:#eef6ff;overflow-x:auto;box-shadow:0 16px 42px rgba(0,0,0,.20)}
+  .formula:after{content:"ƒ";position:absolute;right:18px;bottom:6px;font-size:34px;color:rgba(88,166,255,.13);font-family:Georgia,serif}
+  .formula b{color:#ffbc75}
+  table{border-collapse:separate;border-spacing:0;width:100%;margin:18px 0;font-size:13.7px;background:rgba(17,24,39,.55);border:1px solid rgba(148,163,184,.20);border-radius:18px;overflow:hidden;box-shadow:0 15px 40px rgba(0,0,0,.16)}
+  th,td{border-bottom:1px solid rgba(148,163,184,.16);padding:11px 13px;text-align:left;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  th{background:linear-gradient(180deg,rgba(30,41,59,.95),rgba(15,23,42,.92));color:#a9ddff;font-weight:800;letter-spacing:.1px}
+  td{color:#d4dbe6} td code{font-size:12px}
+  tr:hover td{background:rgba(88,166,255,.035)}
+  .box{position:relative;border-radius:18px;padding:16px 18px 16px 20px;margin:18px 0;font-size:14px;box-shadow:0 14px 38px rgba(0,0,0,.16);overflow:hidden}
+  .box:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:currentColor;opacity:.9}
+  .box.why{background:rgba(15,23,42,.76);border:1px solid rgba(88,166,255,.27);color:#7cc4ff}.box.why b{color:#9bd5ff}
+  .box.warn{background:rgba(38,19,22,.74);border:1px solid rgba(248,81,73,.30);color:#ff938b}.box.warn b{color:#ffaaa4}
+  .box.note{background:rgba(34,27,12,.74);border:1px solid rgba(227,179,65,.32);color:#f0c450}.box.note b{color:#ffd56d}
+  ul{margin:12px 0 12px 26px}li{margin:6px 0;color:#d3d9e3}li::marker{color:var(--cyan)}
+  .sm{font-size:12.8px;color:#a1adba}
+  .sm-flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0;font-family:Consolas,"SFMono-Regular",monospace;font-size:13px;background:rgba(17,24,39,.55);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:15px;box-shadow:0 16px 38px rgba(0,0,0,.16)}
+  .st{background:rgba(15,23,42,.86);border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px 12px;color:#e6edf3;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+  .st.hot{border-color:rgba(248,81,73,.5);color:#ff9b94;background:rgba(248,81,73,.08)}.st.tune{border-color:rgba(227,179,65,.55);color:#f3cd68;background:rgba(227,179,65,.08)}.st.ok{border-color:rgba(63,185,80,.55);color:#8df5a6;background:rgba(63,185,80,.08)}
+  .arr{color:#9aa7b6;font-size:18px}
+  .section-card{background:rgba(8,13,23,.38)}
+  .floating-tools{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:50}
+  .tool-btn{width:46px;height:46px;border:1px solid rgba(148,163,184,.24);border-radius:15px;background:rgba(17,24,39,.82);color:#dbeafe;box-shadow:0 15px 40px rgba(0,0,0,.28);backdrop-filter:blur(14px);cursor:pointer;font-size:18px;transition:.2s}
+  .tool-btn:hover{transform:translateY(-2px);border-color:rgba(45,212,191,.5);color:#fff}
+  .copy-btn{position:absolute;right:52px;top:8px;border:1px solid rgba(148,163,184,.24);background:rgba(15,23,42,.75);color:#cbd5e1;border-radius:999px;padding:3px 9px;font-size:11px;cursor:pointer}
+  .copy-btn:hover{color:#fff;border-color:rgba(45,212,191,.55)}
+  a{color:#9bd5ff}
+  ::selection{background:rgba(45,212,191,.30);color:#fff}
+  @media(max-width:760px){
+    header{padding:24px 14px 26px} header:before{inset:10px 12px auto 12px;height:360px} header:after{font-size:80px;right:10px;top:70px}
+    .wrap{padding:0 16px 82px}.brandbar{align-items:flex-start}.brand-pill{width:100%;text-align:center}.company-card{grid-template-columns:1fr}.toc{position:relative;top:auto}.toc ol{columns:1}table{font-size:12.8px}th,td{padding:9px}.floating-tools{right:12px;bottom:12px}.tool-btn{width:42px;height:42px}
+  }
+  @media print{
+    body{background:#fff;color:#111}.reading-progress,.floating-tools{display:none}.toc{position:relative;box-shadow:none}header:before,header:after,body:before{display:none}header,.wrap{max-width:none}.box,table,pre,.formula,.toc,.company-card{box-shadow:none;break-inside:avoid}a{color:#0645ad}
+  }
+
+</style>
+</head>
+<body>
+<div class="reading-progress" id="readingProgress"></div>
+<header>
+  <div class="wrap" style="padding:0">
+    <div class="brandbar">
+      <div class="brand-left">
+        <div class="logo-mark">OT</div>
+        <div>
+          <div class="brand-name">CÔNG TY TNHH CÔNG NGHIỆP O TESLA</div>
+          <div class="brand-sub">MST: 0314844413 · Tài liệu kỹ thuật nội bộ</div>
+        </div>
+      </div>
+      <div class="brand-pill">PID Preheat · OTL-06ALS · STM32F103RC</div>
+    </div>
+    <h1>Nguyên lý PID Preheat — Tài liệu kỹ thuật nội bộ</h1>
+    <div class="meta">OTL-06ALS Coffee Roaster CMS · include/Preheat_PID.h + Config.h · STM32F103RC</div>
+    <div class="scope"><b>Phạm vi:</b> tài liệu này dành cho kỹ sư trong nhóm, giải thích cặn kẽ cách hoạt động thực tế của khối preheat PID — kiến trúc, toán học, từng tinh chỉnh và <i>lý do</i>, cùng giới hạn đã biết. Đọc kèm mã nguồn <code>Preheat_PID.h</code>.</div>
+    <div class="company-card">
+      <div class="item"><span class="ico">📍</span><span><b>Địa chỉ:</b> Số 44 Đường N5, Khu phố Tân Phước, Phường Tân Đông Hiệp, Thành phố Hồ Chí Minh, Việt Nam</span></div>
+      <div class="item"><span class="ico">✉️</span><span><b>Mail:</b> otesla.vn@gmail.com</span></div>
+      <div class="item"><span class="ico">☎️</span><span><b>SDT:</b> 0333879199 - Thành</span></div>
+      <div class="item"><span class="ico">🏭</span><span><b>Đơn vị:</b> CÔNG TY TNHH CÔNG NGHIỆP O TESLA</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="toc">
+    <h4>Mục lục</h4>
+    <ol>
+      <li><a href="#kt">Kiến trúc &amp; quy ước dữ liệu</a></li>
+      <li><a href="#sm">Máy trạng thái</a></li>
+      <li><a href="#pid">Lõi PID — toán học chi tiết</a></li>
+      <li><a href="#dom">Vi phân DoM &amp; lọc nhiễu</a></li>
+      <li><a href="#wind">Chống windup &amp; trần tích phân động</a></li>
+      <li><a href="#look">Lookahead — đường tiến độ</a></li>
+      <li><a href="#tune">Relay Autotune (Ziegler-Nichols + Low PV)</a></li>
+      <li><a href="#gs">Gain scheduling theo SV</a></li>
+      <li><a href="#eval">Tự đánh giá &amp; tự sửa</a></li>
+      <li><a href="#safe">An toàn</a></li>
+      <li><a href="#cfg">Bảng tham số Config</a></li>
+      <li><a href="#lim">Giới hạn đã biết &amp; hướng chỉnh</a></li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="kt">1. Kiến trúc &amp; quy ước dữ liệu</h2>
+  <p>Hàm <code>preheat()</code> được gọi từ <code>programScan()</code> mỗi vòng <code>loop()</code>, nhưng <b>tự throttle 1 Hz</b> (chỉ xử lý logic mỗi giây một lần bằng mốc <code>millis()</code>). Giữa các tick, output gas/air giữ nguyên giá trị gần nhất.</p>
+  <h4>Quy ước đơn vị (rất quan trọng khi đọc code)</h4>
+  <table>
+    <tr><th>Đại lượng</th><th>Đơn vị lưu</th><th>Ví dụ</th></tr>
+    <tr><td>Nhiệt độ BT/ET (<code>bt10</code>, <code>targetBT10</code>)</td><td><b>×10</b> (0.1°C)</td><td>1900 = 190.0°C</td></tr>
+    <tr><td>Hệ số PID (<code>phKp</code>, <code>phKi</code>, <code>phKd</code>)</td><td><b>×1000</b></td><td>15000 = Kp 15.0</td></tr>
+    <tr><td>β (<code>PH_PID_BETA</code>)</td><td><b>×100</b></td><td>95 = 0.95</td></tr>
+    <tr><td>Tích phân nội bộ (<code>phPidInteg</code>)</td><td><b>×100</b> (đơn vị output%)</td><td>giữ phần lẻ</td></tr>
+    <tr><td>Output / gas / air</td><td>% nguyên</td><td>0–100</td></tr>
+  </table>
+  <div class="box warn"><b>Vì sao toàn số nguyên:</b> STM32F103 <b>không có FPU</b> — tính số thực (float) chậm và tốn. Mọi phép tính dùng <code>int32_t</code>, hệ số nhân sẵn ×1000/×100 rồi chia lại khi cần. Thứ tự nhân/chia phải cẩn thận để (a) không tràn int32 (~±2,1 tỷ), (b) không mất phần lẻ do làm tròn nguyên.</div>
+
+  <!-- 2 -->
+  <h2 id="sm">2. Máy trạng thái</h2>
+  <div class="sm-flow">
+    <span class="st">IDLE</span><span class="arr">→</span>
+    <span class="st hot">COOLING<sup>*</sup></span><span class="arr">→</span>
+    <span class="st">PRE_IGNITE</span><span class="arr">→</span>
+    <span class="st hot">IGNITE</span><span class="arr">→</span>
+    <span class="st tune">TUNE<sup>**</sup></span><span class="arr">→</span>
+    <span class="st">HEATING</span><span class="arr">→</span>
+    <span class="st ok">HOLDING</span>
+  </div>
+  <p class="sm"><sup>*</sup> COOLING chỉ chạy nếu lúc bắt đầu BT đã cao hơn target (cần hạ trước khi mồi). &nbsp; <sup>**</sup> TUNE chỉ chạy nếu mức SV này <b>chưa có trong bảng hệ số</b> và máy đủ nguội; ngược lại vào thẳng HEATING.</p>
+  <table>
+    <tr><th>Trạng thái</th><th>Hành vi</th></tr>
+    <tr><td><code>WU_IDLE</code></td><td>Nhận quyền điều khiển gas/air (SOURCE_AI_AUTO), tắt vacuum PID, chọn nhánh: nóng→COOLING, nguội→PRE_IGNITE.</td></tr>
+    <tr><td><code>WU_COOLING</code></td><td>Gas=0, gió mạnh hạ nhiệt tới khi BT ≤ target.</td></tr>
+    <tr><td><code>WU_PRE_IGNITE</code></td><td>Thổi sạch buồng đốt <code>PH_PURGE_MS</code> (8s) trước khi mở van gas — an toàn cháy nổ.</td></tr>
+    <tr><td><code>WU_IGNITE</code></td><td>Mở 30% gas mồi lửa, chờ <code>gasSignal</code>; thất bại thử lại tối đa 3 lần.</td></tr>
+    <tr><td><code>WU_TUNE</code></td><td>Relay autotune — dò Kp/Ki/Kd (xem mục 7).</td></tr>
+    <tr><td><code>WU_HEATING</code></td><td>PID kéo BT lên target (dùng lookahead + bộ HEAT gains).</td></tr>
+    <tr><td><code>WU_HOLDING</code></td><td>PID giữ BT tại target (chuyển sang bộ HOLD gains). Vào HOLD khi |BT−target| ≤ ±3°C lần đầu.</td></tr>
+  </table>
+
+  <!-- 3 -->
+  <h2 id="pid">3. Lõi PID — toán học chi tiết</h2>
+  <p>Chu kỳ tính: mỗi <code>PH_PID_EVAL_SEC</code> = 1 giây. <code>dt</code> = số giây trôi qua (kẹp ≥1 chống chia 0). Sai số:</p>
+  <div class="formula">e = svEff − bt10 &nbsp;&nbsp;<span style="color:#6e7681">// svEff = setpoint hiệu dụng (lookahead, mục 6)</span></div>
+
+  <h4>Thành phần Tỉ lệ (P) — có trọng số β (2-DOF)</h4>
+  <div class="formula">
+pInput = (β · targetBT10)/100 − bt10<br>
+<b>prop</b> = phKp · pInput / 10000
+  </div>
+  <div class="box warn"><b>Bẫy đã sửa:</b> β phải nhân với <b>target THẬT</b> (<code>targetBT10</code>), KHÔNG nhân với <code>svEff</code> (lookahead). Nếu nhân svEff — vốn luôn sát BT — thì β&lt;1 làm prop âm dù BT còn thấp hơn target rất nhiều → cắt gas sai. Đây là lỗi từng gặp khi test (gas=0 suốt giai đoạn đầu).</div>
+  <p class="sm">Chia 10000 = /1000 (vì phKp ×1000) × /10 (vì e đơn vị 0.1°C, Artisan dùng °C). Bỏ sót /10 này từng làm PID mạnh gấp 10 lần (chạy như bật-tắt).</p>
+
+  <h4>Thành phần Tích phân (I) — lưu ở thang ×100</h4>
+  <div class="formula">
+<span style="color:#6e7681">if (không bão hòa):</span><br>
+phPidInteg += phKi · e · dt / 100 &nbsp;&nbsp;<span style="color:#6e7681">// thang ×100</span><br>
+phPidInteg = constrain(phPidInteg, iMin, iMax)<br>
+iTerm = phPidInteg / 100
+  </div>
+  <div class="box warn"><b>Bẫy đã sửa:</b> nếu lưu I ở thang ×1 và tính <code>ki·e·dt/10000</code>, khi ki nhỏ kết quả <b>làm tròn về 0</b> → I không nhúc nhích, kẹt ở giá trị bão hòa vĩnh viễn. Giải pháp: lưu I ở <b>thang ×100</b> để giữ phần lẻ, chia 100 khi dùng.</div>
+
+  <h4>Tổng hợp</h4>
+  <div class="formula">out = prop + iTerm + deriv → lọc EMA → kẹp [−100, +100]</div>
+  <p>Ánh xạ output ra cơ cấu chấp hành:</p>
+  <pre><span class="k">if</span> (out &gt;= 0) { gas = out;        air = <span class="n">PH_AIR_BASE</span>;        } <span class="c">// đốt: gas theo %, gió nền 20%</span>
+<span class="k">else</span>          { gas = 0;          air = 20 − out;             } <span class="c">// vượt target: cắt gas, tăng gió hạ nhiệt</span></pre>
+
+  <!-- 4 -->
+  <h2 id="dom">4. Vi phân DoM &amp; lọc nhiễu</h2>
+  <p>Vi phân tính theo <b>Derivative on Measurement</b> (đạo hàm trên đo lường) — copy từ Artisan:</p>
+  <div class="formula">
+dBT = −(bt10 − bt10_trước)<br>
+<b>deriv</b> = phKd · dBT / (10000 · dt)
+  </div>
+  <div class="box why"><b>Vì sao tính trên BT, không trên sai số?</b> Nếu tính D trên <code>e = SV−BT</code>, mỗi khi đổi SV thì e nhảy bậc → D bắn một xung lớn ("derivative kick") → gas giật. Tính trên BT thì đổi SV không ảnh hưởng D (BT không nhảy theo). Khi SV cố định, <code>−ΔBT/dt</code> chính là <b>−RoR</b> (tốc độ tăng nhiệt) — D phanh trước khi BT vọt.</div>
+  <h4>Hai lớp bảo vệ D</h4>
+  <ul>
+    <li><b>Giới hạn độ dốc:</b> kẹp <code>|deriv|</code> chống giật khi BT nhảy mạnh.</li>
+    <li><b>Phát hiện spike:</b> giữ 5 mẫu BT gần nhất; nếu thay đổi hiện tại &gt; 2.5× trung bình các thay đổi gần &amp; &gt; 1.0°C → coi là nhiễu cảm biến → <b>giảm D còn 30%</b>.</li>
+  </ul>
+  <h4>Lọc EMA (thay IIR của Artisan)</h4>
+  <p>Artisan dùng bộ lọc IIR Butterworth (cần scipy). Trên vi điều khiển ta thay bằng <b>EMA</b> (trung bình trượt mũ) — chỉ 1 phép nhân:</p>
+  <div class="formula">EMA = EMA + α·(giá_trị_mới − EMA) &nbsp;&nbsp;<span style="color:#6e7681">// α(D)=0.40, α(output)=0.75</span></div>
+  <p class="sm">Lần đầu seed EMA = giá trị hiện tại để tránh giật cold-start. Áp cho cả D term và output.</p>
+
+  <!-- 5 -->
+  <h2 id="wind">5. Chống windup &amp; trần tích phân động</h2>
+  <h4>Anti-windup (_should_integrate)</h4>
+  <p>Không cộng vào I nếu output đã bão hòa và sai số sẽ làm tệ hơn:</p>
+  <pre>shouldInteg = !((outEstimate &gt;= 100 && e &gt; 0) ||
+                (outEstimate &lt;= -100 && e &lt; 0));</pre>
+
+  <h4>Back-calculation</h4>
+  <p>Khi output bị kẹp, trừ bớt I theo lượng thừa (factor 0.5) — kéo I về thực tế nhanh hơn:</p>
+  <div class="formula">if (out bị kẹp): phPidInteg −= (out − out_kẹp)·100/2</div>
+
+  <h4>Trần tích phân ĐỘNG — bù β (điểm tinh tế nhất)</h4>
+  <div class="box warn"><b>Vấn đề:</b> với β&lt;1, ở đúng target thì <code>prop = phKp·(β·target − target) = −phKp·target·(1−β)</code> — một lượng <b>ÂM cố định</b>. Lượng này tỉ lệ với target. Ở SV cao (vd 230°C) thâm hụt P ≈ 115% &gt; trần I cố định 100% → I không bù nổi → <b>BT kẹt mãi dưới target</b> (đã gặp thật: 230 kẹt ở 225).</div>
+  <p><b>Giải pháp (port Artisan <code>applyIntegralLimits</code>):</b> nâng trần I lên đúng bằng phần β làm hụt:</p>
+  <div class="formula">
+iExtra = phKp · targetBT10 / 10000 · (100−β)/100<br>
+<b>iMax</b> = (PH_PID_IMAX + iExtra) · 100<br>
+<b>iMin</b> = −PH_PID_IMAX · 100
+  </div>
+  <p>Nhờ vậy I có thể vượt 100% đúng lượng cần để triệt tiêu prop âm → giữ chính xác kể cả ở nhiệt độ cao.</p>
+
+  <!-- 6 -->
+  <h2 id="look">6. Lookahead — đường tiến độ</h2>
+  <p>Trong HEATING, setpoint hiệu dụng <code>svEff</code> không phải target ngay, mà là <b>điểm trên đường tiến độ tuyến tính</b> từ BT lúc vào HEATING (<code>phBtStart</code>) tới target trong <code>PH_DEADLINE_SEC</code> (180s = 3 phút), nhìn trước <code>PH_PID_LOOKAHEAD_SEC</code> (6s):</p>
+  <div class="formula">
+tAhead = wuElapsed + 6<br>
+<b>svEff</b> = phBtStart + (target − phBtStart) · tAhead / 180 &nbsp;&nbsp;<span style="color:#6e7681">// kẹp ≤ target</span>
+  </div>
+  <div class="box why"><b>Vì sao cần:</b> nếu PID dùng thẳng target làm setpoint, sai số e ban đầu rất lớn → gas max → vọt. Lookahead làm setpoint "đi cùng nhịp" với BT, đốt sớm theo tiến độ, đạt target gọn đúng phút 3. svEff dùng cho I và D; còn P dùng β·target (mục 3).</div>
+  <p class="sm">Quá mốc 3 phút hoặc khi đã HOLDING: <code>svEff = target</code> cố định.</p>
+
+  <!-- 7 -->
+  <h2 id="tune">7. Relay Autotune (Ziegler-Nichols + Low PV)</h2>
+  <p>Khi mức SV chưa có hệ số trong bảng và máy đủ nguội, hệ thống tự dò Kp/Ki/Kd bằng phương pháp <b>relay (limit cycle)</b> — giống đồng hồ Hanyoung VX4.</p>
+  <h4>Điểm dò Low PV</h4>
+  <div class="formula">SVt = FRL + (SV − FRL) · 0.9 &nbsp;&nbsp;<span style="color:#6e7681">// FRL = −200°C (K-type). Vd SV=190 → SVt=151</span></div>
+  <p>Dò ở nhiệt độ <b>thấp hơn SV</b> để an toàn (không vọt cao khi đang thử).</p>
+  <h4>Tạo dao động (relay 2 mức)</h4>
+  <pre>BT &lt; SVt → gas = 25%, air = 20%   <span class="c">// HI: đốt cho BT lên</span>
+BT &gt; SVt → gas = 0,   air = 100%  <span class="c">// LO: tắt gas + gió tối đa kéo BT xuống</span></pre>
+  <p>BT dao động hình sin quanh SVt. Mỗi lần BT cắt xuống dưới SVt = 1 <b>peak</b>. Bỏ peak đầu (chưa ổn định), lấy 2 chu kỳ sau để trung bình biên độ <code>a</code> và chu kỳ <code>Pu</code>.</p>
+  <h4>Công thức Ziegler-Nichols</h4>
+  <div class="formula">
+d = (25 − 0)/2 &nbsp; <span style="color:#6e7681">// biên độ relay</span><br>
+Ku = 4·d / (π·a)<br>
+Kp = 0.6·Ku &nbsp; Ki = 2·Kp/Pu &nbsp; Kd = 0.125·Kp·Pu
+  </div>
+  <p>Kết quả kẹp trong <code>[0.25×, 4×]</code> Config (rộng để thích nghi đầu đốt khác, vẫn chặn số vô lý), rồi lưu vào bảng. Sau đó vào HEATING bình thường.</p>
+  <div class="box note"><b>Chống kẹt:</b> máy quán tính lớn khi đã nóng có thể không tụt BT xuống dưới SVt được (gió 100% vẫn không đủ). Nếu ở mức LO liên tục &gt; <code>PH_TUNE_STUCK_SEC</code> (75s) → bỏ dò, dùng hệ số Config. Ngoài ra có timeout tổng 600s.</div>
+
+  <!-- 8 -->
+  <h2 id="gs">8. Gain scheduling theo SV</h2>
+  <p>Máy rang phi tuyến — một bộ hệ số không phục vụ tốt cả 160°C lẫn 240°C. Hệ thống lưu <b>bảng nhiều bộ hệ số HEAT theo mức SV</b> trên thẻ SD (giống n.PID của Hanyoung). Bộ HOLD dùng chung Config.</p>
+  <pre>/pid_pre.txt   <span class="c">// mỗi dòng: SV,kp,ki,kd</span>
+240,7500,300,15464
+170,7500,300,24440</pre>
+  <p>Khi preheat: tra bảng theo SV hiện tại (lệch ≤ <code>PH_SV_MATCH</code> = ±15°C coi là cùng mức).</p>
+  <table>
+    <tr><th>Tình huống</th><th>Xử lý</th></tr>
+    <tr><td>Có hệ số mức này</td><td>Dùng luôn → <b>bỏ tune</b></td></tr>
+    <tr><td>Chưa có + máy nguội</td><td>TUNE mức này → thêm vào bảng</td></tr>
+    <tr><td>Chưa có + máy nóng</td><td>Dùng Config tạm (không tune được lúc nóng)</td></tr>
+  </table>
+  <div class="box why"><b>Lợi ích:</b> khách luân phiên 240/170 — mỗi mức dò một lần, sau đó luân phiên <b>không tune lại</b>. Tối đa 8 mức (<code>PH_SV_TABLE_MAX</code>).</div>
+
+  <!-- 9 -->
+  <h2 id="eval">9. Tự đánh giá &amp; tự sửa</h2>
+  <p>Cuối mỗi lần preheat (hết thời gian), hệ thống tự chấm điểm chính nó theo <b>độ ổn định khi giữ nhiệt</b>:</p>
+  <ul>
+    <li>Đo <code>phHoldMaxDev</code> = độ lệch |BT−target| lớn nhất khi HOLDING — <b>bỏ qua 45s đầu</b> (<code>PH_HOLD_SETTLE_SEC</code>, giai đoạn chuyển tiếp chưa ổn định).</li>
+    <li>TỆ nếu: không vào nổi HOLD, HOẶC lệch &gt; <code>PH_TUNE_HOLD_DEV</code> (2°C).</li>
+    <li>TỆ → <b>xóa entry mức SV đó</b> khỏi bảng → lần sau tự tune lại. (Chỉ mức đó, mức khác giữ nguyên.)</li>
+    <li>TỐT mà chưa có entry → thêm hệ số hiện tại vào bảng.</li>
+  </ul>
+  <div class="box why"><b>Vì sao tốt:</b> người vận hành chỉ bấm 1 nút. Đổi đầu đốt → PID cũ không còn chuẩn → tự nhận BAD → tự dò lại. Không cần đụng thẻ SD, không cần kỹ thuật viên.</div>
+  <div class="box note"><b>Xử lý đổi SV giữa chừng:</b> nếu người dùng chỉnh setpoint khi đang chạy, hệ thống reset đo độ ổn định + grace (tránh transient đổi SV bị ghi nhầm là "dao động lớn" → báo BAD oan).</div>
+
+  <!-- 10 -->
+  <h2 id="safe">10. An toàn (nhiều lớp độc lập)</h2>
+  <table>
+    <tr><th>Lớp</th><th>Điều kiện</th><th>Hành động</th></tr>
+    <tr><td>Trần riêng PID</td><td>BT &gt; SV + 15°C (<code>PH_PID_OVERHEAT_GUARD</code>)</td><td>Cắt gas, gió mạnh ngay (không hủy preheat)</td></tr>
+    <tr><td>Bảo vệ chênh lệch</td><td>|ET − BT| &gt; 160°C (<code>PH_DIVERGE_LIMIT</code>)</td><td>Hủy preheat, đóng gas, báo lỗi</td></tr>
+    <tr><td>ISR phần cứng</td><td>BT &gt; 250°C hoặc ET &gt; 350°C</td><td>Cắt gas tức thì (qua fireCutFlag)</td></tr>
+    <tr><td>Chống kẹt tune</td><td>Relay LO &gt; 75s không tiến triển</td><td>Bỏ tune, dùng Config</td></tr>
+  </table>
+  <p class="sm">Lưu ý ISR: <code>timerPoll_1000ms()</code> chạy trong ngắt — không gọi Modbus/SD trong đó, dùng cờ (flag pattern).</p>
+
+  <!-- 11 -->
+  <h2 id="cfg">11. Bảng tham số Config</h2>
+  <table>
+    <tr><th>Tham số</th><th>Giá trị</th><th>Ý nghĩa</th></tr>
+    <tr><td><code>PREHEAT_USE_PID</code></td><td>1</td><td>1=bản PID này, 0=bản RoR forecast</td></tr>
+    <tr><td><code>PH_PID_KP/KI/KD</code></td><td>15000/150/20000</td><td>HEAT gains ×1000 (mặc định, autotune ghi đè)</td></tr>
+    <tr><td><code>PH_PID_KP/KI/KD_HOLD</code></td><td>10000/250/35000</td><td>HOLD gains ×1000 (chung mọi SV)</td></tr>
+    <tr><td><code>PH_PID_BETA</code></td><td>95</td><td>β ×100 = 0.95 (2-DOF)</td></tr>
+    <tr><td><code>PH_PID_IMAX</code></td><td>100</td><td>Trần tích phân nền (cộng thêm iExtra động)</td></tr>
+    <tr><td><code>PH_PID_LOOKAHEAD_SEC</code></td><td>6</td><td>Giây nhìn trước</td></tr>
+    <tr><td><code>PH_DEADLINE_SEC</code></td><td>180</td><td>Mốc đạt target (đường tiến độ 3 phút)</td></tr>
+    <tr><td><code>PH_EMA_D/OUT_ALPHA</code></td><td>40/75</td><td>α lọc EMA ×100</td></tr>
+    <tr><td><code>PH_TUNE_GAS_HI/LO</code></td><td>25/0</td><td>Mức gas relay khi tune (%)</td></tr>
+    <tr><td><code>PH_TUNE_AIR_HI/LO</code></td><td>20/100</td><td>Mức gió relay khi tune (%)</td></tr>
+    <tr><td><code>PH_TUNE_CYCLES</code></td><td>2</td><td>Số chu kỳ đo</td></tr>
+    <tr><td><code>PH_TUNE_LOWPV_EN / FRL</code></td><td>1 / −2000</td><td>Bật Low PV; FRL ×10 (K-type −200°C)</td></tr>
+    <tr><td><code>PH_TUNE_STUCK_SEC</code></td><td>75</td><td>Ngưỡng phát hiện relay kẹt</td></tr>
+    <tr><td><code>PH_SV_TABLE_MAX / MATCH</code></td><td>8 / 150</td><td>Số mức lưu / ±15°C coi cùng mức</td></tr>
+    <tr><td><code>PH_TUNE_HOLD_DEV</code></td><td>20</td><td>Lệch HOLD &gt; 2°C → tune lại</td></tr>
+    <tr><td><code>PH_HOLD_SETTLE_SEC</code></td><td>45</td><td>Bỏ qua 45s đầu khi chấm điểm</td></tr>
+  </table>
+
+  <!-- 12 -->
+  <h2 id="lim">12. Giới hạn đã biết &amp; hướng chỉnh</h2>
+  <div class="box note"><b>Đọc kỹ phần này trước khi đem sang máy/đầu đốt khác.</b></div>
+  <h4>Giới hạn</h4>
+  <ul>
+    <li><b>Mức relay tune cứng</b> (gas 25%, gió 100%): điều chỉnh cho máy hiện tại. Đầu đốt yếu hơn → gas 25% có thể không đẩy BT qua SVt → tune kẹt. Đầu đốt mạnh hơn → vọt. Chưa tự thích nghi.</li>
+    <li><b>HOLD gains luôn là Config</b>: autotune chỉ dò HEAT gains. Đầu đốt khác có thể cần HOLD gains khác để giữ ±2°C.</li>
+    <li><b>FRL = −200°C cố định</b> cho K-type. Đổi loại cảm biến (PT100, J-type) phải sửa <code>PH_TUNE_FRL</code>.</li>
+    <li><b>Mốc 3 phút</b> giả định đầu đốt đủ mạnh. Đầu đốt yếu không kịp → lookahead sẽ ép gas mạnh suốt.</li>
+  </ul>
+  <h4>Hướng chỉnh tay khi quan sát</h4>
+  <table>
+    <tr><th>Hiện tượng</th><th>Chỉnh</th></tr>
+    <tr><td>BT lên chậm, không tới SV</td><td>Tăng Kp (HEAT), hoặc kiểm tra công suất đầu đốt</td></tr>
+    <tr><td>BT dao động quanh SV khi giữ</td><td>Giảm Kp_HOLD hoặc tăng Kd_HOLD</td></tr>
+    <tr><td>BT đứng dưới SV mãi (lệch tĩnh)</td><td>Tăng Ki_HOLD (đã có trần I động bù β)</td></tr>
+    <tr><td>Vọt lố mạnh khi đi lên</td><td>Giảm β (mạnh tay hơn) hoặc tăng lookahead</td></tr>
+    <tr><td>Tune kẹt (peak=0 mãi)</td><td>Máy quá nóng — chờ nguội, hoặc tăng gió tune / giảm SVt</td></tr>
+    <tr><td>Output giật, nhiễu</td><td>Giảm α EMA (lọc mạnh hơn), hoặc giảm Kd</td></tr>
+  </table>
+
+  <div style="text-align:center;color:#6e7681;font-size:13px;margin-top:46px;padding-top:20px;border-top:1px solid #21262d">
+    Tài liệu nội bộ · OTL-06ALS PID Preheat · Lõi port từ Artisan PID (2-DOF, DoM, anti-windup) + Hanyoung VX4 (relay autotune, Low PV, n.PID), tối ưu số nguyên cho STM32F103.<br>
+    Để xem log debug từng bước: bật <code>enDebug=1</code> + <code>PREHEAT_DEBUG_EN=1</code> (lưu ý dùng chung UART4 với Artisan).
+  </div>
+
+</div>
+
+<div class="floating-tools">
+  <button class="tool-btn" id="topBtn" title="Lên đầu trang">↑</button>
+  <button class="tool-btn" id="printBtn" title="In / lưu PDF">⎙</button>
+</div>
+<script>
+(function(){
+  const progress = document.getElementById('readingProgress');
+  const topBtn = document.getElementById('topBtn');
+  const printBtn = document.getElementById('printBtn');
+  function updateProgress(){
+    const doc = document.documentElement;
+    const max = Math.max(1, doc.scrollHeight - doc.clientHeight);
+    progress.style.width = (doc.scrollTop / max * 100).toFixed(2) + '%';
+  }
+  window.addEventListener('scroll', updateProgress, {passive:true});
+  updateProgress();
+  topBtn.addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
+  printBtn.addEventListener('click', () => window.print());
+  document.querySelectorAll('pre').forEach((pre) => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pre.innerText.replace('Copy','').trim());
+        btn.textContent = 'Copied';
+        setTimeout(()=>btn.textContent='Copy',1200);
+      } catch(e) {
+        btn.textContent = 'Select';
+        setTimeout(()=>btn.textContent='Copy',1200);
+      }
+    });
+    pre.appendChild(btn);
+  });
+})();
+</script>
+
+</body>
+</html>

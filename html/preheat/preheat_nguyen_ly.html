@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nguyên lý điều khiển Preheat — OTL-06ALS</title>
+<style>
+  :root{
+    --bg:#0f1419;--card:#1a2129;--card2:#222c38;--text:#e6edf3;--muted:#9aa7b4;
+    --accent:#ff8c42;--green:#3fb950;--blue:#58a6ff;--red:#f85149;--yellow:#e3b341;
+    --pink:#ff6b9d;--border:#2d3742;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;padding:28px 16px}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font-size:26px;color:var(--accent);margin-bottom:2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+  h2{font-size:18px;margin:24px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+  .danger{border-left:4px solid var(--red)}.danger h2{color:var(--red)}
+  .warn{border-left:4px solid var(--yellow)}.warn h2{color:var(--yellow)}
+  .ok{color:var(--green)}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--border)}
+  th{color:var(--accent);font-weight:600}
+  tr:last-child td{border-bottom:none}
+  td.zone{color:var(--green);font-family:"Consolas",monospace;font-weight:600}
+  td.ph{font-weight:700}
+  .pill{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:12px;font-family:"Consolas",monospace;color:var(--blue)}
+  ul{margin:8px 0 8px 20px}li{margin:4px 0}
+  code{font-family:"Consolas",monospace;background:var(--card2);padding:2px 6px;border-radius:4px;color:var(--yellow);font-size:13px}
+  .rule{background:var(--card2);border-radius:8px;padding:11px 14px;margin:8px 0}
+  .rule b{color:var(--accent)}
+  .note{font-size:12px;color:var(--muted);font-style:italic;margin-top:8px}
+  .flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0;font-size:13px}
+  .box{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 11px}
+  .arrow{color:var(--muted)}
+  .step-n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:var(--accent);color:#000;border-radius:50%;font-size:12px;font-weight:700;margin-right:6px;flex-shrink:0}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin:10px 0}
+  .legend span{display:flex;align-items:center;gap:4px}
+  .band-demo{position:relative;height:120px;border-radius:8px;overflow:hidden;margin:14px 0;background:#0b0f14;border:1px solid var(--border)}
+  .band5{position:absolute;left:0;right:0;background:rgba(63,185,80,.15);border-top:1px dashed #388e3c;border-bottom:1px dashed #388e3c}
+  .band3{position:absolute;left:0;right:0;background:rgba(248,81,73,.18);border-top:1px dashed #c62828;border-bottom:1px dashed #c62828}
+  .band-label{position:absolute;right:6px;font-size:11px;font-family:"Consolas",monospace}
+  .target-line{position:absolute;left:0;right:0;border-top:2px dashed #9aa7b4}
+  .bt-line{position:absolute;left:0;right:60%;height:3px;background:var(--red);border-radius:2px}
+  .fc-line{position:absolute;right:0;height:2px;background:var(--blue);border-radius:2px;opacity:.75}
+  .open{border-left:4px solid var(--yellow)}.open h2{color:var(--yellow)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Nguyên lý điều khiển Preheat</h1>
+  <div class="sub">Máy rang cà phê OTL-06ALS · Firmware RoR-based · Cập nhật 2026-06-01 · Config: <code>include/Config.h</code> block PREHEAT CONFIG</div>
+
+  <!-- AN TOÀN -->
+  <div class="card danger">
+    <h2>🛑 Lớp 0 — An toàn (ưu tiên cao nhất)</h2>
+    <p>Kiểm tra trước mọi logic. Bất kỳ điều kiện nào → <b>cắt gas về 0, hủy preheat, báo lỗi HMI.</b></p>
+    <div class="rule"><b>Điều kiện 1:</b> <code>|ET − BT| &gt; 160°C</code> <span class="pill">PH_DIVERGE_LIMIT=1600</span> — cảm biến lệch bất thường → <code>STT_TEMP_DIVERGENCE (267)</code></div>
+    <div class="rule"><b>Điều kiện 2:</b> <code>ET &gt; 300°C</code> VÀ <code>BT &lt; 150°C</code> — nhiệt tích tụ nguy hiểm → emergency cut qua ISR <code>fireCutFlag</code></div>
+    <div class="rule"><b>Điều kiện 3:</b> <code>BT &gt; 250°C</code> — cháy → <code>STT_ERR_FIRE_ALARM (401)</code></div>
+    <div class="note">Điều kiện 2 + 3 xử lý trong ISR timerPoll_1000ms() của Program.h — không được gọi Modbus trong ISR.</div>
+  </div>
+
+  <!-- STATE MACHINE -->
+  <div class="card">
+    <h2>🔄 State machine</h2>
+    <div class="flow">
+      <span class="box" style="border-color:var(--muted)">IDLE</span><span class="arrow">→</span>
+      <span class="box" style="border-color:var(--blue)">COOLING<br><small>(nếu BT &gt; target)</small></span><span class="arrow">→</span>
+      <span class="box" style="border-color:var(--yellow)">PRE_IGNITE<br><small>thổi sạch 8s</small></span><span class="arrow">→</span>
+      <span class="box" style="border-color:var(--accent)">IGNITE<br><small>mồi lửa</small></span><span class="arrow">→</span>
+      <span class="box" style="border-color:var(--red)">HEATING</span><span class="arrow">→</span>
+      <span class="box" style="border-color:var(--green)">HOLDING</span>
+    </div>
+    <ul>
+      <li><b>COOLING:</b> BT &gt; target → gió <code>PH_AIR_PURGE=60%</code>, chờ BT xuống rồi mới mồi.</li>
+      <li><b>PRE_IGNITE:</b> thổi buồng đốt <code>PH_PURGE_MS=8000ms</code> trước khi mở van gas.</li>
+      <li><b>IGNITE:</b> mở 30% gas, chờ <code>gasSignal=1</code>. Timeout <code>PH_IGNITE_TMO=60s</code>, thử lại tối đa <code>PH_IGNITE_RETRY=3</code> lần.</li>
+      <li><b>HEATING → HOLDING:</b> khi <code>|BT − target| ≤ 3°C</code> lần đầu.</li>
+    </ul>
+  </div>
+
+  <!-- ĐO RoR -->
+  <div class="card">
+    <h2>📐 Đo RoR — 2 cửa sổ độc lập</h2>
+    <table>
+      <thead><tr><th>Biến</th><th>Cửa sổ</th><th>Mục đích</th></tr></thead>
+      <tbody>
+        <tr><td><code>phRorBT5</code></td><td>5 giây</td><td>Tín hiệu điều khiển gas chính (nhanh, nhạy)</td></tr>
+        <tr><td><code>phRorBT15s</code></td><td>15 giây</td><td>Tính forecast BT (mượt, ít nhảy)</td></tr>
+      </tbody>
+    </table>
+    <div class="rule">
+      <b>Forecast BT</b> = BT_hiện_tại + (RoR15s / 15) × <code>PH_FC_AHEAD_SEC</code> (60 giây)<br>
+      → Dự báo BT sau 1 phút nếu giữ nguyên đà hiện tại.
+    </div>
+    <div class="note">Kiểm tra mỗi <code>PH_GAS_EVAL_SEC=5</code> giây. Cả hai ring reset về BT hiện tại khi bắt đầu HEATING.</div>
+  </div>
+
+  <!-- BAND -->
+  <div class="card">
+    <h2>🎯 Hai vùng band quanh target</h2>
+    <div class="band-demo" id="bandDemo">
+      <div class="band5"   style="top:15%;height:70%"></div>
+      <div class="band3"   style="top:28%;height:44%"></div>
+      <div class="target-line" style="top:50%"></div>
+      <div class="bt-line" style="top:55%;left:5%;right:55%"></div>
+      <div class="fc-line" style="top:40%;left:45%;right:5%"></div>
+      <div class="band-label" style="top:13%;color:#388e3c">+5°C</div>
+      <div class="band-label" style="top:26%;color:#c62828">+3°C</div>
+      <div class="band-label" style="top:49%;color:#9aa7b4">target</div>
+      <div class="band-label" style="top:62%;color:#c62828">−3°C</div>
+      <div class="band-label" style="top:78%;color:#388e3c">−5°C</div>
+      <div style="position:absolute;left:44%;top:38%;font-size:11px;color:var(--blue)">forecast →</div>
+    </div>
+    <div class="legend">
+      <span><i style="width:14px;height:10px;background:rgba(63,185,80,.3);border:1px dashed #388e3c;display:inline-block"></i> ±5°C (cảnh báo)</span>
+      <span><i style="width:14px;height:10px;background:rgba(248,81,73,.25);border:1px dashed #c62828;display:inline-block"></i> ±3°C (giữ nhiệt)</span>
+      <span><b style="color:var(--red)">━</b> BT thực</span>
+      <span><b style="color:var(--blue)">┄</b> Forecast BT</span>
+    </div>
+    <table>
+      <thead><tr><th>Vùng</th><th>Config</th><th>Ý nghĩa</th></tr></thead>
+      <tbody>
+        <tr><td>±3°C (hồng)</td><td><code>PH_TARGET_BAND=30</code></td><td>Vùng giữ nhiệt GĐ4 — mục tiêu duy trì BT tại đây</td></tr>
+        <tr><td>±5°C (xanh)</td><td><code>PH_WARN_BAND=50</code></td><td>Vùng cảnh báo — BT lọt vào đây là đang lệch đáng kể</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- LOGIC GAS -->
+  <div class="card">
+    <h2>🔥 Logic điều chỉnh gas — thứ tự ưu tiên (mỗi 5 giây)</h2>
+    <div class="rule" style="border-left:3px solid var(--red)">
+      <span class="step-n">1</span><b>BT &gt; target +5°C</b> (vọt qua vùng xanh lá)<br>
+      → Giảm gas <code>PH_OVER_STEP=5%</code> theo RoR5 · Reset cooldown 10s
+    </div>
+    <div class="rule" style="border-left:3px solid var(--yellow)">
+      <span class="step-n">2</span><b>BT trong vùng ±3..5°C</b> (vùng cảnh báo)<br>
+      → Giảm gas <code>PH_GD4_STEP=5%</code> · Cooldown <code>PH_WARN_COOLDOWN=10s</code> (không liên tục cắt)
+    </div>
+    <div class="rule" style="border-left:3px solid var(--green)">
+      <span class="step-n">3</span><b>BT trong ±3°C</b> VÀ <code>|RoR5| ≤ 0.1°C/5s</code> VÀ <b>forecast vẫn trong ±3°C</b><br>
+      → <span class="ok">Deadband ổn định — giữ nguyên gas</span>
+    </div>
+    <div class="rule" style="border-left:3px solid var(--blue)">
+      <span class="step-n">4</span><b>BT trong ±3°C</b> nhưng <b>forecast sẽ vọt qua +3°C</b><br>
+      → Giảm gas phòng trước · Cooldown 10s · Log: <code>FC overshoot predict: gas-</code>
+    </div>
+    <div class="rule" style="border-left:3px solid var(--muted)">
+      <span class="step-n">5</span><b>Tất cả trường hợp còn lại</b> — chọn giai đoạn theo độ gần target:<br>
+      <table style="margin-top:8px">
+        <thead><tr><th>GĐ</th><th>Điều kiện</th><th>RoR5 đẹp</th><th>Bước gas</th><th>Config</th></tr></thead>
+        <tbody>
+          <tr><td class="ph">1 Khởi động</td><td>BT &lt; 100°C</td><td class="zone">6 – 12°C/5s</td><td>±10%</td><td><code>PH_GD1_*</code></td></tr>
+          <tr><td class="ph">2 Tăng tốc</td><td>BT ≥ 100°C, xa target</td><td class="zone">4.5 – 7°C/5s</td><td>±10%</td><td><code>PH_GD2_*</code></td></tr>
+          <tr><td class="ph">3 Về đích</td><td>cách target 3–25°C</td><td class="zone">1.7 – 2.5°C/5s</td><td>±5%</td><td><code>PH_GD3_*</code></td></tr>
+          <tr><td class="ph">4 Giữ nhiệt</td><td>trong target ±3°C</td><td class="zone">0.1 – 0.3°C/5s</td><td>±5%</td><td><code>PH_GD4_*</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">RoR trên vùng → giảm gas. RoR dưới vùng → tăng gas. Trong vùng → giữ.</div>
+  </div>
+
+  <!-- AIRFLOW -->
+  <div class="card">
+    <h2>🌬️ Airflow — chỉ vào cuộc khi gas = 0 mà BT vẫn tăng</h2>
+    <div class="rule"><b>Cooldown airflow:</b> <code>PH_AIR_COOLDOWN=10s</code> sau mỗi lần đổi — không liên tục can thiệp.</div>
+    <table>
+      <thead><tr><th>Tình huống</th><th>Hành động</th></tr></thead>
+      <tbody>
+        <tr><td>BT &gt; target+3°C, gas=0, BT vẫn tăng</td><td>Tăng +10% airflow (cứu hộ hạ nhiệt)</td></tr>
+        <tr><td>BT gần vùng target, giảm &gt; 0.3°C/5s</td><td>Giảm −10% airflow (không hạ quá nhanh)</td></tr>
+        <tr><td>BT về trong ±3°C</td><td>Gió trôi dần về nền <code>PH_AIR_BASE=20%</code></td></tr>
+      </tbody>
+    </table>
+    <div class="note">Gió nền 20% giữ đối lưu. Không tắt phụt về 0 — tránh BT leo lại.</div>
+  </div>
+
+  <!-- FORECAST CHI TIẾT -->
+  <div class="card warn">
+    <h2>🔮 Forecast-based control — nguyên lý cốt lõi</h2>
+    <p style="margin-bottom:10px">Thay vì chờ BT <em>đã</em> vọt rồi mới phản ứng, controller dùng forecast để <b>giảm gas trước khi vọt xảy ra</b>.</p>
+    <div class="rule">
+      <b>Công thức forecast:</b><br>
+      <code>fcBT = BT_hiện_tại + (RoR15s ÷ 15) × 60</code><br>
+      = BT sẽ đạt bao nhiêu sau 60 giây nếu giữ nguyên đà RoR15s hiện tại
+    </div>
+    <div class="rule">
+      <b>Khi nào dùng forecast:</b>
+      <ul style="margin-top:6px">
+        <li>BT đang <b>trong ±3°C</b> (GĐ4) nhưng <code>fcBT &gt; target + 3°C</code> → giảm gas ngay, không chờ BT vọt ra</li>
+        <li>Mỗi lần giảm theo forecast → cooldown 10s để hệ thống phản ứng trước khi can thiệp tiếp</li>
+      </ul>
+    </div>
+    <div class="note">RoR15s mượt hơn RoR5s (window dài hơn) → forecast ít nhảy hơn, không phản ứng thái quá với jitter ngắn.</div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="card">
+    <h2>⚙️ Tham số cấu hình — chỉnh trong <code>include/Config.h</code></h2>
+    <table>
+      <thead><tr><th>Macro</th><th>Giá trị</th><th>Ý nghĩa</th></tr></thead>
+      <tbody>
+        <tr><td><code>PH_DIVERGE_LIMIT</code></td><td>1600</td><td>|ET−BT| tối đa trước khi hủy (×0.1°C)</td></tr>
+        <tr><td><code>PH_TARGET_BAND</code></td><td>30</td><td>Band ±3°C (×0.1°C)</td></tr>
+        <tr><td><code>PH_WARN_BAND</code></td><td>50</td><td>Band cảnh báo ±5°C (×0.1°C)</td></tr>
+        <tr><td><code>PH_WARN_COOLDOWN</code></td><td>10</td><td>Cooldown sau khi phản ứng band warn (giây)</td></tr>
+        <tr><td><code>PH_FC_WIN_SEC</code></td><td>15</td><td>Cửa sổ hồi quy RoR cho forecast (giây)</td></tr>
+        <tr><td><code>PH_FC_AHEAD_SEC</code></td><td>60</td><td>Dự báo bao xa (giây)</td></tr>
+        <tr><td><code>PH_GAS_EVAL_SEC</code></td><td>5</td><td>Chu kỳ chỉnh gas (giây)</td></tr>
+        <tr><td><code>PH_AIR_COOLDOWN</code></td><td>10</td><td>Cooldown airflow (giây)</td></tr>
+        <tr><td><code>PH_AIR_BASE</code></td><td>20</td><td>Gió nền khi đốt (%)</td></tr>
+        <tr><td><code>PH_AIR_PURGE</code></td><td>60</td><td>Gió thổi sạch / làm nguội (%)</td></tr>
+        <tr><td><code>PH_PURGE_MS</code></td><td>8000</td><td>Thời gian thổi sạch buồng (ms)</td></tr>
+        <tr><td><code>PH_IGNITE_TMO</code></td><td>60</td><td>Timeout chờ lửa (giây)</td></tr>
+        <tr><td><code>PH_IGNITE_RETRY</code></td><td>3</td><td>Số lần thử mồi tối đa</td></tr>
+        <tr><td><code>PH_GD1/2/3/4_ROR_LO/HI</code></td><td>—</td><td>Band RoR5 từng giai đoạn (×0.1°C/5s)</td></tr>
+        <tr><td><code>PH_GD1/2/3/4_STEP</code></td><td>5–10%</td><td>Bước gas từng giai đoạn</td></tr>
+        <tr><td><code>PH_GD4_DEAD</code></td><td>1</td><td>Deadband GĐ4: |RoR5| ≤ 0.1 → giữ gas</td></tr>
+        <tr><td><code>PH_OVER_ROR_LO/HI</code></td><td>−3/−1</td><td>RoR5 mục tiêu khi kéo BT xuống</td></tr>
+        <tr><td><code>PH_OVER_STEP</code></td><td>5%</td><td>Bước gas khi overshoot &gt;5°C</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

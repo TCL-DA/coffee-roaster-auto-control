@@ -2,6 +2,9 @@
 
 Tài liệu tham chiếu cho hệ thống **auto-loader** (hút cà từ phễu nguồn lên lồng rang) và cơ chế **tự học `dif`** (lượng cắt feeder sớm để bù coast). Cập nhật: **2026-06-24**.
 
+> Giải thích chi tiết nguyên lý (đường tín hiệu, công thức cắt, timeline một mẻ, bẫy khi sửa code):
+> [ref-loader-nguyen-ly.md](ref-loader-nguyen-ly.md).
+
 > Bản chất: feeder/cửa xả đóng KHÔNG tức thời → sau khi ra lệnh cắt, cà vẫn rơi thêm một lượng (**coast**). Phải cắt **sớm** trước đích một khoảng `dif` ≈ coast. `dif` được **tự học** theo điểm vận hành `(cân, tốc độ hút)`.
 
 ---

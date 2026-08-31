@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preheat Simulator — OTL-06ALS (Artisan style)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif}
+  html,body{height:100%}
+  body{background:#f3f3f3;color:#1a1a1a;font-size:12px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  /* ── Top bar ── */
+  .topbar{display:flex;align-items:center;gap:14px;padding:5px 12px;background:#fff;border-bottom:1px solid #e3e3e3;flex-wrap:nowrap}
+  .nowtemp{text-align:center;font-variant-numeric:tabular-nums;min-width:90px}
+  .nowtemp .clk{font-size:14px;color:#444}
+  .nowtemp .tmp{font-size:20px;font-weight:600;color:#111}
+  .cfg{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .cfg label{font-size:11px;color:#555;font-weight:600}
+  .cfg input[type=number]{width:58px;padding:3px 5px;border:1px solid #ccc;border-radius:4px;font-size:13px}
+  .pill{padding:2px 9px;border-radius:12px;font-weight:700;font-size:12px;font-family:"Consolas",monospace;background:#eee;color:#666}
+  .state{font-family:"Consolas",monospace;font-weight:700;font-size:13px}
+  .topbtns{display:flex;gap:8px;align-items:center;margin-left:auto}
+  .topbtns button{border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:600;color:#fff;cursor:pointer}
+  .b-reset,.b-on,.b-start{background:#5b9bd5}
+  .b-start.run{background:#e0533d}
+  .clock{background:#111;color:#fff;font-family:"Consolas",monospace;font-size:20px;padding:5px 10px;border-radius:6px;letter-spacing:2px}
+  /* ── Main (flex fill) ── */
+  .main{flex:1;display:grid;grid-template-columns:50px 50px 1fr 104px;gap:6px;padding:6px 8px;min-height:0}
+  .sliders{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:0}
+  .sl-label{font-size:11px;color:#333;font-weight:600}
+  .vrange{writing-mode:vertical-lr;direction:rtl;flex:1;width:22px}
+  .sl-val{font-size:12px;font-family:"Consolas",monospace;font-weight:700}
+  .chartwrap{background:#fff;border:1px solid #e3e3e3;border-radius:6px;padding:4px 6px;display:flex;flex-direction:column;min-height:0;min-width:0}
+  .scope-head{display:flex;align-items:baseline;gap:12px}
+  .scope-title{font-size:16px;font-weight:600}
+  .mode{font-size:11px;color:#666}
+  canvas{flex:1;width:100%;display:block;min-height:0}
+  .legend{font-size:10px;color:#666;display:flex;gap:10px;flex-wrap:wrap;padding:1px 4px}
+  .legend b{font-family:"Consolas",monospace}
+  .readouts{display:flex;flex-direction:column;gap:3px;min-height:0}
+  .ro{background:#111;border-radius:4px;padding:3px 7px;text-align:right;flex:1;display:flex;flex-direction:column;justify-content:center}
+  .ro .l{font-size:10px;color:#bbb;text-align:left;font-weight:600}
+  .ro .v{font-size:16px;font-family:"Consolas",monospace;font-weight:700;letter-spacing:1px}
+  .ro.et .l,.ro.et .v{color:#d9534f}
+  .ro.bt .l,.ro.bt .v,.ro.dbt .l,.ro.dbt .v{color:#3a9bff}
+  .ro.det .l,.ro.det .v{color:#e6a23c}
+  .ro.air .v,.ro.burner .v,.ro.drum .v,.ro.vac .v{color:#f0c040}
+  /* ── Bottom control rows ── */
+  .ctrlrow{display:flex;gap:10px;align-items:center;padding:4px 10px;background:#fff7ec;border-top:1px solid #ffe0c2;flex-wrap:wrap}
+  .ctrlrow .sl-label{color:#c5621a;white-space:nowrap}
+  .ctrlrow input[type=range]{vertical-align:middle}
+  .ctrlrow label{font-size:11px;color:#555;display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .mini{border:none;border-radius:5px;padding:5px 9px;font-size:12px;font-weight:600;color:#fff;cursor:pointer}
+  .a-air{background:#3a78c2}.a-burner{background:#c0392b}.a-drum{background:#34495e}
+  .a-ignite{background:#e74c3c}.a-ghost{background:#7f8c8d}
+  .actionbar{display:flex;gap:5px;padding:5px 10px;align-items:center;background:#f3f3f3;flex-wrap:wrap}
+  .status{font-size:12px;color:#b85c00;font-weight:600;margin-left:8px;flex:1;min-width:160px}
+  #log{margin:0;background:#0b0f14;color:#cfe;padding:5px 8px;height:64px;overflow:auto;font-family:"Consolas",monospace;font-size:11px;white-space:pre-wrap;flex-shrink:0}
+  /* ── Bảng chấm điểm ── */
+  #scoreOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center}
+  #scorePanel{background:#fff;border-radius:12px;width:560px;max-width:94vw;max-height:92vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  .sp-head{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee}
+  .sp-grade{font-size:40px;font-weight:800;font-family:"Consolas",monospace;width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
+  .sp-total{font-size:13px;color:#666}
+  .sp-total b{font-size:30px;color:#111;font-family:"Consolas",monospace}
+  .sp-body{padding:8px 18px 14px}
+  .sp-cat{padding:9px 0;border-bottom:1px solid #f0f0f0}
+  .sp-cat .top{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+  .sp-cat .pts{font-family:"Consolas",monospace}
+  .sp-cat .desc{font-size:11px;color:#888;margin-top:2px}
+  .sp-bar{height:8px;background:#eee;border-radius:4px;margin-top:5px;overflow:hidden}
+  .sp-bar i{display:block;height:100%;border-radius:4px}
+  .sp-reason{margin:8px 18px;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600}
+  .sp-foot{padding:12px 18px;text-align:right}
+  .sp-foot button{border:none;border-radius:7px;padding:9px 20px;font-size:14px;font-weight:600;color:#fff;background:#5b9bd5;cursor:pointer}
+</style>
+</head>
+<body>
+  <!-- ── TOP BAR ── -->
+  <div class="topbar">
+    <div class="nowtemp">
+      <div class="clk" id="clk">0:00</div>
+      <div class="tmp" id="nowTmp">25.0°C</div>
+    </div>
+    <div class="cfg">
+      <label>Target°C <input type="number" id="target" value="200" min="50" max="260"></label>
+      <label>Time′ <input type="number" id="time" value="15" min="1" max="60"></label>
+      <label>Cửa sổ′ <input type="number" id="chartWin" value="5" min="1" max="30"></label>
+      <label>Forecast′ <input type="number" id="fcMin" value="1" min="0" max="10" step="0.5"></label>
+      <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="flame" checked> có lửa</label>
+      <span>State <span class="state" id="stateTxt">IDLE</span></span>
+      <span>GĐ <span class="pill" id="phaseChip">—</span></span>
+    </div>
+    <div class="topbtns">
+      <button class="b-reset" id="resetBtn">RESET</button>
+      <button class="b-on" id="pauseBtn">PAUSE</button>
+      <button class="b-start" id="startBtn">START PREHEAT</button>
+      <div class="clock" id="clock">00:00</div>
+    </div>
+  </div>
+
+  <!-- ── MAIN (fill) ── -->
+  <div class="main">
+    <div class="sliders">
+      <div class="sl-label" style="color:#3a78c2">Air</div>
+      <input class="vrange" id="airSlider" type="range" min="0" max="100" value="0" orient="vertical" disabled>
+      <div class="sl-val" id="airSlVal" style="color:#3a78c2">0</div>
+    </div>
+    <div class="sliders">
+      <div class="sl-label" style="color:#c0392b">Burner</div>
+      <input class="vrange" id="burnerSlider" type="range" min="0" max="100" value="0" orient="vertical" disabled>
+      <div class="sl-val" id="burnerSlVal" style="color:#c0392b">0</div>
+    </div>
+    <div class="chartwrap">
+      <div class="scope-head">
+        <div class="scope-title">Roaster Scope</div>
+        <div class="mode">RoR-based — kéo/bấm BT để test</div>
+        <div class="legend" style="margin-left:auto">
+          <span><b style="color:#d9534f">━</b>BT</span>
+          <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="showET" checked><b style="color:#777">━</b>ET</label>
+          <span><b style="color:#d9534f">┄</b>forecast BT/ET</span>
+          <span><b style="color:#888">┄</b>target</span>
+          <span><b style="color:#e6772e">━</b>Burner%</span>
+          <span><b style="color:#3a78c2">━</b>Air%</span>
+          <span><b style="color:#9b59b6">━</b>ΔBT C/min</span>
+        </div>
+      </div>
+      <canvas id="chart" width="1000" height="420"></canvas>
+    </div>
+    <div class="readouts">
+      <div class="ro et"><div class="l">ET</div><div class="v" id="roET">25.0</div></div>
+      <div class="ro bt"><div class="l">BT</div><div class="v" id="roBT">25.0</div></div>
+      <div class="ro det"><div class="l">Δ ET</div><div class="v" id="roDET">0.0</div></div>
+      <div class="ro dbt"><div class="l">Δ BT</div><div class="v" id="roDBT">0.0</div></div>
+      <div class="ro air"><div class="l">Air%</div><div class="v" id="roAIR">0</div></div>
+      <div class="ro burner"><div class="l">Burner%</div><div class="v" id="roBURN">0</div></div>
+      <div class="ro drum"><div class="l">Drum%</div><div class="v" id="roDRUM">50</div></div>
+      <div class="ro vac"><div class="l">RoR5 °C/5s</div><div class="v" id="roROR5">0.0</div></div>
+      <div class="ro" style="border-top:1px solid #333"><div class="l" style="color:#58a6ff">FC 60s°C</div><div class="v" id="roFC" style="color:#58a6ff">—</div></div>
+      <div class="ro"><div class="l" style="color:#9b59b6">FC Dev°</div><div class="v" id="roFCDev" style="color:#9b59b6">—</div></div>
+      <div class="ro"><div class="l" style="color:#ff6b6b">FC 15s°C</div><div class="v" id="roFCEmg" style="color:#ff6b6b">—</div></div>
+      <div class="ro"><div class="l" style="color:#e3b341">Cooldown</div><div class="v" id="roCooldown" style="color:#e3b341">0s</div></div>
+    </div>
+  </div>
+
+  <!-- ── BT TEST ROW ── -->
+  <div class="ctrlrow">
+    <span class="sl-label">🧪 BT <span class="sl-val" id="btVal">25.0</span>°C</span>
+    <input type="range" id="btSlider" min="0" max="3000" value="250" step="1" style="flex:1;min-width:160px">
+    <button class="mini a-burner" onclick="nudgeBT(-100)">−10</button>
+    <button class="mini a-ghost" onclick="nudgeBT(-10)">−1</button>
+    <button class="mini a-ghost" onclick="nudgeBT(-7)">−0.7</button>
+    <button class="mini a-ghost" onclick="nudgeBT(-5)">−0.5</button>
+    <button class="mini a-ghost" onclick="nudgeBT(-3)">−0.3</button>
+    <button class="mini a-ghost" onclick="nudgeBT(-1)">−0.1</button>
+    <button class="mini a-ghost" onclick="nudgeBT(1)">+0.1</button>
+    <button class="mini a-ghost" onclick="nudgeBT(3)">+0.3</button>
+    <button class="mini a-ghost" onclick="nudgeBT(5)">+0.5</button>
+    <button class="mini a-ghost" onclick="nudgeBT(7)">+0.7</button>
+    <button class="mini a-ghost" onclick="nudgeBT(10)">+1</button>
+    <button class="mini a-burner" onclick="nudgeBT(100)">+10</button>
+    <button class="mini a-burner" onclick="nudgeBT(120)">⚡+12 dư</button>
+    <span class="sl-label" style="color:#444">ET <span class="sl-val" id="etVal">25.0</span></span>
+    <input type="range" id="etSlider" min="0" max="3800" value="250" step="1" style="width:140px">
+    <label><input type="checkbox" id="etFollow" checked> ET bám BT</label>
+    <label><input type="checkbox" id="autoPhys"> BT auto</label>
+  </div>
+
+  <!-- ── ACTION BAR ── -->
+  <div class="actionbar">
+    <button class="mini a-air" onclick="manualAir(-5)">Air −5</button>
+    <button class="mini a-air" onclick="manualAir(5)">Air +5</button>
+    <button class="mini a-burner" onclick="manualBurner(-5)">Burner −5</button>
+    <button class="mini a-burner" onclick="manualBurner(5)">Burner +5</button>
+    <button class="mini a-drum" onclick="manualDrum(-5)">Drum −5</button>
+    <button class="mini a-drum" onclick="manualDrum(5)">Drum +5</button>
+    <button class="mini a-ignite" id="igniteBtn" onclick="document.getElementById('startBtn').click()">Ignition</button>
+    <button class="mini a-ghost" onclick="copyLog()">📋 Copy log</button>
+    <button class="mini a-ghost" onclick="downloadCSV()">⬇ CSV (3s)</button>
+    <label style="font-size:11px;color:#555;display:flex;align-items:center;gap:4px">Tốc độ <input type="range" id="speed" min="1" max="30" value="1" style="width:120px"><span class="sl-val" id="speedVal">1×</span></label>
+    <span class="status" id="statusMsg">—</span>
+  </div>
+
+  <div id="log"></div>
+
+  <!-- ── BẢNG CHẤM ĐIỂM ── -->
+  <div id="scoreOverlay">
+    <div id="scorePanel">
+      <div class="sp-head">
+        <div>
+          <div style="font-size:18px;font-weight:700">Kết quả Preheat</div>
+          <div class="sp-total">Tổng: <b id="spTotal">0</b>/100 · <span id="spReasonTxt"></span></div>
+        </div>
+        <div class="sp-grade" id="spGrade">F</div>
+      </div>
+      <div class="sp-reason" id="spNote" style="display:none"></div>
+      <div class="sp-body" id="spBody"></div>
+      <div class="sp-foot"><button onclick="closeScore()">Đóng</button></div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+// ──────────────────────────────────────────────────────────────────────────
+// PORT CHÍNH XÁC LOGIC TỪ include/Preheat.h + Config.h — đơn vị 0.1°C (×10)
+// Bao gồm: forecast-based, band ±3/±5°C, cooldown warn, ring15s
+// ──────────────────────────────────────────────────────────────────────────
+// === Config (khớp Config.h) ===
+const PH_TARGET_BAND=30, PH_APPROACH_BAND=250, PH_BT_PHASE2=1000;
+const PH_AIR_BASE=20, PH_AIR_PURGE=60, PH_PURGE_MS=8000;
+const PH_IGNITE_TMO=60, PH_IGNITE_RETRY=3;
+const PH_GAS_EVAL_SEC=5, PH_AIR_COOLDOWN=10, PH_DIVERGE_LIMIT=1600;
+// GĐ1/2/3 HEATING: band tính động từ deadline — không còn hardcode
+const PH_HEAT_STEP=10;
+// GĐ4
+const PH_GD4_ROR_LO=1,   PH_GD4_ROR_HI=3,   PH_GD4_STEP=5, PH_GD4_DEAD=1;
+// Overshoot
+const PH_OVER_ROR_LO=-3, PH_OVER_ROR_HI=-1, PH_OVER_STEP=5;
+// Band cảnh báo ±5°C + cooldown
+const PH_WARN_BAND=50, PH_WARN_COOLDOWN=10;
+// Forecast: slope dùng RoR5 (5s), cập nhật mỗi giây
+const PH_FC_WIN_SEC=5, PH_FC_AHEAD_SEC=60;
+const PH_FC_EMERGENCY_SEC=15, PH_EMERGENCY_STEP=15;
+// Vùng an toàn forecast ±10°C, ngưỡng tốc độ góc 0.5°C/5s
+const PH_FC_SAFE_BAND=100, PH_DSLOPE_GATE=5;
+// HOLD: đuôi forecast kéo dài (preheat còn lại + 15') + phễu loe ±3→±5°C
+const PH_HOLD_EXTRA_SEC=900, PH_HOLD_BAND_NEAR=30, PH_HOLD_BAND_FAR=50;
+const PH_DEADLINE_SEC=180, PH_DEADLINE_STEP=10;
+const PH_DL_RATIO_LO=80, PH_DL_RATIO_HI=120;
+
+const clamp=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
+
+let S={};
+function fwReset(){
+  S.state='IDLE'; S.elapsed=0; S.igniteTimer=0; S.deadTimer=0;
+  S.gas=0; S.air=0; S.igniteRetry=0;
+  // ring5 (RoR5)
+  S.ring=[0,0,0,0,0]; S.ringHead=0; S.ringFill=0;
+  // ring15 (RoR15s — dùng cho forecast)
+  S.ring15=new Array(15).fill(0); S.ring15Head=0; S.ring15Fill=0;
+  S.tick=0; S.ror5=0; S.ror15=0;
+  S.slopePrev=0; S.dSlope=0; S.btStart=0;
+  S.gasEvalTick=0; S.airEvalTick=0; S.rorAtAirChg=0;
+  S.warnCooldown=0; S.emgCooldown=0;
+  S.igniteMs=0; S.gasOut=0; S.airOut=0;
+  S.status=''; S.phase='—';
+}
+fwReset();
+
+let wuR=false, bt10=250, et10=250, simSec=0, gasSignal=0, running=true, paused=false;
+let drumPercent=50;
+let etRing=[250,250,250,250,250], etHead=0, etFill=0, rorET5=0;
+
+function log(msg){
+  const el=document.getElementById('log');
+  const m=Math.floor(S.elapsed/60), s=S.elapsed%60;
+  el.textContent += `[${m}:${s<10?'0':''}${s}] ${msg}\n`;
+  el.scrollTop=el.scrollHeight;
+}
+
+function updateRors(){
+  // ring5 → RoR5
+  const old5=S.ring[S.ringHead];
+  if(S.ringFill>=5) S.ror5 = bt10 - old5;
+  S.ring[S.ringHead]=bt10; S.ringHead=(S.ringHead+1)%5;
+  if(S.ringFill<5) S.ringFill++;
+  // ring15 → RoR15 (giữ để dự phòng/debug, không lái forecast chính)
+  const old15=S.ring15[S.ring15Head];
+  if(S.ring15Fill>=15) S.ror15 = bt10 - old15;
+  S.ring15[S.ring15Head]=bt10; S.ring15Head=(S.ring15Head+1)%15;
+  if(S.ring15Fill<15) S.ring15Fill++;
+  // Tốc độ góc: Δslope mỗi giây = RoR5 hiện tại − RoR5 giây trước
+  if(S.ringFill>=5){ S.dSlope = S.ror5 - S.slopePrev; S.slopePrev = S.ror5; }
+  // cooldown giảm 1s
+  if(S.warnCooldown>0) S.warnCooldown--;
+  if(S.emgCooldown>0)  S.emgCooldown--;
+}
+function updateEtRor(){
+  const old=etRing[etHead];
+  if(etFill>=5) rorET5 = et10 - old;
+  etRing[etHead]=et10; etHead=(etHead+1)%5;
+  if(etFill<5) etFill++;
+}
+// Dự báo BT sau `aheadSec` giây dựa trên RoR5 (slope mượt nhẹ, cập nhật mỗi giây)
+function forecastBTin(aheadSec){
+  if(S.ringFill>=5) return bt10 + Math.round(S.ror5 * aheadSec / PH_FC_WIN_SEC);
+  return bt10;
+}
+function forecastBT(){ return forecastBTin(PH_FC_AHEAD_SEC); }
+
+function fwTick(){
+  simSec++;
+  const now=simSec*1000;
+  if(S.state==='IGNITE') S.igniteTimer++;
+  else if(S.state==='HEATING'||S.state==='HOLDING') S.elapsed++;
+  updateEtRor();
+
+  if(!wuR && S.state!=='IDLE'){ S.status='PREHEAT: cancelled'; log('PREHEAT: cancelled'); try{if(hist.length>5)scoreRun('CANCEL');}catch(e){} fwReset(); return; }
+  if(!wuR) return;
+
+  const target10=(+document.getElementById('target').value)*10;
+  const time_R=(+document.getElementById('time').value);
+
+  if(S.state!=='IDLE' && Math.abs(et10-bt10)>PH_DIVERGE_LIMIT){
+    S.status='⛔ ABORT |ET−BT|>160°C → STT_TEMP_DIVERGENCE (267)';
+    log(`ABORT |ET-BT|>160 ET=${(et10/10)|0} BT=${(bt10/10)|0}`);
+    try{scoreRun('ABORT');}catch(e){} fwReset(); wuR=false; uiSyncButtons(); return;
+  }
+
+  switch(S.state){
+  case 'IDLE':
+    S.gas=0;
+    if(bt10>target10+PH_TARGET_BAND){ S.state='COOLING'; S.deadTimer=0; S.status='STT_PREHEAT_COOLING (22)'; log(`PREHEAT: cooling BT=${(bt10/10)|0}`); }
+    else{ S.state='PRE_IGNITE'; S.igniteMs=0; S.status='STT_PREHEAT_PRE_IGNITE (46)'; log('PREHEAT: pre-ignite'); }
+    break;
+  case 'COOLING':
+    S.gas=0; S.air=PH_AIR_PURGE; if(S.deadTimer<65535)S.deadTimer++;
+    if(bt10<=target10){ S.state='PRE_IGNITE'; S.igniteMs=0; S.deadTimer=0; S.status='STT_PREHEAT_COOLING_DONE (44)'; log('COOLING -> PRE_IGNITE'); }
+    break;
+  case 'PRE_IGNITE':
+    if(S.igniteMs===0)S.igniteMs=now; S.air=PH_AIR_PURGE; S.gas=0;
+    if(now-S.igniteMs>=PH_PURGE_MS){ S.state='IGNITE'; S.igniteTimer=0; S.igniteRetry=0; log('PRE_IGNITE: done -> IGNITE'); }
+    break;
+  case 'IGNITE':{
+    S.gas=30; S.air=30;
+    gasSignal=(document.getElementById('flame').checked && S.igniteTimer>=2)?1:0;
+    if(gasSignal===1){
+      S.state='HEATING'; S.elapsed=0; S.gas=30; S.air=PH_AIR_BASE;
+      S.tick=0; S.ringFill=0; S.ringHead=0; S.ring15Fill=0; S.ring15Head=0;
+      S.gasEvalTick=0; S.airEvalTick=0; S.ror5=0; S.ror15=0;
+      S.slopePrev=0; S.dSlope=0; S.btStart=bt10;
+      S.rorAtAirChg=0; S.warnCooldown=0;
+      S.ring=new Array(5).fill(bt10); S.ring15=new Array(15).fill(bt10);
+      S.status='STT_PREHEAT_IGNITE_OK (26)'; log('PREHEAT: gas on -> HEATING'); break;
+    }
+    if(S.igniteTimer>=PH_IGNITE_TMO){
+      S.igniteTimer=0;
+      if(++S.igniteRetry>=PH_IGNITE_RETRY){ S.status='⛔ IGNITE_FAIL'; log('PREHEAT: ignition failed 3x'); try{scoreRun('FAIL');}catch(e){} fwReset(); wuR=false; uiSyncButtons(); return; }
+      S.status='STT_PREHEAT_IGNITE_RETRY (24)'; log(`PREHEAT: retry #${S.igniteRetry+1}`);
+    }
+    break;
+  }
+  case 'HEATING':
+  case 'HOLDING':{
+    S.tick++; updateRors();
+    if(time_R>0 && S.elapsed>=time_R*60){ S.status='STT_PREHEAT_DONE (30)'; log('PREHEAT: done'); try{scoreRun('DONE');}catch(e){} fwReset(); wuR=false; uiSyncButtons(); return; }
+    const gap=target10-bt10;
+    if(S.state==='HEATING' && Math.abs(gap)<=PH_TARGET_BAND){ S.state='HOLDING'; S.status='STT_PREHEAT_HOLDING (28)'; log('HEATING -> HOLDING'); }
+
+    // ── Điều chỉnh gas mỗi 5 giây ──────────────────────────────────────────
+    // Luôn cập nhật forecast để hiển thị lên UI
+    S.fcBT  = forecastBT();
+    S.fcDev = S.fcBT - target10;
+    S.fcEmg = forecastBTin(PH_FC_EMERGENCY_SEC);
+
+    // ── EMERGENCY: mỗi giây — chỉ cắt gas khi forecast 15s vọt quá ±5°C ────
+    // Chỉ giảm, không tăng: tránh đánh nhau với logic slow/fast mỗi 5 giây
+    if(S.emgCooldown===0){
+      const fcE=S.fcEmg;
+      if(fcE > target10+PH_WARN_BAND){
+        S.gas=clamp(S.gas-PH_EMERGENCY_STEP,0,100); S.emgCooldown=PH_WARN_COOLDOWN;
+        log(`⚡ EMG gas-${PH_EMERGENCY_STEP} fc15=${(fcE/10).toFixed(1)}°`);
+      }
+    }
+
+    // ── Gas eval mỗi 5 giây — forecast 60s + tốc độ góc ───────────────────
+    // Forecast 60s nên rơi vào target ± PH_FC_SAFE_BAND → giữ gas.
+    // Ngoài vùng nhưng đang tự đổ về → vẫn giữ. Chỉ chỉnh khi lệch & không tự về,
+    // hoặc khi tốc độ góc đổi mạnh (BT vọt/tụt đột ngột).
+    if(S.ringFill>=5 && ((S.tick-S.gasEvalTick)&0xffff)>=PH_GAS_EVAL_SEC){
+      S.gasEvalTick=S.tick;
+      // HEATING (0-3'): kéo đà tới mốc 180s, band co giãn theo horizon.
+      // HOLD (sau 3'): đuôi forecast kéo DÀI (preheat còn lại + 15'), band ±5°C.
+      let fc60, refBT=target10, safeBand;
+      const time_R2=(+document.getElementById('time').value);
+      const holdMode=(S.state==='HOLDING' || S.elapsed>=PH_DEADLINE_SEC);
+      if(holdMode){
+        let remPreheat=time_R2>0 ? time_R2*60-S.elapsed : 0;
+        if(remPreheat<0) remPreheat=0;
+        const holdHz=remPreheat+PH_HOLD_EXTRA_SEC;
+        let fcOff=Math.round(S.ror5*holdHz/PH_FC_WIN_SEC);
+        fcOff=clamp(fcOff,-3000,3000);
+        fc60=bt10+fcOff;
+        safeBand=PH_HOLD_BAND_FAR;
+      } else {
+        const horizon=PH_DEADLINE_SEC-S.elapsed;
+        fc60=forecastBTin(horizon);
+        safeBand=clamp(Math.round(PH_FC_SAFE_BAND*horizon/PH_FC_AHEAD_SEC), PH_FC_SAFE_BAND/2, PH_FC_SAFE_BAND*3);
+      }
+      S.refBT=refBT; S.safeBand=safeBand;
+      const fcDev=fc60-refBT, absFc=Math.abs(fcDev);
+
+      let ph='ok', gasDir=0, step=(Math.abs(gap)<=PH_TARGET_BAND)?PH_GD4_STEP:PH_HEAT_STEP;
+
+      if(absFc<=safeBand){ ph='safe'; }                   // trong vùng an toàn → giữ
+      else if(S.warnCooldown>0){ ph='cd'; }               // vừa chỉnh → chờ
+      else if(Math.abs(S.dSlope)<=PH_DSLOPE_GATE){
+        // forecast đi đều: nếu đang tự đổ về target thì giữ, lệch xa mới chỉnh
+        const homing=(fcDev>0&&S.dSlope<0)||(fcDev<0&&S.dSlope>0);
+        if(homing){ ph='home'; }
+        else { gasDir=(fcDev>0)?-1:1; ph=fcDev>0?'fc>':'fc<'; }
+      } else {
+        // tốc độ góc đổi mạnh → phản ứng ngay
+        gasDir=(fcDev>0)?-1:1;
+        if(absFc>PH_WARN_BAND) step=10;
+        ph=fcDev>0?'FC>':'FC<';
+      }
+
+      if(gasDir!==0){ S.gas=clamp(S.gas+gasDir*step,0,100); S.warnCooldown=PH_WARN_COOLDOWN; }
+      S.gas=clamp(S.gas,0,100); S.phase=ph;
+      if(ph!=='cd'&&ph!=='ok'&&ph!=='safe'&&ph!=='home') log(`${S.state==='HOLDING'?'HOLD':'HEAT'} BT=${(bt10/10).toFixed(1)} fc=${(fc60/10).toFixed(1)} band=${(safeBand/10).toFixed(1)} dSlope=${S.dSlope} gas=${S.gas} [${ph}]`);
+    }
+
+    // ── Airflow cứu hộ / trôi về nền, cooldown 10s ─────────────────────────
+    if(S.ringFill>=5 && ((S.tick-S.airEvalTick)&0xffff)>=PH_AIR_COOLDOWN){
+      let ch=false;
+      if(bt10>target10+PH_TARGET_BAND && S.gas===0 && S.ror5>0){
+        if(S.ror5>=S.rorAtAirChg-2){ S.air=clamp(S.air+10,0,100); S.rorAtAirChg=S.ror5; ch=true; }
+      } else if(bt10>target10+PH_TARGET_BAND && bt10<=target10+50 && S.ror5<-3 && S.air>PH_AIR_BASE){
+        S.air=clamp(S.air-10,PH_AIR_BASE,100); ch=true;
+      } else if(bt10<=target10+PH_TARGET_BAND && S.air>PH_AIR_BASE){
+        S.air=clamp(S.air-10,PH_AIR_BASE,100); S.rorAtAirChg=0; ch=true;
+      }
+      if(ch){ S.airEvalTick=S.tick; log(`AIR -> ${S.air}`); }
+    }
+    break;
+  }
+  }
+  S.gasOut=clamp(S.gas,0,100); S.airOut=clamp(S.air,0,100);
+}
+
+// Mô phỏng nhiệt tùy chọn
+function physicsStep(){
+  const dBt=(S.gasOut*0.045)-0.5-(S.airOut*0.02);
+  bt10=clamp(bt10+dBt*10,0,3000)|0; document.getElementById('btSlider').value=bt10;
+  if(document.getElementById('etFollow').checked){ et10=clamp(bt10+150+S.gasOut*2,0,3800)|0; document.getElementById('etSlider').value=et10; }
+}
+
+// Vòng lặp
+let hist=[], acc=0, lastTs=0;
+function loop(ts){
+  if(!lastTs)lastTs=ts; const dt=ts-lastTs; lastTs=ts;
+  // Trend chỉ chạy khi đang preheat (wuR). STOP / hết giờ -> wuR=false -> dừng.
+  if(wuR && !paused){
+    const speed=+document.getElementById('speed').value;
+    acc+=dt*speed/1000;
+    while(acc>=1){ acc-=1;
+      if(document.getElementById('autoPhys').checked && wuR) physicsStep();
+      const wasActive=wuR;
+      fwTick();
+      if(wasActive && !wuR) break;   // run vừa kết thúc trong tick này -> không vẽ điểm rác
+      hist.push({t:simSec,bt:bt10/10,et:et10/10,target:+document.getElementById('target').value,gas:S.gasOut,air:S.airOut,ror5:S.ror5/10,ror:S.ror5/10*12,etror:rorET5/10*12,state:S.state,phase:S.phase});
+      if(hist.length>2400)hist.shift();
+    }
+  }else{ acc=0; }
+  render(); requestAnimationFrame(loop);
+}
+
+function render(){
+  const target=+document.getElementById('target').value;
+  document.getElementById('btVal').textContent=(bt10/10).toFixed(1);
+  document.getElementById('etVal').textContent=(et10/10).toFixed(1);
+  document.getElementById('nowTmp').textContent=(bt10/10).toFixed(1)+'°C';
+  document.getElementById('roET').textContent=(et10/10).toFixed(1);
+  document.getElementById('roBT').textContent=(bt10/10).toFixed(1);
+  document.getElementById('roDET').textContent=(rorET5/10*12).toFixed(1);
+  document.getElementById('roDBT').textContent=(S.ror5/10*12).toFixed(1);
+  document.getElementById('roAIR').textContent=S.airOut;
+  document.getElementById('roBURN').textContent=S.gasOut;
+  document.getElementById('roDRUM').textContent=drumPercent;
+  document.getElementById('roROR5').textContent=(S.ror5/10).toFixed(1);
+  // Forecast + cooldown
+  const fcBT=S.fcBT||bt10, fcDev=S.fcDev||0, fcEmg=S.fcEmg||bt10;
+  document.getElementById('roFC').textContent=(fcBT/10).toFixed(1);
+  const fcDevVal=(fcDev/10).toFixed(1);
+  const fcEl=document.getElementById('roFCDev');
+  fcEl.textContent=(fcDev>=0?'+':'')+fcDevVal+'°';
+  const afd=Math.abs(fcDev);
+  fcEl.style.color = afd>50?'#f85149':afd>30?'#e3b341':'#3fb950';
+  // FC 15s — đỏ sáng khi sắp vọt ±5
+  const emgEl=document.getElementById('roFCEmg');
+  emgEl.textContent=(fcEmg/10).toFixed(1);
+  const emgDev=Math.abs(fcEmg-target*10);
+  emgEl.style.color = emgDev>50?'#f85149':emgDev>30?'#e3b341':'#3fb950';
+  document.getElementById('roCooldown').textContent=S.warnCooldown+'s';
+  document.getElementById('airSlider').value=S.airOut; document.getElementById('airSlVal').textContent=S.airOut;
+  document.getElementById('burnerSlider').value=S.gasOut; document.getElementById('burnerSlVal').textContent=S.gasOut;
+  document.getElementById('stateTxt').textContent=S.state;
+  const m=Math.floor(S.elapsed/60),s=S.elapsed%60, mm=`${m}:${s<10?'0':''}${s}`;
+  document.getElementById('clk').textContent=mm;
+  document.getElementById('clock').textContent=`${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
+  document.getElementById('statusMsg').textContent=S.status||'—';
+  const chip=document.getElementById('phaseChip');
+  const ph=(S.state==='HEATING'||S.state==='HOLDING')?S.phase:'—';
+  chip.textContent=ph;
+  chip.style.background = ph==='—'?'#eee':'#ffe0c2'; chip.style.color = ph==='—'?'#666':'#c5621a';
+  // Vẽ lại biểu đồ tối đa 1 lần/giây (trend cập nhật chậm, nhẹ CPU)
+  const _t=performance.now();
+  if(_t-lastChartMs>=950){ lastChartMs=_t; drawChart(); }
+}
+let lastChartMs=0;
+
+function drawChart(){
+  const c=document.getElementById('chart'),ctx=c.getContext('2d');
+  // tự co giãn theo ô chứa (canvas flex:1)
+  const cw=c.clientWidth|0, ch=c.clientHeight|0;
+  if(cw>0 && ch>0 && (c.width!==cw || c.height!==ch)){ c.width=cw; c.height=ch; }
+  const W=c.width,H=c.height; ctx.clearRect(0,0,W,H);
+  const target=+document.getElementById('target').value;
+  const tmax=Math.max(240,target+30);
+  const winMin=clamp(+document.getElementById('chartWin').value||5,1,30);
+  const WIN=winMin*60;                          // độ rộng cửa sổ (giây)
+  const padL=4,padR=4,padB=18;                  // chừa đáy cho nhãn phút
+  const plotW=W-padL-padR, plotH=H-padB;
+  const yT=v=>plotH-(v/tmax)*plotH;
+  const yP=v=>plotH-(v/100)*plotH;              // % map lên cùng khung (100%→đỉnh)
+  const yR=v=>plotH/2-(v/200)*(plotH/2);        // C/min: 0 ở giữa, ±200 full
+
+  // Khung thời gian: tính theo thời gian tương đối từ mẫu đầu, cuộn khi vượt WIN
+  const base = hist.length ? hist[0].t : 0;
+  const trNow = hist.length ? hist[hist.length-1].t - base : 0;
+  const winStart = (trNow <= WIN) ? 0 : trNow - WIN;   // giây tương đối
+  const xT = tr => padL + (tr - winStart)/WIN*plotW;
+
+  // bands nhiệt độ kiểu Artisan
+  const band=(lo,hi,col)=>{ ctx.fillStyle=col; const y1=yT(hi),y2=yT(lo); ctx.fillRect(0,y1,W,y2-y1); };
+  band(0,70,'#f4f4f4'); band(70,155,'#e3efe0'); band(155,190,'#faecd6'); band(190,tmax,'#ece7e0');
+
+  // lưới ngang mỗi 20°C + nhãn
+  ctx.lineWidth=1; ctx.font='10px Consolas';
+  ctx.strokeStyle='#e0e0e0'; ctx.fillStyle='#999';
+  for(let t=0;t<=tmax;t+=20){ const y=yT(t); ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); ctx.fillText(t,2,y-2); }
+  // nhãn C/min bên phải
+  ctx.fillStyle='#b58'; for(let r=-200;r<=200;r+=50){ const y=yR(r); ctx.fillText(r,W-30,y-2); }
+
+  // lưới dọc theo PHÚT + nhãn thời gian (trục x = thời gian)
+  ctx.strokeStyle='#d7d7d7'; ctx.fillStyle='#777';
+  const firstMin=Math.ceil(winStart/60)*60;
+  for(let sec=firstMin; sec<=winStart+WIN+0.5; sec+=60){
+    const X=xT(sec);
+    ctx.beginPath(); ctx.moveTo(X,0); ctx.lineTo(X,plotH); ctx.stroke();
+    ctx.fillText((sec/60)+'′', X+2, plotH+13);
+  }
+  ctx.fillText('phút', W-32, plotH+13);
+
+  if(hist.length<2){ return; }
+  // ── Band ±5°C (xanh lá nhạt) và ±3°C (hồng nhạt) xung quanh target ──────
+  const BAND3=3, BAND5=5;
+  ctx.globalAlpha=0.18;
+  ctx.fillStyle='#4caf50';   // xanh lá ±5°C
+  ctx.fillRect(0,yT(target+BAND5),W,yT(target-BAND5)-yT(target+BAND5));
+  ctx.fillStyle='#f44336';   // hồng ±3°C
+  ctx.fillRect(0,yT(target+BAND3),W,yT(target-BAND3)-yT(target+BAND3));
+  ctx.globalAlpha=1;
+  // viền nét đứt band ±3 và ±5
+  ctx.setLineDash([6,4]); ctx.lineWidth=1;
+  const drawBandLine=(y,col)=>{ ctx.strokeStyle=col; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); };
+  ctx.globalAlpha=0.55;
+  drawBandLine(yT(target+BAND5),'#388e3c'); drawBandLine(yT(target-BAND5),'#388e3c');
+  drawBandLine(yT(target+BAND3),'#c62828'); drawBandLine(yT(target-BAND3),'#c62828');
+  ctx.setLineDash([]); ctx.globalAlpha=1;
+  // nhãn band bên phải
+  ctx.font='10px Consolas'; ctx.fillStyle='#388e3c';
+  ctx.fillText(`+5°`,W-26,yT(target+BAND5)-2); ctx.fillText(`-5°`,W-26,yT(target-BAND5)+10);
+  ctx.fillStyle='#c62828';
+  ctx.fillText(`+3°`,W-26,yT(target+BAND3)-2); ctx.fillText(`-3°`,W-26,yT(target-BAND3)+10);
+  // target line
+  ctx.strokeStyle='#888'; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(0,yT(target)); ctx.lineTo(W,yT(target)); ctx.stroke(); ctx.setLineDash([]);
+  // ── Đường tiến độ: từ btStart (lúc vào HEATING) → target tại 180s ───────
+  // BT nên bám đường này; đến 3 phút phải chạm target.
+  const heat0=hist.find(p=>p.state==='HEATING'||p.state==='HOLDING');
+  if(heat0 && S.btStart>0){
+    const bs=S.btStart/10, t0=heat0.t;
+    ctx.strokeStyle='#16a34a'; ctx.lineWidth=1.5; ctx.setLineDash([7,4]); ctx.globalAlpha=0.8;
+    ctx.beginPath();
+    ctx.moveTo(xT(t0-base), yT(bs));
+    ctx.lineTo(xT(t0+PH_DEADLINE_SEC-base), yT(target));   // chạm target tại 180s
+    ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.fillStyle='#16a34a'; ctx.font='bold 10px Consolas';
+    ctx.fillText('tiến độ→3′', xT(t0+PH_DEADLINE_SEC-base)-54, yT(target)+12);
+  }
+  // vẽ theo thời gian thực của từng mẫu
+  const line=(key,color,fn,w)=>{ ctx.strokeStyle=color;ctx.lineWidth=w||2;ctx.beginPath();
+    let started=false;
+    hist.forEach(p=>{ const X=xT(p.t-base),Y=fn(p[key]); if(!started){ctx.moveTo(X,Y);started=true;} else ctx.lineTo(X,Y); }); ctx.stroke(); };
+  line('ror','#9b59b6',v=>yR(clamp(v,-200,200)),1.2);
+  line('gas','#e6772e',yP,2);
+  line('air','#3a78c2',yP,2);
+  if(document.getElementById('showET').checked) line('et','#777',yT,1.8);
+  line('bt','#d9534f',yT,2.5);    // đường BT (đỏ)
+
+  // ── Forecast ET + BT: kéo dài theo RoR hiện tại, độ dài = fcMin phút ──
+  const fcMin=+(document.getElementById('fcMin').value||0);
+  if(fcMin>0){
+    const last=hist[hist.length-1];
+    // Độ dốc forecast = hồi quy trên cửa sổ FC_WIN giây (mượt, ít nhảy)
+    const FC_WIN=15;
+    const slope=key=>{                            // trả về °C/phút
+      let i=hist.length-1; const lt=hist[i].t;
+      while(i>0 && lt-hist[i-1].t < FC_WIN) i--;
+      const dt=lt-hist[i].t; return dt>0 ? (last[key]-hist[i][key])/dt*60 : 0;
+    };
+    const trLast=last.t-base, endTr=trLast+fcMin*60;
+    const fcSlope={}; ['bt','et'].forEach(k=>fcSlope[k]=slope(k));
+    const fc=(val,key,col)=>{
+      const s=fcSlope[key], endV=val+s*fcMin;
+      // nét chấm mịn
+      ctx.strokeStyle=col; ctx.lineWidth=1.6; ctx.setLineDash([1.5,4]); ctx.lineCap='round'; ctx.globalAlpha=0.75;
+      ctx.beginPath(); ctx.moveTo(xT(trLast),yT(val)); ctx.lineTo(xT(endTr),yT(endV)); ctx.stroke();
+      ctx.setLineDash([]); ctx.lineCap='butt'; ctx.globalAlpha=1;
+      // nhãn cuối đường
+      ctx.fillStyle=col; ctx.font='11px Consolas';
+      ctx.fillText(endV.toFixed(0)+'°', xT(endTr)+4, yT(endV)-4);
+      // ── Giao điểm với band ±3 và ±5 ──
+      if(s===0) return;
+      const markBand=(band,bcol)=>{
+        // tính thời gian (phút) forecast đạt target±band
+        const crossHi=(target+band-val)/s;  // phút tới target+band
+        const crossLo=(target-band-val)/s;  // phút tới target-band
+        [crossHi,crossLo].forEach(tMin=>{
+          if(tMin<=0||tMin>fcMin) return;   // chỉ vẽ nếu trong cửa sổ forecast
+          const Xc=xT(trLast+tMin*60), Vc=val+s*tMin;
+          ctx.globalAlpha=0.9;
+          ctx.fillStyle=bcol; ctx.beginPath(); ctx.arc(Xc,yT(Vc),4,0,7); ctx.fill();
+          ctx.fillStyle=bcol; ctx.font='bold 10px Consolas';
+          const label=tMin<1?`${Math.round(tMin*60)}s`:`${tMin.toFixed(1)}′`;
+          ctx.fillText(label, Xc+5, yT(Vc)-4);
+          ctx.globalAlpha=1;
+        });
+      };
+      markBand(3,'#c62828');
+      markBand(5,'#388e3c');
+    };
+    if(document.getElementById('showET').checked) fc(last.et,'et','#777');
+    fc(last.bt,'bt','#d9534f');  // forecast BT (đỏ)
+  }
+}
+
+// Sliders & buttons
+const btSlider=document.getElementById('btSlider'),etSlider=document.getElementById('etSlider');
+btSlider.addEventListener('input',()=>{ bt10=+btSlider.value;
+  if(document.getElementById('etFollow').checked && !document.getElementById('autoPhys').checked){ et10=clamp(bt10+150,0,3800)|0; etSlider.value=et10; } });
+etSlider.addEventListener('input',()=>{ et10=+etSlider.value; });
+function nudgeBT(d){ bt10=clamp(bt10+d,0,3000)|0; btSlider.value=bt10;
+  if(document.getElementById('etFollow').checked && !document.getElementById('autoPhys').checked){ et10=clamp(bt10+150,0,3800)|0; etSlider.value=et10; } }
+document.getElementById('speed').addEventListener('input',e=>{document.getElementById('speedVal').textContent=e.target.value+'×';});
+function copyLog(){
+  const txt=document.getElementById('log').textContent;
+  navigator.clipboard.writeText(txt).then(
+    ()=>{ S.status='📋 Đã copy log — dán cho Claude'; },
+    ()=>{ S.status='Copy lỗi — bôi đen log copy tay'; }
+  );
+}
+function buildCSV(){
+  // Lấy mẫu mỗi 3 giây (3 giây log 1 lần)
+  let csv='t_sec,state,phase,bt,et,target,gas,air,ror5_c5s,ror_cmin\n';
+  hist.forEach(p=>{ if(p.t%3!==0) return;
+    csv+=`${p.t},${p.state},${p.phase},${p.bt.toFixed(1)},${(p.et||0).toFixed(1)},${p.target},${p.gas},${p.air},${(p.ror5||0).toFixed(1)},${(p.ror||0).toFixed(1)}\n`; });
+  return csv;
+}
+function fallbackDownload(blob){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='preheat_run.csv'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+async function downloadCSV(){
+  const blob=new Blob([buildCSV()],{type:'text/csv'});
+  if(window.showSaveFilePicker){
+    try{
+      const handle=await window.showSaveFilePicker({
+        suggestedName:'preheat_run.csv',
+        types:[{description:'CSV',accept:{'text/csv':['.csv']}}]
+      });
+      const w=await handle.createWritable(); await w.write(blob); await w.close();
+      S.status='✅ Đã lưu CSV (3s/mẫu)';
+    }catch(e){ if(e.name!=='AbortError') fallbackDownload(blob); }
+  }else{
+    fallbackDownload(blob);   // trình duyệt cũ: tải về Downloads
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
+// CHẤM ĐIỂM SAU MỖI LẦN PREHEAT — khắt khe, chi tiết từng hạng mục (tổng 100)
+// ──────────────────────────────────────────────────────────────────────────
+function scoreRun(reason){
+  const target=+document.getElementById('target').value;
+  const burn=hist.filter(p=>p.state==='HEATING'||p.state==='HOLDING');
+
+  // Thất bại an toàn / mồi lửa -> 0 điểm, nêu rõ lý do
+  if(reason==='ABORT'){ showScore({total:0,grade:'F',cats:[]}, '⛔ ABORT: |ET−BT|>160°C — vi phạm an toàn', '#f8d7da','#842029'); return; }
+  if(reason==='FAIL'){  showScore({total:0,grade:'F',cats:[]}, '⛔ Mồi lửa thất bại 3 lần', '#f8d7da','#842029'); return; }
+  if(burn.length<5){    showScore({total:0,grade:'F',cats:[]}, 'Run quá ngắn, chưa đủ dữ liệu để chấm', '#fff3cd','#664d03'); return; }
+
+  const finalBT=bt10/10;
+  const finalErr=Math.abs(finalBT-target);
+  let maxBT=-999; burn.forEach(p=>{ if(p.bt>maxBT)maxBT=p.bt; });
+  const overshoot=Math.max(0,maxBT-target);
+
+  // thời gian đạt target (lần đầu |BT-target|<=3)
+  const t0=burn[0].t; let reachTick=-1;
+  for(const p of burn){ if(Math.abs(p.bt-target)<=3){ reachTick=p.t-t0; break; } }
+  const totalSec=(+document.getElementById('time').value)*60;
+
+  // ổn định khi HOLD: max lệch + dao động
+  const hold=burn.filter(p=>p.state==='HOLDING');
+  let maxHoldDev=0; hold.forEach(p=>{ const d=Math.abs(p.bt-target); if(d>maxHoldDev)maxHoldDev=d; });
+
+  // ổn định gas: đếm số lần gas đổi giá trị — ít đổi = mượt, không nhấp nhô
+  let gasChanges=0;
+  for(let i=1;i<burn.length;i++){ if(burn[i].gas!==burn[i-1].gas) gasChanges++; }
+
+  // ── tính điểm từng hạng mục (khắt khe) ──
+  const cats=[];
+  const pOver = hold.length? clamp(25-overshoot*8,0,25) : clamp(25-overshoot*8,0,25);
+  cats.push({n:'Vọt lố (overshoot)', m:`đỉnh ${maxBT.toFixed(1)}°C → vượt ${overshoot.toFixed(1)}°C`, p:pOver, max:25});
+
+  const pFinal = clamp(25-finalErr*8,0,25);
+  cats.push({n:'Chính xác chốt cuối', m:`BT cuối ${finalBT.toFixed(1)}°C, lệch ${finalErr.toFixed(1)}°C`, p:pFinal, max:25});
+
+  const pHold = hold.length? clamp(20-maxHoldDev*5,0,20) : 0;
+  cats.push({n:'Ổn định khi giữ nhiệt', m: hold.length? `lệch tối đa ${maxHoldDev.toFixed(1)}°C khi HOLD` : 'chưa vào HOLD', p:pHold, max:20});
+
+  let pReach;
+  if(reachTick<0) pReach=0;
+  else if(reachTick<=totalSec*0.9) pReach=15;
+  else pReach=8;
+  cats.push({n:'Đạt target', m: reachTick<0? 'KHÔNG đạt target' : `đạt sau ${Math.floor(reachTick/60)}:${String(reachTick%60).padStart(2,'0')}`, p:pReach, max:15});
+
+  // mỗi lần đổi gas trừ 1.5đ — gas càng ít nhấp nhô càng cao điểm
+  const pStable=clamp(15-gasChanges*1.5,0,15);
+  cats.push({n:'Ổn định gas', m:`gas đổi ${gasChanges} lần — ít nhấp nhô = mượt`, p:pStable, max:15});
+
+  let total=cats.reduce((s,c)=>s+c.p,0);
+  // caps khắt khe
+  let capNote='';
+  if(overshoot>5){ total=Math.min(total,50); capNote='Vọt lố >5°C → trần 50đ. '; }
+  if(finalErr>3){ total=Math.min(total,60); capNote+='Chốt ngoài ±3°C → trần 60đ.'; }
+  total=Math.round(total);
+
+  const grade = total>=90?'A':total>=80?'B':total>=70?'C':total>=60?'D':'F';
+  showScore({total,grade,cats},
+    `${reason==='CANCEL'?'Dừng tay':'Hoàn tất'} · target ${target}°C. ${capNote}`,
+    total>=80?'#d1e7dd':total>=60?'#fff3cd':'#f8d7da',
+    total>=80?'#0f5132':total>=60?'#664d03':'#842029');
+}
+function showScore(res,reasonTxt,noteBg,noteFg){
+  document.getElementById('spTotal').textContent=res.total;
+  const g=document.getElementById('spGrade'); g.textContent=res.grade;
+  g.style.background = res.grade==='A'?'#2e9e57':res.grade==='B'?'#5aa469':res.grade==='C'?'#d8a33a':res.grade==='D'?'#e08a3c':'#d9534f';
+  document.getElementById('spReasonTxt').textContent='';
+  const note=document.getElementById('spNote');
+  note.style.display='block'; note.textContent=reasonTxt; note.style.background=noteBg; note.style.color=noteFg;
+  const body=document.getElementById('spBody'); body.innerHTML='';
+  res.cats.forEach(c=>{
+    const pct=Math.round(c.p/c.max*100);
+    const col=pct>=80?'#2e9e57':pct>=50?'#d8a33a':'#d9534f';
+    const div=document.createElement('div'); div.className='sp-cat';
+    div.innerHTML=`<div class="top"><span>${c.n}</span><span class="pts">${c.p}/${c.max}</span></div>
+      <div class="desc">${c.m}</div><div class="sp-bar"><i style="width:${pct}%;background:${col}"></i></div>`;
+    body.appendChild(div);
+  });
+  document.getElementById('scoreOverlay').style.display='flex';
+}
+function closeScore(){ document.getElementById('scoreOverlay').style.display='none'; }
+
+function manualAir(d){ if(!wuR){S.air=clamp(S.air+d,0,100);S.airOut=S.air;} }
+function manualBurner(d){ if(!wuR){S.gas=clamp(S.gas+d,0,100);S.gasOut=S.gas;} }
+function manualDrum(d){ drumPercent=clamp(drumPercent+d,0,100); }
+
+function uiSyncButtons(){
+  const sb=document.getElementById('startBtn');
+  sb.textContent = wuR?'STOP PREHEAT':'START PREHEAT';
+  sb.classList.toggle('run',wuR);
+}
+document.getElementById('startBtn').addEventListener('click',()=>{
+  if(wuR){
+    // STOP: set wuR=false trước, sau đó mới chấm điểm
+    wuR=false;
+    try{ if(hist.length>5) scoreRun('CANCEL'); } catch(e){ console.error('scoreRun error:',e); }
+    S.status='PREHEAT: stopped'; fwReset(); uiSyncButtons(); return;
+  }
+  // START mới: reset sạch rồi mới bật
+  wuR=false; fwReset();
+  hist=[]; simSec=0; acc=0;
+  document.getElementById('log').textContent='';
+  wuR=true; gasSignal=0; paused=false;
+  log(`START preheat target=${document.getElementById('target').value}°C time=${document.getElementById('time').value}min`);
+  uiSyncButtons();
+});
+document.getElementById('pauseBtn').addEventListener('click',()=>{ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'RESUME':'PAUSE'; });
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  wuR=false; paused=false; fwReset(); simSec=0; hist=[]; bt10=250; et10=250;
+  btSlider.value=250; etSlider.value=250; etRing=[250,250,250,250,250];etFill=0;rorET5=0;
+  document.getElementById('log').textContent=''; S.status='reset'; document.getElementById('pauseBtn').textContent='PAUSE'; uiSyncButtons();
+});
+
+uiSyncButtons();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

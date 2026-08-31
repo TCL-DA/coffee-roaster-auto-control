@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PID Preheat tự học — OTL-06ALS | Giới thiệu kỹ thuật</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Arial,sans-serif;background:#0d1117;color:#e6edf3;line-height:1.65}
+  .hero{background:linear-gradient(135deg,#1f6feb22,#0d1117);border-bottom:1px solid #30363d;padding:48px 20px 40px;text-align:center}
+  .hero h1{font-size:34px;font-weight:800;color:#fff;letter-spacing:-.5px}
+  .hero .sub{font-size:17px;color:#8b949e;margin-top:10px;max-width:760px;margin-left:auto;margin-right:auto}
+  .hero .badges{margin-top:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .badge{background:#1c2128;border:1px solid #30363d;border-radius:20px;padding:5px 14px;font-size:13px;color:#79c0ff;font-weight:600}
+  .wrap{max-width:920px;margin:0 auto;padding:10px 20px 80px}
+  h2{font-size:24px;color:#fff;margin:44px 0 6px;padding-top:16px;display:flex;align-items:center;gap:10px}
+  h2 .n{display:inline-flex;width:32px;height:32px;border-radius:8px;background:#1f6feb;color:#fff;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0}
+  h3{font-size:17px;color:#e3b341;margin:22px 0 8px}
+  p{margin:10px 0;color:#c9d1d9}
+  .lead{font-size:16px;color:#adbac7}
+  code{font-family:"Consolas",monospace;background:#161b22;color:#7ee787;padding:2px 6px;border-radius:4px;font-size:13px;border:1px solid #21262d}
+  .formula{background:#0b0e14;border:1px solid #30363d;border-left:4px solid #1f6feb;border-radius:6px;padding:14px 18px;margin:14px 0;font-family:"Consolas",monospace;font-size:15px;color:#e6edf3;overflow-x:auto}
+  .formula b{color:#ffa657}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:18px 0}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:18px}
+  .card .ic{font-size:24px;margin-bottom:8px}
+  .card h4{font-size:15px;color:#fff;margin-bottom:6px}
+  .card p{font-size:13.5px;color:#8b949e;margin:0}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+  th,td{border:1px solid #30363d;padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:#1c2128;color:#79c0ff;font-weight:600}
+  td .ok{color:#3fb950;font-weight:700}
+  .box{border-radius:8px;padding:16px 18px;margin:16px 0}
+  .box.win{background:#0f1a12;border:1px solid #238636}
+  .box.win b{color:#3fb950}
+  .box.note{background:#1a160f;border:1px solid #9e6a03}
+  .box.note b{color:#e3b341}
+  .timeline{border-left:2px solid #30363d;margin:18px 0 18px 12px;padding-left:24px}
+  .tl{position:relative;margin-bottom:20px}
+  .tl::before{content:'';position:absolute;left:-31px;top:4px;width:12px;height:12px;border-radius:50%;background:#1f6feb;border:2px solid #0d1117}
+  .tl h4{font-size:15px;color:#fff;margin-bottom:3px}
+  .tl p{font-size:13.5px;color:#8b949e;margin:0}
+  .tl .t{font-family:Consolas;font-size:12px;color:#58a6ff}
+  ul{margin:10px 0 10px 22px}li{margin:6px 0;color:#c9d1d9}
+  .kpi{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0}
+  .kpi .k{flex:1;min-width:140px;background:#161b22;border:1px solid #30363d;border-radius:10px;padding:16px;text-align:center}
+  .kpi .v{font-size:30px;font-weight:800;color:#3fb950;font-family:Consolas}
+  .kpi .l{font-size:12.5px;color:#8b949e;margin-top:4px}
+  .foot{text-align:center;color:#6e7681;font-size:13px;margin-top:50px;padding-top:20px;border-top:1px solid #21262d}
+  .tag{display:inline-block;font-size:11px;background:#1f6feb22;color:#79c0ff;border:1px solid #1f6feb55;border-radius:4px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>PID Preheat Tự Học</h1>
+  <div class="sub">Hệ điều khiển làm nóng máy rang cà phê OTL-06ALS — tự dò tham số, giữ nhiệt độ chính xác, thích nghi mọi đầu đốt. Chạy trên vi điều khiển STM32F103 (72 MHz, không FPU, 20 KB RAM).</div>
+  <div class="badges">
+    <span class="badge">2-DOF PID</span>
+    <span class="badge">Relay Autotune</span>
+    <span class="badge">Gain Scheduling</span>
+    <span class="badge">Tự đánh giá &amp; tự sửa</span>
+    <span class="badge">Số nguyên 100%</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <p class="lead">Tài liệu này dành cho kỹ sư: giải thích nguyên lý, công bố ưu điểm và định hướng phát triển của tính năng PID Preheat — kết quả của quá trình hiệu chỉnh trên máy rang thật.</p>
+
+  <!-- 1 -->
+  <h2><span class="n">1</span> Bài toán</h2>
+  <p>Trước mỗi mẻ rang, máy cần <b>làm nóng buồng rang tới một nhiệt độ đặt (SV)</b> — ví dụ 190°C — rồi <b>giữ ổn định</b> ở đó. Nghe đơn giản, nhưng máy rang gas là một đối tượng điều khiển <b>khó</b>:</p>
+  <div class="grid">
+    <div class="card"><div class="ic">🔥</div><h4>Quán tính nhiệt lớn</h4><p>Tắt gas rồi nhiệt độ vẫn trôi lên vài chục độ do trống và buồng đốt tích nhiệt.</p></div>
+    <div class="card"><div class="ic">📈</div><h4>Phi tuyến</h4><p>Đặc tính ở 160°C khác hẳn 240°C — một bộ tham số khó phục vụ cả dải.</p></div>
+    <div class="card"><div class="ic">🌬️</div><h4>Nhiễu &amp; xáo trộn</h4><p>Gió, áp gas, cảm biến trễ — output dễ dao động nếu điều khiển thô.</p></div>
+    <div class="card"><div class="ic">⚙️</div><h4>Mỗi máy một khác</h4><p>Đầu đốt, công suất, kích cỡ trống khác nhau giữa các máy.</p></div>
+  </div>
+  <p>Cách cũ: kỹ thuật viên chỉnh gas bằng tay, dựa kinh nghiệm — chậm, không lặp lại được, mỗi người một kiểu. Mục tiêu của tính năng này: <b>máy tự làm nóng đến đúng SV và giữ trong ±2°C, không cần can thiệp tay.</b></p>
+
+  <!-- 2 -->
+  <h2><span class="n">2</span> Nền tảng — Bộ điều khiển PID 2-DOF</h2>
+  <p>Lõi là bộ PID (Proportional–Integral–Derivative) — chuẩn công nghiệp. Mỗi giây tính sai số và điều chỉnh gas:</p>
+  <div class="formula">
+output = <b>P</b> + <b>I</b> + <b>D</b><br>
+<b>P</b> = Kp · (β·SV − BT) &nbsp;&nbsp;<span style="color:#6e7681">// tỉ lệ — phản ứng theo độ lệch hiện tại</span><br>
+<b>I</b> = Ki · Σ(sai_số·dt) &nbsp;&nbsp;<span style="color:#6e7681">// tích phân — triệt tiêu lệch tĩnh</span><br>
+<b>D</b> = Kd · (−ΔBT/dt) &nbsp;&nbsp;&nbsp;<span style="color:#6e7681">// vi phân trên đo lường (DoM) — phanh trước khi vọt</span>
+  </div>
+  <p>Output &gt; 0 → mở gas theo %; output &lt; 0 → cắt gas và tăng gió để hạ nhiệt. Tín hiệu ra DAC 0–10V (0–100%).</p>
+
+  <h3>Những tinh chỉnh mượn từ Artisan &amp; Hanyoung</h3>
+  <table>
+    <tr><th>Kỹ thuật</th><th>Vai trò</th></tr>
+    <tr><td><b>2-DOF (trọng số β)</b></td><td>Làm dịu phản ứng khi SV lớn → giảm vọt lố lúc đi lên, không hy sinh khả năng giữ.</td></tr>
+    <tr><td><b>DoM</b> (Derivative on Measurement)</td><td>Tính vi phân trên BT thay vì trên sai số → tránh "derivative kick" khi đổi setpoint.</td></tr>
+    <tr><td><b>Anti-windup + back-calculation</b></td><td>Chặn tích phân phình to khi gas đã bão hòa → không vọt lố sau khi tới đích.</td></tr>
+    <tr><td><b>Trần tích phân động</b></td><td>Nâng giới hạn I đúng bằng phần β làm hụt → giữ chính xác kể cả ở nhiệt độ cao.</td></tr>
+    <tr><td><b>Lọc EMA</b> (D &amp; output)</td><td>Thay bộ lọc IIR của Artisan — nhẹ cho vi điều khiển, vẫn lọc nhiễu cảm biến.</td></tr>
+    <tr><td><b>Phát hiện spike</b></td><td>BT nhảy bất thường (nhiễu) → giảm tác động D 70%, tránh giật.</td></tr>
+  </table>
+  <p class="tag">Toàn bộ tính bằng số nguyên 32-bit (hệ số ×1000) vì STM32F103 không có bộ tính số thực.</p>
+
+  <!-- 3 -->
+  <h2><span class="n">3</span> Nhìn trước — Lookahead</h2>
+  <p>Thay vì để PID đợi BT lệch khỏi target mới phản ứng, hệ thống dựng <b>đường tiến độ tuyến tính</b> từ nhiệt độ hiện tại tới SV trong 3 phút, và điều khiển PID bám theo <b>điểm phía trước 6 giây</b>. Hiệu quả: máy "biết" nó cần ở đâu sắp tới → đốt sớm, lên đúng nhịp, đạt SV gọn gàng đúng phút thứ 3 rồi chuyển sang giữ nhiệt.</p>
+
+  <!-- 4 -->
+  <h2><span class="n">4</span> Tự dò tham số — Relay Autotune</h2>
+  <p>Đây là điểm cốt lõi: <b>máy tự tìm ra Kp, Ki, Kd</b> thay vì người chỉnh tay. Dùng phương pháp <b>relay (Ziegler-Nichols / limit cycle)</b> — đúng nguyên lý đồng hồ công nghiệp Hanyoung VX4:</p>
+  <div class="timeline">
+    <div class="tl"><div class="t">Bước 1 — Mồi lửa</div><h4>Thổi sạch buồng đốt rồi mồi</h4><p>Đảm bảo an toàn trước khi cấp nhiệt.</p></div>
+    <div class="tl"><div class="t">Bước 2 — Dao động đo</div><h4>Cho gas nhảy 2 mức quanh điểm dò</h4><p>BT dao động hình sin. Đo biên độ <code>a</code> và chu kỳ <code>Pu</code> qua vài chu kỳ → suy ra "tính cách nhiệt" của máy.</p></div>
+    <div class="tl"><div class="t">Bước 3 — Tính hệ số</div><h4>Ziegler-Nichols → Kp, Ki, Kd</h4><p><code>Ku = 4d/(π·a)</code> → Kp=0.6Ku, Ki=2Kp/Pu, Kd=0.125·Kp·Pu.</p></div>
+    <div class="tl"><div class="t">Bước 4 — Lưu &amp; chạy</div><h4>Ghi vào thẻ SD, chuyển sang giữ nhiệt</h4><p>Lần sau dùng lại, không dò lại nữa.</p></div>
+  </div>
+  <div class="box note"><b>Low PV mode:</b> việc dò được thực hiện ở nhiệt độ <b>thấp hơn SV</b> (theo công thức Hanyoung) để an toàn — tránh vọt nhiệt khi đang thử nghiệm. Dò xong PID mới kéo lên SV thật.</div>
+
+  <!-- 5 -->
+  <h2><span class="n">5</span> Tự đánh giá &amp; tự sửa <span class="tag">điểm khác biệt</span></h2>
+  <p>Khác với autotune thông thường (dò một lần rồi thôi), hệ thống này <b>tự chấm điểm chính nó</b> sau mỗi lần preheat:</p>
+  <ul>
+    <li>Đo độ lệch lớn nhất khi giữ nhiệt (sau khi đã ổn định).</li>
+    <li><b>Đạt ±2°C</b> → giữ bộ hệ số.</li>
+    <li><b>Lệch quá ±2°C</b> → tự xóa hệ số mức đó → lần sau <b>tự dò lại</b>.</li>
+  </ul>
+  <div class="box win"><b>Hệ quả thực tế:</b> Người vận hành chỉ bấm một nút "Preheat". Đổi đầu đốt, đổi điều kiện → PID cũ không còn chuẩn → máy tự nhận ra và tự hiệu chỉnh lại. <b>Không cần kỹ thuật viên, không cần đụng vào thẻ nhớ.</b></div>
+
+  <!-- 6 -->
+  <h2><span class="n">6</span> Nhiều mức nhiệt — Gain Scheduling</h2>
+  <p>Vì máy phi tuyến, một bộ hệ số không phục vụ tốt cả 160°C lẫn 240°C. Hệ thống lưu <b>bảng hệ số theo từng mức SV</b> (giống cơ chế n.PID 4 bộ của Hanyoung):</p>
+  <div class="formula">
+/pid_pre.txt:<br>
+&nbsp;&nbsp;240, kp, ki, kd<br>
+&nbsp;&nbsp;170, kp, ki, kd
+  </div>
+  <p>Khách luân phiên 240/170: mỗi mức dò <b>một lần duy nhất</b>, sau đó tra bảng dùng lại — <b>không bao giờ phải dò lại</b> khi đổi qua lại.</p>
+
+  <!-- 7 -->
+  <h2><span class="n">7</span> An toàn nhiều lớp</h2>
+  <div class="grid">
+    <div class="card"><div class="ic">🛡️</div><h4>Trần riêng cho PID</h4><p>BT vượt SV+15°C → cắt gas, thổi gió mạnh ngay.</p></div>
+    <div class="card"><div class="ic">⚠️</div><h4>Bảo vệ chênh lệch</h4><p>|ET − BT| &gt; 160°C → hủy preheat, đóng gas.</p></div>
+    <div class="card"><div class="ic">🔻</div><h4>Cắt cứng phần cứng (ISR)</h4><p>BT&gt;250°C hoặc ET&gt;350°C → ngắt gas tức thì.</p></div>
+    <div class="card"><div class="ic">⏱️</div><h4>Chống kẹt</h4><p>Dò không tiến triển → tự bỏ, dùng hệ số dự phòng.</p></div>
+  </div>
+
+  <!-- 8 -->
+  <h2><span class="n">8</span> Kết quả đo thực tế</h2>
+  <div class="kpi">
+    <div class="k"><div class="v">±0.4°C</div><div class="l">Độ ổn định khi giữ nhiệt (đo thật, mục tiêu ±2°C)</div></div>
+    <div class="k"><div class="v">1 nút</div><div class="l">Thao tác của người vận hành</div></div>
+    <div class="k"><div class="v">~3 phút</div><div class="l">Đạt setpoint (tùy công suất đầu đốt)</div></div>
+    <div class="k"><div class="v">20 KB</div><div class="l">Toàn bộ chạy gọn trong RAM vi điều khiển</div></div>
+  </div>
+  <div class="box win"><b>Ưu điểm tổng hợp:</b> chính xác (±2°C), lặp lại được giữa các mẻ, tự thích nghi máy/đầu đốt, không phụ thuộc kinh nghiệm thợ, và minh bạch (ghi log từng bước để kỹ sư kiểm chứng).</div>
+
+  <!-- 9 -->
+  <h2><span class="n">9</span> Ứng dụng tương lai</h2>
+  <div class="grid">
+    <div class="card"><div class="ic">🤖</div><h4>Tự thích nghi mức tune</h4><p>Tự điều chỉnh biên độ relay theo công suất đầu đốt thực tế — autotune chạy tốt trên mọi máy không cần chỉnh tay.</p></div>
+    <div class="card"><div class="ic">📊</div><h4>Học theo profile rang</h4><p>Mở rộng PID để bám đường cong rang động (ramp/soak) thay vì chỉ giữ một điểm — điều khiển toàn mẻ rang.</p></div>
+    <div class="card"><div class="ic">🌡️</div><h4>Đa cảm biến / đa vùng</h4><p>Áp dụng cùng kiến trúc cho ET, drum, gió — điều khiển phối hợp nhiều biến.</p></div>
+    <div class="card"><div class="ic">☁️</div><h4>Đám mây &amp; theo dõi từ xa</h4><p>Gửi log hệ số &amp; chất lượng tune lên server → giám sát đội máy, cảnh báo khi đầu đốt suy giảm.</p></div>
+    <div class="card"><div class="ic">🔁</div><h4>Nhân rộng nhiều model máy</h4><p>Kiến trúc cấu hình hóa — chuyển sang model rang khác chỉ bằng đổi file cấu hình.</p></div>
+    <div class="card"><div class="ic">🧠</div><h4>Học liên tục</h4><p>Tích lũy dữ liệu nhiều mẻ để tinh chỉnh hệ số ngày càng tối ưu theo thời gian sử dụng.</p></div>
+  </div>
+
+  <div class="foot">
+    OTL-06ALS Coffee Roaster CMS — PID Preheat tự học · Tài liệu kỹ thuật<br>
+    Lõi điều khiển port &amp; hiệu chỉnh từ Artisan PID (2-DOF) và Hanyoung VX4 (relay autotune), tối ưu cho STM32F103.
+  </div>
+
+</div>
+</body>
+</html>

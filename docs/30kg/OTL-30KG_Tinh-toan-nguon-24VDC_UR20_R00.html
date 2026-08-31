@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OTL-30KG - Tính toán nguồn 24 VDC trạm Weidmüller UR20</title>
+  <style>
+    :root {
+      --ink: #18212b;
+      --muted: #5f6b76;
+      --line: #d8dee5;
+      --paper: #ffffff;
+      --navy: #12344d;
+      --blue: #176b87;
+      --cyan: #dff4f7;
+      --orange: #e77817;
+      --orange-soft: #fff0df;
+      --green: #18745a;
+      --green-soft: #e5f4ee;
+      --red: #a53a32;
+      --red-soft: #fff0ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    @page { size: A4; margin: 0; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #e8ebef;
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 9.2pt;
+      line-height: 1.38;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      position: relative;
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto 8mm;
+      padding: 16mm 15mm 15mm;
+      background: var(--paper);
+      overflow: hidden;
+      page-break-after: always;
+    }
+
+    .page:last-child { page-break-after: auto; }
+
+    .accent {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5mm;
+      background: linear-gradient(90deg, var(--navy) 0 70%, var(--orange) 70% 100%);
+    }
+
+    .doc-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12mm;
+      padding-bottom: 5mm;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      font-weight: 800;
+      font-size: 12.5pt;
+      letter-spacing: .06em;
+      color: var(--navy);
+    }
+
+    .brand span { color: var(--orange); }
+
+    .kicker {
+      margin-top: 1mm;
+      color: var(--muted);
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+    }
+
+    .meta {
+      border-collapse: collapse;
+      font-size: 7.7pt;
+      min-width: 67mm;
+    }
+
+    .meta td {
+      padding: .55mm 1.2mm;
+      border-bottom: 1px solid #e6e9ed;
+    }
+
+    .meta td:first-child {
+      width: 27mm;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 8mm 0 2mm;
+      max-width: 165mm;
+      color: var(--navy);
+      font-size: 24pt;
+      line-height: 1.08;
+      letter-spacing: -.02em;
+    }
+
+    .subtitle {
+      margin: 0 0 6mm;
+      color: var(--muted);
+      font-size: 10.5pt;
+    }
+
+    h2 {
+      margin: 6mm 0 2.5mm;
+      padding-left: 3mm;
+      border-left: 3px solid var(--orange);
+      color: var(--navy);
+      font-size: 13.2pt;
+      line-height: 1.2;
+    }
+
+    h3 {
+      margin: 3.5mm 0 1.5mm;
+      color: var(--navy);
+      font-size: 10pt;
+    }
+
+    p { margin: 0 0 2.2mm; }
+    ul { margin: 1.5mm 0 2.5mm 5mm; padding-left: 4mm; }
+    li { margin: 0 0 1mm; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.15fr;
+      gap: 2.5mm;
+      margin: 4mm 0 6mm;
+    }
+
+    .summary-card {
+      min-height: 26mm;
+      padding: 4mm;
+      border: 1px solid #c9d9e1;
+      border-radius: 2.5mm;
+      background: #f5fafc;
+    }
+
+    .summary-card.primary {
+      border-color: var(--orange);
+      background: var(--orange-soft);
+    }
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 7.3pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .summary-value {
+      margin-top: 1.2mm;
+      color: var(--navy);
+      font-size: 20pt;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .summary-unit {
+      margin-top: 1.4mm;
+      color: var(--muted);
+      font-size: 7.8pt;
+    }
+
+    .callout {
+      margin: 3mm 0;
+      padding: 3.2mm 4mm;
+      border-left: 3px solid var(--blue);
+      border-radius: 0 2mm 2mm 0;
+      background: var(--cyan);
+    }
+
+    .callout.warning {
+      border-left-color: var(--orange);
+      background: var(--orange-soft);
+    }
+
+    .callout.danger {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    table.data {
+      width: 100%;
+      margin: 2mm 0 3mm;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 8.1pt;
+    }
+
+    table.data th {
+      padding: 2.2mm 2mm;
+      border: 1px solid #bdc7d1;
+      background: var(--navy);
+      color: white;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    table.data td {
+      padding: 2mm;
+      border: 1px solid #d8dee5;
+      vertical-align: top;
+    }
+
+    table.data tr:nth-child(even) td { background: #f7f9fa; }
+    table.data .num { text-align: right; white-space: nowrap; }
+    table.data .total td { background: var(--green-soft); font-weight: 800; }
+    table.data .source { color: var(--muted); font-size: 7.5pt; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4mm;
+    }
+
+    .path-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3mm;
+      margin: 3mm 0 5mm;
+    }
+
+    .path {
+      padding: 3.5mm;
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--blue);
+      border-radius: 2mm;
+      background: #fafbfc;
+    }
+
+    .path:nth-child(2) { border-top-color: var(--green); }
+    .path:nth-child(3) { border-top-color: var(--orange); }
+    .path strong { color: var(--navy); font-size: 11pt; }
+    .path .value { margin: 2mm 0 1mm; font-size: 17pt; font-weight: 800; color: var(--navy); }
+
+    .formula {
+      margin: 3mm 0;
+      padding: 4mm;
+      border: 1px solid #b8c5ce;
+      border-radius: 2mm;
+      background: #f4f7f9;
+      color: var(--navy);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10pt;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .recommend {
+      margin: 4mm 0;
+      padding: 4mm 5mm;
+      border: 1.5px solid var(--green);
+      border-radius: 2.5mm;
+      background: var(--green-soft);
+    }
+
+    .recommend .title {
+      margin-bottom: 1.5mm;
+      color: var(--green);
+      font-size: 12pt;
+      font-weight: 800;
+    }
+
+    .refs {
+      margin: 2mm 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: ref;
+    }
+
+    .refs li {
+      position: relative;
+      margin: 0 0 3mm;
+      padding: 0 0 3mm 10mm;
+      border-bottom: 1px solid #e3e7eb;
+      counter-increment: ref;
+    }
+
+    .refs li::before {
+      content: "[" counter(ref) "]";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: var(--orange);
+      font-weight: 800;
+    }
+
+    .refs a {
+      color: var(--blue);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .small { color: var(--muted); font-size: 7.7pt; }
+    .tight { margin-bottom: 1mm; }
+    .nowrap { white-space: nowrap; }
+
+    .footer {
+      position: absolute;
+      left: 15mm;
+      right: 15mm;
+      bottom: 7mm;
+      display: flex;
+      justify-content: space-between;
+      padding-top: 2mm;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 7pt;
+    }
+
+    @media print {
+      html, body { background: white; }
+      .page { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="accent"></div>
+    <header class="doc-header">
+      <div>
+        <div class="brand">OTL <span>ENGINEERING</span></div>
+        <div class="kicker">Tài liệu tính toán điện · Máy rang 30 kg</div>
+      </div>
+      <table class="meta">
+        <tr><td>Mã tài liệu</td><td><strong>OTL-30KG-EL-CAL-UR20</strong></td></tr>
+        <tr><td>Phiên bản</td><td>R00</td></tr>
+        <tr><td>Ngày phát hành</td><td>27/08/2026</td></tr>
+        <tr><td>Trạng thái</td><td>Tính sơ bộ để chọn nguồn</td></tr>
+      </table>
+    </header>
+
+    <h1>Tính toán nguồn 24 VDC cho trạm Weidmüller UR20</h1>
+    <p class="subtitle">01 coupler PROFINET + 05 module I/O: DI, DO, thermocouple, AO và AI</p>
+
+    <div class="summary">
+      <div class="summary-card primary">
+        <div class="summary-label">Dòng nền chưa tính tải ngoài</div>
+        <div class="summary-value">0,282 A</div>
+        <div class="summary-unit">Tương đương khoảng 6,77 W tại 24 VDC</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Cấu hình tín hiệu tham chiếu</div>
+        <div class="summary-value">0,482 A</div>
+        <div class="summary-unit">8 cảm biến DI × 15 mA + 4 AI × 20 mA; chưa tính tải DO</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Khuyến nghị có điều kiện</div>
+        <div class="summary-value">24 V / 2 A</div>
+        <div class="summary-unit">Áp dụng khi DO chỉ kéo relay/contactor nhỏ; xem kịch bản tải ở trang 2</div>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <strong>Phạm vi:</strong> chưa có mã hàng thực tế của 5 module trong bộ tài liệu dự án. Báo cáo dùng các mã UR20 thông dụng nêu dưới đây làm cơ sở. Phải đối chiếu lại nhãn/order number trước khi chốt BOM hoặc mua nguồn.
+    </div>
+
+    <h2>1. Cấu hình và dữ liệu đầu vào</h2>
+    <table class="data">
+      <colgroup>
+        <col style="width: 6%"><col style="width: 26%"><col style="width: 22%">
+        <col style="width: 13%"><col style="width: 17%"><col style="width: 16%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>STT</th><th>Thiết bị giả định</th><th>Mã / order number</th>
+          <th class="num">I<sub>SYS</sub></th><th class="num">I<sub>IN</sub> / I<sub>OUT</sub></th><th>Căn cứ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Coupler PROFINET RT ECO</td><td>UR20-FBC-PN-ECO<br><span class="small">2659680000</span></td><td class="num">80 mA</td><td class="num">—</td><td>[1], trang 3</td></tr>
+        <tr><td>2</td><td>Digital input, 8 kênh</td><td>UR20-8DI-P-3W<br><span class="small">1394400000</span></td><td class="num">8 mA</td><td class="num">&lt;22 mA + sensor</td><td>[2], trang 3</td></tr>
+        <tr><td>3</td><td>Digital output, 4 kênh</td><td>UR20-4DO-P<br><span class="small">1315220000</span></td><td class="num">8 mA</td><td class="num">10 mA + tải</td><td>[3], trang 3</td></tr>
+        <tr><td>4</td><td>Thermocouple, 4 kênh</td><td>UR20-4AI-TC-DIAG<br><span class="small">1315710000</span></td><td class="num">8 mA</td><td class="num">&lt;20 mA</td><td>[4], trang 3</td></tr>
+        <tr><td>5</td><td>Analog output U/I, 4 kênh</td><td>UR20-4AO-UI-16<br><span class="small">1315680000</span></td><td class="num">8 mA</td><td class="num">85 mA</td><td>[5], trang 3</td></tr>
+        <tr><td>6</td><td>Analog input U/I, 4 kênh</td><td>UR20-4AI-UI-16<br><span class="small">1315620000</span></td><td class="num">8 mA</td><td class="num">25 mA + sensor</td><td>[6], trang 3</td></tr>
+        <tr class="total"><td colspan="3">Tổng dòng nền theo dữ liệu nhà sản xuất</td><td class="num">120 mA</td><td class="num">162 mA</td><td>Chi tiết trang 2</td></tr>
+      </tbody>
+    </table>
+
+    <p class="small">Quy ước: I<sub>SYS</sub> nuôi phần truyền thông/điện tử; I<sub>IN</sub> nuôi mạch input và cảm biến; I<sub>OUT</sub> nuôi mạch output và tải. Khi dùng chung một nguồn 24 VDC, dòng nguồn bằng tổng của ba nhánh.</p>
+
+    <footer class="footer"><span>OTL-30KG-EL-CAL-UR20 · R00</span><span>Trang 1 / 3</span></footer>
+  </section>
+
+  <section class="page">
+    <div class="accent"></div>
+    <header class="doc-header">
+      <div>
+        <div class="brand">OTL <span>ENGINEERING</span></div>
+        <div class="kicker">Tính toán dòng nguồn và chọn công suất</div>
+      </div>
+      <table class="meta">
+        <tr><td>Mã tài liệu</td><td><strong>OTL-30KG-EL-CAL-UR20</strong></td></tr>
+        <tr><td>Phiên bản</td><td>R00</td></tr>
+      </table>
+    </header>
+
+    <h2>2. Tính dòng nền của trạm</h2>
+    <div class="path-grid">
+      <div class="path">
+        <strong>Nhánh I<sub>SYS</sub></strong>
+        <div class="value">120 mA</div>
+        <div>80 mA coupler + 5 × 8 mA module.</div>
+      </div>
+      <div class="path">
+        <strong>Nhánh I<sub>IN</sub></strong>
+        <div class="value">67 mA</div>
+        <div>22 mA DI + 20 mA TC + 25 mA AI; chưa cộng cảm biến.</div>
+      </div>
+      <div class="path">
+        <strong>Nhánh I<sub>OUT</sub></strong>
+        <div class="value">95 mA</div>
+        <div>10 mA DO + 85 mA AO; chưa cộng tải DO.</div>
+      </div>
+    </div>
+
+    <div class="formula">I<sub>nền</sub> = 120 + 67 + 95 = 282 mA = 0,282 A</div>
+    <div class="formula">I<sub>nguồn</sub> = 0,282 A + I<sub>sensor-DI</sub> + I<sub>sensor-AI</sub> + I<sub>tải-DO</sub> + I<sub>phụ-trợ</sub></div>
+
+    <div class="callout">
+      <strong>Analog output:</strong> phép tính lấy trực tiếp giá trị 85 mA do Weidmüller công bố cho nhánh I<sub>OUT</sub>. Không cộng thêm dòng vòng 4–20 mA lần thứ hai. Nếu thiết bị chấp hành AO có nguồn phụ 24 V riêng, phải cộng dòng nguồn phụ đó.
+    </div>
+
+    <h2>3. Các kịch bản chọn nguồn</h2>
+    <table class="data">
+      <colgroup><col style="width: 21%"><col style="width: 40%"><col style="width: 14%"><col style="width: 14%"><col style="width: 11%"></colgroup>
+      <thead>
+        <tr><th>Kịch bản</th><th>Giả thiết tải ngoài</th><th class="num">Dòng tính</th><th class="num">+30% dự phòng</th><th>Chọn nguồn</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>A · Chỉ trạm I/O</td><td>Không cấp cảm biến và không có tải DO.</td>
+          <td class="num">0,282 A</td><td class="num">0,367 A</td><td><strong>≥0,5 A</strong></td>
+        </tr>
+        <tr>
+          <td>B · Tín hiệu + relay nhỏ</td><td>8 DI × 15 mA; 4 AI × 20 mA; 4 cuộn relay/contactor × 50 mA.</td>
+          <td class="num">0,682 A</td><td class="num">0,887 A</td><td><strong>≥1 A</strong></td>
+        </tr>
+        <tr>
+          <td>C · DO đạt giới hạn module</td><td>Tải tín hiệu như B; tổng tải DO = 2,0 A.</td>
+          <td class="num">2,482 A</td><td class="num">3,227 A</td><td><strong>≥4 A</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="small">Giới hạn tham chiếu của UR20-4DO-P: tối đa 0,5 A/kênh và 2,0 A/module, theo [3] trang 2–3. Hệ số dự phòng 30% là giả thiết thiết kế của báo cáo, không phải thông số do Weidmüller công bố.</p>
+
+    <div class="recommend">
+      <div class="title">Đề xuất cho cấu hình máy 30 kg</div>
+      <p><strong>Chọn nguồn 24 VDC / 2 A</strong> nếu các DO chỉ điều khiển relay trung gian hoặc contactor nhỏ và tổng dòng thực đo/tính sau cùng không vượt khoảng 1,4 A.</p>
+      <p class="tight"><strong>Chọn 24 VDC / 5 A hoặc tách nguồn actuator</strong> nếu DO cấp trực tiếp cho nhiều van điện từ. Khi tách nguồn, nên phân đoạn và bảo vệ riêng nhánh I<sub>OUT</sub>.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="callout danger">
+        <strong>Chưa được chốt tải:</strong> dòng của cuộn van, relay, contactor và transmitter chưa có trong hồ sơ. Đây là phần quyết định dòng nguồn cuối cùng.
+      </div>
+      <div class="callout warning">
+        <strong>Trước khi lắp:</strong> xác nhận order number của đủ 5 module, số kênh sử dụng đồng thời, dòng khởi động và sơ đồ cấp U<sub>SYS</sub>/U<sub>IN</sub>/U<sub>OUT</sub>.
+      </div>
+    </div>
+
+    <footer class="footer"><span>OTL-30KG-EL-CAL-UR20 · R00</span><span>Trang 2 / 3</span></footer>
+  </section>
+
+  <section class="page">
+    <div class="accent"></div>
+    <header class="doc-header">
+      <div>
+        <div class="brand">OTL <span>ENGINEERING</span></div>
+        <div class="kicker">Căn cứ kỹ thuật và truy xuất nguồn</div>
+      </div>
+      <table class="meta">
+        <tr><td>Mã tài liệu</td><td><strong>OTL-30KG-EL-CAL-UR20</strong></td></tr>
+        <tr><td>Phiên bản</td><td>R00</td></tr>
+      </table>
+    </header>
+
+    <h2>4. Tài liệu làm căn cứ</h2>
+    <p>Tất cả tài liệu dưới đây do <strong>Weidmüller Interface GmbH &amp; Co. KG</strong> phát hành. Ngày truy cập: 27/08/2026. Liên kết trong PDF có thể bấm trực tiếp.</p>
+
+    <ol class="refs">
+      <li>
+        <strong>Data sheet UR20-FBC-PN-ECO</strong>, order no. 2659680000, mục “Power supply”, <strong>trang 3</strong>.<br>
+        Dữ liệu sử dụng: 24 VDC; I<sub>SYS</sub> điển hình 80 mA; dòng cấp I<sub>SYS</sub> tối đa 4 A; dòng cấp I<sub>IN</sub> tối đa 10 A.<br>
+        <a href="https://datasheet.weidmueller.com/pdf/en/2659680000/scope/1/">https://datasheet.weidmueller.com/pdf/en/2659680000/scope/1/</a>
+      </li>
+      <li>
+        <strong>Data sheet UR20-8DI-P-3W</strong>, order no. 1394400000, mục “Power supply”, <strong>trang 3</strong>.<br>
+        Dữ liệu sử dụng: I<sub>SYS</sub> điển hình 8 mA; I<sub>IN</sub> &lt;22 mA + sensor feed. Trang 1 nêu cảm biến được cấp từ U<sub>IN</sub>.<br>
+        <a href="https://datasheet.weidmueller.com/pdf/en/1394400000/scope/1/">https://datasheet.weidmueller.com/pdf/en/1394400000/scope/1/</a>
+      </li>
+      <li>
+        <strong>Data sheet UR20-4DO-P</strong>, order no. 1315220000, mục “digital outputs” và “Power supply”, <strong>trang 2–3</strong>.<br>
+        Dữ liệu sử dụng: 0,5 A/kênh; 2,0 A/module; I<sub>SYS</sub> điển hình 8 mA; I<sub>OUT</sub> = 10 mA + tải. Trang 1 nêu actuator được cấp từ U<sub>OUT</sub>.<br>
+        <a href="https://datasheet.weidmueller.com/pdf/en/1315220000/scope/1/">https://datasheet.weidmueller.com/pdf/en/1315220000/scope/1/</a>
+      </li>
+      <li>
+        <strong>Data sheet UR20-4AI-TC-DIAG</strong>, order no. 1315710000, mục “Power supply”, <strong>trang 3</strong>.<br>
+        Dữ liệu sử dụng: I<sub>SYS</sub> điển hình 8 mA; I<sub>IN</sub> &lt;20 mA.<br>
+        <a href="https://datasheet.weidmueller.com/pdf/en/1315710000/scope/1/">https://datasheet.weidmueller.com/pdf/en/1315710000/scope/1/</a>
+      </li>
+      <li>
+        <strong>Data sheet UR20-4AO-UI-16</strong>, order no. 1315680000, mục “Power supply”, <strong>trang 3</strong>.<br>
+        Dữ liệu sử dụng: I<sub>SYS</sub> điển hình 8 mA; I<sub>OUT</sub> = 85 mA. Trang 1 nêu các ngõ ra được cấp từ U<sub>OUT</sub>.<br>
+        <a href="https://datasheet.weidmueller.com/pdf/en/1315680000/scope/1/">https://datasheet.weidmueller.com/pdf/en/1315680000/scope/1/</a>
+      </li>
+      <li>
+        <strong>Data sheet UR20-4AI-UI-16</strong>, order no. 1315620000, mục “Power supply”, <strong>trang 3</strong>.<br>
+        Dữ liệu sử dụng: I<sub>SYS</sub> điển hình 8 mA; I<sub>IN</sub> = 25 mA + sensor feed. Trang 1 nêu cảm biến được cấp từ U<sub>IN</sub>.<br>
+        <a href="https://datasheet.weidmueller.com/pdf/en/1315620000/scope/1/">https://datasheet.weidmueller.com/pdf/en/1315620000/scope/1/</a>
+      </li>
+    </ol>
+
+    <h2>5. Điều kiện để phát hành bản tính cuối</h2>
+    <ul>
+      <li>Ghi lại chính xác type và order number trên coupler cùng 5 module thực tế.</li>
+      <li>Lập danh sách từng cảm biến DI/AI và dòng tiêu thụ cực đại tại 24 VDC.</li>
+      <li>Lập danh sách từng tải DO, dòng giữ, dòng hút ban đầu và hệ số đồng thời.</li>
+      <li>Xác nhận AO chạy 0–10 V hay 4–20 mA và thiết bị nhận AO có dùng nguồn phụ hay không.</li>
+      <li>Kiểm tra phân đoạn nguồn, cầu chì/MCB, tiết diện dây và sụt áp theo sơ đồ điện thực tế.</li>
+    </ul>
+
+    <h2>6. Lịch sử sửa đổi</h2>
+    <table class="data">
+      <colgroup><col style="width: 12%"><col style="width: 18%"><col style="width: 52%"><col style="width: 18%"></colgroup>
+      <thead><tr><th>Rev.</th><th>Ngày</th><th>Nội dung</th><th>Trạng thái</th></tr></thead>
+      <tbody><tr><td>R00</td><td>27/08/2026</td><td>Tạo bản tính sơ bộ và bổ sung căn cứ datasheet theo trang.</td><td>Tính sơ bộ</td></tr></tbody>
+    </table>
+
+    <div class="callout warning small">
+      <strong>Ghi chú trách nhiệm:</strong> tài liệu này phục vụ tính chọn sơ bộ nguồn 24 VDC. Không thay thế việc xác nhận BOM, tải thực tế, bảo vệ quá dòng và kiểm tra nghiệm thu tại tủ điện.
+    </div>
+
+    <footer class="footer"><span>OTL-30KG-EL-CAL-UR20 · R00</span><span>Trang 3 / 3</span></footer>
+  </section>
+</body>
+</html>

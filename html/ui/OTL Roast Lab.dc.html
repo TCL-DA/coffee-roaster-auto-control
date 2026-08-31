@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTL Roast Lab — Design Comp 2560×1440</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   OTL Roast Lab · Executive Graphite Design System (2K)
+   Nền graphite 3 tầng · 1 nhấn champagne · số tabular · hairline
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:#14181d;         /* nền cửa sổ — tầng 1 */
+  --panel:#1a2028;      /* panel — tầng 2 */
+  --card:#1f2630;       /* card số liệu — tầng 3 */
+  --inset:#0d1116;      /* "màn hình" biểu đồ — sâu nhất */
+  --hair:rgba(255,255,255,.07);
+  --hair-2:rgba(255,255,255,.12);
+  --champ:#d8bd86;      /* NHẤN DUY NHẤT — theme đổi biến này */
+  --champ-dim:#a98f5f;
+  --copper:#cf9f61;
+  --etc:#aeb6c0;        /* ET — trung tính, hợp mọi accent */
+  --stop:#b0483f;       /* đỏ trầm — chỉ STOP/alarm */
+  --stop-soft:#c25b51;
+  --txt:#eef1f5;
+  --dim:#8b93a0;
+  --mute:#5c636e;
+  --faint:#3a424c;
+  --sans:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'Cascadia Mono','Consolas',ui-monospace,monospace;
+}
+/* ── 6 THEME cao cấp — đổi accent + tinh chỉnh graphite theo tông ── */
+html[data-theme="platinum"]{--champ:#cfd6de;--champ-dim:#96a2b1;--copper:#b9c2cd;
+  --bg:#12151b;--panel:#181d25;--card:#1d232d;--inset:#0c0f14;}
+html[data-theme="copper"]{--champ:#dc8f52;--champ-dim:#a9713f;--copper:#dc8f52;
+  --bg:#15120e;--panel:#1c1912;--card:#221d16;--inset:#0d0b08;}
+html[data-theme="emerald"]{--champ:#5fc79a;--champ-dim:#3f8f70;--copper:#5fc79a;
+  --bg:#0f1512;--panel:#151d19;--card:#192420;--inset:#0a0f0c;}
+html[data-theme="azure"]{--champ:#68b4e8;--champ-dim:#4a86b4;--copper:#68b4e8;
+  --bg:#101519;--panel:#161e24;--card:#1b242c;--inset:#0a0e12;}
+html[data-theme="rose"]{--champ:#d79ab0;--champ-dim:#a86f83;--copper:#d79ab0;
+  --bg:#141116;--panel:#1b1720;--card:#211c28;--inset:#0d0b10;}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#0a0c0f;overflow:hidden;font-family:var(--sans)}
+body{display:flex;align-items:center;justify-content:center}
+
+/* Khung 2560×1440 tự co về viewport */
+#stage{
+  width:2560px;height:1440px;flex:none;position:relative;
+  background:var(--bg);color:var(--txt);overflow:hidden;
+  border-radius:14px;box-shadow:0 60px 160px rgba(0,0,0,.7);
+  display:flex;flex-direction:column;
+}
+
+/* mono tabular cho mọi số liệu */
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:-.5px}
+.cap{font-size:19px;font-weight:700;letter-spacing:3.5px;color:var(--dim);text-transform:uppercase}
+.hair{background:var(--hair)}
+
+/* ── Custom title bar ── */
+#titlebar{
+  height:48px;display:flex;align-items:center;padding:0 22px;
+  background:linear-gradient(#1c232b,#161b21);border-bottom:1px solid var(--hair);
+  -webkit-app-region:drag;
+}
+#titlebar .tb-name{font-size:15px;font-weight:600;letter-spacing:.5px;color:var(--dim)}
+#titlebar .tb-name b{color:var(--champ)}
+#titlebar .themedock{margin-left:auto;display:flex;align-items:center;gap:9px;-webkit-app-region:no-drag}
+#titlebar .themedock .tl{font-size:12px;letter-spacing:2.5px;color:var(--mute);text-transform:uppercase;margin-right:5px}
+#titlebar .sw{width:22px;height:22px;border-radius:7px;cursor:pointer;border:1px solid rgba(255,255,255,.16);transition:transform .12s}
+#titlebar .sw:hover{transform:translateY(-2px)}
+#titlebar .sw.on{outline:2px solid var(--txt);outline-offset:2px;border-color:transparent}
+#titlebar .win{margin-left:26px;display:flex;gap:26px;align-items:center}
+#titlebar .win i{width:15px;height:15px;display:inline-block;position:relative;opacity:.55}
+#titlebar .win i:hover{opacity:1}
+.wmin{border-bottom:2px solid var(--dim)}
+.wmax{border:2px solid var(--dim);border-radius:2px}
+.wcls{position:relative}
+.wcls:before,.wcls:after{content:"";position:absolute;left:50%;top:50%;width:18px;height:2px;background:var(--dim);transform-origin:center}
+.wcls:before{transform:translate(-50%,-50%) rotate(45deg)}
+.wcls:after{transform:translate(-50%,-50%) rotate(-45deg)}
+.wcls:hover:before,.wcls:hover:after{background:var(--stop-soft)}
+
+/* ── Header ── */
+#header{height:92px;display:flex;align-items:center;padding:0 44px;gap:26px}
+.logo{font-size:34px;font-weight:800;letter-spacing:.5px}
+.logo b{color:var(--champ)}
+.logo span{color:var(--txt);margin-left:12px}
+/* chip trạng thái — pill mờ + chấm, KHÔNG giống nút */
+.chip{display:inline-flex;align-items:center;gap:11px;height:44px;padding:0 22px;
+  background:color-mix(in srgb,var(--champ) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--champ) 24%,transparent);border-radius:22px}
+.chip .dot{width:11px;height:11px;border-radius:50%;background:var(--champ);
+  box-shadow:0 0 12px color-mix(in srgb,var(--champ) 65%,transparent)}
+.chip .txt{font-size:17px;font-weight:700;letter-spacing:2.5px;color:var(--champ);text-transform:uppercase}
+.hspacer{flex:1}
+.conn{display:flex;align-items:center;gap:26px;margin-right:8px}
+.conn .c{display:flex;align-items:center;gap:9px;font-size:17px;color:var(--dim)}
+.conn .c .d{width:11px;height:11px;border-radius:50%;background:var(--mute)}
+.conn .c.on .d{background:var(--champ);box-shadow:0 0 10px color-mix(in srgb,var(--champ) 60%,transparent)}
+.conn .c.on{color:var(--txt)}
+/* nút ghost chung */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:11px;height:52px;padding:0 26px;
+  border-radius:14px;border:1px solid var(--hair-2);background:transparent;color:var(--dim);
+  font-family:var(--sans);font-size:19px;font-weight:600;cursor:pointer;transition:.15s;
+  letter-spacing:.3px}
+.btn:hover{background:rgba(255,255,255,.04);color:var(--txt);border-color:rgba(255,255,255,.2)}
+.btn.lg{height:62px;padding:0 34px;font-size:21px}
+.btn.primary{background:var(--champ);border-color:var(--champ);color:#1a130a;font-weight:700;
+  box-shadow:0 8px 26px color-mix(in srgb,var(--champ) 30%,transparent)}
+.btn.primary:hover{filter:brightness(1.08);color:#1a130a}
+.btn.danger{background:var(--stop);border-color:var(--stop);color:#fbeeee;font-weight:700;
+  box-shadow:0 8px 26px rgba(176,72,63,.3)}
+.btn.disabled{background:transparent;border-color:var(--hair);color:var(--faint);
+  box-shadow:none;cursor:not-allowed}
+.btn.disabled:hover{background:transparent;color:var(--faint)}
+
+/* ── Alarm bar ── */
+#alarm{height:44px;margin:0 44px;display:flex;align-items:center;padding:0 22px;gap:12px;
+  background:var(--card);border:1px solid var(--hair);border-radius:12px;
+  color:var(--champ-dim);font-size:17px;font-weight:600}
+
+/* ── Body grid ── */
+#body{display:grid;grid-template-columns:1fr 620px;gap:26px;padding:18px 44px 4px;flex:1;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--hair);border-radius:18px}
+.rightcol{display:flex;flex-direction:column;gap:16px}
+
+/* chart card */
+#chartcard{background:var(--panel);border:1px solid var(--hair);border-radius:18px;
+  padding:24px;display:grid;overflow:hidden}
+#chart{width:100%;height:100%;min-width:0;min-height:0;display:block}
+
+/* ── Card số liệu ── */
+.card{background:var(--card);border:1px solid var(--hair);border-radius:18px;padding:17px 30px}
+.card .cap{margin-bottom:10px}
+/* BT hero */
+.hero .row{display:flex;align-items:flex-end;gap:14px}
+.hero .big{font-size:92px;line-height:.92;font-weight:700;color:var(--champ)}
+.hero .unit{font-size:30px;color:var(--mute);margin-bottom:18px;font-family:var(--sans)}
+.hero .ror{display:flex;align-items:center;gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid var(--hair)}
+.hero .ror .lab{font-size:19px;font-weight:700;letter-spacing:3px;color:var(--dim)}
+.hero .ror .arw{color:var(--champ);font-size:26px}
+.hero .ror .v{font-size:42px;font-weight:700;color:var(--champ)}
+.hero .ror .u{font-size:19px;color:var(--mute)}
+/* ET + Time hai cột hairline */
+.duo{display:grid;grid-template-columns:1fr 1px 1fr;gap:30px;align-items:center}
+.duo .vline{background:var(--hair);height:88px}
+.duo .col .cap{margin-bottom:8px}
+.duo .col .v{font-size:64px;font-weight:700;color:var(--txt)}
+.duo .col.et .v{color:var(--etc)}
+/* OUTPUT knobs */
+.outhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.seg{display:inline-flex;background:var(--inset);border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.seg b{padding:8px 20px;font-size:16px;font-weight:700;letter-spacing:1.5px;color:var(--mute);cursor:pointer}
+.seg b.on{background:var(--champ);color:#1a130a}
+.knobs{display:flex;justify-content:space-between;gap:18px}
+.knob{display:flex;flex-direction:column;align-items:center;gap:2px}
+.knob svg{display:block}
+.knob .kv{font-size:42px;font-weight:700;color:var(--txt);margin-top:-104px;margin-bottom:62px}
+.knob .kl{font-size:16px;font-weight:700;letter-spacing:2.5px;color:var(--dim)}
+.detrow{display:flex;justify-content:space-between;align-items:center;padding-top:14px;margin-top:18px;
+  border-top:1px solid var(--hair);font-size:19px;color:var(--dim)}
+.detrow+.detrow{border-top:none;padding-top:6px;margin-top:6px}
+.detrow .v{color:var(--dim)}
+/* Milestones 3 cột */
+.miles .mrow{display:grid;grid-template-columns:1fr auto auto;gap:22px;align-items:center;
+  padding:6px 0;font-size:20px}
+.miles .mrow .nm{font-weight:700;letter-spacing:1px}
+.miles .mrow .tm{color:var(--txt);text-align:right;min-width:96px}
+.miles .mrow .dg{color:var(--champ-dim);text-align:right;min-width:80px}
+.miles .mrow.done .nm{color:var(--dim)}
+.miles .mrow.todo{opacity:.42}
+.miles .mrow.todo .nm{color:var(--mute)}
+.miles .msep{height:1px;background:var(--hair);margin:6px 0}
+/* dải 3 pha */
+.phasebar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:10px;gap:2px}
+.phasebar i{display:block;height:100%}
+.phaselab{display:flex;justify-content:space-between;margin-top:9px;font-size:15px;color:var(--mute);letter-spacing:1px}
+
+/* ── Footer ── */
+#footer{display:flex;align-items:center;padding:22px 44px;gap:16px}
+.grp{display:flex;align-items:center;gap:14px}
+.fspacer{flex:1}
+.vsep{width:1px;align-self:stretch;background:var(--hair-2);margin:6px 12px}
+.speed{display:inline-flex;align-items:center;gap:8px;height:62px;padding:0 18px;border-radius:14px;
+  background:var(--card);border:1px solid var(--hair);color:var(--dim);font-size:19px;font-family:var(--mono)}
+.fname{color:var(--mute);font-size:19px;margin-left:8px}
+
+/* ── Nhóm field trong Cài đặt ── */
+.section{font-size:15px;font-weight:700;letter-spacing:2.5px;color:var(--champ-dim);
+  text-transform:uppercase;margin:22px 0 6px}
+.section:first-child{margin-top:4px}
+.section .sdesc{display:block;font-size:14px;font-weight:400;letter-spacing:.3px;color:var(--mute);
+  text-transform:none;margin-top:3px}
+.frow{display:flex;align-items:center;gap:14px;padding:9px 0}
+.frow label{flex:1;font-size:19px;color:var(--dim);display:flex;align-items:center;gap:9px}
+.frow .q{width:20px;height:20px;border-radius:50%;border:1px solid var(--hair-2);
+  font-size:13px;color:var(--mute);display:inline-flex;align-items:center;justify-content:center;cursor:help}
+.field{display:inline-flex;align-items:center;background:var(--inset);border:1px solid var(--hair);
+  border-radius:11px;height:46px;overflow:hidden;min-width:150px}
+.field input{width:96px;background:transparent;border:0;outline:0;color:var(--txt);
+  font-family:var(--mono);font-size:19px;text-align:right;padding:0 6px 0 14px}
+.field .suffix{padding:0 14px 0 6px;font-size:16px;color:var(--mute);border-left:1px solid var(--hair)}
+
+/* ── User badge + đăng xuất (header) ── */
+.userbadge{display:flex;align-items:center;gap:12px;height:52px;padding:0 8px 0 8px;margin-left:6px}
+.userbadge .ub-ava{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:var(--champ);color:#1a130a;font-weight:800;font-size:19px}
+.userbadge .ub-meta{display:flex;flex-direction:column;line-height:1.15}
+.userbadge .ub-name{font-size:18px;font-weight:700;color:var(--txt)}
+.userbadge .ub-role{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--champ-dim)}
+.userbadge .ub-out{margin-left:4px;width:40px;height:40px;border-radius:11px;border:1px solid var(--hair-2);
+  background:transparent;color:var(--dim);font-size:20px;cursor:pointer;transition:.15s}
+.userbadge .ub-out:hover{color:var(--stop-soft);border-color:var(--stop)}
+
+/* ── Tab bar ── */
+#tabbar{display:flex;align-items:flex-end;gap:6px;padding:0 44px;height:60px;
+  border-bottom:1px solid var(--hair)}
+#tabbar .tab{position:relative;height:52px;padding:0 30px;background:transparent;border:0;cursor:pointer;
+  font-family:var(--sans);font-size:20px;font-weight:600;letter-spacing:.4px;color:var(--dim);
+  display:inline-flex;align-items:center;gap:10px;transition:.15s}
+#tabbar .tab:hover{color:var(--txt)}
+#tabbar .tab.on{color:var(--champ)}
+#tabbar .tab.on:after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:3px;
+  border-radius:3px;background:var(--champ);box-shadow:0 0 14px color-mix(in srgb,var(--champ) 55%,transparent)}
+#tabbar .tab .lk{font-size:16px;opacity:.75}
+
+/* ── Tab panes ── */
+.tabpane{flex:1;min-height:0;display:none;flex-direction:column}
+.tabpane.on{display:flex}
+
+/* placeholder cho tab chưa dựng */
+.holder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--mute)}
+.holder .ico{font-size:64px;opacity:.35}
+.holder .t{font-size:24px;font-weight:700;color:var(--dim)}
+.holder .s{font-size:18px}
+
+/* ── Cài đặt: gate đăng nhập ── */
+#pane-caidat{align-items:stretch}
+.authwrap{flex:1;display:flex;align-items:center;justify-content:center}
+.authcard{width:560px;background:var(--panel);border:1px solid var(--hair-2);border-radius:20px;
+  box-shadow:0 40px 120px rgba(0,0,0,.55);padding:44px 46px}
+.authcard .lock-ico{font-size:44px;text-align:center;margin-bottom:6px}
+.authcard h2{font-size:30px;font-weight:800;text-align:center;letter-spacing:.4px}
+.authcard .sub{font-size:18px;color:var(--dim);text-align:center;margin:8px 0 30px}
+.authcard label{display:block;font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--champ-dim);margin:16px 0 8px}
+.authcard input{width:100%;height:56px;background:var(--inset);border:1px solid var(--hair);border-radius:13px;
+  color:var(--txt);font-family:var(--sans);font-size:21px;padding:0 18px;outline:0}
+.authcard input:focus{border-color:var(--champ-dim)}
+.authcard .err{min-height:26px;color:var(--stop-soft);font-size:17px;margin-top:14px;text-align:center}
+.authcard .btn{width:100%;height:60px;margin-top:12px;font-size:21px}
+
+/* ── Cài đặt: khung sub-tab ── */
+#setwrap{flex:1;min-height:0;display:flex}
+.subnav{width:280px;flex:none;border-right:1px solid var(--hair);padding:22px 16px;display:flex;flex-direction:column;gap:6px}
+.subnav button{display:flex;align-items:center;gap:14px;height:56px;padding:0 20px;border:0;border-radius:13px;
+  background:transparent;color:var(--dim);font-family:var(--sans);font-size:19px;font-weight:600;cursor:pointer;
+  text-align:left;transition:.15s}
+.subnav button:hover{background:rgba(255,255,255,.04);color:var(--txt)}
+.subnav button.on{background:color-mix(in srgb,var(--champ) 12%,transparent);color:var(--champ)}
+.subnav button .ic{font-size:22px;width:26px;text-align:center}
+.subnav .navsep{height:1px;background:var(--hair);margin:10px 8px}
+.subwrap{flex:1;min-height:0;overflow:auto;padding:26px 40px}
+.subpane{display:none;max-width:760px}
+.subpane.on{display:block}
+.subpane h3{font-size:26px;font-weight:800;margin-bottom:4px}
+.subpane .lead{font-size:17px;color:var(--dim);margin-bottom:22px}
+.subbar{display:flex;align-items:center;gap:14px;margin-top:26px;padding-top:20px;border-top:1px solid var(--hair)}
+.subbar .note{font-size:16px;color:var(--mute);margin-right:auto}
+
+/* ── Bảng tài khoản ── */
+.utable{width:100%;border-collapse:collapse;font-size:18px}
+.utable th{text-align:left;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;color:var(--champ-dim);
+  font-weight:700;padding:12px 14px;border-bottom:1px solid var(--hair)}
+.utable td{padding:14px;border-bottom:1px solid var(--hair);color:var(--txt);vertical-align:middle}
+.utable .uicon{width:34px;height:34px;border-radius:9px;background:var(--card);display:inline-flex;
+  align-items:center;justify-content:center;font-weight:800;color:var(--champ);margin-right:10px}
+.pill{display:inline-block;font-size:13px;font-weight:700;letter-spacing:1px;padding:4px 11px;border-radius:20px;margin:2px 4px 2px 0;
+  background:color-mix(in srgb,var(--champ) 14%,transparent);color:var(--champ)}
+.pill.off{background:rgba(255,255,255,.05);color:var(--mute)}
+.linkbtn{background:transparent;border:0;color:var(--dim);font-size:17px;cursor:pointer;padding:6px 10px;border-radius:8px}
+.linkbtn:hover{color:var(--txt);background:rgba(255,255,255,.05)}
+.linkbtn.del:hover{color:var(--stop-soft)}
+/* form thêm slave + hàng quyền */
+.permrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.permchk{display:inline-flex;align-items:center;gap:10px;height:46px;padding:0 16px;border-radius:11px;
+  border:1px solid var(--hair);background:var(--inset);color:var(--dim);font-size:17px;cursor:pointer;user-select:none}
+.permchk.on{border-color:var(--champ-dim);color:var(--txt);background:color-mix(in srgb,var(--champ) 10%,transparent)}
+.permchk .bx{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--mute);display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#1a130a}
+.permchk.on .bx{background:var(--champ);border-color:var(--champ)}
+
+/* ── Nhật ký (audit) ── */
+.audit{width:100%;border-collapse:collapse;font-size:17px}
+.audit th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:13px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--champ-dim);font-weight:700;padding:11px 14px;border-bottom:1px solid var(--hair)}
+.audit td{padding:12px 14px;border-bottom:1px solid var(--hair);color:var(--dim)}
+.audit td.f{color:var(--txt);font-weight:600}
+.audit .chg{font-family:var(--mono);color:var(--champ)}
+.audit .old{color:var(--mute);text-decoration:line-through;margin-right:8px}
+.audit .empty{padding:40px;text-align:center;color:var(--mute)}
+
+/* ── Toast ── */
+#toast{position:absolute;bottom:34px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--card);border:1px solid var(--hair-2);border-radius:14px;padding:16px 26px;
+  font-size:19px;color:var(--txt);box-shadow:0 20px 60px rgba(0,0,0,.5);opacity:0;pointer-events:none;
+  transition:.25s;z-index:50}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--champ-dim)}
+
+/* select native khớp design */
+.nsel{min-width:250px;height:46px;background:var(--inset);border:1px solid var(--hair);border-radius:11px;
+  color:var(--txt);font-family:var(--sans);font-size:18px;padding:0 14px;outline:0;cursor:pointer}
+.nsel:focus{border-color:var(--champ-dim)}
+.nsel option{background:var(--panel);color:var(--txt)}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- Title bar -->
+  <div id="titlebar">
+    <div class="tb-name"><b>OTL</b> Roast Lab</div>
+    <div class="themedock">
+      <span class="tl">Theme</span>
+      <div class="sw on" style="background:#d8bd86" title="Champagne" onclick="setTheme('',this)"></div>
+      <div class="sw" style="background:#cfd6de" title="Platinum" onclick="setTheme('platinum',this)"></div>
+      <div class="sw" style="background:#dc8f52" title="Copper Ember" onclick="setTheme('copper',this)"></div>
+      <div class="sw" style="background:#5fc79a" title="Emerald Noir" onclick="setTheme('emerald',this)"></div>
+      <div class="sw" style="background:#68b4e8" title="Azure Frost" onclick="setTheme('azure',this)"></div>
+      <div class="sw" style="background:#d79ab0" title="Rosé Gold" onclick="setTheme('rose',this)"></div>
+    </div>
+    <div class="win"><i class="wmin"></i><i class="wmax"></i><i class="wcls"></i></div>
+  </div>
+
+  <!-- Header -->
+  <div id="header">
+    <div class="logo"><b>OTL</b><span>Roast Lab</span></div>
+    <div class="chip"><span class="dot"></span><span class="txt">Manual · Đang chạy</span></div>
+    <div class="hspacer"></div>
+    <div class="conn">
+      <div class="c on"><span class="d"></span>Artisan</div>
+      <div class="c on"><span class="d"></span>ET module <span class="num" style="color:var(--champ);margin-left:6px">198°C</span></div>
+    </div>
+    <div class="userbadge" id="userbadge" style="display:none">
+      <span class="ub-ava" id="ubAva">M</span>
+      <div class="ub-meta"><span class="ub-name" id="ubName">—</span><span class="ub-role" id="ubRole">—</span></div>
+      <button class="ub-out" onclick="authLogout()" title="Đăng xuất">⎋</button>
+    </div>
+    <button class="btn" onclick="gotoTab('caidat')">⚙  Cài đặt</button>
+  </div>
+
+  <!-- Tab bar -->
+  <nav id="tabbar">
+    <button class="tab on" data-tab="rang" onclick="gotoTab('rang')">Rang</button>
+    <button class="tab" data-tab="profile" onclick="gotoTab('profile')">Profile</button>
+    <button class="tab" data-tab="lichsu" onclick="gotoTab('lichsu')">Lịch sử</button>
+    <button class="tab" data-tab="caidat" onclick="gotoTab('caidat')">Cài đặt <span class="lk" id="lkIco">🔒</span></button>
+  </nav>
+
+  <!-- ══════════ TAB: RANG ══════════ -->
+  <section class="tabpane on" id="pane-rang">
+
+  <!-- Alarm — ẩn khi không có cảnh báo -->
+  <div id="alarm" style="display:none">✓  Không có cảnh báo</div>
+
+  <!-- Body -->
+  <div id="body">
+    <!-- Chart -->
+    <div id="chartcard">
+      <svg id="chart" viewBox="0 0 1180 1000" preserveAspectRatio="none"></svg>
+    </div>
+
+    <!-- Right column -->
+    <div class="rightcol">
+      <!-- BT hero -->
+      <div class="card hero">
+        <div class="cap">Bean Temp · BT</div>
+        <div class="row"><span class="big num">198.4</span><span class="unit">°C</span></div>
+        <div class="ror">
+          <span class="lab">RoR</span><span class="arw">▲</span>
+          <span class="v num">+6.2</span><span class="u">°C/ph</span>
+        </div>
+      </div>
+      <!-- ET + Time -->
+      <div class="card">
+        <div class="duo">
+          <div class="col et"><div class="cap">Exhaust · ET</div><div class="v num">214.0</div></div>
+          <div class="vline"></div>
+          <div class="col"><div class="cap">Thời gian</div><div class="v num">10:42</div></div>
+        </div>
+      </div>
+      <!-- OUTPUT -->
+      <div class="card">
+        <div class="outhead">
+          <div class="cap">Output</div>
+          <div class="seg"><b>AUTO</b><b class="on">MANUAL</b></div>
+        </div>
+        <div class="knobs" id="knobs"></div>
+        <div class="detrow"><span>Gas phản hồi (FF)</span><span class="v num">38 %  (+10 bù)</span></div>
+        <div class="detrow"><span>Áp suất hút đặt</span><span class="v num">−80 Pa</span></div>
+      </div>
+      <!-- Milestones -->
+      <div class="card miles">
+        <div class="outhead"><div class="cap">Mốc rang</div>
+          <div style="font-size:18px;font-weight:700;letter-spacing:1px;color:var(--champ)">Development</div></div>
+        <div class="msep"></div>
+        <div class="mrow done"><span class="nm">CHARGE</span><span class="tm num">00:00</span><span class="dg num">200°</span></div>
+        <div class="mrow done"><span class="nm">TP</span><span class="tm num">01:34</span><span class="dg num">91°</span></div>
+        <div class="mrow done"><span class="nm">DRY END</span><span class="tm num">06:12</span><span class="dg num">150°</span></div>
+        <div class="mrow todo"><span class="nm">FCs</span><span class="tm num">—</span><span class="dg num">—</span></div>
+        <div class="mrow todo"><span class="nm">DROP</span><span class="tm num">—</span><span class="dg num">—</span></div>
+        <div class="phasebar">
+          <i style="flex:52;background:#b7a888"></i>
+          <i style="flex:34;background:#c08f52"></i>
+          <i style="flex:14;background:#8a5a34"></i>
+        </div>
+        <div class="phaselab"><span>Drying 52%</span><span>Maillard 34%</span><span>Development 14%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div id="footer">
+    <div class="grp">
+      <button class="btn lg">📂  Nạp profile</button>
+      <button class="btn lg">⭳  Xuất CSV</button>
+      <button class="btn lg">⇄  So sánh</button>
+      <span class="fname">Profile: 2.csv</span>
+    </div>
+    <div class="fspacer"></div>
+    <div class="grp">
+      <div class="speed">x2 ▾</div>
+      <button class="btn lg disabled">▶  CHARGE</button>
+      <button class="btn lg disabled">⟲  Reset</button>
+      <div class="vsep"></div>
+      <button class="btn lg danger">■  STOP</button>
+    </div>
+  </div>
+
+  </section><!-- /pane-rang -->
+
+  <!-- ══════════ TAB: PROFILE ══════════ -->
+  <section class="tabpane" id="pane-profile">
+    <div class="holder"><div class="ico">📈</div>
+      <div class="t">Profile</div><div class="s">Nạp, xem và so sánh đường cong rang — dựng ở pass sau.</div></div>
+  </section>
+
+  <!-- ══════════ TAB: LỊCH SỬ ══════════ -->
+  <section class="tabpane" id="pane-lichsu">
+    <div class="holder"><div class="ico">🗂️</div>
+      <div class="t">Lịch sử mẻ rang</div><div class="s">Danh sách mẻ đã rang + xuất CSV — dựng ở pass sau.</div></div>
+  </section>
+
+  <!-- ══════════ TAB: CÀI ĐẶT (khoá) ══════════ -->
+  <section class="tabpane" id="pane-caidat">
+
+    <!-- Gate: đăng nhập / tạo master lần đầu -->
+    <div class="authwrap" id="authwrap">
+      <div class="authcard">
+        <div class="lock-ico">🔒</div>
+        <h2 id="authTitle">Đăng nhập</h2>
+        <div class="sub" id="authSub">Nhập tài khoản để mở khoá Cài đặt</div>
+        <div id="authField2Wrap" style="display:none">
+          <label>Tài khoản master</label>
+          <input id="authUser" autocomplete="off" placeholder="ví dụ: admin">
+        </div>
+        <label id="authUserLbl">Tài khoản</label>
+        <input id="authUser1" autocomplete="off" placeholder="tên đăng nhập">
+        <label>Mật khẩu</label>
+        <input id="authPass" type="password" autocomplete="off" placeholder="••••••••">
+        <div id="authPass2Wrap" style="display:none">
+          <label>Nhập lại mật khẩu</label>
+          <input id="authPass2" type="password" autocomplete="off" placeholder="••••••••">
+        </div>
+        <div class="err" id="authErr"></div>
+        <button class="btn primary" id="authBtn" onclick="authSubmit()">Đăng nhập</button>
+      </div>
+    </div>
+
+    <!-- Nội dung Cài đặt (sau khi đăng nhập) -->
+    <div id="setwrap" style="display:none">
+      <div class="subnav" id="subnav">
+        <button data-sub="ketnoi"  class="on" onclick="gotoSub('ketnoi')"><span class="ic">🔌</span>Kết nối</button>
+        <button data-sub="calib"   onclick="gotoSub('calib')"><span class="ic">🎚️</span>Calib gas</button>
+        <button data-sub="model"   onclick="gotoSub('model')"><span class="ic">🔥</span>Model nhiệt</button>
+        <div class="navsep" data-master></div>
+        <button data-sub="taikhoan" data-master onclick="gotoSub('taikhoan')"><span class="ic">👤</span>Tài khoản</button>
+        <button data-sub="nhatky"   data-master onclick="gotoSub('nhatky')"><span class="ic">📜</span>Nhật ký</button>
+      </div>
+
+      <div class="subwrap">
+        <!-- Kết nối -->
+        <div class="subpane on" id="sub-ketnoi">
+          <h3>Kết nối</h3>
+          <div class="lead">Cổng RS485 tới HMI / Artisan / module cảm biến.</div>
+          <div class="frow"><label>Cổng Modbus (Artisan)</label>
+            <select class="nsel" id="cn_artisan" data-label="Cổng Artisan"><option>COM3</option><option>COM5</option><option>COM15</option></select></div>
+          <div class="frow"><label>Module BT (CP210x)</label>
+            <select class="nsel" id="cn_bt" data-label="Cổng BT"><option>COM5 · Silicon Labs</option><option>COM3</option><option>COM15</option></select></div>
+          <div class="frow"><label>Baud</label>
+            <select class="nsel" id="cn_baud" data-label="Baud"><option>9600</option><option>19200</option><option selected>38400</option><option>115200</option></select></div>
+          <div class="subbar"><span class="note">Thay đổi chưa áp dụng vào máy đang chạy</span>
+            <button class="btn primary" onclick="saveSub('ketnoi')">Lưu</button></div>
+        </div>
+
+        <!-- Calib gas -->
+        <div class="subpane" id="sub-calib">
+          <h3>Calib gas</h3>
+          <div class="lead">Bù gas tự động sau TP để BT bám profile.</div>
+          <div class="frow"><label>Deadband trước FCS <span class="q" title="Sai lệch BT cho phép trước mốc First Crack trước khi bù gas">?</span></label>
+            <div class="field"><input id="cg_db_pre" data-label="Deadband trước FCS" value="1.0"><span class="suffix">°C</span></div></div>
+          <div class="frow"><label>Deadband từ FCS <span class="q" title="Sai lệch BT cho phép từ First Crack trở đi (siết chặt hơn)">?</span></label>
+            <div class="field"><input id="cg_db_fcs" data-label="Deadband từ FCS" value="0.6"><span class="suffix">°C</span></div></div>
+          <div class="frow"><label>Bước gas mỗi bậc <span class="q" title="Lượng gas cộng/trừ mỗi lần điều chỉnh">?</span></label>
+            <div class="field"><input id="cg_step" data-label="Bước gas mỗi bậc" value="5"><span class="suffix">%</span></div></div>
+          <div class="frow"><label>Chu kỳ tính bậc <span class="q" title="Khoảng thời gian giữa 2 lần tính lại lượng bù">?</span></label>
+            <div class="field"><input id="cg_period" data-label="Chu kỳ tính bậc" value="10"><span class="suffix">giây</span></div></div>
+          <div class="frow"><label>Cấp bù pha Development <span class="q" title="Trần lượng gas được phép cộng thêm trong pha Development">?</span></label>
+            <div class="field"><input id="cg_cap" data-label="Cấp bù pha Development" value="10"><span class="suffix">%</span></div></div>
+          <div class="subbar"><span class="note">Sai deadband có thể làm cháy mẻ — đổi thận trọng</span>
+            <button class="btn primary" onclick="saveSub('calib')">Lưu</button></div>
+        </div>
+
+        <!-- Model nhiệt -->
+        <div class="subpane" id="sub-model">
+          <h3>Model nhiệt</h3>
+          <div class="lead">Đặc tính nhiệt của máy — dùng cho mô phỏng và bù gas.</div>
+          <div class="frow"><label>Preset máy</label>
+            <select class="nsel" id="mn_preset" data-label="Preset máy"><option>Cacao 30kg (anh Hiếu)</option><option>Danh 6kg auto</option><option>Đức Daklak 12kg</option></select></div>
+          <div class="frow"><label>Gas cân bằng <span class="q" title="Mức gas giữ nhiệt ổn định ở nhiệt độ mục tiêu">?</span></label>
+            <div class="field"><input id="mn_gasbal" data-label="Gas cân bằng" value="22"><span class="suffix">%</span></div></div>
+          <div class="frow"><label>Độ nhạy gas <span class="q" title="Mỗi 1% gas làm RoR đổi bao nhiêu độ mỗi phút">?</span></label>
+            <div class="field"><input id="mn_sens" data-label="Độ nhạy gas" value="1.0"><span class="suffix">°C/min/%</span></div></div>
+          <div class="subbar"><span class="note">Preset áp cho máy cụ thể</span>
+            <button class="btn" onclick="resetSub('model')">Reset mặc định</button>
+            <button class="btn primary" onclick="saveSub('model')">Lưu</button></div>
+        </div>
+
+        <!-- Tài khoản (chỉ master) -->
+        <div class="subpane" id="sub-taikhoan">
+          <h3>Tài khoản</h3>
+          <div class="lead">Quản lý thợ vận hành và phân quyền từng mục. Chỉ master thấy tab này.</div>
+          <div id="accBody"></div>
+        </div>
+
+        <!-- Nhật ký (chỉ master) -->
+        <div class="subpane" id="sub-nhatky">
+          <h3>Nhật ký thay đổi</h3>
+          <div class="lead">Ai đổi thông số gì, lúc nào, giá trị cũ → mới.</div>
+          <div id="auditBody"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+
+</div>
+
+<script>
+/* Co khung 2560×1440 về vừa viewport */
+function fit(){
+  const s=document.getElementById('stage');
+  const k=Math.min(window.innerWidth/2560, window.innerHeight/1440);
+  s.style.transform='scale('+k+')';
+}
+window.addEventListener('resize',fit); fit();
+
+
+/* ── Knob SVG arc-fill theo % (champagne), MANUAL sáng ── */
+function knob(label,val){
+  const size=166,cx=size/2,cy=size/2,r=63,w=12;
+  const a0=135, sweep=270;                 // hở dưới
+  const toXY=(deg)=>{const t=deg*Math.PI/180;return [cx+r*Math.cos(t), cy+r*Math.sin(t)];};
+  const arc=(from,to,col,op)=>{
+    const large=(to-from)>180?1:0;
+    const [x1,y1]=toXY(from),[x2,y2]=toXY(to);
+    return `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}" stroke="${col}" stroke-width="${w}" fill="none" stroke-linecap="round" opacity="${op}"/>`;
+  };
+  const end=a0+sweep*val/100;
+  const svg=`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+     ${arc(a0,a0+sweep,'#2a323c',1)}
+     ${val>0?arc(a0,end,'var(--champ)',1):''}
+   </svg>`;
+  return `<div class="knob">${svg}
+     <div class="kv num">${val}</div><div class="kl">${label}</div></div>`;
+}
+function drawKnobs(){
+  document.getElementById('knobs').innerHTML =
+    knob('GAS',42)+knob('AIR',78)+knob('DRUM',55);
+}
+
+/* ── Biểu đồ: đường BT/ET nét dày sắc, RoR mảnh, trục phụ mờ,
+      tách dải % khỏi trục thời gian ── */
+function drawChart(){
+  const W=1180,H=1000;
+  const L=64,Rp=96,T=18,B=150;             // lề; đáy chừa cho dải %
+  const gTop=H-190, gBot=H-40;             // dải gas/air tách hẳn xuống dưới
+  const tempTop=T, tempBot=gTop-70;        // vùng nhiệt (có GAP với dải %)
+  const N=180, drop=170;                   // điểm dữ liệu
+  const x=i=> L + (W-L-Rp)*i/N;
+  // thang nhiệt 0..300, RoR -10..30
+  const yT=v=> tempBot-(tempBot-tempTop)*v/300;
+  const yR=v=> tempBot-(tempBot-tempTop)*(v+10)/40;
+  const yG=v=> gBot-(gBot-gTop)*v/100;
+  // sinh đường cong rang hợp lý
+  let bt=[],et=[],ror=[],ghost=[],gas=[],air=[];
+  for(let i=0;i<=N;i++){
+    const m=i/N;                            // 0..1
+    // BT: charge 200 → TP ~90 @0.09 → lên 210 @drop
+    let b;
+    if(m<0.09){b=200-(200-90)*(m/0.09);}
+    else{const p=(m-0.09)/(1-0.09); b=90+(212-90)*Math.pow(p,0.82);}
+    bt.push(b);
+    et.push(Math.min(240, b+ (m<0.09? -8 : 16) + 6*Math.sin(m*9)));
+    // ghost profile hơi khác
+    ghost.push(b + 4*Math.sin(m*7+1) + (m>0.5? 3: -3));
+    // RoR: cao đầu, âm ở TP, lên ~14 rồi giảm dần
+    let rr;
+    if(m<0.09) rr=-2-40*(1-m/0.09); else{const p=(m-0.09)/(1-0.09); rr=16*Math.exp(-p*1.6)+2;}
+    ror.push(Math.max(-10,Math.min(30,rr+0.6*Math.sin(m*11))));
+    // gas/air bậc
+    gas.push(i<20?10: i<60?18: i<110?26: 30);
+    air.push(i<14?100:80);
+  }
+  const line=(arr,mapy)=>arr.map((v,i)=>`${x(i).toFixed(1)},${mapy(v).toFixed(1)}`).join(' ');
+  const step=(arr,mapy)=>{let d='';arr.forEach((v,i)=>{const X=x(i),Y=mapy(v);d+=(i?`L ${X} ${Y-0}`:`M ${X} ${Y}`)+` `;if(i<arr.length-1){d+=`L ${x(i+1)} ${Y} `;}});return d;};
+  // trục
+  let g='';
+  const grid='rgba(255,255,255,.045)', axc='var(--mute)', axl='var(--dim)';
+  // grid ngang vùng nhiệt
+  [0,50,100,150,200,250,300].forEach(v=>{
+    const Y=yT(v); g+=`<line x1="${L}" y1="${Y}" x2="${W-Rp}" y2="${Y}" stroke="${grid}"/>`;
+    g+=`<text x="${L-12}" y="${Y+5}" fill="${axc}" font-size="15" text-anchor="end" font-family="var(--mono)">${v}</text>`;
+    g+=`<text x="${W-Rp+12}" y="${Y+5}" fill="var(--faint)" font-size="14" font-family="var(--mono)">${(v/300*40-10).toFixed(0)}</text>`;
+  });
+  // dải % (tách hẳn, có khung riêng)
+  g+=`<rect x="${L}" y="${gTop}" width="${W-L-Rp}" height="${gBot-gTop}" fill="rgba(255,255,255,.015)"/>`;
+  [0,50,100].forEach(v=>{const Y=yG(v);g+=`<line x1="${L}" y1="${Y}" x2="${W-Rp}" y2="${Y}" stroke="${grid}"/>`;
+    g+=`<text x="${L-12}" y="${Y+5}" fill="${axc}" font-size="14" text-anchor="end" font-family="var(--mono)">${v}</text>`;});
+  // mốc thời gian (chỉ ở dải dưới — KHÔNG chồng)
+  for(let mm=0;mm<=15;mm+=3){const i=mm/15*N;const X=x(i);
+    g+=`<line x1="${X}" y1="${gTop}" x2="${X}" y2="${gBot}" stroke="${grid}"/>`;
+    g+=`<text x="${X}" y="${gBot+30}" fill="${axc}" font-size="15" text-anchor="middle" font-family="var(--mono)">${String(mm).padStart(2,'0')}:00</text>`;}
+  g+=`<text x="${(L+W-Rp)/2}" y="${gBot+58}" fill="${axl}" font-size="15" text-anchor="middle">Thời gian rang</text>`;
+  // nhãn trục phụ mờ
+  g+=`<text x="${W-Rp+40}" y="${(tempTop+tempBot)/2}" fill="var(--faint)" font-size="14" text-anchor="middle" transform="rotate(90 ${W-Rp+40} ${(tempTop+tempBot)/2})">RoR °C/ph</text>`;
+  g+=`<text x="${L-42}" y="${(tempTop+tempBot)/2}" fill="${axc}" font-size="15" text-anchor="middle" transform="rotate(-90 ${L-42} ${(tempTop+tempBot)/2})">°C</text>`;
+  g+=`<text x="${L-42}" y="${(gTop+gBot)/2}" fill="${axc}" font-size="14" text-anchor="middle" transform="rotate(-90 ${L-42} ${(gTop+gBot)/2})">%</text>`;
+
+  // dải pha (nền mờ) tại vùng nhiệt
+  const ph=[[0,0.32,'#b7a888'],[0.32,0.62,'#c08f52'],[0.62,drop/N,'#8a5a34']];
+  ph.forEach(([a,b,c])=>{g+=`<rect x="${x(a*N)}" y="${tempTop}" width="${x(b*N)-x(a*N)}" height="${tempBot-tempTop}" fill="${c}" opacity="0.05"/>`;});
+
+  // now-line tại drop
+  const nx=x(drop);
+  g+=`<line x1="${nx}" y1="${tempTop}" x2="${nx}" y2="${tempBot}" stroke="var(--champ)" stroke-width="1" opacity=".4"/>`;
+  g+=`<line x1="${nx}" y1="${gTop}" x2="${nx}" y2="${gBot}" stroke="var(--champ)" stroke-width="1" opacity=".4"/>`;
+
+  // đường dữ liệu — cắt tới điểm 'drop' (đang rang)
+  const cut=a=>a.slice(0,drop+1);
+  // ghost + gas/air FF (mờ, đứt) vẽ toàn tuyến
+  g+=`<polyline points="${line(ghost,yT)}" fill="none" stroke="#484f59" stroke-width="1.6" stroke-dasharray="7 6"/>`;
+  g+=`<path d="${step(gas,yG)}" fill="none" stroke="#6a5a3c" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+  g+=`<path d="${step(air,yG)}" fill="none" stroke="#3f4650" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+  // trục phụ RoR (mảnh)
+  g+=`<polyline points="${line(cut(ror),yR)}" fill="none" stroke="#7d8590" stroke-width="1.6" opacity=".85"/>`;
+  // gas/air thực (đậm) tới now
+  g+=`<path d="${step(cut(gas),yG)}" fill="none" stroke="var(--champ)" stroke-width="3"/>`;
+  g+=`<path d="${step(cut(air),yG)}" fill="none" stroke="#7c848e" stroke-width="2.4"/>`;
+  // ET rồi BT (BT trên cùng, nét dày sắc)
+  g+=`<polyline points="${line(cut(et),yT)}" fill="none" stroke="var(--etc)" stroke-width="2.6" opacity=".9"/>`;
+  g+=`<polyline points="${line(cut(bt),yT)}" fill="none" stroke="var(--champ)" stroke-width="4"/>`;
+
+  // hộp mốc sự kiện
+  const ev=[['CHARGE',0,'200°'],['TP',16,'91°'],['DRY END',74,'150°']];
+  ev.forEach(([nm,i,dg])=>{const X=x(i),Y=yT(bt[i]);
+    g+=`<line x1="${X}" y1="${tempTop}" x2="${X}" y2="${tempBot}" stroke="rgba(255,255,255,.08)"/>`;
+    const tw=nm.length*8.4+64;
+    g+=`<g transform="translate(${Math.min(Math.max(X,L+tw/2),W-Rp-tw/2)},${Y-42})">
+      <rect x="${-tw/2}" y="0" width="${tw}" height="42" rx="8" fill="#20262e" stroke="rgba(255,255,255,.1)"/>
+      <text x="0" y="18" fill="var(--dim)" font-size="13" text-anchor="middle" font-weight="700" letter-spacing="1">${nm}</text>
+      <text x="0" y="34" fill="var(--txt)" font-size="14" text-anchor="middle" font-family="var(--mono)">${dg}</text></g>`;
+  });
+  // legend
+  const lg=[['BT','var(--champ)'],['ET','var(--etc)'],['RoR','#7d8590']];
+  lg.forEach(([t,c],k)=>{const X=W-Rp-210+k*72,Y=tempTop+18;
+    g+=`<line x1="${X}" y1="${Y}" x2="${X+22}" y2="${Y}" stroke="${c}" stroke-width="3"/>
+        <text x="${X+28}" y="${Y+5}" fill="var(--dim)" font-size="15">${t}</text>`;});
+
+  document.getElementById('chart').innerHTML=g;
+}
+
+/* ── Đổi theme: set data-theme rồi vẽ lại chart/knob để var() tính lại ── */
+function setTheme(name, el){
+  document.documentElement.setAttribute('data-theme', name);
+  document.querySelectorAll('#titlebar .sw').forEach(s=>s.classList.remove('on'));
+  if(el) el.classList.add('on');
+  drawKnobs(); drawChart();
+}
+
+drawKnobs(); drawChart();   // khởi tạo
+
+/* Cho phép chọn theme qua URL hash (#emerald…) để xem nhanh */
+(function(){const h=location.hash.slice(1);
+  const names=['platinum','copper','emerald','azure','rose'];
+  if(names.includes(h)){
+    const el=[...document.querySelectorAll('#titlebar .sw')]
+      .find(s=>(s.getAttribute('onclick')||'').includes("'"+h+"'"));
+    setTheme(h, el);
+  }})();
+
+/* ══════════════════════════════════════════════════════════════
+   Tài khoản + phân quyền + tab — vanilla, lưu localStorage.
+   Hash mật khẩu bằng PBKDF2 (crypto.subtle), KHÔNG lưu plaintext.
+   Lưu ý: đây là lớp tiện lợi phía PC. Chặn thật phải để firmware
+   tự validate giá trị nhận qua Modbus — không tin PC mù quáng.
+   ══════════════════════════════════════════════════════════════ */
+const LS_USERS='otl_users', LS_AUDIT='otl_audit', LS_CFG='otl_config';
+const IDLE_MS=5*60*1000;                 // tự khoá Cài đặt sau 5' không thao tác
+let session=null;                        // {u, role:'master'|'slave', perms}
+let idleTimer=null, toastTmr=null;
+
+/* ── crypto ── */
+const _enc=new TextEncoder();
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+const unhex=h=>new Uint8Array(h.match(/.{2}/g).map(x=>parseInt(x,16)));
+async function pbkdf2(pw,saltHex){
+  const k=await crypto.subtle.importKey('raw',_enc.encode(pw),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits(
+    {name:'PBKDF2',salt:unhex(saltHex),iterations:150000,hash:'SHA-256'},k,256);
+  return hex(bits);
+}
+
+/* ── storage ── */
+function loadUsers(){try{return JSON.parse(localStorage.getItem(LS_USERS))||null;}catch(e){return null;}}
+function saveUsers(u){localStorage.setItem(LS_USERS,JSON.stringify(u));}
+function loadAudit(){try{return JSON.parse(localStorage.getItem(LS_AUDIT))||[];}catch(e){return [];}}
+function pushAudit(action,field,oldv,newv){
+  const a=loadAudit();
+  a.unshift({ts:Date.now(),user:session?session.u:'?',action,field,old:oldv,'new':newv});
+  localStorage.setItem(LS_AUDIT,JSON.stringify(a.slice(0,500)));
+}
+function loadCfg(){try{return JSON.parse(localStorage.getItem(LS_CFG))||{};}catch(e){return {};}}
+function storeCfg(id,v){const c=loadCfg();c[id]=v;localStorage.setItem(LS_CFG,JSON.stringify(c));}
+
+/* ── config: field theo section, default lấy từ DOM ── */
+const CFG_FIELDS={
+  ketnoi:['cn_artisan','cn_bt','cn_baud'],
+  calib :['cg_db_pre','cg_db_fcs','cg_step','cg_period','cg_cap'],
+  model :['mn_preset','mn_gasbal','mn_sens']
+};
+let CFG_DEFAULT={};
+function initConfig(){
+  Object.values(CFG_FIELDS).flat().forEach(id=>CFG_DEFAULT[id]=document.getElementById(id).value);
+  const saved=loadCfg();
+  Object.entries(saved).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v;});
+}
+function saveSub(section){
+  let n=0;
+  CFG_FIELDS[section].forEach(id=>{
+    const el=document.getElementById(id);
+    const ov=(id in loadCfg())?loadCfg()[id]:CFG_DEFAULT[id];
+    if(String(el.value)!==String(ov)){pushAudit('Sửa',el.dataset.label,ov,el.value);storeCfg(id,el.value);n++;}
+  });
+  toast(n?`Đã lưu ${n} thay đổi`:'Không có thay đổi',true);
+  renderAudit();
+}
+function resetSub(section){
+  CFG_FIELDS[section].forEach(id=>document.getElementById(id).value=CFG_DEFAULT[id]);
+  saveSub(section);
+}
+
+/* ── tab chính ── */
+function gotoTab(name){
+  document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pane-'+name).classList.add('on');
+  document.querySelectorAll('#tabbar .tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
+  if(name==='caidat' && !session) renderAuthGate();
+}
+
+/* ── gate đăng nhập ── */
+function renderAuthGate(){
+  document.getElementById('authwrap').style.display='flex';
+  document.getElementById('setwrap').style.display='none';
+  const setup=!loadUsers();
+  document.getElementById('authPass2Wrap').style.display=setup?'block':'none';
+  document.getElementById('authTitle').textContent=setup?'Tạo tài khoản master':'Đăng nhập';
+  document.getElementById('authSub').textContent=setup
+    ?'Lần đầu chạy — đặt mật khẩu quản trị, không dùng mật khẩu mặc định'
+    :'Nhập tài khoản để mở khoá Cài đặt';
+  document.getElementById('authBtn').textContent=setup?'Tạo master':'Đăng nhập';
+  document.getElementById('authErr').textContent='';
+  document.getElementById('authUser1').value='';
+  document.getElementById('authPass').value='';
+  document.getElementById('authPass2').value='';
+}
+async function authSubmit(){
+  const err=document.getElementById('authErr');
+  const u=document.getElementById('authUser1').value.trim();
+  const p=document.getElementById('authPass').value;
+  if(!u||!p){err.textContent='Nhập đủ tài khoản và mật khẩu';return;}
+  const setup=!loadUsers();
+  if(setup){
+    const p2=document.getElementById('authPass2').value;
+    if(p.length<4){err.textContent='Mật khẩu tối thiểu 4 ký tự';return;}
+    if(p!==p2){err.textContent='Hai lần nhập mật khẩu không khớp';return;}
+    const salt=hex(crypto.getRandomValues(new Uint8Array(16)));
+    saveUsers({master:{u,salt,hash:await pbkdf2(p,salt)},slaves:[]});
+    session={u,role:'master',perms:{}};
+    pushAudit('Tạo','Tài khoản master','',u);
+    enterSettings();return;
+  }
+  const users=loadUsers();
+  if(u===users.master.u){
+    if(await pbkdf2(p,users.master.salt)===users.master.hash){session={u,role:'master',perms:{}};loginOk();return;}
+  }else{
+    const s=(users.slaves||[]).find(x=>x.u===u);
+    if(s){
+      if(!s.enabled){err.textContent='Tài khoản đang bị khoá';return;}
+      if(await pbkdf2(p,s.salt)===s.hash){session={u,role:'slave',perms:s.perms||{}};loginOk();return;}
+    }
+  }
+  err.textContent='Sai tài khoản hoặc mật khẩu';
+}
+function loginOk(){pushAudit('Đăng nhập','Phiên','',session.u);enterSettings();}
+function authLogout(){
+  if(session)pushAudit('Đăng xuất','Phiên','',session.u);
+  session=null;clearTimeout(idleTimer);
+  updateBadge();renderAuthGate();
+}
+
+/* ── vào Cài đặt sau khi đăng nhập: lọc sub-tab theo quyền ── */
+function enterSettings(){
+  document.getElementById('authwrap').style.display='none';
+  document.getElementById('setwrap').style.display='flex';
+  updateBadge();
+  const map={ketnoi:'ket_noi',calib:'calib_gas',model:'model_nhiet'};
+  let first=null;
+  document.querySelectorAll('#subnav [data-master]').forEach(el=>el.style.display=session.role==='master'?'':'none');
+  document.querySelectorAll('#subnav button[data-sub]').forEach(b=>{
+    const sub=b.dataset.sub;
+    const vis = session.role==='master' ? true : (map[sub]? !!session.perms[map[sub]] : false);
+    b.style.display=vis?'':'none';
+    if(vis&&!first)first=sub;
+  });
+  renderAccounts();renderAudit();
+  if(first)gotoSub(first);
+  else{document.querySelectorAll('.subpane').forEach(p=>p.classList.remove('on'));
+       toast('Tài khoản chưa được cấp quyền vào mục nào');}
+  resetIdle();
+}
+function gotoSub(name){
+  document.querySelectorAll('.subpane').forEach(p=>p.classList.remove('on'));
+  const el=document.getElementById('sub-'+name);if(el)el.classList.add('on');
+  document.querySelectorAll('#subnav button').forEach(b=>b.classList.toggle('on',b.dataset.sub===name));
+  if(name==='nhatky')renderAudit();
+  if(name==='taikhoan')renderAccounts();
+  resetIdle();
+}
+function updateBadge(){
+  const b=document.getElementById('userbadge');
+  if(session){
+    b.style.display='flex';
+    document.getElementById('ubAva').textContent=session.u[0].toUpperCase();
+    document.getElementById('ubName').textContent=session.u;
+    document.getElementById('ubRole').textContent=session.role==='master'?'Master':'Thợ vận hành';
+    document.getElementById('lkIco').textContent='🔓';
+  }else{
+    b.style.display='none';
+    document.getElementById('lkIco').textContent='🔒';
+  }
+}
+
+/* ── session timeout ── */
+function resetIdle(){
+  clearTimeout(idleTimer);
+  idleTimer=setTimeout(()=>{ if(session){authLogout();gotoTab('rang');toast('Hết phiên — đã khoá Cài đặt');} },IDLE_MS);
+}
+
+/* ── quản lý tài khoản (master) ── */
+function renderAccounts(){
+  const u=loadUsers();const slaves=(u&&u.slaves)||[];
+  const pill=(on,t)=>`<span class="pill ${on?'':'off'}">${t}</span>`;
+  const rows=slaves.length?slaves.map((s,i)=>{
+    const p=s.perms||{};
+    return `<tr>
+      <td><span class="uicon">${s.u[0].toUpperCase()}</span>${s.u}</td>
+      <td>${pill(p.ket_noi,'Kết nối')}${pill(p.calib_gas,'Calib gas')}${pill(p.model_nhiet,'Model nhiệt')}</td>
+      <td>${s.enabled?pill(1,'Bật'):pill(0,'Khoá')}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="linkbtn" onclick="accToggleEnable(${i})">${s.enabled?'Khoá':'Mở'}</button>
+        <button class="linkbtn del" onclick="accDelSlave(${i})">Xoá</button></td></tr>`;
+  }).join(''):`<tr><td colspan="4" style="color:var(--mute);padding:22px">Chưa có thợ vận hành nào.</td></tr>`;
+  document.getElementById('accBody').innerHTML=`
+    <table class="utable"><thead><tr><th>Thợ</th><th>Quyền</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    <div class="section" style="margin-top:28px">Thêm thợ vận hành</div>
+    <div class="frow"><label>Tên đăng nhập</label>
+      <div class="field" style="min-width:230px"><input id="nsUser" style="text-align:left;width:190px"></div></div>
+    <div class="frow"><label>Mật khẩu</label>
+      <div class="field" style="min-width:230px"><input id="nsPass" type="password" style="text-align:left;width:190px"></div></div>
+    <div class="frow"><label>Quyền được cấp</label></div>
+    <div class="permrow">
+      <div class="permchk" data-perm="ket_noi" onclick="permToggle(this)"><span class="bx">✓</span>Kết nối</div>
+      <div class="permchk" data-perm="calib_gas" onclick="permToggle(this)"><span class="bx">✓</span>Calib gas</div>
+      <div class="permchk" data-perm="model_nhiet" onclick="permToggle(this)"><span class="bx">✓</span>Model nhiệt</div>
+    </div>
+    <div class="subbar"><span class="note">Thợ vận hành không thấy tab Tài khoản / Nhật ký</span>
+      <button class="btn primary" onclick="accAddSlave()">Thêm thợ</button></div>`;
+}
+function permToggle(el){el.classList.toggle('on');}
+async function accAddSlave(){
+  const u=document.getElementById('nsUser').value.trim();
+  const p=document.getElementById('nsPass').value;
+  if(!u||!p){toast('Nhập tên và mật khẩu');return;}
+  const users=loadUsers();
+  if(u===users.master.u||(users.slaves||[]).some(s=>s.u===u)){toast('Tên đăng nhập đã tồn tại');return;}
+  const perms={};document.querySelectorAll('#accBody .permchk.on').forEach(el=>perms[el.dataset.perm]=true);
+  const salt=hex(crypto.getRandomValues(new Uint8Array(16)));
+  (users.slaves=users.slaves||[]).push({u,salt,hash:await pbkdf2(p,salt),perms,enabled:true});
+  saveUsers(users);pushAudit('Thêm','Thợ vận hành','',u);renderAccounts();toast('Đã thêm '+u,true);
+}
+function accToggleEnable(i){
+  const users=loadUsers();const s=users.slaves[i];const was=s.enabled?'Bật':'Khoá';
+  s.enabled=!s.enabled;saveUsers(users);
+  pushAudit('Sửa','Trạng thái '+s.u,was,s.enabled?'Bật':'Khoá');renderAccounts();
+}
+function accDelSlave(i){
+  const users=loadUsers();const s=users.slaves[i];
+  if(!confirm('Xoá thợ "'+s.u+'"?'))return;
+  users.slaves.splice(i,1);saveUsers(users);
+  pushAudit('Xoá','Thợ vận hành',s.u,'');renderAccounts();toast('Đã xoá '+s.u,true);
+}
+
+/* ── nhật ký ── */
+function renderAudit(){
+  const body=document.getElementById('auditBody');if(!body)return;
+  const a=loadAudit();
+  if(!a.length){body.innerHTML='<div class="audit"><div class="empty">Chưa có thay đổi nào được ghi.</div></div>';return;}
+  const z=n=>String(n).padStart(2,'0');
+  const fmt=ts=>{const d=new Date(ts);return `${z(d.getDate())}/${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`;};
+  body.innerHTML=`<table class="audit"><thead><tr><th>Thời gian</th><th>Người</th><th>Thao tác</th><th>Mục</th><th>Giá trị</th></tr></thead>
+    <tbody>${a.map(e=>`<tr><td>${fmt(e.ts)}</td><td>${e.user}</td><td>${e.action}</td><td class="f">${e.field}</td>
+      <td>${e.old?`<span class="old">${e.old}</span>`:''}<span class="chg">${e['new']||''}</span></td></tr>`).join('')}</tbody></table>`;
+}
+
+/* ── toast ── */
+function toast(msg,ok){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(ok?' ok':'');
+  clearTimeout(toastTmr);toastTmr=setTimeout(()=>t.className='',2200);
+}
+
+/* ── init ── */
+initConfig();
+renderAuthGate();
+updateBadge();
+['authPass','authPass2'].forEach(id=>document.getElementById(id)
+  .addEventListener('keydown',e=>{if(e.key==='Enter')authSubmit();}));
+['click','keydown','mousemove'].forEach(ev=>document.getElementById('setwrap')
+  .addEventListener(ev,resetIdle,{passive:true}));
+</script>
+</body>
+</html>

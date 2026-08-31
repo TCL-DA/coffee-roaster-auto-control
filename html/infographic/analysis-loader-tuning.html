@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phân tích Auto-Loader — OTL-06ALS</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2230; --panel2:#222d3d; --txt:#e6edf3; --muted:#9fb0c3;
+    --ok:#3fb950; --over:#f85149; --under:#d29922; --accent:#58a6ff; --grid:#2d3748;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5}
+  header{padding:28px 32px;border-bottom:1px solid var(--grid);background:linear-gradient(135deg,#13202f,#0f1419)}
+  header h1{margin:0 0 6px;font-size:24px}
+  header p{margin:0;color:var(--muted);font-size:14px}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px 32px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px}
+  .card{background:var(--panel);border:1px solid var(--grid);border-radius:12px;padding:16px 18px}
+  .card .v{font-size:26px;font-weight:700;margin:2px 0}
+  .card .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .card .s{font-size:12px;color:var(--muted);margin-top:4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .chart-box{background:var(--panel);border:1px solid var(--grid);border-radius:12px;padding:18px}
+  .chart-box h3{margin:0 0 4px;font-size:15px}
+  .chart-box .sub{margin:0 0 14px;font-size:12.5px;color:var(--muted)}
+  .chart-box canvas{max-height:300px}
+  .full{grid-column:1 / -1}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--grid)}
+  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel)}
+  td.l,th.l{text-align:left}
+  .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .t-OK{background:rgba(63,185,80,.18);color:var(--ok)}
+  .t-OVER{background:rgba(248,81,73,.18);color:var(--over)}
+  .t-UNDER{background:rgba(210,153,34,.18);color:var(--under)}
+  .note{background:var(--panel2);border-left:3px solid var(--accent);border-radius:8px;padding:14px 18px;margin:8px 0 24px;font-size:13.5px}
+  .note b{color:var(--accent)}
+  .table-scroll{max-height:520px;overflow:auto;border-radius:8px}
+  h2.sec{font-size:18px;margin:30px 0 12px;border-bottom:1px solid var(--grid);padding-bottom:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Phân tích Auto-Loader tự học dif — OTL-06ALS (máy ca cao 30kg)</h1>
+  <p>Dữ liệu loader.csv sau khi nâng trần ror 20→60 kg/phút, cửa sổ ror 3s→1s, Kalman q=0.7, trần dif 1.0→2.5kg · Mẻ STT 18–36 (firmware mới) · 24/06/2026</p>
+</header>
+
+<div class="wrap">
+  <div class="cards" id="cards"></div>
+
+  <div class="note">
+    <b>Tóm tắt:</b> Sau khi bỏ trần ror cũ (20 kg/phút) — vốn làm <code>rorKG</code> pin cứng ở 20 và <code>dif</code> kẹt ở 1.0 — hệ thống đã đo được tốc độ hút thật <b>38–58 kg/phút</b> và học <code>dif</code> lên vùng <b>1.1–1.5 kg</b>. Sai số đa số trong ±0.15kg, đang hội tụ. Mẻ STT 30 (OVER −0.37) là ô <code>25kg/45</code> học lần đầu → đã tự kéo dif lên 1.48 ngay sau đó.
+  </div>
+
+  <h2 class="sec">1. Độ chính xác — sai số mỗi mẻ</h2>
+  <div class="grid2">
+    <div class="chart-box">
+      <h3>Sai số err theo mẻ (kg)</h3>
+      <p class="sub">err = final − target · &gt;0 = hút thiếu (dư cà) · dải xanh = vùng OK ±0.09kg</p>
+      <canvas id="errChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Điểm số mỗi mẻ (0–10)</h3>
+      <p class="sub">điểm = 10 − |err|×10 · ≥9.0 coi là OK</p>
+      <canvas id="scoreChart"></canvas>
+    </div>
+  </div>
+
+  <h2 class="sec">2. Quá trình tự học dif</h2>
+  <div class="grid2">
+    <div class="chart-box full">
+      <h3>dif: trước học → sau học, và dif đã dùng để cắt</h3>
+      <p class="sub">difOld = dif ô trước mẻ · difNew = dif ô sau khi EMA cập nhật · dif = giá trị thực dùng lúc cắt feeder</p>
+      <canvas id="difChart"></canvas>
+    </div>
+  </div>
+
+  <h2 class="sec">3. Tốc độ hút (rorKG) — đã thoát trần cũ</h2>
+  <div class="grid2">
+    <div class="chart-box">
+      <h3>rorKG mỗi mẻ (kg/phút)</h3>
+      <p class="sub">đường đỏ = trần CŨ (20) · đường xanh = trần MỚI (60)</p>
+      <canvas id="rorChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Quan hệ dif ↔ rorKG</h3>
+      <p class="sub">hút càng nhanh → coast càng lớn → cần dif lớn hơn</p>
+      <canvas id="scatterRor"></canvas>
+    </div>
+  </div>
+
+  <h2 class="sec">4. Phân bố kết quả & ảnh hưởng cân</h2>
+  <div class="grid2">
+    <div class="chart-box">
+      <h3>Phân bố kết quả</h3>
+      <p class="sub">OK / OVER (hút dư) / UNDER (hút thiếu)</p>
+      <canvas id="resultChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Quan hệ dif ↔ cân đầu (wStart)</h3>
+      <p class="sub">cân trong phễu lúc bắt đầu hút (kg)</p>
+      <canvas id="scatterW"></canvas>
+    </div>
+  </div>
+
+  <h2 class="sec">5. Bảng dữ liệu đầy đủ</h2>
+  <div class="table-scroll">
+    <table id="dataTable">
+      <thead><tr>
+        <th class="l">STT</th><th>wStart</th><th>batch</th><th>set</th><th>secHut</th>
+        <th>rorKG</th><th>dif</th><th>target</th><th>final</th><th>err</th><th>score</th>
+        <th class="l">result</th><th>difOld</th><th>difNew</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// Dữ liệu loader.csv — mẻ STT 18–36 (firmware mới sau khi chỉnh)
+const D = [
+  {stt:18,s:122,wStart:29.64,batch:9.64,set:9.7,secHut:17,ror:50.2,dif:1.33,target:20,final:19.99,err:-0.01,score:9.9,result:"OK",difOld:1.33,difNew:1.33},
+  {stt:19,s:155,wStart:19.99,batch:9.99,set:10,secHut:19,ror:46.5,dif:1.33,target:10,final:10.15,err:0.15,score:8.5,result:"UNDER",difOld:1.33,difNew:1.18},
+  {stt:20,s:184,wStart:10.14,batch:5.14,set:5.2,secHut:13,ror:41.9,dif:1.18,target:5,final:5,err:0,score:10,result:"OK",difOld:1.18,difNew:1.18},
+  {stt:21,s:211,wStart:5,batch:5,set:5,secHut:12,ror:51.4,dif:1.18,target:0,final:-0.09,err:-0.09,score:9.1,result:"OK",difOld:1.18,difNew:1.18},
+  {stt:22,s:337,wStart:32.48,batch:2.48,set:2.5,secHut:9,ror:47.2,dif:1.33,target:30,final:29.89,err:-0.11,score:8.9,result:"OVER",difOld:1.33,difNew:1.36},
+  {stt:23,s:373,wStart:29.89,batch:4.89,set:4.9,secHut:12,ror:58.5,dif:1.36,target:25,final:24.98,err:-0.02,score:9.8,result:"OK",difOld:1.36,difNew:1.36},
+  {stt:24,s:398,wStart:24.96,batch:4.96,set:5,secHut:12,ror:42,dif:1.36,target:20,final:20.25,err:0.25,score:7.5,result:"UNDER",difOld:1.36,difNew:1.11},
+  {stt:25,s:425,wStart:20.24,batch:5.14,set:5.2,secHut:13,ror:42.4,dif:1.11,target:15.1,final:14.93,err:-0.17,score:8.3,result:"OVER",difOld:1.11,difNew:1.28},
+  {stt:26,s:452,wStart:14.93,batch:4.93,set:5,secHut:12,ror:38.4,dif:1.28,target:10,final:10.11,err:0.11,score:8.9,result:"UNDER",difOld:1.28,difNew:1.17},
+  {stt:27,s:476,wStart:10.11,batch:5.11,set:5.1,secHut:12,ror:41.4,dif:1.28,target:5,final:5.11,err:0.11,score:8.9,result:"UNDER",difOld:1.28,difNew:1.17},
+  {stt:28,s:505,wStart:5.11,batch:5.11,set:5.2,secHut:12,ror:52.7,dif:1.18,target:0,final:-0.11,err:-0.11,score:8.9,result:"OVER",difOld:1.18,difNew:1.29},
+  {stt:29,s:636,wStart:32.51,batch:7.51,set:7.5,secHut:15,ror:48.6,dif:1.36,target:25,final:25.06,err:0.06,score:9.4,result:"OK",difOld:1.36,difNew:1.36},
+  {stt:30,s:662,wStart:25.06,batch:5.06,set:5.1,secHut:12,ror:44.6,dif:1.11,target:20,final:19.63,err:-0.37,score:6.3,result:"OVER",difOld:1.11,difNew:1.48},
+  {stt:31,s:688,wStart:19.63,batch:4.63,set:4.6,secHut:11,ror:48.5,dif:1.18,target:15,final:14.77,err:-0.23,score:7.7,result:"OVER",difOld:1.18,difNew:1.24},
+  {stt:32,s:715,wStart:14.76,batch:4.76,set:4.8,secHut:12,ror:53.6,dif:1.29,target:10,final:9.83,err:-0.17,score:8.3,result:"OVER",difOld:1.29,difNew:1.46},
+  {stt:33,s:745,wStart:9.83,batch:9.83,set:9.9,secHut:19,ror:43,dif:1.17,target:0,final:-0.06,err:-0.06,score:9.4,result:"OK",difOld:1.17,difNew:1.17},
+  {stt:34,s:905,wStart:32.5,batch:22.5,set:22.5,secHut:33,ror:44.5,dif:1.36,target:10,final:10.04,err:0.04,score:9.6,result:"OK",difOld:1.36,difNew:1.36},
+  {stt:35,s:935,wStart:10.02,batch:4.92,set:5,secHut:12,ror:49.6,dif:1.29,target:5.1,final:4.98,err:-0.12,score:8.8,result:"OVER",difOld:1.29,difNew:1.41},
+  {stt:36,s:959,wStart:4.97,batch:4.97,set:5,secHut:12,ror:48.2,dif:1.41,target:0,final:-0.01,err:-0.01,score:9.9,result:"OK",difOld:1.41,difNew:1.41},
+];
+
+const COL={OK:"#3fb950",OVER:"#f85149",UNDER:"#d29922"};
+const labels = D.map(d=>"#"+d.stt);
+
+// ---- Thẻ thống kê ----
+const n=D.length;
+const absErr=D.map(d=>Math.abs(d.err));
+const meanAbs=(absErr.reduce((a,b)=>a+b,0)/n);
+const maxAbs=Math.max(...absErr);
+const okN=D.filter(d=>d.result==="OK").length;
+const overN=D.filter(d=>d.result==="OVER").length;
+const underN=D.filter(d=>d.result==="UNDER").length;
+const within15=D.filter(d=>Math.abs(d.err)<=0.15).length;
+const meanScore=(D.reduce((a,d)=>a+d.score,0)/n);
+const rorMin=Math.min(...D.map(d=>d.ror)), rorMax=Math.max(...D.map(d=>d.ror));
+const cards=[
+  {l:"Số mẻ",v:n,s:"firmware mới"},
+  {l:"Sai số TB",v:meanAbs.toFixed(3)+" kg",s:"|err| trung bình"},
+  {l:"Sai số max",v:maxAbs.toFixed(2)+" kg",s:"mẻ #30 (học lần đầu)"},
+  {l:"Trong ±0.15kg",v:Math.round(within15/n*100)+"%",s:within15+"/"+n+" mẻ"},
+  {l:"Điểm TB",v:meanScore.toFixed(1),s:"thang 0–10"},
+  {l:"rorKG",v:rorMin.toFixed(0)+"–"+rorMax.toFixed(0),s:"kg/phút (trần cũ chỉ 20)"},
+];
+document.getElementById("cards").innerHTML=cards.map(c=>
+  `<div class="card"><div class="l">${c.l}</div><div class="v">${c.v}</div><div class="s">${c.s}</div></div>`).join("");
+
+Chart.defaults.color="#9fb0c3";
+Chart.defaults.font.family='"Segoe UI",system-ui,sans-serif';
+const gridC={color:"#2d3748"};
+
+// ---- 1. Err ----
+new Chart(errChart,{type:"bar",data:{labels,datasets:[{
+  data:D.map(d=>d.err),backgroundColor:D.map(d=>COL[d.result]),
+}]},options:{plugins:{legend:{display:false},
+  tooltip:{callbacks:{label:c=>"err: "+c.raw+" kg ("+D[c.dataIndex].result+")"}}},
+  scales:{y:{grid:gridC,title:{display:true,text:"err (kg)"}},x:{grid:gridC}},
+  // dải OK
+}});
+// vẽ dải ±0.09 bằng annotation thủ công qua plugin nhỏ
+const bandPlugin={id:"band",beforeDraw(c){const{ctx,chartArea:a,scales:{y}}=c;
+  ctx.save();ctx.fillStyle="rgba(63,185,80,.10)";
+  const y1=y.getPixelForValue(0.09),y2=y.getPixelForValue(-0.09);
+  ctx.fillRect(a.left,y1,a.right-a.left,y2-y1);ctx.restore();}};
+Chart.register(bandPlugin);
+
+// ---- Score ----
+new Chart(scoreChart,{type:"bar",data:{labels,datasets:[{
+  data:D.map(d=>d.score),backgroundColor:D.map(d=>d.score>=9?"#3fb950":d.score>=8?"#d29922":"#f85149")
+}]},options:{plugins:{legend:{display:false}},
+  scales:{y:{grid:gridC,min:5,max:10,title:{display:true,text:"điểm"}},x:{grid:gridC}}}});
+
+// ---- 2. dif ----
+new Chart(difChart,{type:"line",data:{labels,datasets:[
+  {label:"difOld (trước)",data:D.map(d=>d.difOld),borderColor:"#9fb0c3",borderDash:[5,4],tension:.2,pointRadius:2},
+  {label:"dif đã dùng",data:D.map(d=>d.dif),borderColor:"#d29922",tension:.2,pointRadius:3},
+  {label:"difNew (sau học)",data:D.map(d=>d.difNew),borderColor:"#58a6ff",tension:.2,pointRadius:3,borderWidth:2},
+]},options:{plugins:{legend:{position:"top"}},
+  scales:{y:{grid:gridC,title:{display:true,text:"dif (kg)"},suggestedMin:1,suggestedMax:1.6},x:{grid:gridC}}}});
+
+// ---- 3. rorKG ----
+const rorMaxLine={id:"rorMaxLine",afterDraw(c){const{ctx,chartArea:a,scales:{y}}=c;
+  [[20,"#f85149","trần cũ 20"],[60,"#3fb950","trần mới 60"]].forEach(([v,col,t])=>{
+    const yp=y.getPixelForValue(v);ctx.save();ctx.strokeStyle=col;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(a.left,yp);ctx.lineTo(a.right,yp);ctx.stroke();
+    ctx.fillStyle=col;ctx.font="11px sans-serif";ctx.fillText(t,a.left+6,yp-4);ctx.restore();});}};
+new Chart(rorChart,{type:"line",data:{labels,datasets:[{
+  label:"rorKG",data:D.map(d=>d.ror),borderColor:"#58a6ff",backgroundColor:"rgba(88,166,255,.12)",
+  fill:true,tension:.3,pointRadius:3}]},
+  options:{plugins:{legend:{display:false}},
+  scales:{y:{grid:gridC,min:0,max:70,title:{display:true,text:"kg/phút"}},x:{grid:gridC}}},
+  plugins:[rorMaxLine]});
+
+// ---- dif vs ror scatter ----
+new Chart(scatterRor,{type:"scatter",data:{datasets:[{
+  data:D.map(d=>({x:d.ror,y:d.dif})),backgroundColor:D.map(d=>COL[d.result]),pointRadius:6
+}]},options:{plugins:{legend:{display:false},
+  tooltip:{callbacks:{label:c=>"ror "+c.raw.x+" → dif "+c.raw.y}}},
+  scales:{x:{grid:gridC,title:{display:true,text:"rorKG (kg/phút)"}},
+          y:{grid:gridC,title:{display:true,text:"dif (kg)"}}}}});
+
+// ---- 4. result doughnut ----
+new Chart(resultChart,{type:"doughnut",data:{labels:["OK","OVER (hút dư)","UNDER (hút thiếu)"],
+  datasets:[{data:[okN,overN,underN],backgroundColor:[COL.OK,COL.OVER,COL.UNDER],borderColor:"#1a2230",borderWidth:2}]},
+  options:{plugins:{legend:{position:"bottom"}}}});
+
+// ---- dif vs wStart scatter ----
+new Chart(scatterW,{type:"scatter",data:{datasets:[{
+  data:D.map(d=>({x:d.wStart,y:d.dif})),backgroundColor:D.map(d=>COL[d.result]),pointRadius:6
+}]},options:{plugins:{legend:{display:false},
+  tooltip:{callbacks:{label:c=>"cân "+c.raw.x+"kg → dif "+c.raw.y}}},
+  scales:{x:{grid:gridC,title:{display:true,text:"wStart (kg)"}},
+          y:{grid:gridC,title:{display:true,text:"dif (kg)"}}}}});
+
+// ---- Bảng ----
+document.querySelector("#dataTable tbody").innerHTML=D.map(d=>`<tr>
+  <td class="l">#${d.stt}</td><td>${d.wStart}</td><td>${d.batch}</td><td>${d.set}</td><td>${d.secHut}</td>
+  <td>${d.ror}</td><td>${d.dif}</td><td>${d.target}</td><td>${d.final}</td>
+  <td style="color:${Math.abs(d.err)<=0.09?'#3fb950':'#e6edf3'}">${d.err}</td><td>${d.score}</td>
+  <td class="l"><span class="tag t-${d.result}">${d.result}</span></td>
+  <td>${d.difOld}</td><td>${d.difNew}</td></tr>`).join("");
+</script>
+</body>
+</html>

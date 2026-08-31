@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nhiệt trong máy rang — OTL Series</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #F5F0E8; font-family: 'Be Vietnam Pro', Arial, sans-serif; color: #1A1208; }
+.page { max-width: 860px; margin: 0 auto; padding: 48px 40px 56px; background: #F5F0E8; }
+
+.header { border-bottom: 3px solid #1A1208; padding-bottom: 18px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.tag { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #8B4513; margin-bottom: 6px; }
+h1 { font-size: 34px; font-weight: 900; line-height: 1.05; color: #1A1208; }
+h1 em { font-style: normal; color: #C14A00; }
+.header-right { text-align: right; font-size: 11px; color: #8B7355; line-height: 1.8; }
+.header-right strong { font-weight: 700; color: #1A1208; }
+
+.sec-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #8B7355; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.sec-label::after { content: ''; flex: 1; height: 1px; background: #C8B89A; }
+
+/* FLOW */
+.flow-section { margin-bottom: 36px; }
+.flow-wrap { background: #fff; border: 1.5px solid #C8B89A; border-radius: 4px; padding: 24px 20px 20px; }
+.flow-row { display: flex; align-items: center; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+.fnode { flex-shrink: 0; text-align: center; padding: 14px 12px 12px; border-radius: 4px; border: 1.5px solid #C8B89A; min-width: 100px; background: #FDFAF5; }
+.fnode-icon { font-size: 24px; display: block; margin-bottom: 5px; }
+.fnode-name { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #8B7355; margin-bottom: 3px; }
+.fnode-val { font-size: 26px; font-weight: 900; line-height: 1; margin-bottom: 1px; }
+.fnode-unit { font-size: 9px; color: #8B7355; font-weight: 700; }
+.fnode-desc { font-size: 10px; color: #8B7355; margin-top: 5px; line-height: 1.4; }
+.fnode-burner { border-color: #C14A00; background: #FFF5EE; } .fnode-burner .fnode-val { color: #C14A00; }
+.fnode-air { border-color: #1B6CA8; background: #EEF6FF; } .fnode-air .fnode-val { color: #1B6CA8; }
+.fnode-et { border-color: #B8860B; background: #FFFBEE; } .fnode-et .fnode-val { color: #B8860B; }
+.fnode-bt { border-color: #A0200C; background: #FFF0EE; } .fnode-bt .fnode-val { color: #A0200C; }
+.fnode-ror { border-color: #556B2F; background: #F4F8EE; } .fnode-ror .fnode-val { color: #3A5A1C; font-size: 20px; }
+.farrow { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding: 0 6px; gap: 2px; min-width: 48px; }
+.farrow-line { width: 100%; height: 2px; background: #C8B89A; position: relative; }
+.farrow-line::after { content: '▶'; position: absolute; right: -6px; top: -7px; font-size: 9px; color: #8B7355; }
+.farrow-lag { font-size: 9px; color: #A09070; white-space: nowrap; font-weight: 700; }
+.air-note { margin-top: 14px; padding: 10px 14px; background: #EEF6FF; border-left: 3px solid #1B6CA8; border-radius: 2px; font-size: 12px; color: #1B4A6B; line-height: 1.6; }
+
+/* CE */
+.ce-section { margin-bottom: 36px; }
+.ce-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .ce-grid { grid-template-columns: 1fr; } }
+.ce-card { background: #fff; border: 1.5px solid #C8B89A; border-radius: 4px; overflow: hidden; }
+.ce-head { padding: 10px 14px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #E8DCC8; }
+.ce-body { padding: 12px 14px; font-size: 12px; color: #3A2E1E; line-height: 1.7; }
+.ce-body strong { color: #1A1208; }
+.ce-card.up .ce-head { background: #FFF5EE; color: #C14A00; border-color: #F0C8A0; }
+.ce-card.down .ce-head { background: #EEF6FF; color: #1B6CA8; border-color: #AACCEE; }
+.ce-card.eq .ce-head { background: #F0F8EE; color: #3A6A1C; border-color: #AACCAA; }
+.ce-card.warn .ce-head { background: #FFF8EE; color: #A07000; border-color: #DDBB88; }
+
+/* SS */
+.ss-section { margin-bottom: 36px; }
+.ss-wrap { background: #fff; border: 1.5px solid #C8B89A; border-radius: 4px; padding: 20px; }
+.ss-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ss-row:last-of-type { margin-bottom: 0; }
+.ss-gas { font-size: 12px; font-weight: 700; width: 38px; flex-shrink: 0; text-align: right; }
+.ss-bar-wrap { flex: 1; height: 24px; background: #F0EAE0; border-radius: 2px; overflow: hidden; position: relative; }
+.ss-bar { height: 100%; border-radius: 2px; display: flex; align-items: center; padding: 0 8px; position: absolute; }
+.ss-bar-label { font-size: 10px; font-weight: 700; white-space: nowrap; }
+.ss-ror { font-size: 11px; font-weight: 700; width: 88px; flex-shrink: 0; text-align: right; }
+.ss-note { width: 72px; flex-shrink: 0; font-size: 10px; color: #8B7355; }
+
+/* GAP */
+.gap-section { margin-bottom: 36px; }
+.gap-wrap { background: #fff; border: 1.5px solid #C8B89A; border-radius: 4px; padding: 20px; }
+.gap-intro { font-size: 13px; color: #3A2E1E; margin-bottom: 16px; line-height: 1.6; }
+.gap-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.gap-row:last-of-type { margin-bottom: 0; }
+.gap-lbl { font-size: 11px; font-weight: 700; width: 90px; flex-shrink: 0; line-height: 1.4; }
+.gap-track { flex: 1; height: 10px; background: #F0EAE0; border-radius: 2px; overflow: hidden; position: relative; }
+.gap-fill { height: 100%; border-radius: 2px; position: absolute; }
+.gap-center { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #C8B89A; }
+.gap-num { font-size: 12px; font-weight: 700; width: 46px; flex-shrink: 0; text-align: right; }
+.gap-note { font-size: 11px; color: #8B7355; flex: 1; min-width: 80px; }
+
+/* EQ */
+.eq-section { margin-bottom: 36px; }
+.eq-box { background: #F0F8EE; border: 2px solid #4A8A2C; border-radius: 4px; padding: 24px; display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.eq-icon-big { font-size: 48px; flex-shrink: 0; line-height: 1; }
+.eq-text { flex: 1; min-width: 200px; }
+.eq-title { font-size: 18px; font-weight: 900; color: #2A6010; margin-bottom: 6px; }
+.eq-body { font-size: 13px; color: #2A4A1A; line-height: 1.7; margin-bottom: 14px; }
+.eq-stats { display: flex; gap: 20px; flex-wrap: wrap; border-top: 1px solid #A8CC88; padding-top: 12px; }
+.eq-stat { text-align: center; }
+.eq-stat-val { font-size: 22px; font-weight: 900; color: #2A6010; line-height: 1; }
+.eq-stat-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #5A8040; margin-top: 2px; }
+
+/* RULES */
+.rules-section { margin-bottom: 36px; }
+.rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 500px) { .rules-grid { grid-template-columns: 1fr; } }
+.rule { background: #fff; border: 1.5px solid #C8B89A; border-radius: 4px; padding: 16px; }
+.rule-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px solid #E8DCC8; }
+.rule ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.rule ul li { font-size: 11.5px; color: #3A2E1E; line-height: 1.5; padding-left: 14px; position: relative; }
+.rule ul li::before { content: '–'; position: absolute; left: 0; color: #8B7355; }
+.rule-danger .rule-title { color: #A0200C; } .rule-danger { border-color: #E0A090; background: #FFF8F7; }
+.rule-ok .rule-title { color: #2A6010; } .rule-ok { border-color: #A8CC88; background: #F8FFF5; }
+.rule-warn .rule-title { color: #8B6000; } .rule-warn { border-color: #DDB870; background: #FFFDF5; }
+.rule-info .rule-title { color: #1B4A6B; } .rule-info { border-color: #AACCEE; background: #F5FAFF; }
+
+/* FOOTER */
+.footer { border-top: 2px solid #1A1208; padding-top: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.footer-left { font-size: 10px; color: #8B7355; line-height: 1.8; }
+.footer-right { font-size: 13px; font-weight: 900; color: #1A1208; text-align: right; }
+.footer-right span { color: #C14A00; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="tag">Tài liệu kỹ thuật nội bộ — OTL Series</div>
+      <h1>Nhiệt trong máy rang<br>hoạt động <em>thế nào?</em></h1>
+    </div>
+    <div class="header-right">
+      <strong>O Tesla Industrial</strong><br>
+      otlpro.com<br>
+      Phân tích dữ liệu thực tế<br>
+      1.884 điểm đo · 2026-05-07
+    </div>
+  </div>
+
+  <!-- 01 FLOW -->
+  <div class="flow-section">
+    <div class="sec-label">01 — Chuỗi tín hiệu nhiệt</div>
+    <div class="flow-wrap">
+      <div class="flow-row">
+        <div class="fnode fnode-burner">
+          <span class="fnode-icon">🔥</span>
+          <div class="fnode-name">Burner</div>
+          <div class="fnode-val">65%</div>
+          <div class="fnode-unit">Gas</div>
+          <div class="fnode-desc">Nguồn<br>sinh nhiệt</div>
+        </div>
+        <div class="farrow">
+          <div class="farrow-line"></div>
+          <div class="farrow-lag">3–6 giây</div>
+        </div>
+        <div class="fnode fnode-ror">
+          <span class="fnode-icon">📡</span>
+          <div class="fnode-name">RoR ET</div>
+          <div class="fnode-val">+5,4</div>
+          <div class="fnode-unit">°C/phút</div>
+          <div class="fnode-desc">Tốc độ tăng<br>khí thải</div>
+        </div>
+        <div class="farrow">
+          <div class="farrow-line"></div>
+          <div class="farrow-lag">đồng thời</div>
+        </div>
+        <div class="fnode fnode-et">
+          <span class="fnode-icon">🌡</span>
+          <div class="fnode-name">ET</div>
+          <div class="fnode-val">205°C</div>
+          <div class="fnode-unit">Nhiệt khí thải</div>
+          <div class="fnode-desc">Ống xả<br>sau lồng rang</div>
+        </div>
+        <div class="farrow">
+          <div class="farrow-line"></div>
+          <div class="farrow-lag">3–5 giây</div>
+        </div>
+        <div class="fnode fnode-ror">
+          <span class="fnode-icon">📈</span>
+          <div class="fnode-name">RoR BT</div>
+          <div class="fnode-val">+28</div>
+          <div class="fnode-unit">°C/phút</div>
+          <div class="fnode-desc">Tốc độ tăng<br>trong lồng</div>
+        </div>
+        <div class="farrow">
+          <div class="farrow-line"></div>
+          <div class="farrow-lag">tích lũy ∫</div>
+        </div>
+        <div class="fnode fnode-bt">
+          <span class="fnode-icon">☕</span>
+          <div class="fnode-name">BT</div>
+          <div class="fnode-val">192°C</div>
+          <div class="fnode-unit">Nhiệt trong lồng</div>
+          <div class="fnode-desc">Kết quả<br>tích lũy</div>
+        </div>
+      </div>
+      <div class="air-note">
+        💨 <strong>Airflow</strong> cũng tác động trực tiếp lên ET — độc lập với Gas. Lag 2–8 giây khi tăng, 8–10 giây khi giảm. Airflow cao → ET giảm → BT chậm lại. Tắt hoàn toàn → ET vọt lên → BT tăng mất kiểm soát.
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 CE -->
+  <div class="ce-section">
+    <div class="sec-label">02 — Thay đổi Gas / Airflow → điều gì xảy ra?</div>
+    <div class="ce-grid">
+      <div class="ce-card up">
+        <div class="ce-head">🔥 Tăng Gas</div>
+        <div class="ce-body">RoR ET tăng sau 3–6 giây. RoR BT tăng theo sau thêm 3–5 giây nữa. Kết quả: <strong>BT leo lên</strong>. Phản ứng nhanh khi tăng, chậm hơn khi giảm.</div>
+      </div>
+      <div class="ce-card down">
+        <div class="ce-head">💨 Tăng Airflow</div>
+        <div class="ce-body">Gió mạnh hút nhiệt ra nhanh hơn. ET ngừng tăng hoặc giảm. RoR BT theo đó giảm. Kết quả: <strong>BT chậm lại hoặc dừng</strong>.</div>
+      </div>
+      <div class="ce-card eq">
+        <div class="ce-head">⚖️ Gas 35% · Airflow 18%</div>
+        <div class="ce-body">Điểm cân bằng nhiệt. Nhiệt sinh ra bằng nhiệt thoát đi. RoR BT ≈ 0. <strong>BT giữ nguyên ~215°C</strong>.</div>
+      </div>
+      <div class="ce-card warn">
+        <div class="ce-head">⚠️ Tắt Airflow hoàn toàn</div>
+        <div class="ce-body">Nhiệt không có đường thoát. ET vọt +14°C/phút. <strong>BT tăng vọt 220 → 231°C trong 30 giây</strong>. Nguy cơ cháy mẻ rang.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 03 SS -->
+  <div class="ss-section">
+    <div class="sec-label">03 — Gas cố định → RoR BT ổn định ở đâu?</div>
+    <div class="ss-wrap">
+      <div class="ss-row">
+        <div class="ss-gas" style="color:#C14A00">65%</div>
+        <div class="ss-bar-wrap">
+          <div class="ss-bar" style="width:100%;background:#FFD0B0;left:0">
+            <span class="ss-bar-label" style="color:#A03000">BT: 60–95°C · đang khởi động</span>
+          </div>
+        </div>
+        <div class="ss-ror" style="color:#C14A00">+140°C/ph</div>
+        <div class="ss-note">🔥🔥🔥 mạnh</div>
+      </div>
+      <div class="ss-row">
+        <div class="ss-gas" style="color:#D2691E">47%</div>
+        <div class="ss-bar-wrap">
+          <div class="ss-bar" style="width:50%;background:#FFE0C0;left:0">
+            <span class="ss-bar-label" style="color:#A04000">BT: 161–192°C</span>
+          </div>
+        </div>
+        <div class="ss-ror" style="color:#D2691E">+27,8°C/ph</div>
+        <div class="ss-note">🔥🔥 tăng</div>
+      </div>
+      <div class="ss-row">
+        <div class="ss-gas" style="color:#2A6010">35%</div>
+        <div class="ss-bar-wrap" style="background:#EAF5E0">
+          <span style="position:absolute;left:10px;top:4px;font-size:10px;font-weight:700;color:#2A6010">⚖ BT: 208–222°C · cân bằng nhiệt</span>
+        </div>
+        <div class="ss-ror" style="color:#2A6010">≈ 0°C/ph</div>
+        <div class="ss-note">✅ ổn định</div>
+      </div>
+      <div class="ss-row">
+        <div class="ss-gas" style="color:#1B6CA8">18%</div>
+        <div class="ss-bar-wrap">
+          <div class="ss-bar" style="width:14%;background:#BBDDF5;right:0;left:auto">
+            <span class="ss-bar-label" style="color:#1B4A6B"></span>
+          </div>
+          <span style="position:absolute;right:8px;top:4px;font-size:10px;font-weight:700;color:#1B4A6B">BT: 227–231°C</span>
+        </div>
+        <div class="ss-ror" style="color:#1B6CA8">−3,0°C/ph</div>
+        <div class="ss-note">↓ hạ nhẹ</div>
+      </div>
+      <div class="ss-row">
+        <div class="ss-gas" style="color:#1560A0">8%</div>
+        <div class="ss-bar-wrap">
+          <div class="ss-bar" style="width:22%;background:#99C8EE;right:0;left:auto"></div>
+          <span style="position:absolute;right:8px;top:4px;font-size:10px;font-weight:700;color:#1B4A6B">BT: 181–217°C</span>
+        </div>
+        <div class="ss-ror" style="color:#1560A0">−5,9°C/ph</div>
+        <div class="ss-note">↓↓ hạ rõ</div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#5A4A30;border-top:1px solid #E8DCC8;padding-top:10px;line-height:1.6">
+        <strong>Đọc bảng này thế nào:</strong> Gas trên 35% → nhiệt sinh ra nhiều hơn mất đi → BT tăng. Gas dưới 35% → nhiệt mất đi nhiều hơn → BT giảm. Gas 35% là điểm cân bằng tại ~215°C (điều kiện không tải).
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 GAP -->
+  <div class="gap-section">
+    <div class="sec-label">04 — Chênh lệch ET và BT nói lên điều gì?</div>
+    <div class="gap-wrap">
+      <div class="gap-intro">
+        <strong>ET − BT gap</strong> cho biết nhiệt đang <em>tích lũy vào lồng</em> hay đang <em>thoát ra ngoài</em>. Giá trị âm = BT cao hơn ET = nhiệt đang tích trong lồng. Dương = ET cao hơn = nhiệt thoát nhanh.
+      </div>
+      <div class="gap-row">
+        <div class="gap-lbl" style="color:#A0200C">ET &lt;&lt; BT<br><small style="color:#8B7355;font-weight:400">gas cao, gió thấp</small></div>
+        <div class="gap-track">
+          <div class="gap-center"></div>
+          <div class="gap-fill" style="width:44%;right:50%;left:auto;background:#E09878"></div>
+        </div>
+        <div class="gap-num" style="color:#A0200C">−11°C</div>
+        <div class="gap-note">Nhiệt tích mạnh trong lồng</div>
+      </div>
+      <div class="gap-row">
+        <div class="gap-lbl" style="color:#5A8040">ET ≈ BT<br><small style="color:#8B7355;font-weight:400">Gas 35%, gió 40%</small></div>
+        <div class="gap-track">
+          <div class="gap-center"></div>
+          <div class="gap-fill" style="width:8%;right:50%;left:auto;background:#88CC66"></div>
+        </div>
+        <div class="gap-num" style="color:#5A8040">−2°C</div>
+        <div class="gap-note">Gần cân bằng nhiệt động</div>
+      </div>
+      <div class="gap-row">
+        <div class="gap-lbl" style="color:#1B6CA8">ET &gt; BT<br><small style="color:#8B7355;font-weight:400">giai đoạn làm nguội</small></div>
+        <div class="gap-track">
+          <div class="gap-center"></div>
+          <div class="gap-fill" style="width:30%;left:50%;background:#5AAAD0"></div>
+        </div>
+        <div class="gap-num" style="color:#1B6CA8">+8°C</div>
+        <div class="gap-note">Airflow kéo nhiệt ra ngoài</div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#6B5020;background:#FFF8EE;border:1px solid #DDB870;border-radius:3px;padding:10px 12px;line-height:1.6">
+        ⚠ Gap &lt; −15°C: gas quá cao hoặc airflow quá thấp → giảm gas hoặc tăng gió.<br>
+        Gap &gt; +15°C: airflow quá mạnh → nhiệt thoát nhanh hơn sinh ra.
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 EQ -->
+  <div class="eq-section">
+    <div class="sec-label">05 — Điểm cân bằng nhiệt</div>
+    <div class="eq-box">
+      <div class="eq-icon-big">⚖️</div>
+      <div class="eq-text">
+        <div class="eq-title">Gas 35% · Airflow 18% · BT ~215°C</div>
+        <div class="eq-body">Ở điểm này, lượng nhiệt burner sinh ra bằng đúng lượng nhiệt thoát qua ống xả. BT không tăng, không giảm. RoR BT ≈ 0. Đây là trạng thái ổn định cơ sở để xây dựng profile rang — từ đây điều chỉnh gas để kiểm soát tốc độ rang.</div>
+        <div class="eq-stats">
+          <div class="eq-stat"><div class="eq-stat-val">35%</div><div class="eq-stat-lbl">Gas</div></div>
+          <div class="eq-stat"><div class="eq-stat-val">18%</div><div class="eq-stat-lbl">Airflow</div></div>
+          <div class="eq-stat"><div class="eq-stat-val">~215°C</div><div class="eq-stat-lbl">BT</div></div>
+          <div class="eq-stat"><div class="eq-stat-val">≈ 0</div><div class="eq-stat-lbl">RoR BT</div></div>
+          <div class="eq-stat"><div class="eq-stat-val">1,5</div><div class="eq-stat-lbl">°C/ph per %Gas</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 06 RULES -->
+  <div class="rules-section">
+    <div class="sec-label">06 — Nguyên tắc vận hành</div>
+    <div class="rules-grid">
+      <div class="rule rule-danger">
+        <div class="rule-title">⛔ Không được làm</div>
+        <ul>
+          <li>Giảm gas và tăng airflow cùng lúc → RoR BT tụt đột ngột</li>
+          <li>Giảm cả gas lẫn airflow cùng lúc → BT spike mất kiểm soát</li>
+          <li>Để airflow = 0 khi gas đang cao → ET vọt, BT tăng vọt</li>
+        </ul>
+      </div>
+      <div class="rule rule-ok">
+        <div class="rule-title">✅ Nên làm</div>
+        <ul>
+          <li>Chỉ thay đổi một thứ tại một thời điểm</li>
+          <li>Chờ 15–20 giây sau mỗi thay đổi để quan sát</li>
+          <li>Tăng airflow mạnh (&gt;20%) → giảm gas đồng thời để bù nhiệt</li>
+        </ul>
+      </div>
+      <div class="rule rule-warn">
+        <div class="rule-title">⚠ Dùng ET làm cảnh báo sớm</div>
+        <ul>
+          <li>ET phản ứng trước BT khoảng 3–5 giây</li>
+          <li>Chỉ đáng tin khi airflow ổn định ít nhất 20 giây</li>
+          <li>Airflow = 0 → ET vọt giả, đừng tin</li>
+        </ul>
+      </div>
+      <div class="rule rule-info">
+        <div class="rule-title">💡 Công thức điều chỉnh gas</div>
+        <ul>
+          <li>ΔGas = (RoR mục tiêu − RoR thực tế) ÷ 1,5</li>
+          <li>Mỗi lần chỉ điều chỉnh tối đa ±5% gas</li>
+          <li>RoR BT giảm đột ngột → tăng ngay 3–5% gas</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-left">
+      Dữ liệu: testnhiet.csv · Điều kiện không tải · 1.884 điểm · 1 giây/điểm · 00:00–31:23<br>
+      Tài liệu nội bộ — không phát hành ra ngoài
+    </div>
+    <div class="footer-right">
+      <span>O Tesla</span> Industrial<br>
+      otlpro.com
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
