@@ -1,0 +1,162 @@
+{
+  "_about": "Ban do giao tiep Modbus cua firmware OTL-06ALS, xuat de app mo phong may rang doc. Huong (direction) tinh theo goc nhin cua APP mo phong, KHONG phai firmware.",
+  "_direction_semantics": {
+    "sim_provides": "Firmware DOC register nay -> app phai cap gia tri (dau vao cua firmware, vd nhiet do).",
+    "sim_captures": "Firmware GHI register nay -> app doc de chay model nhiet (dau ra cua firmware, vd gas%).",
+    "sim_serves": "Register app giu trang thai, firmware co the doc hoac ghi."
+  },
+  "_scaling": {
+    "temp": "x10  (1850 = 185.0 C)",
+    "percent": "x10 tren HMI bus (350 = 35.0 %); x1 tren Artisan slave",
+    "weight": "x10 (617 = 61.7 kg)",
+    "pressure": "Pa, co the am (-80)"
+  },
+
+  "buses": [
+    {
+      "name": "sensor_bus",
+      "uart": "USART2 (SerialModbus)",
+      "baud": 38400,
+      "framing": "8N1 RTU",
+      "role_of_app": "Modbus SLAVE (app dong vai cac thiet bi ben duoi)",
+      "nodes": [
+        {
+          "device": "thermocouple_BT",
+          "slave_id": 1,
+          "registers": [
+            {
+              "name": "BT_PV",
+              "address": "tempRegister (cau hinh runtime = iMemHMI[6], firmware doc 1 reg tu day)",
+              "length": 1,
+              "type": "holding",
+              "direction": "sim_provides",
+              "scale": "temp_x10",
+              "note": "Firmware: nodeBT.readHoldingRegisters(tempRegister_R, 1). App tra BT*10 cho lan doc 1 reg nay, bat ke dia chi cu the."
+            },
+            {
+              "name": "BT_SV",
+              "address": "btSVReg (= iMemHMI[25])",
+              "type": "holding",
+              "direction": "sim_captures",
+              "note": "Firmware ghi setpoint khi svEn. App co the bo qua khi mo phong."
+            }
+          ]
+        },
+        {
+          "device": "thermocouple_ET",
+          "slave_id": 2,
+          "registers": [
+            {
+              "name": "ET_PV",
+              "address": "tempRegister (= iMemHMI[6])",
+              "length": 1,
+              "type": "holding",
+              "direction": "sim_provides",
+              "scale": "temp_x10",
+              "note": "Firmware: nodeET.readHoldingRegisters(tempRegister_R, 1)."
+            }
+          ]
+        },
+        {
+          "device": "drum_inverter",
+          "slave_id": 4,
+          "registers": [
+            { "name": "DRUM_FREQ_READ",  "address": 8451, "type": "holding", "direction": "sim_provides", "note": "Tan so hien tai. App tra echo lenh." },
+            { "name": "DRUM_FREQ_WRITE", "address": 8193, "type": "holding", "direction": "sim_captures", "note": "Firmware ghi tan so dat." }
+          ]
+        },
+        {
+          "device": "air_inverter",
+          "slave_id": 5,
+          "registers": [
+            { "name": "AIR_FREQ_READ", "address": 8451, "type": "holding", "direction": "sim_provides", "note": "Tan so quat gio hien tai." },
+            { "name": "AIR_PID_0800",  "address": 2048, "type": "holding", "direction": "sim_serves" },
+            { "name": "AIR_ACI_RAW",   "address": 8716, "type": "holding", "direction": "sim_provides", "note": "Tin hieu analog ACI = cam bien CHAN KHONG (vacuum). App sinh ap suat gia tu air%." }
+          ]
+        },
+        {
+          "device": "io_relay_8ch",
+          "slave_id": 7,
+          "registers": [
+            { "name": "CH1_DRUM_FAN", "address": 0, "type": "coil", "direction": "sim_captures" },
+            { "name": "CH2_MIXER",    "address": 1, "type": "coil", "direction": "sim_captures" },
+            { "name": "CH3", "address": 2, "type": "coil", "direction": "sim_captures" },
+            { "name": "CH4", "address": 3, "type": "coil", "direction": "sim_captures" },
+            { "name": "CH5", "address": 4, "type": "coil", "direction": "sim_captures" },
+            { "name": "CH6", "address": 5, "type": "coil", "direction": "sim_captures" },
+            { "name": "CH7", "address": 6, "type": "coil", "direction": "sim_captures" },
+            { "name": "CH8", "address": 7, "type": "coil", "direction": "sim_captures" }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "hmi_bus",
+      "uart": "USART1 (SerialHmi)",
+      "baud": 115200,
+      "framing": "8N1 RTU",
+      "role_of_app": "Modbus SLAVE (app dong vai HMI Delta, slave_id=1). Firmware la MASTER.",
+      "slave_id": 1,
+      "memory_blocks": {
+        "iMemHMI": "60 reg ($M HMI) - control/config tu nut bam. Firmware DOC.",
+        "dAddress": "500 reg (40xxx) - du lieu profile + hien thi. Firmware doc VA ghi."
+      },
+      "registers_firmware_reads__SIM_PROVIDES_button_state": [
+        { "name": "START_BTN",     "address_1based": 1,  "note": "Bat/tat Auto" },
+        { "name": "START_GAS_BTN", "address_1based": 2,  "note": "Bat/tat Gas" },
+        { "name": "DRUM_FAN_BTN",  "address_1based": 3 },
+        { "name": "MIXER_BTN",     "address_1based": 4 },
+        { "name": "COOLING_BTN",   "address_1based": 5 },
+        { "name": "FEEDER_BTN",    "address_1based": 6 },
+        { "name": "CHARGE_BTN",    "address_1based": 7,  "note": "Xi lanh charge - kich hoat moc thoi gian rang" },
+        { "name": "DROP_BTN",      "address_1based": 8 },
+        { "name": "ESCAPE_BTN",    "address_1based": 9 },
+        { "name": "PC_CONTROL_BTN","address_1based": 14 },
+        { "name": "SELECT_FILE",   "address_1based": 16, "note": "Chon profile auto 0..15" },
+        { "name": "SW_M_AUTO",     "address_1based": 23, "note": "Switch manual/auto" },
+        { "name": "AUTO_PID_AIR_TU","address_1based": 32 },
+        { "name": "REFRESH_LOAD_PF","address_1based": 39, "note": "Load profile tu SD" },
+        { "name": "WU",            "address_1based": 40, "note": "Warm up / preheat" }
+      ],
+      "registers_firmware_writes__SIM_CAPTURES_for_model": [
+        { "name": "GAS_SIGNAL_HMI", "address_1based": 60, "note": "Bao trang thai gas" },
+        { "name": "BT_HMI",   "address_1based": 61, "scale": "temp_x10", "note": "Firmware echo BT len HMI (chi de hien thi)" },
+        { "name": "ET_HMI",   "address_1based": 62, "scale": "temp_x10" },
+        { "name": "ROR_BT_HMI","address_1based": 63 },
+        { "name": "ROR_ET_HMI","address_1based": 64 },
+        { "name": "AIRFLOW_HMI","address_1based": 65, "scale": "percent_x10", "note": "**App doc lam dau vao model nhiet (air%)**" },
+        { "name": "DRUM_HMI",  "address_1based": 66, "scale": "percent_x10" },
+        { "name": "GAS_HMI",   "address_1based": 67, "scale": "percent_x10", "note": "**MAU CHOT: app doc lam dau vao model nhiet (gas%)**" },
+        { "name": "MIN_HMI",   "address_1based": 68, "note": "Phut rang" },
+        { "name": "SEC_HMI",   "address_1based": 69, "note": "Giay rang" },
+        { "name": "STT",       "address_1based": 41, "note": "Ma trang thai may (status code)" }
+      ]
+    },
+
+    {
+      "name": "artisan_bus",
+      "uart": "UART4 (SerialComputer)",
+      "baud": 9600,
+      "role_of_app": "BO QUA khi mo phong may rang. Firmware la SLAVE o day (Artisan PC la master).",
+      "slave_id": "configurable",
+      "max_reg": 27,
+      "note": "Chi can neu test link Artisan. Cung UART voi debug -> xung dot khi enDebug.",
+      "registers": [
+        { "name": "BT_show",  "address": 0, "scale": "temp_x10" },
+        { "name": "ET_show",  "address": 1, "scale": "temp_x10" },
+        { "name": "AIR_show", "address": 2 },
+        { "name": "GAS_show", "address": 3 },
+        { "name": "DRUM_show","address": 4 },
+        { "name": "UNDER_show","address": 9, "note": "Diff_Air (Pa)" },
+        { "name": "AIR_W",    "address": 10, "direction": "artisan_master_writes" },
+        { "name": "GAS_W",    "address": 11, "direction": "artisan_master_writes" },
+        { "name": "IGNITION_W","address": 12 },
+        { "name": "CHARGE_W", "address": 14 },
+        { "name": "DROP_W",   "address": 15 },
+        { "name": "START_W",  "address": 17 },
+        { "name": "SV_W",     "address": 18 }
+      ]
+    }
+  ]
+}

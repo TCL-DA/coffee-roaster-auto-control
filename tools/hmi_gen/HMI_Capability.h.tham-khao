@@ -1,0 +1,79 @@
+#pragma once
+
+/*
+ * Khối cờ năng lực máy — đẩy cấu hình phần cứng lên HMI.
+ *
+ * Vì sao cần: màn hình "RANG" dùng chung cho MỌI model máy. Mỗi ô tùy chọn
+ * (áp hút, cân, lồng rang…) gắn VisibleVar vào một thanh ghi dưới đây; máy nào
+ * không có món đó thì ô tự ẩn. Nhờ vậy một file .dpa nạp được cho mọi máy,
+ * đổi cấu hình chỉ cần sửa Config.h chứ không phải nạp lại HMI.
+ *
+ * CẢNH BÁO: HMI đọc 0 = KHÔNG CÓ = ẩn ô. Nếu quên gọi publishCapabilities()
+ * thì mọi ô tùy chọn biến mất hết và màn nhìn như bị lỗi. Gọi đúng một lần
+ * trong setup(), SAU khi cổng HMI đã sẵn sàng.
+ *
+ * Ghi một lần lúc khởi động, không lặp mỗi chu kỳ — cấu hình máy không đổi
+ * giữa chừng, ghi lặp chỉ làm nghẽn bus RS485 vốn đã chật.
+ */
+
+// --- Địa chỉ thanh ghi (40126–40140, nằm trong vùng trống chưa ai dùng) -----
+#define CAP_MAGIC_W        126   // 40126 - dấu nhận biết firmware có hỗ trợ khối cờ
+#define CAP_VER_W          127   // 40127 - phiên bản khối cờ
+#define CAP_AIRFLOW_W      128   // 40128 - có điều khiển gió
+#define CAP_GAS_W          129   // 40129 - có điều khiển gas
+#define CAP_DRUM_W         130   // 40130 - có biến tần lồng rang
+#define CAP_VACUUM_W       131   // 40131 - có cảm biến áp hút
+#define CAP_AIRINV_W       132   // 40132 - có biến tần gió trên RS485
+#define CAP_SCALE_W        133   // 40133 - có cân loadcell
+#define CAP_IORLY_W        134   // 40134 - có module relay ngoài
+#define CAP_BT_W           135   // 40135 - có đồng hồ nhiệt BT
+#define CAP_ET_W           136   // 40136 - có đồng hồ nhiệt ET
+#define CAP_PREMIX_W       137   // 40137 - đầu đốt premix (đã giải quyết xong)
+#define CAP_VACDRUM_W      138   // 40138 - áp hút đọc từ biến tần drum
+#define CAP_VRHMI_W        139   // 40139 - mức gió/gas/drum lấy từ HMI thay vì VR
+#define CAP_BATCH_W        140   // 40140 - khối lượng mẻ danh định (kg)
+
+#define CAP_MAGIC_VALUE    0xC0FE
+#define CAP_BLOCK_VERSION  1
+
+/*
+ * Đẩy toàn bộ cờ năng lực lên HMI.
+ * Gọi MỘT LẦN trong setup(), sau khi nodeHMI đã khởi tạo xong.
+ */
+void publishCapabilities() {
+    // Loại đầu đốt: firmware tự xử luật khoá build rồi mới báo lên, để HMI
+    // khỏi phải biết MACHINE_BURNER_FORCE_STANDARD là gì.
+#if MACHINE_BURNER_FORCE_STANDARD
+    uint16_t capPremix = 0;
+#else
+    uint16_t capPremix = burnerPremix_R ? 1 : 0;
+#endif
+
+    const uint16_t cap[][2] = {
+        { CAP_AIRFLOW_W,  MACHINE_HAS_AIRFLOW_CONTROL    },
+        { CAP_GAS_W,      MACHINE_HAS_GAS_CONTROL        },
+        { CAP_DRUM_W,     MACHINE_HAS_DRUM_SPEED_CONTROL },
+        { CAP_VACUUM_W,   MACHINE_HAS_VACUUM_SENSOR      },
+        { CAP_AIRINV_W,   MACHINE_HAS_AIR_INVERTER       },
+        { CAP_SCALE_W,    MACHINE_HAS_SCALE_FEEDER       },
+        { CAP_IORLY_W,    MACHINE_HAS_IO_RELAY_MODULE    },
+        { CAP_BT_W,       MACHINE_HAS_BT_TEMP_CONTROLLER },
+        { CAP_ET_W,       MACHINE_HAS_ET_TEMP_CONTROLLER },
+        { CAP_PREMIX_W,   capPremix                      },
+        { CAP_VACDRUM_W,  MACHINE_VACUUM_FROM_DRUM       },
+        { CAP_VRHMI_W,    MACHINE_VR_SOURCE_FROM_HMI     },
+        { CAP_BATCH_W,    MACHINE_BATCH_KG               },
+        { CAP_VER_W,      CAP_BLOCK_VERSION              },
+    };
+
+    for (uint8_t i = 0; i < sizeof(cap) / sizeof(cap[0]); i++) {
+        nodeHMI.writeSingleRegister(cap[i][0] - 1, cap[i][1]);
+        delay(1);
+    }
+
+    // Magic ghi SAU CÙNG: HMI chỉ tin khối cờ khi mọi ô đã có giá trị thật,
+    // tránh đọc trúng lúc đang ghi dở mà tưởng máy không có gì.
+    nodeHMI.writeSingleRegister(CAP_MAGIC_W - 1, CAP_MAGIC_VALUE);
+
+    if (enDebug) SerialComputer.println("Capabilities published to HMI");
+}
