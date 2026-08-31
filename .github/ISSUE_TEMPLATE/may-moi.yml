@@ -1,0 +1,53 @@
+name: Dựng cấu hình máy mới
+description: Build firmware cho một máy sắp giao
+labels: ["may-moi"]
+body:
+  - type: input
+    id: may
+    attributes:
+      label: Máy nào
+      placeholder: 6 kg auto, board V300
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: phan-cung
+    attributes:
+      label: Máy này có gì
+      description: Tick đúng thứ có lắp trên máy — quyết định cờ trong include/Config.h
+      options:
+        - label: Điều khiển gió
+        - label: Điều khiển gas
+        - label: Biến tần lồng rang
+        - label: Biến tần gió trên RS485
+        - label: Cảm biến áp hút (vacuum)
+        - label: Cân loadcell / auto-loader
+        - label: Module relay ngoài
+        - label: Đồng hồ nhiệt BT trên RS485
+        - label: Đồng hồ nhiệt ET trên RS485
+        - label: Biến trở vật lý trên board
+        - label: Đầu đốt premix
+        - label: Buồng đốt khói
+        - label: Máy tách đá
+
+  - type: input
+    id: batch
+    attributes:
+      label: Khối lượng mẻ danh định (kg)
+    validations:
+      required: true
+
+  - type: textarea
+    id: khac
+    attributes:
+      label: Khác thường chỗ nào
+      placeholder: Bếp thường cần tối thiểu 50% gas mới lên lửa; chưa rõ có biến tần drum không
+
+  - type: checkboxes
+    id: truoc-khi-nap
+    attributes:
+      label: Trước khi nạp máy
+      options:
+        - label: Đã chạy release-check
+        - label: Đã kiểm RAM còn dư (`pio run --target size`)
+        - label: Đã lưu hồ sơ cấu hình vào docs/config/

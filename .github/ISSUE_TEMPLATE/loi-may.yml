@@ -1,0 +1,76 @@
+name: Lỗi trên máy
+description: Máy chạy sai, kẹt bước, hoặc firmware có biểu hiện lạ
+labels: ["loi"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Điền càng cụ thể càng đỡ phải hỏi lại. Thiếu số máy và log serial thì
+        gần như không lần ra được nguyên nhân.
+
+  - type: input
+    id: may
+    attributes:
+      label: Máy nào
+      description: Cỡ máy, đời board, có tuỳ chọn gì (cân, vacuum, buồng đốt khói…)
+      placeholder: 12 kg auto, board V400, có vacuum, không cân
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware bản nào
+      description: Commit, tag, hoặc ngày nạp gần nhất
+      placeholder: nạp ngày 26/08, commit 7fe7964
+    validations:
+      required: true
+
+  - type: textarea
+    id: hien-tuong
+    attributes:
+      label: Hiện tượng
+      description: Máy làm gì, đáng lẽ phải làm gì
+      placeholder: |
+        Mẻ thứ 2 trở đi buồng đốt khói không tự bật, dù nhiệt độ hạt đã vượt ngưỡng đặt.
+        Bấm tay thì vẫn bật được.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tai-hien
+    attributes:
+      label: Làm sao gặp lại
+      description: Các bước để dựng lại lỗi
+      placeholder: |
+        1. Chạy mẻ 1 bình thường
+        2. Giữa mẻ bấm tắt buồng đốt khói
+        3. Sang mẻ 2 — không tự bật nữa
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log serial
+      description: Bật `enDebug = 1`, ghi lại cổng debug 9600 baud. Dán nguyên văn.
+      render: text
+
+  - type: dropdown
+    id: muc-do
+    attributes:
+      label: Mức độ
+      options:
+        - Mất an toàn — gas, lửa, hoặc xi-lanh chạy sai
+        - Dừng sản xuất — không rang được
+        - Sai chất lượng — rang được nhưng mẻ không đạt
+        - Khó chịu — vẫn làm việc được
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: da-kiem
+    attributes:
+      label: Đã kiểm chưa
+      options:
+        - label: Đã đối chiếu `include/Config.h` xem cấu hình máy có đúng không
+        - label: Đã kiểm dây tín hiệu và nguồn của cụm liên quan
+        - label: Lỗi lặp lại được, không phải một lần duy nhất

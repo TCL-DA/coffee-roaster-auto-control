@@ -3,9 +3,15 @@
 </p>
 
 <p align="center">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-STM32F103RC-FC2424?style=flat-square">
+  <a href="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/release.yml"><img alt="Release" src="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/release.yml/badge.svg"></a>
+  <a href="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/smoke-stacks.yml"><img alt="Smoke test" src="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/smoke-stacks.yml/badge.svg"></a>
+  <a href="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/check-asset-sync.yml"><img alt="Asset sync" src="https://github.com/TCL-DA/coffee-roaster-auto-control/actions/workflows/check-asset-sync.yml/badge.svg"></a>
+</p>
+
+<p align="center">
+  <img alt="Platform" src="https://img.shields.io/badge/MCU-STM32F103RC-FC2424?style=flat-square">
   <img alt="Framework" src="https://img.shields.io/badge/framework-Arduino-37B6FF?style=flat-square">
-  <img alt="Build" src="https://img.shields.io/badge/build-PlatformIO-orange?style=flat-square">
+  <img alt="Build" src="https://img.shields.io/badge/build-PlatformIO-FF7043?style=flat-square">
   <img alt="Flash" src="https://img.shields.io/badge/flash-256%20KB-555?style=flat-square">
   <img alt="RAM" src="https://img.shields.io/badge/RAM-48%20KB-555?style=flat-square">
 </p>
@@ -40,6 +46,60 @@ machine at the same time.
 
 One firmware covers every machine size. What a given machine has is declared in
 [`include/Config.h`](include/Config.h) — no forked branches per model.
+
+---
+
+## How it fits together
+
+```mermaid
+flowchart LR
+    subgraph OP["Operators"]
+        HMI["Delta HMI<br/>touch panel"]
+        APP["PC application<br/>OTL Roast Lab"]
+        ART["Artisan<br/>roast logging"]
+    end
+
+    subgraph FW["STM32F103RC firmware"]
+        PROG["Roast state machine"]
+        HEAT["Preheat controller"]
+        PIDA["Airflow PID<br/>+ feed-forward"]
+        ROR["Rate-of-rise<br/>+ Kalman filter"]
+    end
+
+    subgraph FIELD["Machine"]
+        TEMP["Bean / exhaust<br/>probes"]
+        BURN["Gas burner"]
+        FAN["Airflow inverter"]
+        DRUM["Drum inverter"]
+        CYL["Charge / drop /<br/>escape cylinders"]
+        SCALE["Load-cell feeder"]
+    end
+
+    SD[("SD card<br/>profiles + logs")]
+
+    HMI  <--> PROG
+    APP  <--> PROG
+    ART  <--> PROG
+
+    TEMP --> ROR --> PROG
+    PROG --> HEAT --> BURN
+    PROG --> PIDA --> FAN
+    PROG --> DRUM
+    PROG --> CYL
+    SCALE --> PROG
+    PROG <--> SD
+
+    classDef op fill:#37B6FF,stroke:#0B7FC4,color:#04202F
+    classDef fw fill:#1F2430,stroke:#37B6FF,color:#E8ECF3
+    classDef fd fill:#2A2020,stroke:#FC2424,color:#F5E9E9
+    class HMI,APP,ART op
+    class PROG,HEAT,PIDA,ROR fw
+    class TEMP,BURN,FAN,DRUM,CYL,SCALE fd
+```
+
+Three masters can talk to the machine at once — the panel an operator touches, a PC
+application, and Artisan for roast logging. The firmware arbitrates between them and
+keeps the safety interlocks regardless of who is asking.
 
 ---
 

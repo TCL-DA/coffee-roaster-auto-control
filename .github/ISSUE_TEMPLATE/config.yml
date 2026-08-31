@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Quy ước và giới hạn phần cứng
+    url: https://github.com/TCL-DA/coffee-roaster-auto-control/blob/main/CLAUDE.md
+    about: Đọc trước khi sửa firmware — giới hạn RAM, luật ISR, quy ước đặt tên
+  - name: Kiến trúc firmware
+    url: https://github.com/TCL-DA/coffee-roaster-auto-control/blob/main/ARCHITECTURE.md
+    about: Bản đồ module, ngân sách bộ nhớ, nhịp vòng điều khiển
