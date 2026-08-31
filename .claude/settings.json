@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//f/Project/100_OTL_06ALS - CMS/include/**)",
+      "Bash(grep -n \"//----------------------Define HMI\" \"f:/Project/100_OTL_06ALS - CMS - Copy/include/Define.h\")",
+      "Read(//tmp/**)",
+      "Read(//f/Artisan/Profile/**)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}
