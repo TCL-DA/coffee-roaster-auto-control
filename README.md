@@ -9,73 +9,84 @@
 </p>
 
 <p align="center">
-  <img alt="Platform" src="https://img.shields.io/badge/MCU-STM32F103RC-FC2424?style=flat-square">
+  <img alt="MCU" src="https://img.shields.io/badge/MCU-STM32F103RC-FC2424?style=flat-square">
   <img alt="Framework" src="https://img.shields.io/badge/framework-Arduino-37B6FF?style=flat-square">
   <img alt="Build" src="https://img.shields.io/badge/build-PlatformIO-FF7043?style=flat-square">
   <img alt="Flash" src="https://img.shields.io/badge/flash-256%20KB-555?style=flat-square">
   <img alt="RAM" src="https://img.shields.io/badge/RAM-48%20KB-555?style=flat-square">
 </p>
 
-# Coffee Roaster Auto Control
+<h1 align="center">Coffee Roaster Auto Control</h1>
 
-Firmware for **OTL industrial coffee roasters**, built by
-[O Tesla Industry Co., Ltd](https://www.otlpro.com/).
-
-It runs the whole roast: reads bean and exhaust temperature, drives the gas burner and
-airflow, follows a stored roast profile, moves the charge and discharge cylinders, and
-logs the batch — while a Delta HMI, a PC application and Artisan can all talk to the
-machine at the same time.
-
-> Firmware điều khiển máy rang cà phê công nghiệp OTL — chạy trọn mẻ rang, từ mồi lửa,
-> nạp liệu, giữ đường rang, tới xả liệu và ghi nhật ký mẻ.
+<p align="center">
+  Firmware chạy máy rang cà phê công nghiệp <b>OTL</b><br>
+  <sub>Firmware for OTL industrial coffee roasters · <a href="https://www.otlpro.com/">O Tesla Industry Co., Ltd</a></sub>
+</p>
 
 ---
 
-## What it does
+## Máy này làm gì
 
-| | |
-|---|---|
-| **Roast control** | State machine driving a full batch: preheat → charge → roast → drop → cooling |
-| **Temperature** | Bean and exhaust probes over RS485, Kalman-filtered, rate-of-rise computed like Artisan |
-| **Burner** | Gas output via DAC with slew-rate limiting; supports both standard and premix burners |
-| **Airflow** | Vacuum-based PID with a feed-forward table and self-tuning |
-| **Profiles** | Roast profiles stored on SD card, replayed automatically |
-| **Auto loader** | Load-cell feeder with a self-learning correction table |
-| **Interfaces** | Delta HMI · PC application over a dedicated link · Artisan over Modbus RTU |
-| **Options** | Afterburner, destoner, mixer and cooling, each switchable per machine |
+Người vận hành đổ hạt vào rồi bấm chạy. Từ đó tới lúc cà phê ra khay, **máy tự lo**:
+mồi lửa, nạp liệu theo cân, giữ đường rang bám theo mẻ mẫu, xả khi tới điểm, làm mát
+và đốt nốt khói.
 
-One firmware covers every machine size. What a given machine has is declared in
-[`include/Config.h`](include/Config.h) — no forked branches per model.
+<p align="center">
+  <img src="assets/banner/otl-roast-curve.png" alt="Đường rang một mẻ và các mốc firmware can thiệp" width="100%">
+</p>
+
+<p align="center"><sub>
+Đường trắng là nhiệt độ hạt — con số người thợ nhìn. Cam là nhiệt khí thải.
+Xanh là tốc độ tăng nhiệt, đã lọc nhiễu. Năm mốc dọc là những chỗ firmware ra quyết định.
+</sub></p>
+
+### Một mẻ đi qua những bước nào
+
+| Mốc | Xảy ra chuyện gì | Máy làm gì |
+|:--|:--|:--|
+| **Làm nóng** | Lồng rang còn nguội | Mồi lửa, đưa nhiệt lên mức đặt rồi giữ ở đó chờ mẻ |
+| **NẠP** | Hạt đổ vào, nhiệt tụt mạnh | Cân đúng khối lượng rồi mở cửa nạp |
+| **TP** | Nhiệt chạm đáy và quay đầu lên | Mốc để tính toàn bộ phần còn lại của mẻ |
+| **DE** | Hạt chuyển màu | Bắt đầu bám sát đường rang mẫu |
+| **FCs** | Nổ lần một | Giai đoạn quyết định vị ngon — chỉnh gas sát hơn |
+| **XẢ** | Tới điểm dừng | Mở cửa xả, chạy quạt làm mát, đốt nốt khói |
+
+> [!NOTE]
+> Máy dùng **một firmware duy nhất cho mọi cỡ**. Máy nào có gì thì khai trong
+> [`include/Config.h`](include/Config.h) — không tách nhánh riêng cho từng model.
 
 ---
 
-## How it fits together
+## Ai điều khiển được máy
+
+Ba đường cùng nói chuyện với firmware một lúc. Firmware phân xử, và giữ chốt an toàn
+bất kể ai ra lệnh.
 
 ```mermaid
 flowchart LR
-    subgraph OP["Operators"]
-        HMI["Delta HMI<br/>touch panel"]
-        APP["PC application<br/>OTL Roast Lab"]
-        ART["Artisan<br/>roast logging"]
+    subgraph OP["Người điều khiển"]
+        HMI["Màn hình cảm ứng<br/>tại máy"]
+        APP["Ứng dụng PC<br/>OTL Roast Lab"]
+        ART["Artisan<br/>ghi nhật ký mẻ"]
     end
 
-    subgraph FW["STM32F103RC firmware"]
-        PROG["Roast state machine"]
-        HEAT["Preheat controller"]
-        PIDA["Airflow PID<br/>+ feed-forward"]
-        ROR["Rate-of-rise<br/>+ Kalman filter"]
+    subgraph FW["Firmware STM32F103RC"]
+        PROG["Trình tự rang"]
+        HEAT["Bộ làm nóng"]
+        PIDA["PID gió"]
+        ROR["Tốc độ tăng nhiệt<br/>+ lọc nhiễu"]
     end
 
-    subgraph FIELD["Machine"]
-        TEMP["Bean / exhaust<br/>probes"]
-        BURN["Gas burner"]
-        FAN["Airflow inverter"]
-        DRUM["Drum inverter"]
-        CYL["Charge / drop /<br/>escape cylinders"]
-        SCALE["Load-cell feeder"]
+    subgraph FIELD["Máy"]
+        TEMP["Đầu dò nhiệt<br/>hạt và khí thải"]
+        BURN["Đầu đốt gas"]
+        FAN["Biến tần gió"]
+        DRUM["Biến tần lồng"]
+        CYL["Xi-lanh nạp,<br/>xả, thoát"]
+        SCALE["Cân nạp liệu"]
     end
 
-    SD[("SD card<br/>profiles + logs")]
+    SD[("Thẻ SD<br/>hồ sơ + nhật ký")]
 
     HMI  <--> PROG
     APP  <--> PROG
@@ -97,85 +108,84 @@ flowchart LR
     class TEMP,BURN,FAN,DRUM,CYL,SCALE fd
 ```
 
-Three masters can talk to the machine at once — the panel an operator touches, a PC
-application, and Artisan for roast logging. The firmware arbitrates between them and
-keeps the safety interlocks regardless of who is asking.
-
 ---
 
-## Hardware
-
-| | |
-|---|---|
-| MCU | STM32F103RC — 72 MHz Cortex-M3, 256 KB Flash, 48 KB RAM |
-| Toolchain | PlatformIO + Arduino framework |
-| Storage | SD card (roast profiles and batch logs) |
-| Analog out | I²C DAC for burner and airflow |
-| Field bus | RS485 Modbus — temperature controllers, inverters, I/O relay module |
-| Operator panel | Delta HMI over serial |
-
----
-
-## Quick start
+## Bắt tay vào việc
 
 ```bash
 pio run -e genericSTM32F103RC                  # build
-pio run -e genericSTM32F103RC --target upload  # flash over ST-Link
-pio run -e genericSTM32F103RC --target size    # check Flash / RAM headroom
-pio device monitor --baud 9600                 # serial debug
+pio run -e genericSTM32F103RC --target upload  # nạp qua ST-Link
+pio run -e genericSTM32F103RC --target size    # xem RAM/Flash còn bao nhiêu
+pio device monitor --baud 9600                 # đọc log debug
 ```
 
-RAM is the tight resource, not Flash. Check `--target size` after any change that adds
-arrays — see [ARCHITECTURE.md](ARCHITECTURE.md) for the memory budget.
+> [!IMPORTANT]
+> **RAM mới là thứ chật, không phải Flash.** Bo mạch có 48 KB RAM và riêng các mảng
+> ghi dữ liệu mẻ đã ăn gần hết. Thêm mảng nào cũng phải chạy `--target size` xem còn
+> dư không — chi tiết trong [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
-## Layout
+## Mã nguồn nằm ở đâu
+
+Mỗi hệ phụ một file header, đọc tên là biết nó lo phần nào.
+
+| File | Lo việc gì |
+|:--|:--|
+| [`Config.h`](include/Config.h) | **Máy này có gì** — bật tắt từng tuỳ chọn lúc build |
+| [`Define.h`](include/Define.h) | Biến toàn cục, chân cắm, địa chỉ truyền thông |
+| [`Program.h`](include/Program.h) | Trình tự rang — trái tim của firmware |
+| `Preheat*.h` | Làm nóng máy, hai kiểu chọn lúc build |
+| [`PID_Airflow.h`](include/PID_Airflow.h) | Giữ áp hút ổn định, có bảng bù và tự chỉnh |
+| [`RoR_Control.h`](include/RoR_Control.h) | Tính tốc độ tăng nhiệt, lọc nhiễu cảm biến |
+| `Modbus_*.h` | Nói chuyện với màn hình, thiết bị trên bus, và Artisan |
+| `PC_Link*.h` | Cầu nối sang ứng dụng máy tính |
+| [`ScaleFeeder.h`](include/ScaleFeeder.h) | Đọc cân, nạp liệu tự học |
+
+<details>
+<summary><b>Cây thư mục đầy đủ</b></summary>
 
 ```
-include/     firmware modules — one header per subsystem
-  Config.h        which options this machine has
-  Define.h        global state, pins, Modbus addresses
-  Program.h       roast state machine
-  Preheat*.h      warm-up controllers
-  PID_Airflow.h   vacuum PID + feed-forward
-  Modbus_*.h       HMI, field bus, Artisan slave
-  PC_Link*.h      PC application link
-src/         entry point
-protocol/    shared link definition, generated for firmware / Python / JS
-tools/       desktop utilities — roaster simulator, serial testers, HMI screen generator
-docs/        machine configuration records, references, guides, plans
-html/        offline pages — simulator, guides, UI mock-ups
-assets/      logos, icons, HMI bitmaps
-data/        SD card payload
+include/     module firmware — mỗi hệ phụ một header
+src/         điểm vào chương trình
+protocol/    định nghĩa cầu nối, sinh ra cho firmware / Python / JS
+tools/       tiện ích chạy trên máy tính — máy rang ảo, tester serial,
+             bộ sinh màn hình HMI, chuyển tài liệu sang Markdown
+docs/        hồ sơ cấu hình từng máy, tài liệu tra cứu, kế hoạch
+html/        trang offline — mô phỏng, hướng dẫn, bản nháp giao diện
+assets/      logo, icon, ảnh bitmap cho màn hình
+data/        nội dung thẻ SD
 ```
 
----
-
-## Documentation
-
-| | |
-|---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Module map, memory budget, control loop timing |
-| [FEATURES.md](FEATURES.md) | Feature-by-feature description |
-| [CLAUDE.md](CLAUDE.md) | Conventions, hardware limits, safety rules for contributors |
-| [docs/](docs/) | Per-machine configuration records, tuning notes, references |
+</details>
 
 ---
 
-## Safety
+## Đọc thêm
 
-This firmware controls **gas, fire and moving parts**. Two rules that are not
-negotiable:
-
-- `timerPoll_1000ms()` runs in an ISR — never call SD, Modbus, Serial or `delay()`
-  from it. Set a flag and do the work in `loop()`.
-- Run [release-check](.claude/skills/release-check/) before flashing a customer
-  machine: debug flags off, gas limits sane, timings correct.
+| Tài liệu | Nội dung |
+|:--|:--|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Bản đồ module, ngân sách bộ nhớ, nhịp vòng điều khiển |
+| [FEATURES.md](FEATURES.md) | Mô tả từng tính năng |
+| [CLAUDE.md](CLAUDE.md) | Quy ước, giới hạn phần cứng, luật an toàn khi sửa code |
+| [docs/](docs/) | Hồ sơ cấu hình từng máy, ghi chú cân chỉnh, tài liệu tra cứu |
 
 ---
 
-## Author
+## An toàn
 
-**O Tesla Industry Co., Ltd** — industrial coffee roasting machinery
-· [otlpro.com](https://www.otlpro.com/)
+> [!WARNING]
+> Firmware này điều khiển **gas, lửa và bộ phận chuyển động**. Hai luật không được phá:
+>
+> **1. Không gọi SD, Modbus, Serial hay `delay()` trong ISR.**
+> `timerPoll_1000ms()` chạy trong ngắt. Đặt cờ rồi xử lý ở `loop()`.
+>
+> **2. Chạy [release-check](.claude/skills/release-check/) trước khi nạp máy khách.**
+> Kiểm cờ debug đã tắt, giới hạn gas hợp lý, các mốc thời gian đúng.
+
+---
+
+<p align="center">
+  <sub><b>O Tesla Industry Co., Ltd</b> — máy rang cà phê công nghiệp<br>
+  <a href="https://www.otlpro.com/">otlpro.com</a></sub>
+</p>
