@@ -28,12 +28,12 @@ vẫn nằm ở thư mục gốc vì công cụ cần đọc chúng ở đó.
 - [guide-power-meter-7kt0311-setup.md](guide/guide-power-meter-7kt0311-setup.md)
 
 ## config/ — Cấu hình preset cho từng máy (chép đè lên include/Config.h)
-- [config-hieu-30kg-bienhoa.md](config/config-hieu-30kg-bienhoa.md)
-- [config-duc-daklak-12kg.md](config/config-duc-daklak-12kg.md)
-- [config-danh-30kg-cacao.md](config/config-danh-30kg-cacao.md)
-- [config-danh-6kg.md](config/config-danh-6kg.md)
-- [config-6kg-auto-philipines.md](config/config-6kg-auto-philipines.md)
-- [config-30kg-cacao-dailoan.md](config/config-30kg-cacao-dailoan.md)
+- [config-30kg-M06.md](config/config-30kg-M06.md)
+- [config-12kg-M05.md](config/config-12kg-M05.md)
+- [config-30kg-cacao-M03.md](config/config-30kg-cacao-M03.md)
+- [config-6kg-M04.md](config/config-6kg-M04.md)
+- [config-6kg-auto-M07.md](config/config-6kg-auto-M07.md)
+- [config-30kg-cacao-M08.md](config/config-30kg-cacao-M08.md)
 - [config-3kg-auto-io.md](config/config-3kg-auto-io.md)
 
 ## 30kg/ — Hồ sơ kỹ thuật máy 30 kg

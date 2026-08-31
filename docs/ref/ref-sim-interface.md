@@ -115,7 +115,7 @@ hiện thực. Tham khảo có sẵn trong repo:
 
 - `preheat_pid_simulator.html`, `preheat_simulator.html` — công thức gas→nhiệt
 - [analysis-roaster-thermal.md](analysis-roaster-thermal.md) — gas gain ~1.5 °C/min/%, điểm cân bằng
-- [config-danh-6kg.md](config-danh-6kg.md), [config-duc-daklak-12kg.md](config-duc-daklak-12kg.md) — tham số từng máy
+- [config-6kg-M04.md](config-6kg-M04.md), [config-12kg-M05.md](config-12kg-M05.md) — tham số từng máy
 - `testnhiet.csv` — dữ liệu nhiệt đo thật để replay/đối chiếu
 
 Hợp đồng tối thiểu của model: `f(gas%, air%, BT, ET, dt) → (BT', ET')` mỗi giây.

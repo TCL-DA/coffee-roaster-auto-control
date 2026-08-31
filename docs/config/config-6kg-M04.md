@@ -1,6 +1,6 @@
-# Cấu hình máy 6kg auto của anh Danh, 2021
+# Cấu hình máy 6kg auto của M04, 2021
 
-File này lưu snapshot cấu hình để copy vào `include/Config.h` khi build firmware cho máy 6kg auto 2021 của anh Danh.
+File này lưu snapshot cấu hình để copy vào `include/Config.h` khi build firmware cho máy 6kg auto 2021 của M04.
 
 > **⚠️ CHƯA XÁC NHẬN PHẦN CỨNG:** Phần Config.h bên dưới chưa được điền — cần xác nhận
 > hardware thực tế của máy (board version, thiết bị lắp) trước khi dùng để flash.
@@ -12,7 +12,7 @@ File này lưu snapshot cấu hình để copy vào `include/Config.h` khi build
 
 | Trường | Giá trị |
 |--------|---------|
-| Khách hàng | Anh Danh |
+| Mã máy | M04 |
 | Năm sản xuất | 2021 |
 | Dung tích | 6 kg |
 | Loại | Auto |
@@ -48,7 +48,7 @@ Cần log mẻ rang thật để calibrate.
 
 /*
  * Cấu hình máy rang
- * Cấu hình: máy 6kg auto 2021 của anh Danh.
+ * Cấu hình: máy 6kg auto 2021 của M04.
  *
  * TODO: xác nhận từng mục PHẦN CỨNG bên dưới với máy thực tế.
  */

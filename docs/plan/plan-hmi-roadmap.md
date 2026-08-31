@@ -149,7 +149,7 @@ chết**. GĐ1 xong = **rang thật cả tuần không sự cố** trước khi 
 |---|---|---|
 | 1 | **Trừ kho bằng CÂN THẬT, tự động** | Máy đã có đầu cân BT (`netW`, ×100). Auto-loader cân mỗi lần nạp → trừ đúng kg đã cân, **0 thao tác**. Không cân → fallback `MACHINE_BATCH_KG` + sửa tay. **Lợi thế Cropster không có**: cân nằm trong máy |
 | 2 | **"Lô đang mở" thay vì chọn lô mỗi mẻ** | Gán lô cho phễu **một lần** khi đổ bao; mọi mẻ sau tự ghi lô đó tới khi đổi lô. 60 mẻ = 1 thao tác |
-| 3 | **Nói bằng MẺ, không bằng kg** | "Lô Đắk Lắk #7: **còn ~7 mẻ**" (tồn ÷ batch kg). Cảnh báo "còn 2 mẻ" lúc **đầu ca**, không giữa mẻ |
+| 3 | **Nói bằng MẺ, không bằng kg** | "Lô  #7: **còn ~7 mẻ**" (tồn ÷ batch kg). Cảnh báo "còn 2 mẻ" lúc **đầu ca**, không giữa mẻ |
 | 4 | **Sổ biến động (ledger)** | Bảng `lot_movements`: nhập / trừ-theo-mẻ / **điều chỉnh kiểm kho** (lý do + audit). Số dư = tổng ledger. Kiểm kho chỉnh lệch (rơi vãi, bay ẩm) không phá lịch sử |
 | 5 | **Nhập theo BAO** | "20 bao × 60kg" (đơn vị kho VN) → app quy ra kg. Bắt buộc chỉ **Tên + khối lượng**; nông trại/giống/giá/độ ẩm tùy chọn. Nhập ~1 lần/tuần → panel đủ |
 | 6 | **FIFO + tuổi lô** | Thẻ lô hiện tuổi (ngày nhập→nay), gợi ý dùng lô cũ trước; cảnh báo nhân >12 tháng |

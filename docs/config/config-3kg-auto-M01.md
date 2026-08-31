@@ -1,8 +1,8 @@
-# Config preset — 3kg auto anh HÙNG (bản cũ)
+# Config preset — 3kg auto M01 (bản cũ)
 
 Lưu ngày **2026-08-26**. Build: **RAM 81.4% (40016/49152 B), Flash 38.5% (100948/262144 B)** — SUCCESS, **CHƯA FLASH lên máy**.
 
-Máy rang **3kg auto, bản cũ, của anh Hùng** — board **V400**, **không vacuum control**, **không module IO relay ngoài**, **có biến trở vật lý (VR)** trên board. Đặc thù: đầu đốt **THƯỜNG (không premix)**, phải đạt **tối thiểu 50% gas mới lên được lửa** (thử 40% vẫn không lên).
+Máy rang **3kg auto, bản cũ, của M01** — board **V400**, **không vacuum control**, **không module IO relay ngoài**, **có biến trở vật lý (VR)** trên board. Đặc thù: đầu đốt **THƯỜNG (không premix)**, phải đạt **tối thiểu 50% gas mới lên được lửa** (thử 40% vẫn không lên).
 
 ## Đặc thù cấu hình
 
@@ -77,4 +77,4 @@ Máy khác giữ nguyên hành vi cũ bằng cách đặt `PH_IGNITE_GAS 30`.
 - **Bếp THƯỜNG, không phải premix.** HMI đời cũ có thể không có ô chọn bếp; đọc reg 29 ra rác là firmware nhảy nhầm sang bộ tham số PREMIX (`PH_PID_KP_HOLD_PREMIX` yếu hơn, `PH_IGNITE_TMO_PREMIX` 65s, `PH_TUNE_GAS_HI_PREMIX`). `MACHINE_BURNER_FORCE_STANDARD 1` chặn hẳn đường đó.
 - Luồng RANG (không phải preheat) mồi lửa ở **50%** gas ghi cứng tại [Program.h:1593](../../include/Program.h#L1593) — vừa ĐÚNG BẰNG ngưỡng 50%, không còn dư biên. Nếu chạy máy thật thấy mồi lúc được lúc không **trong luồng rang** (preheat thì vẫn ổn), nâng số 50 ở dòng đó lên 60.
 - `MACHINE_HAS_SCALE_FEEDER 0` → toàn bộ nhánh auto-dif/loader tắt; `LOADER_MIN_NETW` tính theo 3kg nhưng không dùng tới.
-- `ARTISAN_MODBUS_BAUD_DEFAULT` đang là 9600 (thừa kế từ bản 12kg) — HMI cài `modbusBaud_R` vẫn ghi đè được. Xác nhận lại với máy anh Hùng nếu nối Artisan.
+- `ARTISAN_MODBUS_BAUD_DEFAULT` đang là 9600 (thừa kế từ bản 12kg) — HMI cài `modbusBaud_R` vẫn ghi đè được. Xác nhận lại với máy M01 nếu nối Artisan.

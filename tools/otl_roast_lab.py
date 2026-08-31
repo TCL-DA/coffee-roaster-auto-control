@@ -122,7 +122,7 @@ class ThermalConfig:
 # Preset model theo máy — máy NHỎ phản ứng nhanh (sens cao, equilib + lag thấp),
 # máy LỚN quán tính lớn (sens thấp, equilib + lag cao). Chỉnh tinh trong Config.
 THERMAL_PRESETS = {
-    "Cacao 30kg (anh Hiếu)": dict(gas_equilib=22, gas_sens=1.0, heatloss_k=0.028,
+    "Cacao 30kg (M06)": dict(gas_equilib=22, gas_sens=1.0, heatloss_k=0.028,
                                   gas_lag_s=6, air_cool_k=0.15),
     "Máy 30kg":  dict(gas_equilib=35, gas_sens=1.0, heatloss_k=0.020, gas_lag_s=6,
                       air_cool_k=0.15),

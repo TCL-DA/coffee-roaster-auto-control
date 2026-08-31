@@ -1,89 +1,67 @@
-# Cấu hình máy 30kg auto của anh Danh — rang cacao
+# Config preset — 6kg M02
 
-File này lưu snapshot cấu hình để copy vào `include/Config.h` khi build firmware cho máy 30kg auto của anh Danh, dùng để **rang cacao**.
+Lưu ngày **2026-08-20**.
 
-> Cập nhật gần nhất: **2026-06-26** — bản chuẩn bị giao máy (production, debug tắt).
+Máy rang **6kg M02**, board **V300**. **KHÔNG drum control**, **KHÔNG vacuum
+control**, **KHÔNG cân loader**. Relay đi qua GPIO onboard (không module IO ngoài), gas/gió
+điều khiển bằng DAC, đọc mức từ **biến trở vật lý** trên board.
 
----
+## Đặc thù cấu hình
 
-## Thông tin máy
+| Mục | Giá trị | `#define` |
+|-----|---------|-----------|
+| Board | **V300** | `#define V300 true` — V300 đảo cổng: `SerialModbus = Serial4 (UART4)`, `SerialComputer = Serial2 (USART2)`, HMI vẫn Serial1. Thang ADC VR max 630 count |
+| Mẻ danh định | 6 kg | `MACHINE_BATCH_KG 6` |
+| **Drum speed** | **TẮT** | `MACHINE_HAS_DRUM_SPEED_CONTROL 0` — không biến tần drum, `drumPercent` bị ép 0, không ghi node 4 |
+| **Vacuum** | **TẮT** | `MACHINE_HAS_VACUUM_SENSOR 0` — không cảm biến áp hút, **không chạy PID gió theo vacuum**; gió chạy theo % đặt |
+| **Air inverter (RS485)** | **TẮT** | `MACHINE_HAS_AIR_INVERTER 0` — chỉ cần khi đọc ACI vacuum. Gió vẫn điều khiển bằng DAC 0–10V |
+| **Cân / auto-loader** | **TẮT** | `MACHINE_HAS_SCALE_FEEDER 0` — feeder chạy theo timer, không đọc cân |
+| IO relay module | TẮT | `MACHINE_HAS_IO_RELAY_MODULE 0` — toàn bộ relay qua GPIO onboard CH1–CH8 |
+| Điều khiển | Có biến trở vật lý | `MACHINE_VR_SOURCE_FROM_HMI 0` — gió/gas đọc VR trên board |
+| Gas / Airflow | Có | `MACHINE_HAS_GAS_CONTROL 1`, `MACHINE_HAS_AIRFLOW_CONTROL 1` |
+| BT / ET thermocouple | Có | `MACHINE_HAS_BT_TEMP_CONTROLLER 1` (ID 1), `MACHINE_HAS_ET_TEMP_CONTROLLER 1` (ID 2) |
+| Preheat | PID kiểu Artisan | `PREHEAT_USE_PID 1`; loại đầu đốt chọn runtime bằng `burnerPremix_R` ($M addr 29) |
 
-| Trường | Giá trị |
-|--------|---------|
-| Khách hàng | Anh Danh |
-| Dung tích | 30 kg |
-| Loại | Auto |
-| Sản phẩm | Cacao |
-| Board | V400 |
-| Cân hút liệu | ✅ Có (đầu cân Bluetooth) |
-| Định dạng cân | `00.00,kg` — 2 chữ số thập phân |
-| Cân tối đa | 120 kg (đầu nguồn đầy) |
-| Lượng hút mỗi mẻ | 1–33 kg (min 1, max 33) |
-| Vacuum control | ✅ Có (PID gió qua biến tần) |
-| Biến tần drum | ✅ Có |
-| Preheat | PID kiểu Artisan (`PREHEAT_USE_PID = 1`) + relay autotune |
-| Profile tối đa | **42 phút** (`PROFILE_MAX_SECONDS = 2520`) |
+**Bus RS485 còn lại chỉ 2 node**: BT (ID 1) và ET (ID 2) — bỏ hẳn drum (4), gió (5), IO (7)
+→ vòng quét nhẹ hơn hẳn so với các máy full option.
 
----
+## Kết quả build
 
-## Trạng thái firmware (session 2026-06-26)
+```
+pio run -e genericSTM32F103RC
+RAM:   81.4% (40012 / 49152 B)
+Flash: 38.3% (100396 / 262144 B)
+[SUCCESS]
+```
 
-Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
+Đã build ngày 2026-08-20 — **CHƯA FLASH, CHƯA test trên máy thật**.
 
-### Profile / RAM
-- `PROFILE_MAX_SECONDS = 2520` → lưu/rang tối đa **42 phút**. RAM tĩnh **81.7%** (40144 byte), free ~8.8 KB. Đừng nâng quá 43′ (≥85%) / 45′ (~88.5%, nguy hiểm).
+## Việc cần kiểm khi lắp máy
 
-### maxGas lưu theo profile
-- Rang **SAVE**: trần gas (`maxGasSet_R`) được **chốt lúc bấm Start**, lưu 1 lần vào header CSV dạng `MaxGas:NNN` (header cố định 121 byte). Chỉ +4 byte RAM (không phải mảng từng giây).
-- Rang **AUTO**: chỉ **lưu** giá trị khi load/chọn profile, **áp lúc bấm Start AUTO** (không đổi maxGas khi chỉ xem/chọn).
-- **Chống phá trần giữa mẻ**: trong rang AUTO cho **HẠ** gas, **CẤM NÂNG** maxGas vượt trần đã lưu trong profile → nâng bị kéo về trần + ghi lại HMI.
-- Tương thích ngược: profile cũ không có `MaxGas:` → `sdMaxGasLoaded = -1` → bỏ qua, giữ maxGas HMI hiện hành.
+- Board V300 dùng **Serial2 làm cổng debug** (không phải UART4 như V400) — cắm đúng chân khi
+  monitor 9600 baud.
+- Thang ADC biến trở V300 = **630 count** (`CH1AInMax`/`CH2AInMax`/`CH3AInMax`), khác V400 (650).
+  Nếu VR không lên nổi 100% thì hiệu chỉnh lại phần này.
+- Baud Modbus Artisan mặc định đang **9600** (`ARTISAN_MODBUS_BAUD_DEFAULT`) — HMI ghi đè được
+  bằng `modbusBaud_R`.
+- Preheat PID chưa calibrate cho buồng đốt M02 — chạy autotune + lấy log mẻ thật.
 
-### Vacuum PID quanh rang AUTO
-- Lưu trạng thái `vacuumSetFlag` **trước rang** (`roastVacFlagSaved`), khôi phục lúc **DROP/abort** (ghi cả HMI). Trước rang TẮT → sau rang tắt lại; trước rang BẬT → giữ bật.
-- Trong AUTO, profile tự bật/tắt vacuum PID qua `sdVacuumSetFlag[]`, ghi HMI mỗi giây (không bị vòng quét HMI ép ngược).
+## Cách load lại
 
-### Preheat (Preheat_PID.h)
-- Đã hết **xung đột vacuum PID ↔ preheat**: lúc preheat tắt vacuum PID (ghi cả HMI để `_CP` đồng bộ), khôi phục khi xong.
-- Relay autotune ZN (Low PV, `SV_tune = FRL + (SV−FRL)×0.9`). HEAT chạy ổn.
-- **HOLD gains đã dịu** để bớt dao động: `KP_HOLD=5000`, `KI_HOLD=100`, `KD_HOLD=15000` (trước 10000/250/35000).
-- HOLD còn lắc **~±8°C** (không chạm overheat guard). Việc dở: iteration 2 — giảm lực gió làm mát HOLD (out âm) để kéo về ±4-5°C.
+Chép **toàn bộ** khối dưới đè lên [include/Config.h](../../include/Config.h) rồi build:
 
-### Factory tune airflow (PID_Airflow.h)
-- Sửa race `airflowPercent`: lúc factory tune, `analogIn()` nhường quyền (warmup ép gió=0, running = `ftCurrentAir`) → lệnh quét tới được DAC. Bảng FF Pa→Air% dựng đúng, lưu `/pid_ff.txt`.
-
-### Debug (production = TẮT hết)
-- `enDebug = 0` (Define.h).
-- `PREHEAT_DEBUG_EN = 0`, `PIDTUNE_DEBUG_EN = 0` (Config.h). UART4 sạch cho Artisan.
-- Cờ debug riêng cho từng phần, bật khi cần soi: heartbeat `[PIDTUNE]` (PID tuning) và log preheat (APPR/HOLD/TUNE...).
-
-### Khác
-- Chú thích trong `include/Define.h` đã dịch sang **tiếng Anh** (hết mojibake), code giữ nguyên byte.
-
----
-
-## Lưu ý riêng máy này
-
-- **Cân 2 số lẻ (`00.00,kg`):** không cần define nào — parser `parseScaleWeight100` trong `include/ScaleFeeder.h` tự nhận cả 1 lẫn 2 số lẻ. `netW100` đọc chi tiết ×100 (61.35kg = 6135), `netW` giữ ×10 cho feeder/HMI.
-- **rorKG hiển thị HMI:** `rorKG` (tốc độ hút, đơn vị ×100) đẩy lên thanh ghi `ROR_KG_W` (reg 91). Đặt ô HMI 2 số lẻ để hiện `7.50 kg/phút`. Dùng tinh chỉnh bù trừ đóng feeder.
-- **Vacuum cần biến tần gió:** cảm biến vacuum đọc qua ngõ ACI của biến tần gió (`AIR_INV_ACI_RAW_REGISTER`), nên `MACHINE_HAS_AIR_INVERTER` phải = 1 cùng với `MACHINE_HAS_VACUUM_SENSOR`.
-- **Auto-loader tự học:** hút 1–33 kg/mẻ, cân nguồn max 120 kg. Bảng dif tự học theo điểm (cân, ror) lưu `/loadcfg.csv`. Chi tiết: `ref-loader-autolearn.md`.
-- **maxGas trong profile:** trần gas mỗi profile lưu riêng — chỉnh maxGas trên HMI rồi rang SAVE thì profile nhớ trần đó; lần sau rang AUTO tự áp lại.
-
----
-
-## Config.h — đầy đủ (copy đè cả file khi build)
-
-> Cập nhật 2026-06-30: khối dưới là **toàn bộ Config.h** theo cấu trúc mới nhất, copy đè cả `include/Config.h` là build được ngay (không còn thiếu `MACHINE_BATCH_KG` / `MACHINE_VACUUM_FROM_DRUM` / preheat PID / feeder adapt).
-> Máy này: cân ✅, vacuum đọc từ **biến tần gió** (`MACHINE_VACUUM_FROM_DRUM 0`).
-> `PROFILE_MAX_SECONDS = 2520` (42 phút) nằm trong `include/Define.h`, **không** phải Config.h.
+```bash
+pio run -e genericSTM32F103RC
+```
 
 ```cpp
 #pragma once
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy 30kg auto của anh Danh — rang cacao (có cân, vacuum, drum).
+ * Cấu hình hiện tại: máy rang 6kg M02 — board V300. KHÔNG drum control,
+ * KHÔNG vacuum control (không cảm biến áp hút, không PID gió), KHÔNG cân loadcell/auto-loader,
+ * không IO module (relay onboard). Gas/gió điều khiển bằng DAC; đọc từ biến trở vật lý trên board.
  *
  * Đổi file này khi build firmware cho từng model máy rang khác nhau.
  * Các tùy chọn dạng bật/tắt nên giữ giá trị 0/1, trừ khi dòng chú thích
@@ -94,9 +72,9 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 // Phiên bản board phần cứng.
 // Chỉ được bật đúng 1 dòng V300, V350 hoặc V400.
 // ---------------------------------------------------------------------------
-// #define V300 true
+#define V300 true
 // #define V350 true
-#define V400 true
+// #define V400 true
 
 // ---------------------------------------------------------------------------
 // Phần cứng/ngoại vi có lắp trên máy.
@@ -105,14 +83,18 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 // ---------------------------------------------------------------------------
 #define MACHINE_HAS_AIRFLOW_CONTROL       1  // Điều khiển gió bằng DAC/phần trăm gió
 #define MACHINE_HAS_GAS_CONTROL           1  // Điều khiển gas bằng DAC và relay gas
-#define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần
-#define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió có nối RS485 Modbus (cần cho vacuum)
-#define MACHINE_HAS_VACUUM_SENSOR         1  // Có cảm biến áp suất hút/vacuum, dùng PID gió
-#define MACHINE_HAS_SCALE_FEEDER          1  // Có đầu cân Bluetooth cho auto loader
-#define MACHINE_HAS_IO_RELAY_MODULE       0  // Có module relay ngoài qua Modbus
+#define MACHINE_HAS_DRUM_SPEED_CONTROL    0  // KHÔNG điều khiển tốc độ drum (drum chạy trực tiếp)
+#define MACHINE_HAS_AIR_INVERTER          0  // KHÔNG đọc biến tần gió qua RS485 (chỉ cần khi có vacuum)
+#define MACHINE_HAS_VACUUM_SENSOR         0  // KHÔNG cảm biến áp hút — tắt PID gió theo vacuum
+#define MACHINE_HAS_SCALE_FEEDER          0  // KHÔNG cân loadcell — feeder chạy theo timer
+#define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30kg (dùng suy ngưỡng auto-loader)
+#define MACHINE_BATCH_KG                  6  // Khối lượng mẻ rang danh định (kg) — máy 6kg M02
+// Loại đầu đốt do HMI chọn lúc chạy qua thanh ghi burnerPremix_R (địa chỉ 29):
+//   0 = đầu đốt thường (khuếch tán), 1 = đầu đốt premix (khí+gió trộn sẵn).
+// KHÔNG có cờ compile — 1 firmware chạy cả 2 loại. Bộ tham số preheat tự đổi theo
+// burnerPremix_R trong Preheat_PID.h (xem cặp PH_*_PREMIX bên dưới + docs/config/config-preheat-premix.md).
 
 // ---------------------------------------------------------------------------
 // Tốc độ truyền serial.
@@ -127,7 +109,7 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 #define MACHINE_RS485_BAUD                38400UL
 #define DEBUG_SERIAL_BAUD                 9600UL
 #define SCALE_SERIAL_BAUD                 2400UL
-#define ARTISAN_MODBUS_BAUD_DEFAULT       9600UL
+#define ARTISAN_MODBUS_BAUD_DEFAULT       9600UL    // CMS 12kg Auto — CHƯA XÁC NHẬN (bản 6kg dùng 38400); HMI cài modbusBaud_R vẫn ghi đè được
 
 // ---------------------------------------------------------------------------
 // Địa chỉ ID Modbus của từng thiết bị.
@@ -174,7 +156,15 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 // 0 = đọc VR vật lý trên chân analog của board.
 // 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
 // ---------------------------------------------------------------------------
-#define MACHINE_VR_SOURCE_FROM_HMI        0
+#define MACHINE_VR_SOURCE_FROM_HMI        0  // máy có biến trở vật lý — drum/air/gas đọc từ VR trên board
+
+// ---------------------------------------------------------------------------
+// TREND bật SỚM trước charge.
+// Sau khi bật lửa, BT tăng dần tới charge; khi BT còn cách charge ngưỡng này
+// thì bật ghi trend (để đồ thị có sẵn đoạn tiến tới charge, giống Artisan).
+// Đơn vị 0.1°C: 100 = 10°C, 150 = 15°C.
+// ---------------------------------------------------------------------------
+#define TREND_PRECHARGE_BAND              100
 
 // ---------------------------------------------------------------------------
 // AUTO-DIF FEEDER — đóng feeder sớm, tính theo VẬT LÝ (tốc độ hút × lượng cà):
@@ -213,10 +203,45 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
                                                 // (cửa mở ~5s, cà rớt) nếu không sẽ chốt nhằm lúc giao thời
 #define FEEDER_OFFSET_MAX100              30    // ×100 kg: trần offset lực hút hợp lệ (0.30kg),
                                                 // kẹp để mẫu đo lỗi không làm cắt quá sớm/muộn
+// Log loader ra SerialComputer KHÔNG cần bật enDebug toàn cục (bản đi khảo sát sai lệch hút
+// liệu 2026-08-17). In 1 dòng/giây CHỈ trong lúc nút feeder bật → không nặng vòng quét.
+// Đặt về 0 khi giao máy production.
+#define LOADER_DEBUG_EN                   0
+
+// ── THẺ SD: chống treo máy (2026-08-17, sau ca treo giữa lúc hút) ───────────
+// LOADER_SD_LOG_EN: 0 = loader KHÔNG đụng thẻ SD nữa (không ghi loader.csv, không trim).
+//   Với dif cố định thì log này chỉ để xem, KHÔNG tham gia điều khiển — bỏ đi thì đường
+//   hút liệu sạch bóng thao tác thẻ, thẻ dở chứng cũng không kéo được vòng quét.
+//   Cần xem lại thì bật 1 (và nên bật LOADER_DEBUG_EN thay vì ghi thẻ).
+// SD_INIT_RETRY: số lần thử khởi tạo thẻ lúc boot. HẾT lượt thì BÁO LỖI RỒI CHẠY TIẾP,
+//   KHÔNG treo máy — mất log còn hơn mất cả ngày rang. (Trước đây while(!SD.begin())
+//   quay vô hạn kèm còi → thẻ chết là máy không vào nổi chương trình.)
+// SD_RETRY_MS: lúc chạy, thẻ hỏng thì cứ chừng này ms thử khởi tạo lại một lần.
+#define LOADER_SD_LOG_EN                  0
+#define SD_INIT_RETRY                     5
+#define SD_RETRY_MS                       10000UL
+
+// ── dif CỐ ĐỊNH (2026-08-17) ────────────────────────────────────────────────
+// >0  = dùng thẳng số này làm dif (×100 kg), BỎ QUA bảng /loadcfg.csv lẫn công thức T_kg,
+//       và KHÔNG học/ghi bảng nữa. Hằng số nên ngưỡng cắt đứng yên suốt mẻ.
+// 0   = quay lại y hệt hành vi cũ (tra bảng + tự học). Đổi 1 số này là lùi được ngay.
+//
+// Vì sao 100 (=1.00 kg): coast — lượng cà còn rời phễu SAU lệnh cắt — đo trên 7 mẻ log
+// serial ngày 2026-08-17 ra 0.94/0.98/0.98/0.98/1.00/1.04/1.08 → trung bình đúng 1.00,
+// lệch chuẩn 0.05. Suy ngược từ 18 lần cân tay của thợ rang (mức 5/10/20 kg) cũng khớp:
+// coast ≈ 1.00 ở CẢ BA mức. Sai số = dif − coast, nên dif = 1.00 → sai số ≈ 0.
+//
+// NGHIỆM THU TRÊN MÁY 2026-08-17 (7 mẻ, mức 15 và 20 kg): lệch +3/−2/−1/+10/−3/+2/−1
+// (×0.01 kg) → 6/7 mẻ dưới 30 gam, tệ nhất 100 gam, điểm trung bình 9.7. Trước khi sửa:
+// điểm 2.6–9.7, lệch tới 760 gam. dif in ra đứng yên suốt mẻ, ngưỡng cắt hết dao động.
+//
+// CHỈNH KHI LỆCH ĐỀU MỘT CHIỀU: hút thiếu → giảm số này; hút dư → tăng. Đúng bằng lượng
+// lệch (0.20 kg = 20). KHÔNG cần đụng gì khác.
+#define FEEDER_DIF_FIXED                  100
 #define LOADER_CSV_MAX                    400   // số dòng hút gần nhất tối đa giữ trong loader.csv
 #define FEEDER_MIN_BATCH100               50    // ×100 kg: mẻ hút nhỏ hơn 0.5kg coi là nhiễu → bỏ học+log (mẻ thật tối thiểu 1kg)
 // Ngưỡng cho auto-loader chạy: phễu nguồn phải còn ≥ LOADER_MIN_BATCH_PCT% của 1 mẻ rang.
-// netW đơn vị ×10 kg → ngưỡng = MACHINE_BATCH_KG × pct / 10. Máy 30kg @80% = 30×80/10 = 240 (24.0kg).
+// netW đơn vị ×10 kg → ngưỡng = MACHINE_BATCH_KG × pct / 10. Máy 12kg @80% = 12×80/10 = 96 (9.6kg).
 #define LOADER_MIN_BATCH_PCT              80    // % mẻ tối thiểu trong phễu nguồn mới cho auto-loader chạy
 #define LOADER_MIN_NETW                   (MACHINE_BATCH_KG * LOADER_MIN_BATCH_PCT / 10)  // ×10 kg, suy từ batch
 
@@ -258,9 +283,15 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 #define PH_PID_KD                         20000  // ×1000
 // Bộ hệ số HOLDING: BT đã đạt target, chỉ cần giữ yên — Kp nhỏ hơn tránh dao động,
 // Ki lớn hơn để triệt tiêu lệch tĩnh, Kd lớn hơn để chặn BT trôi.
+// HOLD gains: bộ THƯỜNG (đầu đốt khuếch tán). Bộ PREMIX ở cặp PH_*_PREMIX bên dưới,
+// Preheat_PID.h chọn theo burnerPremix_R lúc bắt đầu preheat.
 #define PH_PID_KP_HOLD                    5000   // ×1000 (kéo về SV, không bão hòa output ở lệch nhỏ → hết đập gas 0↔100)
 #define PH_PID_KI_HOLD                    100    // ×1000 (0.10 — triệt lệch tĩnh chậm rãi, chống windup)
 #define PH_PID_KD_HOLD                    15000  // ×1000 (dập dao động vừa đủ, bớt D giật so với 35000)
+// PREMIX: turndown hẹp → P/D mạnh đập gas 0↔35 gây limit-cycle khi giữ.
+// 3500/10000 vẫn còn ±6°C → hạ dứt khoát xuống 2000/6000 để cắt vòng rung (log 2026-07-13)
+#define PH_PID_KP_HOLD_PREMIX             2000   // ×1000
+#define PH_PID_KD_HOLD_PREMIX             6000   // ×1000
 #define PH_PID_IMAX                       100    // kẹp tích phân (đơn vị output %)
 #define PH_PID_EVAL_SEC                   1      // chu kỳ tính PID (giây)
 // Lookahead (giây): SV hiệu dụng = điểm trên đường tiến độ tại (elapsed + lookahead).
@@ -286,7 +317,7 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 // α lớn → phản ứng nhanh; α nhỏ → mượt hơn. Artisan dùng Wn≈0.1Hz (≈α≈0.4) cho D
 // và Wn≈0.35Hz (≈α≈0.75) cho output. Giá trị mặc định phù hợp chu kỳ 1s.
 #define PH_EMA_D_ALPHA                    40     // α×100 cho D term  (0.40 ≈ Artisan D filter)
-#define PH_EMA_OUT_ALPHA                  75     // α×100 cho output  (0.75 ≈ Artisan output filter)
+#define PH_EMA_OUT_ALPHA                  75     // α×100 cho output (0.75 ≈ Artisan). ĐỪNG hạ: thử 0.50 gây thêm trễ pha → BT limit-cycle ±5°C (log 2026-07-13)
 
 // ---------------------------------------------------------------------------
 // RELAY AUTOTUNE (Ziegler-Nichols) — chỉ chạy khi /pid_pre.txt CHƯA có trên SD.
@@ -294,7 +325,8 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 //   BT < SV_tune → gas = PH_TUNE_GAS_HI ; BT > SV_tune → gas = 0 + gió mạnh
 //   Ku = 4·d/(π·a) ; Kp = 0.6·Ku ; Ki = 2·Kp/Pu ; Kd = 0.125·Kp·Pu
 // ---------------------------------------------------------------------------
-#define PH_TUNE_GAS_HI                    25     // gas mức cao khi BT<SV_tune (%)
+#define PH_TUNE_GAS_HI                    25     // gas mức cao khi BT<SV_tune (%) — bộ THƯỜNG
+#define PH_TUNE_GAS_HI_PREMIX             40     // PREMIX: 40% để lửa tune vượt hẳn trần SV_tune, chạm sớm & dao động cân đối
 #define PH_TUNE_GAS_LO                    0      // gas tắt khi BT>SV_tune
 #define PH_TUNE_AIR_HI                    20     // gió nền khi đang đốt (BT<SV_tune)
 #define PH_TUNE_AIR_LO                    100    // gió tối đa hạ nhiệt (BT>SV_tune)
@@ -455,26 +487,33 @@ Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 // MỒI LỬA
 // ---------------------------------------------------------------------------
 // Chờ tín hiệu lửa tối đa bao nhiêu giây trước khi retry
-#define PH_IGNITE_TMO                     65
+#define PH_IGNITE_TMO                     60     // bộ THƯỜNG (mồi nhanh)
+#define PH_IGNITE_TMO_PREMIX             65     // PREMIX: mồi chậm ~40s → nới timeout tránh báo lỗi mồi sai
 
 // Số lần thử mồi tối đa trước khi báo lỗi IGNITE_FAIL
 #define PH_IGNITE_RETRY                   3
 
+// ── Chốt an toàn máy trạng thái rang (thêm 2026-07-30, xem skill quy-trinh-dieu-khien-may-rang) ──
+// Trần pha phát triển, PHẦN NGHÌN (300 = 30%). Chỉ kêu chuông + báo mã, KHÔNG tự xả —
+// tự xả một mẻ chưa tới nhiệt là làm hỏng mẻ.
+#define DEV_WARN_PERMIL                 300
+// Giây đứng ở STP_LOOP_2 mà cửa xả vẫn mở → coi là xi-lanh kẹt, dừng, không nạp mẻ mới.
+#define LOOP2_STUCK_SEC                  60
+// R7: giây tối thiểu kể từ lúc NẠP mới cho auto-drop và bồn nguội sớm được kích.
+// Không mẻ nào xả trong 2 phút đầu; chặn này phòng hồ sơ có nhiệt xả THẤP HƠN nhiệt nạp
+// (rang nhẹ / ca cao) làm máy bắn lệnh xả ngay khi vừa đổ hạt.
+#define DROP_MIN_SEC                    120
+
 #if MACHINE_VR_SOURCE_FROM_HMI
 #define SOURCE_AI_VR_FROM_HMI true
 #endif
+
+// ---------------------------------------------------------------------------
+// PCL_APP_WATCHDOG_EN: watchdog PC control (PC_Link).
+//   1 = app im quá PCL_APP_TMO_S giây → firmware tự nhả PC control về HMI + còi.
+//   0 = KHÔNG BAO GIỜ tự nhả (chủ máy yêu cầu 2026-07-22). Lưu ý: app treo giữa
+//       mẻ thì máy chạy tiếp setpoint cuối vô thời hạn — thợ phải tự tắt PC
+//       control trên HMI. Chốt MỒI HỤT ĐÓNG GAS vẫn hoạt động bình thường.
+// ---------------------------------------------------------------------------
+#define PCL_APP_WATCHDOG_EN               0
 ```
-
----
-
-## Checklist trước khi flash
-
-- [ ] Xác nhận board version (V400)
-- [ ] Xác nhận Modbus ID drum/gió/relay đúng dây đấu thực tế
-- [ ] Cài ô HMI `ROR_KG_W` (reg 91) hiển thị 2 số lẻ
-- [ ] `enDebug = 0` + `PREHEAT_DEBUG_EN = 0` + `PIDTUNE_DEBUG_EN = 0` (production)
-- [ ] Kiểm RAM ≤ ~85% (hiện 81.7% với profile 42 phút)
-- [ ] Chạy factory tune airflow (dựng bảng FF `/pid_ff.txt`)
-- [ ] Chạy preheat để autotune PID → lưu `/pid_pre.txt`; theo dõi HOLD (mục tiêu ±5°C)
-- [ ] Đặt maxGas an toàn cho bếp trước khi rang SAVE (sẽ lưu vào profile)
-- [ ] Thu mẻ rang thật để chỉnh thermal model + bù trừ đóng feeder theo rorKG

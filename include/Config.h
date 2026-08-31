@@ -2,7 +2,7 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang 3kg AUTO — anh HÙNG (bản cũ), board V400.
+ * Cấu hình hiện tại: máy rang 3kg AUTO M01 (bản cũ), board V400.
  * KHÔNG vacuum control (không cảm biến áp hút, không PID gió, không đọc biến tần gió),
  * KHÔNG module IO relay ngoài (relay qua GPIO onboard), KHÔNG cân loadcell/auto-loader.
  * CÓ biến trở vật lý trên board (VR) cho gió/drum/gas. Đầu đốt THƯỜNG (không premix),
@@ -30,18 +30,18 @@
 #define MACHINE_HAS_GAS_CONTROL           1  // Điều khiển gas bằng DAC và relay gas
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần (slave 4)
 #define MACHINE_HAS_AIR_INVERTER          0  // KHÔNG đọc biến tần gió qua RS485 — máy này không có vacuum
-#define MACHINE_HAS_VACUUM_SENSOR         0  // KHÔNG cảm biến áp hút — tắt PID gió theo vacuum (anh Hùng)
+#define MACHINE_HAS_VACUUM_SENSOR         0  // KHÔNG cảm biến áp hút — tắt PID gió theo vacuum
 #define MACHINE_HAS_SCALE_FEEDER          0  // KHÔNG cân loadcell — feeder chạy theo timer
-#define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard (anh Hùng)
+#define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  3  // Khối lượng mẻ rang danh định (kg) — máy 3kg auto anh Hùng
+#define MACHINE_BATCH_KG                  3  // Khối lượng mẻ rang danh định (kg) — máy 3kg auto M01
 // KHOÁ LOẠI ĐẦU ĐỐT LÚC BUILD.
 //   1 = ÉP đầu đốt THƯỜNG (khuếch tán), BỎ QUA thanh ghi HMI 29. Dùng cho máy chắc chắn
 //       không phải premix — nhất là HMI đời cũ không có ô chọn bếp, đọc reg 29 ra rác thì
 //       firmware sẽ nhảy nhầm sang bộ tham số PREMIX (gains HOLD yếu + timeout mồi 65s).
 //   0 = theo HMI như cũ (1 firmware chạy được cả 2 loại bếp).
-// Máy 3kg anh Hùng: bếp THƯỜNG → khoá bằng 1.
+// Máy 3kg M01: bếp THƯỜNG → khoá bằng 1.
 #define MACHINE_BURNER_FORCE_STANDARD     1
 
 // Loại đầu đốt do HMI chọn lúc chạy qua thanh ghi burnerPremix_R (địa chỉ 29):
@@ -278,7 +278,7 @@
 //   BT < SV_tune → gas = PH_TUNE_GAS_HI ; BT > SV_tune → gas = 0 + gió mạnh
 //   Ku = 4·d/(π·a) ; Kp = 0.6·Ku ; Ki = 2·Kp/Pu ; Kd = 0.125·Kp·Pu
 // ---------------------------------------------------------------------------
-#define PH_TUNE_GAS_HI                    50     // gas mức cao khi BT<SV_tune (%) — nâng 25→50 cho máy 3kg anh Hùng: đầu đốt cần ≥50% mới giữ được lửa, tune dưới mức đó là tắt lửa giữa chừng
+#define PH_TUNE_GAS_HI                    50     // gas mức cao khi BT<SV_tune (%) — nâng 25→50 cho máy 3kg M01: đầu đốt cần ≥50% mới giữ được lửa, tune dưới mức đó là tắt lửa giữa chừng
 #define PH_TUNE_GAS_HI_PREMIX             40     // PREMIX: 40% để lửa tune vượt hẳn trần SV_tune, chạm sớm & dao động cân đối
 #define PH_TUNE_GAS_LO                    0      // gas tắt khi BT>SV_tune
 #define PH_TUNE_AIR_HI                    20     // gió nền khi đang đốt (BT<SV_tune)
@@ -439,7 +439,7 @@
 // ---------------------------------------------------------------------------
 // MỒI LỬA
 // ---------------------------------------------------------------------------
-// Mức gas khi MỒI LỬA (%). Đầu đốt phải đủ áp gas mới bắt được lửa; máy 3kg anh Hùng
+// Mức gas khi MỒI LỬA (%). Đầu đốt phải đủ áp gas mới bắt được lửa; máy 3kg M01
 // (bếp THƯỜNG, không premix) cần TỐI THIỂU 50% — thử 40% vẫn không lên lửa. Mức này dùng cho cả trạng thái
 // IGNITE lẫn mức gas khởi đầu ngay sau khi bắt được lửa (không cho tụt xuống dưới mức
 // vừa mồi được, tránh tắt lửa ngay sau khi mồi).

@@ -1,14 +1,21 @@
-# Config preset — Hieu-30kg-bienhoa
+# Config preset — 30kg cacao M08
 
-Máy rang **30kg của anh Hiếu (Biên Hòa)** — rang cacao.
+Máy rang **30kg cacao M08**.
+
+> Cập nhật 2026-06-30: đã build + flash. Khớp với `include/Config.h` hiện tại.
+
+## Firmware build kèm theo máy này
+- **Cờ STATUS_MC (reg 92)**: đèn HMI ready(1)/not-ready(0). Boot không OK → 0; mọi thiết bị OK → 1; runtime thiết bị rớt ≥5 lần liên tiếp → về 0, đọc lại được → 1. Ghi change-gated (chỉ khi đổi). Xem `setStatusMC`/`updateStatusMC` trong Modbus_Master.h.
+- Vacuum đọc từ **biến tần gió** (`MACHINE_VACUUM_FROM_DRUM 0`).
+- Có cân + auto-loader tự học dif (`MACHINE_HAS_SCALE_FEEDER 1`).
 
 ## Đặc thù cấu hình
 
 | Mục | Giá trị | Ghi chú |
 |-----|---------|---------|
 | Mẻ danh định | 30 kg | `MACHINE_BATCH_KG 30` |
-| Cân / auto-loader | **TẮT** | `MACHINE_HAS_SCALE_FEEDER 0` — máy không lắp đầu cân; feeder chạy theo timer |
-| Nguồn đọc vacuum | **Drum (slave 4)** | `MACHINE_VACUUM_FROM_DRUM 1` — cảm biến áp suất đấu vào ngõ ACI biến tần drum |
+| Cân / auto-loader | ✅ Có | `MACHINE_HAS_SCALE_FEEDER 1` |
+| Nguồn đọc vacuum | **Gió (slave 5)** | `MACHINE_VACUUM_FROM_DRUM 0` — cảm biến áp suất đấu vào ngõ ACI biến tần gió |
 | Vacuum sensor | Có | `MACHINE_HAS_VACUUM_SENSOR 1`, PID gió |
 | Drum / Air inverter | Có | RS485 Modbus |
 | IO relay module | Không | `MACHINE_HAS_IO_RELAY_MODULE 0` |
@@ -23,9 +30,7 @@ Chép toàn bộ khối dưới đè lên [include/Config.h](include/Config.h) r
 pio run -e genericSTM32F103RC
 ```
 
-Lưu ý phụ thuộc code (đã có sẵn trong codebase hiện tại, chỉ cần Config.h là đủ):
-- `MACHINE_HAS_SCALE_FEEDER 0` cần block auto-dif trong `Program.h` được bọc `#if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)`.
-- `MACHINE_VACUUM_FROM_DRUM` cần `readUnder()` trong `Modbus_Master.h` chọn node qua `nodeVacuum`.
+`PROFILE_MAX_SECONDS` (giới hạn phút profile) nằm trong `include/Define.h`, không phải Config.h.
 
 ## Nội dung Config.h
 
@@ -34,7 +39,7 @@ Lưu ý phụ thuộc code (đã có sẵn trong codebase hiện tại, chỉ c�
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang cacao — không cân (vacuum, drum).
+ * Cấu hình hiện tại: máy rang 30kg cacao M08 — có cân, vacuum đọc từ biến tần gió.
  *
  * Đổi file này khi build firmware cho từng model máy rang khác nhau.
  * Các tùy chọn dạng bật/tắt nên giữ giá trị 0/1, trừ khi dòng chú thích
@@ -59,7 +64,7 @@ Lưu ý phụ thuộc code (đã có sẵn trong codebase hiện tại, chỉ c�
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió có nối RS485 Modbus (cần cho vacuum)
 #define MACHINE_HAS_VACUUM_SENSOR         1  // Có cảm biến áp suất hút/vacuum, dùng PID gió
-#define MACHINE_HAS_SCALE_FEEDER          0  // Có đầu cân Bluetooth cho auto loader
+#define MACHINE_HAS_SCALE_FEEDER          1  // Có đầu cân Bluetooth cho auto loader
 #define MACHINE_HAS_IO_RELAY_MODULE       0  // Có module relay ngoài qua Modbus
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
@@ -110,7 +115,7 @@ Lưu ý phụ thuộc code (đã có sẵn trong codebase hiện tại, chỉ c�
 // Dùng khi cảm biến áp suất nối vào ngõ analog ACI của biến tần drum thay vì quạt
 // gió. Cùng địa chỉ thanh ghi (AIR_INV_ACI_RAW_REGISTER) vì 2 biến tần cùng model.
 // ---------------------------------------------------------------------------
-#define MACHINE_VACUUM_FROM_DRUM          1
+#define MACHINE_VACUUM_FROM_DRUM          0
 
 // ---------------------------------------------------------------------------
 // Địa chỉ thanh ghi Modbus của biến tần drum.
@@ -126,6 +131,12 @@ Lưu ý phụ thuộc code (đã có sẵn trong codebase hiện tại, chỉ c�
 // 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
 // ---------------------------------------------------------------------------
 #define MACHINE_VR_SOURCE_FROM_HMI        0
+
+// ---------------------------------------------------------------------------
+// TREND bật SỚM trước charge (đơn vị 0.1°C: 100 = 10°C). Bật ghi trend khi BT
+// còn cách charge ngưỡng này, để đồ thị có sẵn đoạn tiến tới charge.
+// ---------------------------------------------------------------------------
+#define TREND_PRECHARGE_BAND              100
 
 // ---------------------------------------------------------------------------
 // AUTO-DIF FEEDER — đóng feeder sớm, tính theo VẬT LÝ (tốc độ hút × lượng cà):

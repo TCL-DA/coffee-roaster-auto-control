@@ -1,45 +1,89 @@
-# Config preset — 30kg-cacao-dailoan
+# Cấu hình máy 30kg auto của M03 — rang cacao
 
-Máy rang **30kg cacao Đài Loan**.
+File này lưu snapshot cấu hình để copy vào `include/Config.h` khi build firmware cho máy 30kg auto của M03, dùng để **rang cacao**.
 
-> Cập nhật 2026-06-30: đã build + flash. Khớp với `include/Config.h` hiện tại.
+> Cập nhật gần nhất: **2026-06-26** — bản chuẩn bị giao máy (production, debug tắt).
 
-## Firmware build kèm theo máy này
-- **Cờ STATUS_MC (reg 92)**: đèn HMI ready(1)/not-ready(0). Boot không OK → 0; mọi thiết bị OK → 1; runtime thiết bị rớt ≥5 lần liên tiếp → về 0, đọc lại được → 1. Ghi change-gated (chỉ khi đổi). Xem `setStatusMC`/`updateStatusMC` trong Modbus_Master.h.
-- Vacuum đọc từ **biến tần gió** (`MACHINE_VACUUM_FROM_DRUM 0`).
-- Có cân + auto-loader tự học dif (`MACHINE_HAS_SCALE_FEEDER 1`).
+---
 
-## Đặc thù cấu hình
+## Thông tin máy
 
-| Mục | Giá trị | Ghi chú |
-|-----|---------|---------|
-| Mẻ danh định | 30 kg | `MACHINE_BATCH_KG 30` |
-| Cân / auto-loader | ✅ Có | `MACHINE_HAS_SCALE_FEEDER 1` |
-| Nguồn đọc vacuum | **Gió (slave 5)** | `MACHINE_VACUUM_FROM_DRUM 0` — cảm biến áp suất đấu vào ngõ ACI biến tần gió |
-| Vacuum sensor | Có | `MACHINE_HAS_VACUUM_SENSOR 1`, PID gió |
-| Drum / Air inverter | Có | RS485 Modbus |
-| IO relay module | Không | `MACHINE_HAS_IO_RELAY_MODULE 0` |
-| Board | V400 | |
-| Preheat | PID kiểu Artisan | `PREHEAT_USE_PID 1` |
+| Trường | Giá trị |
+|--------|---------|
+| Mã máy | M03 |
+| Dung tích | 30 kg |
+| Loại | Auto |
+| Sản phẩm | Cacao |
+| Board | V400 |
+| Cân hút liệu | ✅ Có (đầu cân Bluetooth) |
+| Định dạng cân | `00.00,kg` — 2 chữ số thập phân |
+| Cân tối đa | 120 kg (đầu nguồn đầy) |
+| Lượng hút mỗi mẻ | 1–33 kg (min 1, max 33) |
+| Vacuum control | ✅ Có (PID gió qua biến tần) |
+| Biến tần drum | ✅ Có |
+| Preheat | PID kiểu Artisan (`PREHEAT_USE_PID = 1`) + relay autotune |
+| Profile tối đa | **42 phút** (`PROFILE_MAX_SECONDS = 2520`) |
 
-## Cách load lại
+---
 
-Chép toàn bộ khối dưới đè lên [include/Config.h](include/Config.h) rồi build:
+## Trạng thái firmware (session 2026-06-26)
 
-```bash
-pio run -e genericSTM32F103RC
-```
+Các thay đổi đã build + flash trong đợt chuẩn bị giao máy:
 
-`PROFILE_MAX_SECONDS` (giới hạn phút profile) nằm trong `include/Define.h`, không phải Config.h.
+### Profile / RAM
+- `PROFILE_MAX_SECONDS = 2520` → lưu/rang tối đa **42 phút**. RAM tĩnh **81.7%** (40144 byte), free ~8.8 KB. Đừng nâng quá 43′ (≥85%) / 45′ (~88.5%, nguy hiểm).
 
-## Nội dung Config.h
+### maxGas lưu theo profile
+- Rang **SAVE**: trần gas (`maxGasSet_R`) được **chốt lúc bấm Start**, lưu 1 lần vào header CSV dạng `MaxGas:NNN` (header cố định 121 byte). Chỉ +4 byte RAM (không phải mảng từng giây).
+- Rang **AUTO**: chỉ **lưu** giá trị khi load/chọn profile, **áp lúc bấm Start AUTO** (không đổi maxGas khi chỉ xem/chọn).
+- **Chống phá trần giữa mẻ**: trong rang AUTO cho **HẠ** gas, **CẤM NÂNG** maxGas vượt trần đã lưu trong profile → nâng bị kéo về trần + ghi lại HMI.
+- Tương thích ngược: profile cũ không có `MaxGas:` → `sdMaxGasLoaded = -1` → bỏ qua, giữ maxGas HMI hiện hành.
+
+### Vacuum PID quanh rang AUTO
+- Lưu trạng thái `vacuumSetFlag` **trước rang** (`roastVacFlagSaved`), khôi phục lúc **DROP/abort** (ghi cả HMI). Trước rang TẮT → sau rang tắt lại; trước rang BẬT → giữ bật.
+- Trong AUTO, profile tự bật/tắt vacuum PID qua `sdVacuumSetFlag[]`, ghi HMI mỗi giây (không bị vòng quét HMI ép ngược).
+
+### Preheat (Preheat_PID.h)
+- Đã hết **xung đột vacuum PID ↔ preheat**: lúc preheat tắt vacuum PID (ghi cả HMI để `_CP` đồng bộ), khôi phục khi xong.
+- Relay autotune ZN (Low PV, `SV_tune = FRL + (SV−FRL)×0.9`). HEAT chạy ổn.
+- **HOLD gains đã dịu** để bớt dao động: `KP_HOLD=5000`, `KI_HOLD=100`, `KD_HOLD=15000` (trước 10000/250/35000).
+- HOLD còn lắc **~±8°C** (không chạm overheat guard). Việc dở: iteration 2 — giảm lực gió làm mát HOLD (out âm) để kéo về ±4-5°C.
+
+### Factory tune airflow (PID_Airflow.h)
+- Sửa race `airflowPercent`: lúc factory tune, `analogIn()` nhường quyền (warmup ép gió=0, running = `ftCurrentAir`) → lệnh quét tới được DAC. Bảng FF Pa→Air% dựng đúng, lưu `/pid_ff.txt`.
+
+### Debug (production = TẮT hết)
+- `enDebug = 0` (Define.h).
+- `PREHEAT_DEBUG_EN = 0`, `PIDTUNE_DEBUG_EN = 0` (Config.h). UART4 sạch cho Artisan.
+- Cờ debug riêng cho từng phần, bật khi cần soi: heartbeat `[PIDTUNE]` (PID tuning) và log preheat (APPR/HOLD/TUNE...).
+
+### Khác
+- Chú thích trong `include/Define.h` đã dịch sang **tiếng Anh** (hết mojibake), code giữ nguyên byte.
+
+---
+
+## Lưu ý riêng máy này
+
+- **Cân 2 số lẻ (`00.00,kg`):** không cần define nào — parser `parseScaleWeight100` trong `include/ScaleFeeder.h` tự nhận cả 1 lẫn 2 số lẻ. `netW100` đọc chi tiết ×100 (61.35kg = 6135), `netW` giữ ×10 cho feeder/HMI.
+- **rorKG hiển thị HMI:** `rorKG` (tốc độ hút, đơn vị ×100) đẩy lên thanh ghi `ROR_KG_W` (reg 91). Đặt ô HMI 2 số lẻ để hiện `7.50 kg/phút`. Dùng tinh chỉnh bù trừ đóng feeder.
+- **Vacuum cần biến tần gió:** cảm biến vacuum đọc qua ngõ ACI của biến tần gió (`AIR_INV_ACI_RAW_REGISTER`), nên `MACHINE_HAS_AIR_INVERTER` phải = 1 cùng với `MACHINE_HAS_VACUUM_SENSOR`.
+- **Auto-loader tự học:** hút 1–33 kg/mẻ, cân nguồn max 120 kg. Bảng dif tự học theo điểm (cân, ror) lưu `/loadcfg.csv`. Chi tiết: `ref-loader-autolearn.md`.
+- **maxGas trong profile:** trần gas mỗi profile lưu riêng — chỉnh maxGas trên HMI rồi rang SAVE thì profile nhớ trần đó; lần sau rang AUTO tự áp lại.
+
+---
+
+## Config.h — đầy đủ (copy đè cả file khi build)
+
+> Cập nhật 2026-06-30: khối dưới là **toàn bộ Config.h** theo cấu trúc mới nhất, copy đè cả `include/Config.h` là build được ngay (không còn thiếu `MACHINE_BATCH_KG` / `MACHINE_VACUUM_FROM_DRUM` / preheat PID / feeder adapt).
+> Máy này: cân ✅, vacuum đọc từ **biến tần gió** (`MACHINE_VACUUM_FROM_DRUM 0`).
+> `PROFILE_MAX_SECONDS = 2520` (42 phút) nằm trong `include/Define.h`, **không** phải Config.h.
 
 ```cpp
 #pragma once
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang 30kg cacao Đài Loan — có cân, vacuum đọc từ biến tần gió.
+ * Cấu hình hiện tại: máy 30kg auto của M03 — rang cacao (có cân, vacuum, drum).
  *
  * Đổi file này khi build firmware cho từng model máy rang khác nhau.
  * Các tùy chọn dạng bật/tắt nên giữ giá trị 0/1, trừ khi dòng chú thích
@@ -131,12 +175,6 @@ pio run -e genericSTM32F103RC
 // 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
 // ---------------------------------------------------------------------------
 #define MACHINE_VR_SOURCE_FROM_HMI        0
-
-// ---------------------------------------------------------------------------
-// TREND bật SỚM trước charge (đơn vị 0.1°C: 100 = 10°C). Bật ghi trend khi BT
-// còn cách charge ngưỡng này, để đồ thị có sẵn đoạn tiến tới charge.
-// ---------------------------------------------------------------------------
-#define TREND_PRECHARGE_BAND              100
 
 // ---------------------------------------------------------------------------
 // AUTO-DIF FEEDER — đóng feeder sớm, tính theo VẬT LÝ (tốc độ hút × lượng cà):
@@ -426,3 +464,17 @@ pio run -e genericSTM32F103RC
 #define SOURCE_AI_VR_FROM_HMI true
 #endif
 ```
+
+---
+
+## Checklist trước khi flash
+
+- [ ] Xác nhận board version (V400)
+- [ ] Xác nhận Modbus ID drum/gió/relay đúng dây đấu thực tế
+- [ ] Cài ô HMI `ROR_KG_W` (reg 91) hiển thị 2 số lẻ
+- [ ] `enDebug = 0` + `PREHEAT_DEBUG_EN = 0` + `PIDTUNE_DEBUG_EN = 0` (production)
+- [ ] Kiểm RAM ≤ ~85% (hiện 81.7% với profile 42 phút)
+- [ ] Chạy factory tune airflow (dựng bảng FF `/pid_ff.txt`)
+- [ ] Chạy preheat để autotune PID → lưu `/pid_pre.txt`; theo dõi HOLD (mục tiêu ±5°C)
+- [ ] Đặt maxGas an toàn cho bếp trước khi rang SAVE (sẽ lưu vào profile)
+- [ ] Thu mẻ rang thật để chỉnh thermal model + bù trừ đóng feeder theo rorKG

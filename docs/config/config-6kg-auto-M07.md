@@ -1,4 +1,4 @@
-# Config preset — 6kg auto philipines
+# Config preset — 6kg auto M07
 
 Lưu ngày **2026-07-13**.
 

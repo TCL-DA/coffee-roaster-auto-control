@@ -10,7 +10,7 @@ Thanh ghi HMI **`burnerPremix_R`** (địa chỉ nội `burnerPremix_W = 29`, "B
 
 **1 firmware chạy cả 2 loại.** Ở `WU_IDLE` (lúc preheat nhận quyền), `Preheat_PID.h` đọc `burnerPremix_R` rồi override 4 tham số preheat sang bộ PREMIX nếu =1, ngược lại giữ bộ THƯỜNG. Người vận hành chỉ **cài trên HMI**, khỏi build lại, khỏi lo quên đổi Config. Log in `PREHEAT-PID: burner=PREMIX/NORMAL` để xác nhận.
 
-> Chỉ liên quan `PREHEAT_USE_PID = 1` (preheat PID kiểu Artisan → [include/Preheat_PID.h](../../include/Preheat_PID.h)). Máy premix đầu tiên: [config-6kg-auto-philipines.md](config-6kg-auto-philipines.md).
+> Chỉ liên quan `PREHEAT_USE_PID = 1` (preheat PID kiểu Artisan → [include/Preheat_PID.h](../../include/Preheat_PID.h)). Máy premix đầu tiên: [config-6kg-auto-M07.md](config-6kg-auto-M07.md).
 
 ## Vì sao premix cần bộ riêng
 

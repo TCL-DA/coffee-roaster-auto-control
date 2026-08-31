@@ -1,6 +1,6 @@
-# Cấu hình máy 12kg auto của anh Đức, Đắc Lắc
+# Cấu hình máy 12kg auto của M05
 
-File này lưu snapshot cấu hình để copy **đè toàn bộ** vào `include/Config.h` khi build firmware cho máy 12kg auto của anh Đức ở Đắc Lắc.
+File này lưu snapshot cấu hình để copy **đè toàn bộ** vào `include/Config.h` khi build firmware cho máy 12kg auto của M05 ở .
 
 > Cập nhật: **2026-06-30** — đồng bộ theo cấu trúc Config.h mới nhất (đủ mọi `#define`, gồm `MACHINE_BATCH_KG`, `MACHINE_VACUUM_FROM_DRUM`, preheat PID, feeder adapt). Copy cả khối là build được ngay.
 
@@ -8,7 +8,7 @@ File này lưu snapshot cấu hình để copy **đè toàn bộ** vào `include
 
 | Mục | Giá trị |
 |-----|---------|
-| Khách hàng | Anh Đức (Đắc Lắc) |
+| Mã máy | M05 |
 | Dung tích | 12 kg (`MACHINE_BATCH_KG 12`) |
 | Cân / auto-loader | ✅ Có (`MACHINE_HAS_SCALE_FEEDER 1`) |
 | Vacuum sensor | ✅ Có, đọc từ **biến tần gió** (`MACHINE_VACUUM_FROM_DRUM 0`) |
@@ -23,7 +23,7 @@ File này lưu snapshot cấu hình để copy **đè toàn bộ** vào `include
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy 12kg auto của anh Đức, Đắc Lắc.
+ * Cấu hình hiện tại: máy 12kg auto của M05.
  *
  * Đổi file này khi build firmware cho từng model máy rang khác nhau.
  * Các tùy chọn dạng bật/tắt nên giữ giá trị 0/1, trừ khi dòng chú thích
