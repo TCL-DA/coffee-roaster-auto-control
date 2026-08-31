@@ -73,6 +73,15 @@ When reporting verification, include whether compile succeeded, RAM/Flash usage,
 - Không đổi tên biến, macro, hằng Modbus, tên file, hoặc chuỗi debug sang tiếng Việt nếu không được yêu cầu.
 - Chuỗi debug/runtime in ra Serial vẫn dùng tiếng Anh để dễ đọc log kỹ thuật.
 
+## Quản lý tài sản CAD và EPLAN
+
+- **Quy ước đầy đủ (bản gốc, cho cả Claude lẫn Codex): `F:\Project\112_Quanly\121_Inventor_3D\AGENTS.md`** — đọc file đó trước khi tạo, đổi tên hay di chuyển bất cứ file 3D nào.
+- Không lưu mô hình 3D, file Inventor, STEP/STP, macro EPLAN hoặc gói EDZ trong repository firmware này.
+- File Inventor và STEP dùng cho EPLAN phải lưu tại `F:\Project\112_Quanly\121_Inventor_3D`; vật tư theo mã đặt trong `03_VatTu_3D_theo_ma\<Hang.Ma>`.
+- STEP gốc của hãng đặt trong thư mục `STEP_Hang`; IPT đã xử lý, ảnh xem trước và STEP AP214 cho EPLAN Pro Panel đặt cùng thư mục mã vật tư.
+- Macro, dữ liệu part, gói `.edz` và artefact build riêng của EPLAN phải lưu tại `F:\Project\112_Quanly\EDZ`.
+- Chỉ dùng thư mục dự án firmware làm nơi tạm trong lúc xử lý khi thật sự cần; phải chuyển kết quả sang `112_Quanly` và dọn bản tạm sau khi hoàn tất.
+
 ## Release Safety
 
 Before flashing real hardware:

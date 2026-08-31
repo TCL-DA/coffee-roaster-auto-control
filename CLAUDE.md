@@ -129,6 +129,17 @@ Loop: 87ms | Charge: 12 | Roast: 245 | CalSD: 34
 
 ---
 
+## Quản lý file 3D / Inventor / STEP / EPLAN
+
+- **Quy ước đầy đủ (bản gốc, cho cả Claude lẫn Codex): `F:\Project\112_Quanly\121_Inventor_3D\AGENTS.md`** — đọc file đó trước khi tạo, đổi tên hay di chuyển bất cứ file 3D nào.
+- Không lưu các file này trong repository firmware.
+- Inventor và STEP cho EPLAN: `F:\Project\112_Quanly\121_Inventor_3D`; vật tư theo mã nằm trong `03_VatTu_3D_theo_ma\<Hang.Ma>`.
+- STEP gốc của hãng đặt trong `STEP_Hang`; IPT đã xử lý, preview và STEP AP214 Pro Panel đặt ở thư mục mã vật tư.
+- Macro, part data, gói EDZ và build EPLAN đặt tại `F:\Project\112_Quanly\EDZ`.
+- Nếu dùng repository firmware làm nơi tạm thì phải chuyển kết quả sang `112_Quanly` và dọn bản tạm khi hoàn tất.
+
+---
+
 ## Workflow gợi ý
 
 - Trước khi sửa code lớn: dùng `/plan` để thiết kế

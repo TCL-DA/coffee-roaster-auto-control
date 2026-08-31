@@ -67,8 +67,9 @@ desktop.ini
 # Kho ngoài dự án (skill tải về, repo tham chiếu)
 _external/
 
-# Tài liệu PDF nhà sản xuất — nặng, không đưa vào git
-docs/ref/DELTA_IA-HMI_DOPSoft_UM_EN_20211230.pdf
+# Tài liệu PDF nhà sản xuất — nặng, không đưa vào git.
+# Bản chính lưu ở F:\ProjectJ_Quanly\Manuals, đừng chép lại vào repo.
+docs/ref/*.pdf
 
 # Kết quả build / đóng gói
 build/
@@ -77,3 +78,19 @@ tools/build/
 tools/dist/
 tools/appdata/
 *.spec
+
+# File 3D / CAD KHÔNG để trong repo firmware — xem CLAUDE.md.
+# Nhà của chúng là F:\ProjectJ_QuanlyQ_Inventor_3D
+CAD/
+121_Inventor_3D/
+*.ipt
+*.iam
+*.ipj
+_codex_temp/
+
+# Goi skill tai ve tu ben ngoai (khong phai cua du an nay)
+.claude/skills/skills-main/
+.claude/skills/skills-main.zip
+
+# Zip dong goi lai tu thu muc ngay ben canh - thua
+tools/ScaleSimulator_src.zip
