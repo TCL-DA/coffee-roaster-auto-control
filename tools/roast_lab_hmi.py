@@ -30,6 +30,7 @@ import otl_link                                  # noqa: E402  (cầu Modbus t�
 import roast_db                                  # noqa: E402  (kho mẻ SQLite — không mất mẻ)
 import inventory_db                              # noqa: E402  (GĐ4: kho nhân/đơn hàng/cupping/chi phí)
 import auth_otl                                  # noqa: E402  (GĐ2: kiểm PIN phía Python + pepper)
+import otl_apikey                                # noqa: E402  (GĐ B: khoá API có phạm vi cho script/AI)
 import audit_otl                                 # noqa: E402  (GĐ2: nhật ký hash-chain)
 import license_otl                               # noqa: E402  (GĐ2: license Ed25519 khoá theo máy)
 
@@ -212,7 +213,10 @@ class Api:
         self._link = otl_link.RoasterLink()
         self._lk_state = None    # trạng thái link lần trước — đổi mới ghi log, khỏi spam
         self._websrv = None      # server web LAN đang chạy (nút gạt bật/tắt trong menu)
-        self.web_cfg = {"bat": True, "cong": 8555, "pin": "1108"}  # [WebServer] trong settings.ini
+        # PIN web KHÔNG có giá trị mặc định: rỗng = chưa đặt = KHOÁ hẳn đường web.
+        # Trước 2026-09-06 mặc định "1108" — trùng luôn PIN master dùng để test,
+        # nên mọi máy giao khách đều mở sẵn cùng một PIN ai cũng đoán được.
+        self.web_cfg = {"bat": True, "cong": 8555, "pin": ""}   # [WebServer] trong settings.ini
         self.web_tokens = {}     # token → thời điểm cấp (điện thoại đã nhập đúng PIN web)
         # Kho mẻ SQLite (không mất mẻ) — DB hỏng cũng KHÔNG được chặn app mở
         self._db = None          # RoastDb — None nếu mở thất bại (app vẫn chạy)
@@ -220,6 +224,9 @@ class Api:
         self._db_bid = None      # id mẻ đang RUNNING trong DB
         self._db_t0 = 0.0        # lúc mở mẻ — chặn begin_batch gọi đúp (app + web)
         self._db_meta = {}       # meta hồ sơ mẻ đang mở (prof_no… — để trừ kho/đơn khi chốt)
+        # Khoá API cho MÁY (script/MCP/AI) — khác PIN web vốn dành cho NGƯỜI.
+        # Xem docs/plan/plan-mcp-api-extension.md §5 (ba tầng quyền).
+        self._apikeys = otl_apikey.ApiKeyStore(app_data_dir(), log=log.info)
         try:
             self._db = roast_db.RoastDb(os.path.dirname(self._state_path()), log=log.info)
             self._db.backup_daily()
@@ -566,12 +573,12 @@ class Api:
         return {"ok": count > 0, "count": count, "failed": failed,
                 "err": "" if count else "không ghi được (có thể đang rang → firmware khoá)"}
 
-    def db_batch_list(self, n=50):
+    def db_batch_list(self, n=50, query="", date_from="", date_to="", offset=0):
         """Danh sách mẻ mới nhất cho tab Lịch sử (app + web đọc chung)."""
         if not self._db:
             return None
         try:
-            return self._db.latest(n)
+            return self._db.latest(n, query, date_from, date_to, offset)
         except Exception:
             log.error("[DB] đọc lịch sử thất bại", exc_info=True)
             return None
@@ -620,6 +627,26 @@ class Api:
             return {"ok": False, "err": str(e)}
 
     # ── AUTH (GĐ2 §16.1/16.3) — kiểm PIN phía Python, không tin trình duyệt ──
+    # ── Khoá API (GĐ B) ────────────────────────────────────────────────────
+    def apikey_list(self):
+        return {"ok": True, "keys": self._apikeys.list(), "scopes": list(otl_apikey.SCOPES)}
+
+    def apikey_add(self, name, scopes):
+        """Chỉ MASTER được tạo khoá: khoá 'control' lái được gas/nạp/xả."""
+        if not self._is_master():
+            return {"ok": False, "err": "chỉ tài khoản master được tạo khoá API"}
+        return self._apikeys.add(name, scopes)
+
+    def apikey_del(self, key_id):
+        if not self._is_master():
+            return {"ok": False, "err": "chỉ tài khoản master được xoá khoá API"}
+        return self._apikeys.delete(key_id)
+
+    def apikey_toggle(self, key_id, on):
+        if not self._is_master():
+            return {"ok": False, "err": "chỉ tài khoản master được khoá/mở khoá API"}
+        return self._apikeys.set_enabled(key_id, on)
+
     def auth_state(self):
         """UI vẽ màn đăng nhập: đã setup master chưa + danh sách user (không hash)."""
         return self._auth.state() if self._auth else {"setup": False, "users": [], "nopy": True}
@@ -867,15 +894,53 @@ class Api:
             self.web_cfg = {
                 "bat":  w.get("bat", "1") != "0",
                 "cong": int(w.get("cong", "8555") or 8555),
-                "pin":  w.get("pin_dieu_khien", "1108") or "1108",
+                "pin":  (w.get("pin_dieu_khien", "") or "").strip(),
             }
         if c.has_section("BanQuyen"):
             self.web_cfg["license_enforce"] = c["BanQuyen"].get("cuong_che", "0") != "0"
+        # PIN web: chưa đặt HOẶC đang dùng một PIN yếu ai cũng biết → sinh NGẪU
+        # NHIÊN 6 số, ghi vào settings.ini để thợ đọc. Không bao giờ quay lại hằng số.
+        #
+        # Vì sao phải đổi cả PIN đã có: "1108" là mặc định ghi cứng trong mã nguồn
+        # tới 2026-09-06, nên MỌI máy đã giao đều đang mở cùng một PIN — mà PIN web
+        # là cửa dẫn thẳng tới POST /api/write, tức lái được gas/nạp/xả. Thợ đổi
+        # sang PIN khác trong settings.ini lúc nào cũng được, chỉ cần đừng dùng lại
+        # mấy số trong danh sách này.
+        if self.web_cfg.get("bat", True):
+            weak = {"", "1108", "0000", "1111", "1234", "123456", "000000"}
+            if str(self.web_cfg.get("pin") or "") in weak:
+                cu = self.web_cfg.get("pin") or "(chưa đặt)"
+                self.web_cfg["pin"] = "".join(secrets.choice("0123456789") for _ in range(6))
+                log.warning("[WEB] PIN điều khiển từ xa cũ (%s) quá yếu — ĐÃ ĐỔI. "
+                            "PIN mới nằm trong settings.ini, mục [WebServer].", cu)
 
     def prof_dir(self):
         """Thư mục lưu hồ sơ. MẶC ĐỊNH = thư mục dữ liệu cạnh exe (portable) — khỏi
         cần bấm 📁. Nút 📁 (prof_dir_pick) vẫn override sang thư mục khác nếu muốn."""
         return (self._cfg().get("prof_dir") or "").strip() or app_data_dir()
+
+    def style_export(self, package):
+        """Xuất phong cách qua hộp lưu Windows; không đụng cấu hình máy."""
+        if not self._window:
+            return {"ok": False, "err": "không có cửa sổ ứng dụng"}
+        if not isinstance(package, dict) or package.get("format") != "otl-style" or package.get("version") != 1:
+            return {"ok": False, "err": "gói phong cách không hợp lệ"}
+        body = json.dumps(package, ensure_ascii=False, indent=2)
+        if len(body.encode("utf-8")) > 1100000:
+            return {"ok": False, "err": "gói phong cách quá lớn"}
+        try:
+            selected = self._window.create_file_dialog(
+                webview.SAVE_DIALOG, save_filename="OTL-style.json",
+                file_types=("JSON (*.json)",))
+            if not selected:
+                return {"ok": False, "cancelled": True}
+            path = selected[0] if isinstance(selected, (list, tuple)) else selected
+            with open(path, "w", encoding="utf-8") as stream:
+                stream.write(body)
+            return {"ok": True}
+        except Exception:
+            log.error("[UI] Style export failed", exc_info=True)
+            return {"ok": False, "err": "không ghi được tệp phong cách"}
 
     def prof_dir_pick(self):
         """Mở hộp chọn thư mục Windows → lưu lựa chọn, trả về đường dẫn."""
@@ -1148,6 +1213,55 @@ class Api:
 # settings.ini) → cấp token 12 giờ. Stdlib thuần, không thêm thư viện.
 # ════════════════════════════════════════════════════════════════════════════
 WEB_TOKEN_TTL = 12 * 3600
+# Đếm số lần sai PIN web theo IP: {ip: (số_lần, khoá_tới_lúc)}. Phải có khoá
+# luồng vì ThreadingHTTPServer xử nhiều yêu cầu cùng lúc.
+_LOGIN_FAIL = {}
+_LOGIN_LOCK = threading.Lock()
+# Bộ hãm CHUNG theo IP cho các đường ĐỨNG TRƯỚC cổng token: {(tên, ip): [mốc giây]}
+_RATE = {}
+
+
+def _rate_ok(bucket, ip, limit, window=60.0):
+    """True nếu IP còn quota. Dùng cho đường chưa đăng nhập mà TỐN CPU hoặc dò được.
+    Ví dụ /api/pbkdf2: 150k vòng băm ≈ 108 ms CPU mỗi lần gọi, không hãm thì vài chục
+    kết nối là ghim CPU của chính máy đang bơm Modbus giữa mẻ rang."""
+    now = time.time()
+    with _LOGIN_LOCK:
+        k = (bucket, ip)
+        q = [t for t in _RATE.get(k, ()) if now - t < window]
+        if len(q) >= limit:
+            _RATE[k] = q
+            return False
+        q.append(now)
+        _RATE[k] = q
+        if len(_RATE) > 500:                     # dọn rác, khỏi phình vô hạn
+            for kk in [x for x, v in _RATE.items() if not v or now - v[-1] > window * 4]:
+                _RATE.pop(kk, None)
+        return True
+
+
+def _prune_tokens(api):
+    """Token hết hạn nằm lại trong dict mãi mãi — dọn mỗi lần cấp token mới."""
+    now = time.time()
+    for t in [t for t, ts in api.web_tokens.items() if now - ts >= WEB_TOKEN_TTL]:
+        api.web_tokens.pop(t, None)
+
+
+# Khoá "linh hồn" web được phép mượn KHI CHƯA ĐĂNG NHẬP — chỉ trang trí, không
+# có dữ liệu người dùng, không có tài khoản, không có bí quyết nghề.
+# Đường GHI nào cần phạm vi nào. Không có trong bảng = "config" (mặc định chặt).
+# LÁI MÁY tách riêng vì đây là thứ mở được van gas và bắn xi-lanh.
+SCOPE_POST = {
+    "/api/write":        "control",   # gas · gió · trống · nạp · xả · mồi lửa
+    "/api/new_batch":    "control",
+    "/api/begin_batch":  "control",
+    "/api/uievent":      "read",      # chỉ soi gương thao tác UI, không đụng máy
+    "/api/oplog":        "read",      # ghi nhật ký vận hành
+}
+SCOPE_GET = "read"
+
+SOUL_PUBLIC = {"otl_theme", "otl_accent", "otl_hue", "otl_lang",
+               "otl_accent_hex", "otl_wallpaper"}
 
 
 def start_webserver(api):
@@ -1170,7 +1284,66 @@ def start_webserver(api):
             t = api.web_tokens.get(tok or "")
             return t is not None and (time.time() - t) < WEB_TOKEN_TTL
 
+        def _tok_any(self, body_tok=None):
+            """Lấy token từ MỌI đường: header Authorization/X-OTL-Token, ?token= trên
+            URL (EventSource không đặt được header), hoặc thân JSON (đường cũ)."""
+            h = self.headers.get("Authorization", "")
+            if h.lower().startswith("bearer "):
+                return h[7:].strip()
+            h = self.headers.get("X-OTL-Token", "")
+            if h:
+                return h.strip()
+            if "?" in self.path:
+                from urllib.parse import parse_qs, urlparse
+                q = parse_qs(urlparse(self.path).query).get("token")
+                if q:
+                    return q[0]
+            return body_tok
+
+        def _v1(self):
+            """/api/v1/xxx là BÍ DANH của /api/xxx — cửa vào có đánh số bản cho
+            client ngoài (MCP, script). Đổi thẳng đường dẫn rồi dùng chung handler,
+            khỏi nhân đôi mã: hai bản sao là hai chỗ để quên vá lỗ bảo mật."""
+            if self.path.startswith("/api/v1/"):
+                self.path = "/api/" + self.path[len("/api/v1/"):]
+
+        def _ctx(self, body_tok=None):
+            """Ai đang gọi? Trả {kind, scopes, name} hoặc None.
+            · token web  = NGƯỜI đã nhập PIN → đủ mọi phạm vi (thợ đứng ngay đó)
+            · khoá API   = MÁY (script/MCP/AI) → CHỈ những phạm vi được cấp"""
+            raw = self._tok_any(body_tok)
+            if self._tok_ok(raw):
+                return {"kind": "nguoi", "scopes": list(otl_apikey.SCOPES), "name": "web"}
+            k = api._apikeys.verify(raw or "")
+            if k:
+                return {"kind": "may", "scopes": k["scopes"], "name": k["name"]}
+            return None
+
+        def _need(self, scope, body_tok=None):
+            """Kiểm quyền. Trả ctx nếu được đi tiếp, None nếu đã trả lỗi cho client."""
+            c = self._ctx(body_tok)
+            if c is None:
+                self._json({"ok": False, "err": "pin",
+                            "msg": "cần PIN web hoặc khoá API hợp lệ"}, 401)
+                return None
+            if scope not in c["scopes"]:
+                self._json({"ok": False, "err": "pham_vi",
+                            "msg": "khoá API này không có phạm vi '%s'" % scope,
+                            "co": c["scopes"]}, 403)
+                log.info("[API] từ chối '%s' — khoá '%s' thiếu phạm vi %s",
+                         self.path, c["name"], scope)
+                return None
+            return c
+
+        def _get_guard(self):
+            """Cổng cho MỌI GET /api/*. Trước 2026-09-06 đọc tự do: ai vào được WiFi
+            xưởng là lấy sạch hồ sơ rang, giá vốn, đơn hàng, danh sách thợ và trạng
+            thái máy — rồi dò PIN web để chiếm quyền ghi. Nay phải có token web.
+            Trả True nếu ĐƯỢC đi tiếp."""
+            return self._need(SCOPE_GET) is not None
+
         def do_GET(self):
+            self._v1()
             if self.path in ("/", "/index.html"):
                 try:
                     with open(html_path(), "rb") as f:
@@ -1186,6 +1359,17 @@ def start_webserver(api):
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+            elif self.path.startswith("/api/"):
+                # ── CỔNG: mọi API đọc đều cần token, trừ vài đường bootstrap ──
+                # /api/state được xử riêng bên dưới (trả phần TRANG TRÍ không cần
+                # token) vì trang web phải mượn theme/ngôn ngữ TRƯỚC khi đăng nhập.
+                if self.path != "/api/state" and not self._get_guard():
+                    return
+                self._do_get_api()
+
+        def _do_get_api(self):
+            if False:
+                pass
             elif self.path == "/api/snapshot":
                 self._json(api.link_snapshot())
             elif self.path == "/api/config":
@@ -1196,18 +1380,30 @@ def start_webserver(api):
                 # danh sách cổng COM CỦA MÁY TÍNH chạy app — web chọn từ xa được
                 self._json({"ports": otl_link.list_serial_ports()})
             elif self.path == "/api/state":
-                # web mượn "linh hồn" app (tài khoản/theme/…) — LAN nội bộ,
-                # PIN trong đó là hash PBKDF2 chứ không phải số trần
-                self._json({"state": api.state_load()})
+                # Trang web phải mượn theme/ngôn ngữ TRƯỚC khi đăng nhập, nên đường
+                # này mở — nhưng CHỈ trả phần TRANG TRÍ. Phần còn lại (tài khoản
+                # otl_users2, hồ sơ, lịch sử, nhật ký, khoá đăng nhập) đòi token.
+                # Trước 2026-09-06 trả trọn gói không cần gì: máy nào chưa di cư
+                # tài khoản sang Python là phát luôn cả salt + băm PIN ra LAN, mà
+                # PIN chỉ có 4 chữ số nên dò ngoại tuyến vài giây là ra.
+                st = api.state_load() or {}
+                if not self._tok_ok(self._tok_any()):
+                    st = {k: v for k, v in st.items() if k in SOUL_PUBLIC}
+                self._json({"state": st})
             elif self.path == "/api/profiles":
                 # web đọc CHUNG profiles.json với app — Legion/điện thoại thấy đúng
                 # hồ sơ thật, không xài bản localStorage riêng của trình duyệt
                 self._json({"profiles": api.prof_load()})
             elif self.path == "/api/naps":
                 self._json({"naps": api.nap_load()})       # công thức nạp
-            elif self.path == "/api/batches":
+            elif self.path.split("?", 1)[0] == "/api/batches":
                 # lịch sử mẻ từ kho SQLite — web xem chung với app (xem tự do)
-                self._json({"batches": api.db_batch_list(50)})
+                from urllib.parse import parse_qs, urlsplit
+                q = parse_qs(urlsplit(self.path).query)
+                self._json({"batches": api.db_batch_list(
+                    q.get("n", [50])[0], q.get("q", [""])[0],
+                    q.get("from", [""])[0], q.get("to", [""])[0],
+                    q.get("offset", [0])[0])})
             elif self.path == "/api/auth_state":
                 # màn đăng nhập web: danh sách user (KHÔNG kèm hash) — xem tự do
                 self._json(api.auth_state())
@@ -1304,18 +1500,29 @@ def start_webserver(api):
                 self._json({"err": "not found"}, 404)
 
         def do_POST(self):
+            self._v1()
             try:
                 n = int(self.headers.get("Content-Length") or 0)
                 req = json.loads(self.rfile.read(n) or b"{}")
             except Exception:
                 self._json({"ok": False, "err": "bad json"}, 400); return
 
+            _ip = self.client_address[0]
             if self.path == "/api/auth_login":
                 # đăng nhập từ web — lockout tính ở Python, KHÔNG chiếm phiên kiosk;
-                # đứng TRƯỚC cổng token vì đây chính là bước để có quyền
+                # đứng TRƯỚC cổng token vì đây chính là bước để có quyền.
+                # Khoá bên Python tính THEO TÊN tài khoản, nên vẫn phải hãm theo IP:
+                # kẻ dò có thể xoay vòng nhiều tên để né khoá của từng tên.
+                if not _rate_ok("login", _ip, 20):
+                    self._json({"ok": False, "err": "khoa",
+                                "msg": "thử quá nhiều — chờ một phút"}, 429)
+                    return
                 self._json(api.auth_verify(req.get("name"), req.get("pin")))
                 return
             if self.path == "/api/auth_setup_master":
+                if not _rate_ok("setup", _ip, 5):
+                    self._json({"ok": False, "err": "khoa"}, 429)
+                    return
                 self._json(api.auth_setup_master(req.get("pin")))
                 return
 
@@ -1323,6 +1530,10 @@ def start_webserver(api):
                 # Băm PIN giùm web LAN (trình duyệt cấm crypto.subtle ngoài HTTPS).
                 # Chỉ băm — không lộ hash lưu trữ; đứng TRƯỚC cổng token vì đây là
                 # bước để đăng nhập.
+                if not _rate_ok("pbkdf2", _ip, 10):
+                    self._json({"hash": "", "err": "khoa",
+                                "msg": "băm quá nhiều lần — chờ một phút"}, 429)
+                    return
                 import hashlib
                 try:
                     h = hashlib.pbkdf2_hmac(
@@ -1334,18 +1545,41 @@ def start_webserver(api):
                 return
 
             if self.path == "/api/weblogin":
-                if str(req.get("pin", "")) == str(api.web_cfg.get("pin", "1108")):
+                # Hãm cũ (time.sleep 1s) gần như vô dụng: ThreadingHTTPServer nên kẻ
+                # dò chạy 50 luồng song song là quét hết PIN 4 số trong vài phút.
+                # Nay KHOÁ THEO IP: sai 5 lần thì cấm 5 phút, đếm chung mọi luồng.
+                ip = self.client_address[0]
+                with _LOGIN_LOCK:
+                    n, until = _LOGIN_FAIL.get(ip, (0, 0.0))
+                    if time.time() < until:
+                        con = int(until - time.time())
+                        self._json({"ok": False, "err": "khoa",
+                                    "msg": "sai PIN nhiều lần — chờ %d giây" % con}, 429)
+                        return
+                pin = str(api.web_cfg.get("pin") or "")
+                if pin and secrets.compare_digest(str(req.get("pin", "")), pin):
+                    _prune_tokens(api)
                     tok = secrets.token_hex(16)
                     api.web_tokens[tok] = time.time()
+                    with _LOGIN_LOCK:
+                        _LOGIN_FAIL.pop(ip, None)
+                    log.info("[WEB] %s đăng nhập PIN web thành công", ip)
                     self._json({"ok": True, "token": tok})
                 else:
-                    time.sleep(1)                      # hãm dò PIN
+                    with _LOGIN_LOCK:
+                        n = _LOGIN_FAIL.get(ip, (0, 0.0))[0] + 1
+                        until = time.time() + 300 if n >= 5 else 0.0
+                        _LOGIN_FAIL[ip] = (n, until)
+                    log.info("[WEB] %s sai PIN web (lần %d)", ip, n)
+                    time.sleep(1)
                     self._json({"ok": False, "err": "sai PIN"})
                 return
 
-            # các lệnh dưới đây ĐỘNG VÀO MÁY → bắt buộc token hợp lệ
-            if not self._tok_ok(req.get("token")):
-                self._json({"ok": False, "err": "pin"}); return
+            # Các lệnh dưới đây GHI — cần đúng phạm vi. Token web (người) có đủ;
+            # khoá API chỉ được làm phần đã cấp. Mặc định "config" cho đường lạ.
+            _scope = SCOPE_POST.get(self.path, "config")
+            if self._need(_scope, req.get("token")) is None:
+                return
             if self.path == "/api/oplog":
                 self._json({"ok": api.op_log(req.get("level"), req.get("tag") or "WEB",
                                              req.get("msg") or "")})

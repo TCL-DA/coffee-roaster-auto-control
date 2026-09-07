@@ -198,6 +198,18 @@ class ModbusError(Exception):
     pass
 
 
+def _cfg_reason(status: int) -> str:
+    """Mã STATUS của khối config → lý do đọc được cho thợ.
+    Firmware tự kiểm dải và tự khoá khi máy bận, nên phải nói rõ máy từ chối vì gì."""
+    if status == CFG_STATUS["locked"]:
+        return "máy đang bận (đang rang · mồi lửa · làm nóng · còn lửa) — firmware khoá ghi $M"
+    if status == CFG_STATUS["range"]:
+        return "giá trị ngoài dải cho phép của tham số (firmware từ chối, KHÔNG tự kẹp)"
+    if status == CFG_STATUS["err"]:
+        return "số $M không hợp lệ hoặc lệnh lạ"
+    return f"máy từ chối (status={status})"
+
+
 class RoasterLink:
     """Luồng nền: poll khối ĐỌC, gửi lệnh GHI xếp hàng, tự kết nối lại."""
 
@@ -347,9 +359,10 @@ class RoasterLink:
                 time.sleep(0.03)                   # cho firmware 1-2 vòng loop (~141ms)
                 regs = self.read_regs(CFG_BASE, 4)  # [cmd, idx, val, status]
                 if regs[0] == CFG_CMD["idle"]:      # firmware đã xử xong
-                    ok = regs[3] == CFG_STATUS["ok"]
-                    self._cfg_res = {"ok": ok, "val": regs[2], "status": regs[3],
-                                     "err": "" if ok else "máy từ chối (idx sai / đang rang)"}
+                    st = regs[3]
+                    ok = st == CFG_STATUS["ok"]
+                    self._cfg_res = {"ok": ok, "val": regs[2], "status": st,
+                                     "err": "" if ok else _cfg_reason(st)}
                     return
             self._cfg_res = {"ok": False, "err": "firmware không set CMD về 0 (treo handshake)"}
         except Exception as e:
