@@ -1,0 +1,393 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OTL Roast Lab — API v1",
+    "version": "1.0.0-pcl1",
+    "description": "API điều khiển máy rang cà phê OTL.\n\n**Xác thực:** `Authorization: Bearer <khoá>`. Khoá API tạo trong app (chỉ tài khoản master), mỗi khoá có PHẠM VI riêng: `read` · `config` · `control`.\n\n**An toàn:** luật nằm ở firmware và ở API, KHÔNG ở phía client — ai cũng gọi thẳng HTTP được, nên luật đặt ở client là luật tự nguyện. Firmware kiểm dải mọi lệnh, khoá ghi cấu hình khi máy bận, và nhả quyền về HMI khi tác nhân tự động mất tín hiệu.\n\nXem docs/plan/plan-mcp-api-extension.md.\n\nKhối cấu hình $M: 52 tham số (1..52)."
+  },
+  "servers": [
+    {
+      "url": "http://<máy-chạy-app>:8555",
+      "description": "Cổng LAN của app (mặc định 8555)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Khoá API dạng `otl_…`, hoặc token lấy từ PIN web"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Đọc",
+      "description": "phạm vi read"
+    },
+    {
+      "name": "Cấu hình",
+      "description": "phạm vi config"
+    },
+    {
+      "name": "Lái máy",
+      "description": "phạm vi control — động vào lửa"
+    }
+  ],
+  "paths": {
+    "/api/v1/snapshot": {
+      "get": {
+        "tags": [
+          "Đọc"
+        ],
+        "summary": "Trạng thái máy lúc này",
+        "description": "Ảnh chụp máy rang lúc này: nhiệt, RoR, mức gas/gió/trống, bước quy trình.\n\nCác trường:\n  * `bt` — nhiệt hạt\n  * `et` — nhiệt khí\n  * `ror_bt` — RoR hạt\n  * `ror_et` — RoR khí\n  * `ror_pro` — RoR hồ sơ mẫu tại giây hiện tại\n  * `gas` — mức gas\n  * `air` — mức gió\n  * `drum` — tốc độ trống\n  * `sv` — SV nhiệt hạt\n  * `vac` — áp hút (âm = hút)\n  * `step` — progStep — bước quy trình rang\n  * `t_roast` — thời gian rang\n  * `phase` — bitmask pha rang\n  * `flags` — bitmask trạng thái nút/chế độ\n  * `hb` — heartbeat — tăng mỗi vòng loop, app dò treo\n  * `drum_hz` — tần số THẬT đọc từ biến tần trống (Drum_Freq_CP, 0.01Hz)\n  * `prof_pct` — tiến độ nạp profile SD (percentLoadProfile, 0-99 đang đọc, 100 xong)\n  * `prof_ok` — kết quả nạp profile: 0=chưa/đang nạp, 1=OK đủ điều kiện rang auto, 2=LỖI\n  * `prof_sel` — slot profile SD đang chọn (SELECT_FILE_R, 0=chưa chọn)\n  * `scale` — cân phễu netW100 (61.35kg = 6135; âm khi trôi zero)\n  * `ror_kg` — tốc độ cân rorKG (hút ra = âm, 1kg/phút = 100)\n  * `scale_tg` — cân đích netWTG_R — hút tới còn ngần này thì tự cắt (Setup kg trên HMI)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `read`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        }
+      }
+    },
+    "/api/v1/profiles": {
+      "get": {
+        "tags": [
+          "Đọc"
+        ],
+        "summary": "Danh sách hồ sơ rang",
+        "description": "",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `read`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        }
+      }
+    },
+    "/api/v1/batches": {
+      "get": {
+        "tags": [
+          "Đọc"
+        ],
+        "summary": "Các mẻ đã rang",
+        "description": "",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `read`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        }
+      }
+    },
+    "/api/v1/batch_curve": {
+      "get": {
+        "tags": [
+          "Đọc"
+        ],
+        "summary": "Đường cong một mẻ",
+        "description": "Tham số truy vấn `?id=<mã mẻ>`.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `read`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        }
+      }
+    },
+    "/api/v1/mc_read": {
+      "get": {
+        "tags": [
+          "Cấu hình"
+        ],
+        "summary": "Đọc 52 tham số $M từ máy",
+        "description": "Mỗi tham số một lượt hỏi-đáp qua khối handshake.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `read`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        }
+      }
+    },
+    "/api/v1/mc_write": {
+      "post": {
+        "tags": [
+          "Cấu hình"
+        ],
+        "summary": "Ghi tham số $M xuống máy",
+        "description": "Firmware TỰ KIỂM DẢI lần nữa và TỪ CHỐI khi máy đang bận (đang rang · mồi lửa · làm nóng · còn lửa). Từ chối chứ KHÔNG kẹp im lặng: kẹp thì thợ tưởng đã đặt 500 mà máy chạy 300.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `config`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "description": "danh sách [tên, số $M, giá trị]",
+                    "items": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/write": {
+      "post": {
+        "tags": [
+          "Lái máy"
+        ],
+        "summary": "Gửi một lệnh xuống máy rang",
+        "description": "⚠ ĐỘNG VÀO LỬA VÀ CƠ CẤU. Cần phạm vi `control`.\n\nTác nhân tự động PHẢI khai `agent=1` và nhấp `hb` mỗi giây: im quá 3 giây là firmware nhả quyền về HMI và kêu còi. Cờ `agent` CÀI THEN — khai 1 rồi thì không hạ về 0 giữa phiên để né watchdog.\n\nCác lệnh:\n  * `gas` — gas %  [0..100]\n  * `air` — gió %  [0..100]\n  * `drum` — trống %  [0..100]\n  * `sv` — SV nhiệt hạt  [0..3000]\n  * `vac` — áp hút đặt  [90..250]\n  * `ignite` — bật/tắt gas (START_GAS)  [0..1]\n  * `charge` — nạp hạt  [0..1]\n  * `drop` — xả mẻ  [0..1]\n  * `escape` — thoát  [0..1]\n  * `cool` — làm nguội  [0..1]\n  * `auto` — bật/tắt AUTO (START)  [0..1]\n  * `hb` — heartbeat app: app tăng mỗi giây; firmware không thấy đổi quá PCL_APP_TMO_S thì nhả quyền  [0..32767]\n  * `drumfan` — quạt trống (DRUM_FAN_BTN)  [0..1]\n  * `mixer` — cánh khuấy (MIXER_BTN)  [0..1]\n  * `afterburner` — buồng đốt khói (AB_BTN)  [0..1]\n  * `loader` — nạp liệu phễu (FEEDER_BTN)  [0..1]\n  * `destoner` — tách đá (DESTONER_BTN)  [0..1]\n  * `profile` — chọn slot profile SD (1-30) → firmware nạp file, theo dõi prof_pct/prof_ok  [0..30]\n  * `mode` — chế độ rang: 1=SAVE (rang lưu), 2=AUTO (phát lại profile) — đặt TRƯỚC khi bật auto  [0..2]\n  * `scale_tg` — cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R)  [0..990]\n  * `autoloader` — bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)  [0..1]\n  * `vacen` — bật/tắt PID gió theo áp hút (vacuumSetFlag). Thêm 2026-07-30: trước đây app phải đi đường $M reg 47 vì khối GHI thiếu ô này  [0..1]\n  * `agent` — tác nhân đang lái: 0=NGƯỜI (thợ bấm app) · 1=TỰ ĐỘNG (AI/script). Khai 1 là firmware siết watchdog PCL_AGENT_TMO_S giây; cờ CÀI THEN, không hạ về 0 giữa phiên để né watchdog — chỉ tắt PC control mới xoá  [0..1]",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `control`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "value"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "enum": [
+                      "gas",
+                      "air",
+                      "drum",
+                      "sv",
+                      "vac",
+                      "ignite",
+                      "charge",
+                      "drop",
+                      "escape",
+                      "cool",
+                      "auto",
+                      "hb",
+                      "drumfan",
+                      "mixer",
+                      "afterburner",
+                      "loader",
+                      "destoner",
+                      "profile",
+                      "mode",
+                      "scale_tg",
+                      "autoloader",
+                      "vacen",
+                      "agent"
+                    ]
+                  },
+                  "value": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/begin_batch": {
+      "post": {
+        "tags": [
+          "Lái máy"
+        ],
+        "summary": "Mở một mẻ mới",
+        "description": "",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "thiếu hoặc sai khoá API / PIN web"
+          },
+          "403": {
+            "description": "khoá API không có phạm vi `control`"
+          },
+          "429": {
+            "description": "gọi quá nhiều — bị hãm"
+          }
+        }
+      }
+    }
+  }
+}

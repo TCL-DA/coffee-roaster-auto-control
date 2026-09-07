@@ -29,6 +29,9 @@ SPEC = os.path.join(ROOT, "protocol", "pc_link.json")
 OUT_H = os.path.join(ROOT, "include", "PC_Link_Map.h")
 OUT_PY = os.path.join(ROOT, "tools", "pc_link_map.py")
 OUT_HTML = os.path.join(ROOT, "OTL Roast Lab.html")
+OUT_OAS = os.path.join(ROOT, "protocol", "openapi.json")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_openapi import gen_openapi          # noqa: E402
 DEFINE_H = os.path.join(ROOT, "include", "Define.h")
 
 MARK_A = "/* <<< PC_LINK MAP — SINH TỰ ĐỘNG, ĐỪNG SỬA TAY (protocol/gen_pc_link.py) */"
@@ -113,7 +116,9 @@ def gen_h(s: dict) -> str:
               f"#define PCL_CFG_READ   {cfg['cmd_read']}",
               f"#define PCL_CFG_WRITE  {cfg['cmd_write']}",
               f"#define PCL_CFG_ST_OK  {cfg['status_ok']}",
-              f"#define PCL_CFG_ST_ERR {cfg['status_err']}", ""]
+              f"#define PCL_CFG_ST_ERR {cfg['status_err']}",
+              f"#define PCL_CFG_ST_LOCKED {cfg['status_locked']}   // máy bận → từ chối ghi",
+              f"#define PCL_CFG_ST_RANGE  {cfg['status_range']}   // giá trị ngoài dải → từ chối ghi", ""]
 
     fs = s["failsafe"]
     L += ["// ── Chốt an toàn khi APP là bộ điều khiển ──────────────────────────────",
@@ -121,6 +126,8 @@ def gen_h(s: dict) -> str:
           "// app không nhấp heartbeat quá ngần này giây → nhả quyền về HMI + còi",
           f"#define PCL_FLAME_TMO_S  {fs['flame_timeout_s']}  "
           "// bật gas mà không có lửa quá ngần này giây → firmware TỰ ĐÓNG GAS",
+          f"#define PCL_AGENT_TMO_S  {fs['agent_timeout_s']}   "
+          "// TÁC NHÂN TỰ ĐỘNG (agent=1) im quá ngần này giây → nhả quyền về HMI + còi",
           ""]
 
     L += ["// ── Khối tương thích (Modbus_Slave.h) — app đọc/ghi khi máy chưa có PC_Link ──",
@@ -235,7 +242,8 @@ def gen_py(s: dict) -> str:
         L += ["}",
               f"CFG_MAXIDX = {cfg['count']}",
               f"CFG_CMD = {{'idle': {cfg['cmd_idle']}, 'read': {cfg['cmd_read']}, 'write': {cfg['cmd_write']}}}",
-              f"CFG_STATUS = {{'busy': {cfg['status_busy']}, 'ok': {cfg['status_ok']}, 'err': {cfg['status_err']}}}",
+              f"CFG_STATUS = {{'busy': {cfg['status_busy']}, 'ok': {cfg['status_ok']}, 'err': {cfg['status_err']},"
+              f" 'locked': {cfg['status_locked']}, 'range': {cfg['status_range']}}}",
               ""]
 
     fs = s["failsafe"]
@@ -286,7 +294,8 @@ def gen_js(s: dict) -> str:
             "reg": {r["key"]: cfg["base"] + i for i, r in enumerate(cfg["regs"])},
             "maxIdx": cfg["count"],
             "cmd": {"idle": cfg["cmd_idle"], "read": cfg["cmd_read"], "write": cfg["cmd_write"]},
-            "status": {"busy": cfg["status_busy"], "ok": cfg["status_ok"], "err": cfg["status_err"]},
+            "status": {"busy": cfg["status_busy"], "ok": cfg["status_ok"], "err": cfg["status_err"],
+                       "locked": cfg["status_locked"], "range": cfg["status_range"]},
         }
         cfg_js = "const PCL_CFG=" + json.dumps(cfg_obj, ensure_ascii=False) + ";"
     lines = [
@@ -332,7 +341,8 @@ def main():
         pass
 
     s = load()
-    targets = [(OUT_H, gen_h(s)), (OUT_PY, gen_py(s)), (OUT_HTML, html_with(gen_js(s)))]
+    targets = [(OUT_H, gen_h(s)), (OUT_PY, gen_py(s)), (OUT_HTML, html_with(gen_js(s))),
+               (OUT_OAS, gen_openapi(s))]
 
     # đối chiếu progStep với Define.h — bắt ca đổi quy trình firmware mà quên giao thức
     problems = []

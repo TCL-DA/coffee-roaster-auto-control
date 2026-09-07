@@ -10,7 +10,7 @@ BAUD_DEFAULT = 9600
 SLAVE_DEFAULT = 1
 
 R_BASE, R_COUNT = 100, 22
-W_BASE, W_COUNT = 140, 22
+W_BASE, W_COUNT = 140, 23
 
 # tên → chỉ số trong khối GHI (offset từ W_BASE)
 W_INDEX = {
@@ -36,6 +36,7 @@ W_INDEX = {
     "scale_tg": 19,
     "autoloader": 20,
     "vacen": 21,
+    "agent": 22,
 }
 
 # giới hạn kẹp phía PC (firmware kẹp lần nữa — clamp 2 tầng)
@@ -62,10 +63,11 @@ W_RANGE = {
     "scale_tg": (0, 990),   # cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R)
     "autoloader": (0, 1),   # bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)
     "vacen": (0, 1),   # bật/tắt PID gió theo áp hút (vacuumSetFlag). Thêm 2026-07-30: trước đây app phải đi đường $M reg 47 vì khối GHI thiếu ô này
+    "agent": (0, 1),   # tác nhân đang lái: 0=NGƯỜI (thợ bấm app) · 1=TỰ ĐỘNG (AI/script). Khai 1 là firmware siết watchdog PCL_AGENT_TMO_S giây; cờ CÀI THEN, không hạ về 0 giữa phiên để né watchdog — chỉ tắt PC control mới xoá
 }
 
 # hệ số ghi: giá trị kỹ thuật × scale = số gửi xuống máy
-W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1, "drumfan": 1, "mixer": 1, "afterburner": 1, "loader": 1, "destoner": 1, "profile": 1, "mode": 1, "scale_tg": 10, "autoloader": 1, "vacen": 1}
+W_SCALE = {"gas": 1, "air": 1, "drum": 1, "sv": 10, "vac": 1, "ignite": 1, "charge": 1, "drop": 1, "escape": 1, "cool": 1, "auto": 1, "hb": 1, "drumfan": 1, "mixer": 1, "afterburner": 1, "loader": 1, "destoner": 1, "profile": 1, "mode": 1, "scale_tg": 10, "autoloader": 1, "vacen": 1, "agent": 1}
 
 PHASE_BITS = {
     "dry": 0x01,   # đã qua TP  (progStep >= STP_TP)
@@ -182,17 +184,18 @@ CFG_REG = {
     "cmd": 170,   # 0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)
     "idx": 171,   # số $M cần đọc/ghi (1..52)
     "val": 172,   # giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)
-    "status": 173,   # 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai hoặc đang rang → khoá ghi)
+    "status": 173,   # 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải cho phép của tham số
 }
 CFG_MAXIDX = 52
 CFG_CMD = {'idle': 0, 'read': 1, 'write': 2}
-CFG_STATUS = {'busy': 0, 'ok': 1, 'err': 2}
+CFG_STATUS = {'busy': 0, 'ok': 1, 'err': 2, 'locked': 3, 'range': 4}
 
 # Chốt an toàn khi app là bộ điều khiển
 FAILSAFE = {
     "app_timeout_s": 3,
     "on_app_lost": 'release_to_hmi',
     "flame_timeout_s": 75,
+    "agent_timeout_s": 3,
 }
 
 

@@ -605,13 +605,21 @@
         "max": 1,
         "scale": 1,
         "desc": "bật/tắt PID gió theo áp hút (vacuumSetFlag). Thêm 2026-07-30: trước đây app phải đi đường $M reg 47 vì khối GHI thiếu ô này"
+      },
+      {
+        "key": "agent",
+        "c": "AGENT",
+        "min": 0,
+        "max": 1,
+        "scale": 1,
+        "desc": "tác nhân đang lái: 0=NGƯỜI (thợ bấm app) · 1=TỰ ĐỘNG (AI/script). Khai 1 là firmware siết watchdog PCL_AGENT_TMO_S giây; cờ CÀI THEN, không hạ về 0 giữa phiên để né watchdog — chỉ tắt PC control mới xoá"
       }
     ]
   },
   "config": {
     "base": 170,
     "count": 52,
-    "comment": "Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi đang rang. Xem khối config trong PC_Link.h.",
+    "comment": "Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi máy bận (rang·mồi lửa·làm nóng·còn lửa) và bị TỪ CHỐI khi giá trị ngoài dải — firmware KHÔNG tin app, tự kiểm dải lần nữa. Xem khối config trong PC_Link.h.",
     "regs": [
       {
         "key": "cmd",
@@ -631,7 +639,7 @@
       {
         "key": "status",
         "c": "STATUS",
-        "desc": "0=đang xử/chưa · 1=OK · 2=lỗi (idx sai hoặc đang rang → khoá ghi)"
+        "desc": "0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải cho phép của tham số"
       }
     ],
     "cmd_idle": 0,
@@ -639,7 +647,9 @@
     "cmd_write": 2,
     "status_busy": 0,
     "status_ok": 1,
-    "status_err": 2
+    "status_err": 2,
+    "status_locked": 3,
+    "status_range": 4
   },
   "failsafe": {
     "_doc": [
@@ -654,6 +664,13 @@
       "Chốt cứng chống xả gas sống: app bật ignition mà quá ngần này giây vẫn không có",
       "gasSignal → firmware tự đóng gas + báo cờ flame_fail. Bếp premix mồi chậm ~40s",
       "(PH_IGNITE_TMO_PREMIX 65s) nên để rộng hơn một nhịp."
+    ],
+    "agent_timeout_s": 3,
+    "_agent_note": [
+      "Watchdog CHỈ siết khi phần mềm tự khai agent=1 (tác nhân tự động).",
+      "Người lái app giữ nguyên hành vi cũ: KHÔNG BAO GIỜ tự nhả (lệnh chủ máy 2026-07-22)",
+      "— thợ đứng cạnh máy, nhả quyền giữa mẻ phiền hơn là giúp.",
+      "AI thì không đứng cạnh máy: treo/hết quota/mất mạng là im lặng, nên phải có van này."
     ]
   },
   "bitmaps": {

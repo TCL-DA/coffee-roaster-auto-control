@@ -58,7 +58,7 @@
 #define PCLF_DESTONER    0x4000   // DESTONER_BTN_R — tách đá đang bật
 #define PCLF_AUTOLOADER  0x8000   // autoLoader_R — chế độ tự cân đang bật
 
-// ── Khối GHI (app → máy) — 140..161 ──
+// ── Khối GHI (app → máy) — 140..162 ──
 // App → máy. CHỈ áp dụng khi PC_CONTROL_BTN_R == 1 (cờ pc_control). Base 140 vì khối ĐỌC đã lấn tới 121 — base 120 cũ làm RORKG/SCALETG đè nát ô lệnh gas/gió mỗi vòng loop (bug 2026-07-23).
 #define PCL_W_BASE     140
 #define PCL_W_GAS          (PCL_W_BASE + 0 )  // gas %  [0..100]
@@ -83,19 +83,20 @@
 #define PCL_W_SCALETG      (PCL_W_BASE + 19)  // cân đích kg (Setup trên HMI) — app gửi kg, ×10 xuống máy (netWTG_R) ×10  [0..990]
 #define PCL_W_AUTOLOADER   (PCL_W_BASE + 20)  // bật/tắt Auto loader (tự cân mẻ kế khi rang AUTO loop)  [0..1]
 #define PCL_W_VACEN        (PCL_W_BASE + 21)  // bật/tắt PID gió theo áp hút (vacuumSetFlag). Thêm 2026-07-30: trước đây app phải đi đường $M reg 47 vì khối GHI thiếu ô này  [0..1]
-#define PCL_W_COUNT    22
+#define PCL_W_AGENT        (PCL_W_BASE + 22)  // tác nhân đang lái: 0=NGƯỜI (thợ bấm app) · 1=TỰ ĐỘNG (AI/script). Khai 1 là firmware siết watchdog PCL_AGENT_TMO_S giây; cờ CÀI THEN, không hạ về 0 giữa phiên để né watchdog — chỉ tắt PC control mới xoá  [0..1]
+#define PCL_W_COUNT    23
 
 // Giới hạn kẹp phía firmware — tầng 2 của clamp 2 tầng (app kẹp tầng 1)
-static const int16_t PCL_W_MIN[PCL_W_COUNT] = {0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1, 1, 1, 1, 32767, 1, 1, 1, 1, 1, 30, 2, 990, 1, 1};
+static const int16_t PCL_W_MIN[PCL_W_COUNT] = {0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1, 1, 1, 1, 32767, 1, 1, 1, 1, 1, 30, 2, 990, 1, 1, 1};
 
 // ── Khối CẤU HÌNH $M (handshake app↔máy) — 170..173 ──
-// Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi đang rang. Xem khối config trong PC_Link.h.
+// Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi máy bận (rang·mồi lửa·làm nóng·còn lửa) và bị TỪ CHỐI khi giá trị ngoài dải — firmware KHÔNG tin app, tự kiểm dải lần nữa. Xem khối config trong PC_Link.h.
 #define PCL_CFG_BASE   170
 #define PCL_CFG_CMD     (PCL_CFG_BASE + 0)  // 0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)
 #define PCL_CFG_IDX     (PCL_CFG_BASE + 1)  // số $M cần đọc/ghi (1..52)
 #define PCL_CFG_VAL     (PCL_CFG_BASE + 2)  // giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)
-#define PCL_CFG_STATUS  (PCL_CFG_BASE + 3)  // 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai hoặc đang rang → khoá ghi)
+#define PCL_CFG_STATUS  (PCL_CFG_BASE + 3)  // 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải cho phép của tham số
 #define PCL_CFG_COUNT  4
 #define PCL_CFG_MAXIDX 52   // số $M lớn nhất (idx hợp lệ 1..MAXIDX)
 #define PCL_CFG_IDLE   0
@@ -103,10 +104,13 @@ static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1
 #define PCL_CFG_WRITE  2
 #define PCL_CFG_ST_OK  1
 #define PCL_CFG_ST_ERR 2
+#define PCL_CFG_ST_LOCKED 3   // máy bận → từ chối ghi
+#define PCL_CFG_ST_RANGE  4   // giá trị ngoài dải → từ chối ghi
 
 // ── Chốt an toàn khi APP là bộ điều khiển ──────────────────────────────
 #define PCL_APP_TMO_S    3   // app không nhấp heartbeat quá ngần này giây → nhả quyền về HMI + còi
 #define PCL_FLAME_TMO_S  75  // bật gas mà không có lửa quá ngần này giây → firmware TỰ ĐÓNG GAS
+#define PCL_AGENT_TMO_S  3   // TÁC NHÂN TỰ ĐỘNG (agent=1) im quá ngần này giây → nhả quyền về HMI + còi
 
 // ── Khối tương thích (Modbus_Slave.h) — app đọc/ghi khi máy chưa có PC_Link ──
 // Không định nghĩa lại địa chỉ; chỉ ĐỐI CHIẾU để spec không lệch khỏi firmware.
