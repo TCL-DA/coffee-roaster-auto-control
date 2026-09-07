@@ -2,11 +2,14 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang 3kg AUTO M01 (bản cũ), board V400.
- * KHÔNG vacuum control (không cảm biến áp hút, không PID gió, không đọc biến tần gió),
- * KHÔNG module IO relay ngoài (relay qua GPIO onboard), KHÔNG cân loadcell/auto-loader.
- * CÓ biến trở vật lý trên board (VR) cho gió/drum/gas. Đầu đốt THƯỜNG (không premix),
- * cần TỐI THIỂU 50% gas mới lên được lửa → PH_IGNITE_GAS 50.
+ * Cấu hình hiện tại: máy rang OTL-15-AUTO (15 kg, tự động) — mã hồ sơ M09.
+ *   Cụm đi kèm: OL-120-AUTO (hút liệu 120 kg) + OD-15-V2 (tách đá) + AF-15-ĐỨNG (đốt khói).
+ *   Bộ nạp liệu OL-120-AUTO dùng XI LANH ĐIỆN 30 mm/s, hành trình 30 mm.
+ *   (Seri máy và khách hàng: xem bảng tra ngoài repo, 112_Quanly\BANG-TRA-MA-MAY.md)
+ * CÓ vacuum control (cảm biến áp hút + PID gió qua biến tần gió RS485),
+ * CÓ biến tần drum, CÓ đầu cân Bluetooth cho auto-loader.
+ * KHÔNG module IO relay ngoài (relay qua GPIO onboard).
+ * Loại đầu đốt do HMI chọn lúc chạy (reg 29) — không khoá lúc build.
  *
  * Đổi file này khi build firmware cho từng model máy rang khác nhau.
  * Các tùy chọn dạng bật/tắt nên giữ giá trị 0/1, trừ khi dòng chú thích
@@ -29,20 +32,20 @@
 #define MACHINE_HAS_AIRFLOW_CONTROL       1  // Điều khiển gió bằng DAC/phần trăm gió
 #define MACHINE_HAS_GAS_CONTROL           1  // Điều khiển gas bằng DAC và relay gas
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần (slave 4)
-#define MACHINE_HAS_AIR_INVERTER          0  // KHÔNG đọc biến tần gió qua RS485 — máy này không có vacuum
-#define MACHINE_HAS_VACUUM_SENSOR         0  // KHÔNG cảm biến áp hút — tắt PID gió theo vacuum
-#define MACHINE_HAS_SCALE_FEEDER          0  // KHÔNG cân loadcell — feeder chạy theo timer
+#define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió nối RS485 Modbus (cần cho vacuum)
+#define MACHINE_HAS_VACUUM_SENSOR         1  // Có cảm biến áp suất hút/vacuum, dùng PID gió
+#define MACHINE_HAS_SCALE_FEEDER          1  // Có đầu cân Bluetooth cho auto-loader
 #define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  3  // Khối lượng mẻ rang danh định (kg) — máy 3kg auto M01
+#define MACHINE_BATCH_KG                  15 // Khối lượng mẻ rang danh định (kg) — máy OTL-15-AUTO (suy ngưỡng auto-loader: 15×80/10 = 12.0kg)
 // KHOÁ LOẠI ĐẦU ĐỐT LÚC BUILD.
 //   1 = ÉP đầu đốt THƯỜNG (khuếch tán), BỎ QUA thanh ghi HMI 29. Dùng cho máy chắc chắn
 //       không phải premix — nhất là HMI đời cũ không có ô chọn bếp, đọc reg 29 ra rác thì
 //       firmware sẽ nhảy nhầm sang bộ tham số PREMIX (gains HOLD yếu + timeout mồi 65s).
 //   0 = theo HMI như cũ (1 firmware chạy được cả 2 loại bếp).
-// Máy 3kg M01: bếp THƯỜNG → khoá bằng 1.
-#define MACHINE_BURNER_FORCE_STANDARD     1
+// Máy 30kg M03: HMI có ô chọn bếp → để 0, theo HMI như cũ.
+#define MACHINE_BURNER_FORCE_STANDARD     0
 
 // Loại đầu đốt do HMI chọn lúc chạy qua thanh ghi burnerPremix_R (địa chỉ 29):
 //   0 = đầu đốt thường (khuếch tán), 1 = đầu đốt premix (khí+gió trộn sẵn).
@@ -190,7 +193,57 @@
 //
 // CHỈNH KHI LỆCH ĐỀU MỘT CHIỀU: hút thiếu → giảm số này; hút dư → tăng. Đúng bằng lượng
 // lệch (0.20 kg = 20). KHÔNG cần đụng gì khác.
-#define FEEDER_DIF_FIXED                  100
+// ── dif THỦ CÔNG + TỰ HIỆU CHUẨN TRONG RAM (2026-09-05) ────────────────────
+// FEEDER_DIF_MANUAL
+//   1 = dif tính bằng công thức dưới đây, tự chỉnh theo sai số đo được sau MỖI mẻ.
+//       KHÔNG tra bảng /loadcfg.csv, KHÔNG ghi thẻ SD — loader không đụng thẻ.
+//   0 = quay lại hành vi cũ (tra bảng + tự học, có ghi thẻ). Đổi 1 số này là lùi được ngay.
+//
+// dif = lượng cắt SỚM để bù coast (cà còn rơi trong lúc cửa phễu đóng):
+//
+//     dif (×100 kg) = coastBase100 + set(kg) × FEEDER_COAST_PER_KG / 1000
+//                     └── biến RAM, TỰ HỌC ──┘   └── độ dốc theo cỡ mẻ, cố định ──┘
+//
+// MỘT FIRMWARE CHO CẢ XI LANH KHÍ LẪN XI LANH ĐIỆN. coastBase100 khởi động từ SEED rồi
+// tự bò về đúng giá trị của máy: sau mỗi mẻ firmware đã đo được sai số (err = thực tế −
+// đích, >0 là hút thiếu) nên chỉ việc kéo base đi ngược lại sai số đó.
+//
+// Vì sao PHẢI tự học chứ không đặt sẵn 2 bộ số: coast KHÔNG suy ra được từ tốc độ đóng.
+// Đo thật cùng mẻ 10 kg: xi lanh KHÍ (đóng ~0,5 s) coast 1,00 kg, xi lanh ĐIỆN (đóng 1,0 s)
+// coast 0,79 kg — đóng CHẬM hơn mà coast NHỎ hơn, ngược hẳn mô hình lưu-lượng×thời-gian.
+// Coast còn phụ thuộc hình học cửa, độ chân không, độ ẩm hạt... nên chỉ có đo trên máy
+// mới ra đúng. Firmware tự đo thì lắp cơ cấu gì cũng chạy, khỏi hiệu chuẩn tay.
+//
+// Dữ liệu đã đo (dùng để chọn SEED và độ dốc):
+//   xi lanh ĐIỆN 30 mm/s × 30 mm — 18 mẻ 05/09/2026:
+//     mẻ 2 kg → coast 0,70 · 5 kg → 0,78 · 10 kg → 0,79 · 15 kg → 0,82   (dốc rõ)
+//   xi lanh KHÍ — 7 mẻ log serial + 18 lần cân tay 17/08/2026:
+//     mẻ 5/10/20 kg → coast ≈ 1,00 ở cả ba mức (phẳng, lệch chuẩn 0,05)
+// SEED 85 = điểm giữa hai máy → mẻ đầu sau khi bật điện lệch nhiều nhất 0,15 kg về một
+// phía bất kỳ, thay vì 0,29 kg nếu ghim theo một loại máy.
+//
+// PER_KG giữ cố định 8 (0,008 kg mỗi kg mẻ): độ dốc chỉ đáng 0,12 kg trên toàn dải 2–15 kg,
+// nhỏ hơn nhiều so với chênh lệch base giữa hai máy (0,29 kg) nên không đáng học riêng —
+// học 2 tham số cùng lúc sẽ chậm hội tụ và dễ đuổi theo nhiễu. Đặt 0 là bỏ độ dốc.
+//
+// CHỈNH KHI CẦN:
+//   • Máy hụt/dư ĐỀU ở mọi cỡ mẻ → KHÔNG cần làm gì, firmware tự sửa trong 2–3 mẻ.
+//   • Mẻ NHỎ đúng mà mẻ LỚN lệch (hoặc ngược lại) → đổi PER_KG. Tăng 10 thì mẻ 15 kg hụt
+//     thêm 0,10 kg so với mẻ 5 kg.
+//   • Chạy ổn định rồi, muốn hết cả sai số mẻ đầu → đọc "base=" trong log LDR rồi chép
+//     con số đó vào SEED và build lại.
+#define FEEDER_DIF_MANUAL                 1
+#define FEEDER_COAST_SEED100              85    // ×100 kg: base lúc khởi động (điểm giữa khí↔điện)
+#define FEEDER_COAST_PER_KG               8     // ×0.001 kg: dif tăng thêm cho MỖI kg cỡ mẻ
+
+// Tốc độ tự học base. err (×100 kg) đo được sau mỗi mẻ → base -= err × GAIN / 100.
+//   GAIN 60 = sửa 60% sai số mỗi mẻ. Máy lệch 0,29 kg hội tụ sau 2 mẻ (0,29 → 0,12 → lọt
+//   deadband). Cao hơn thì đuổi theo nhiễu cân (độ lặp lại đo được của máy là ±0,035 kg),
+//   thấp hơn thì mẻ đầu ngày lệch lâu. Deadband dùng chung tiêu chí "hút OK" sẵn có
+//   (lệch ≤ 0,09 kg thì coi như đạt, KHÔNG sửa base) nên base đứng yên khi máy đang chạy đúng.
+#define FEEDER_LEARN_GAIN                 60
+#define FEEDER_COAST_MIN100               40    // kẹp dưới base (×100 kg) — chặn học loạn
+#define FEEDER_COAST_MAX100              150    // kẹp trên base (×100 kg)
 #define LOADER_CSV_MAX                    400   // số dòng hút gần nhất tối đa giữ trong loader.csv
 #define FEEDER_MIN_BATCH100               50    // ×100 kg: mẻ hút nhỏ hơn 0.5kg coi là nhiễu → bỏ học+log (mẻ thật tối thiểu 1kg)
 // Ngưỡng cho auto-loader chạy: phễu nguồn phải còn ≥ LOADER_MIN_BATCH_PCT% của 1 mẻ rang.
@@ -278,7 +331,7 @@
 //   BT < SV_tune → gas = PH_TUNE_GAS_HI ; BT > SV_tune → gas = 0 + gió mạnh
 //   Ku = 4·d/(π·a) ; Kp = 0.6·Ku ; Ki = 2·Kp/Pu ; Kd = 0.125·Kp·Pu
 // ---------------------------------------------------------------------------
-#define PH_TUNE_GAS_HI                    50     // gas mức cao khi BT<SV_tune (%) — nâng 25→50 cho máy 3kg M01: đầu đốt cần ≥50% mới giữ được lửa, tune dưới mức đó là tắt lửa giữa chừng
+#define PH_TUNE_GAS_HI                    25     // gas mức cao khi BT<SV_tune (%)
 #define PH_TUNE_GAS_HI_PREMIX             40     // PREMIX: 40% để lửa tune vượt hẳn trần SV_tune, chạm sớm & dao động cân đối
 #define PH_TUNE_GAS_LO                    0      // gas tắt khi BT>SV_tune
 #define PH_TUNE_AIR_HI                    20     // gió nền khi đang đốt (BT<SV_tune)
@@ -439,11 +492,10 @@
 // ---------------------------------------------------------------------------
 // MỒI LỬA
 // ---------------------------------------------------------------------------
-// Mức gas khi MỒI LỬA (%). Đầu đốt phải đủ áp gas mới bắt được lửa; máy 3kg M01
-// (bếp THƯỜNG, không premix) cần TỐI THIỂU 50% — thử 40% vẫn không lên lửa. Mức này dùng cho cả trạng thái
-// IGNITE lẫn mức gas khởi đầu ngay sau khi bắt được lửa (không cho tụt xuống dưới mức
-// vừa mồi được, tránh tắt lửa ngay sau khi mồi).
-#define PH_IGNITE_GAS                     50
+// Mức gas khi MỒI LỬA (%). Mức này dùng cho cả trạng thái IGNITE lẫn mức gas khởi đầu
+// ngay sau khi bắt được lửa (không cho tụt xuống dưới mức vừa mồi được, tránh tắt lửa
+// ngay sau khi mồi). Máy 30kg M03: giữ 30 — đúng con số ghi cứng trong bản đã chạy máy.
+#define PH_IGNITE_GAS                     30
 
 // Chờ tín hiệu lửa tối đa bao nhiêu giây trước khi retry
 #define PH_IGNITE_TMO                     60     // bộ THƯỜNG (mồi nhanh)
@@ -468,10 +520,21 @@
 #endif
 
 // ---------------------------------------------------------------------------
-// PCL_APP_WATCHDOG_EN: watchdog PC control (PC_Link).
-//   1 = app im quá PCL_APP_TMO_S giây → firmware tự nhả PC control về HMI + còi.
-//   0 = KHÔNG BAO GIỜ tự nhả (chủ máy yêu cầu 2026-07-22). Lưu ý: app treo giữa
-//       mẻ thì máy chạy tiếp setpoint cuối vô thời hạn — thợ phải tự tắt PC
-//       control trên HMI. Chốt MỒI HỤT ĐÓNG GAS vẫn hoạt động bình thường.
+// PCL_APP_WATCHDOG_EN: watchdog PC control (PC_Link) — THEO TẦNG, từ 2026-09-06.
+//
+// Bật (1) KHÔNG đổi gì với thợ lái app: watchdog chỉ siết khi phần mềm TỰ KHAI
+// mình là tác nhân tự động (ghi PCL_W_AGENT = 1). Lệnh cũ của chủ máy — "người
+// lái thì không bao giờ tự nhả" (2026-07-22) — vẫn giữ nguyên, vì thợ đứng ngay
+// cạnh máy, nhả quyền giữa mẻ phiền hơn là giúp.
+//
+// Lý do phải có tầng cho tác nhân tự động: AI/script KHÔNG đứng cạnh máy. Nó
+// treo, hết quota hay đứt mạng thì im lặng, mà máy không biết là nó đã im —
+// gas cứ cháy ở mức lệnh cuối. Nên agent=1 thì siết PCL_AGENT_TMO_S giây.
+// Cờ agent CÀI THEN: khai 1 rồi thì không hạ về 0 giữa phiên để né watchdog.
+//
+//   1 = bật tầng tác nhân tự động (KHUYẾN NGHỊ — không ảnh hưởng thợ lái tay)
+//   0 = tắt hẳn, kể cả tác nhân tự động cũng không bị nhả quyền
+//
+// Chốt MỒI HỤT ĐÓNG GAS (PCL_FLAME_TMO_S) chạy độc lập, không liên quan cờ này.
 // ---------------------------------------------------------------------------
-#define PCL_APP_WATCHDOG_EN               0
+#define PCL_APP_WATCHDOG_EN               1

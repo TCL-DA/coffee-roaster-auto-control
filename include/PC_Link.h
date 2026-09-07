@@ -90,6 +90,7 @@ static bool     pclFlameFail  = false;   // đã đóng gas vì mồi hụt
 static uint16_t pclLastAppHb  = 0;
 static uint32_t pclAppSeenMs  = 0;       // lần cuối thấy app nhấp heartbeat
 static uint32_t pclGasOnMs    = 0;       // lúc gas được bật mà chưa có lửa
+static bool     pclAgentLatch = false;   // phần mềm ĐÃ tự khai là tác nhân tự động
 
 static void pclSafety(){
     const uint32_t now = millis();
@@ -102,19 +103,30 @@ static void pclSafety(){
         pclAppLost   = false;
     }
 #if PCL_APP_WATCHDOG_EN
+    // THEN CÀI: phần mềm khai agent=1 một lần là giữ nguyên chế độ siết tới khi
+    // tắt PC control. Không cho hạ về 0 giữa phiên — nếu không, một tác nhân
+    // sắp treo chỉ cần ghi 0 là thoát được watchdog.
+    if (mbs.Hreg(PCL_W_AGENT) == 1) pclAgentLatch = true;
+
     if (PC_CONTROL_BTN_R == 1) {
         if (pclAppSeenMs == 0) pclAppSeenMs = now;   // vừa bật PC control, cho app 1 nhịp
-        if (!pclAppLost && (now - pclAppSeenMs) > (uint32_t)PCL_APP_TMO_S * 1000UL) {
+        // Watchdog CHỈ siết với TÁC NHÂN TỰ ĐỘNG. Thợ lái app giữ nguyên hành vi
+        // cũ (không bao giờ tự nhả — lệnh chủ máy 2026-07-22): thợ đứng cạnh máy,
+        // nhả quyền giữa mẻ phiền hơn là giúp. AI thì không đứng cạnh máy.
+        if (pclAgentLatch && !pclAppLost &&
+            (now - pclAppSeenMs) > (uint32_t)PCL_AGENT_TMO_S * 1000UL) {
             pclAppLost = true;
             nodeHMI.writeSingleRegister(PC_CONTROL_BTN_W - 1, 0);   // trả quyền cho HMI
             buzzerTimerEn = 1;                                      // gọi thợ
-            SerialComputer.println("=> PC_Link: mat app -> nha quyen ve HMI");
+            SerialComputer.println("=> PC_Link: mat tac nhan tu dong -> nha quyen ve HMI");
         }
     } else {
-        pclAppSeenMs = 0;
+        pclAppSeenMs  = 0;
+        pclAgentLatch = false;   // tắt PC control = xoá then, phiên sau khai lại
+        pclAppLost    = false;
     }
 #else
-    (void)now;   // watchdog TẮT theo Config.h — PC control không bao giờ tự nhả
+    (void)now;   // watchdog TẮT hẳn theo Config.h
 #endif
 
     // ── 2) Mồi hụt → đóng gas ──────────────────────────────────────────────
@@ -137,11 +149,50 @@ static void pclSafety(){
 // App đặt CFG_IDX (và CFG_VAL nếu ghi) rồi CFG_CMD = 1(đọc)/2(ghi). Firmware xử
 // ĐÚNG 1 tham số, điền CFG_VAL/CFG_STATUS rồi set CFG_CMD = 0 báo xong.
 //   • idx = SỐ $M (1..52) = chính chỉ số iMemHMI[] → đọc/ghi thẳng.
-//   • GHI bị CHẶN khi đang rang (đổi tham số vận hành giữa mẻ = nguy hiểm).
+//   • GHI bị CHẶN khi máy BẬN, và bị TỪ CHỐI khi giá trị NGOÀI DẢI.
 //   • Ghi = set iMemHMI[idx] + writeSingleRegister(idx+2000). KHÔNG đụng _CP →
 //     để change-detect ở Modbus_Master.h tự chạy (tính lại _CV, side-effect chuẩn
 //     y như khi thợ sửa số trên HMI).
 //   • cmd == 0 (rảnh) → return NGAY, per-loop ≈ 0.
+//
+// AN TOÀN — firmware KHÔNG TIN app:
+//   App có bảng min/max riêng, nhưng bất kỳ ai cắm được vào bus RS485/USB đều
+//   ghi thẳng được khối này. Một số $M lái trực tiếp lửa và cơ cấu (maxGasSet,
+//   preGas, turnGasPoint, chargeTemp…), nên firmware tự kiểm dải LẦN NỮA. Ngoài
+//   dải = TỪ CHỐI, không kẹp im lặng: kẹp thì thợ tưởng đã đặt 500 mà máy chạy
+//   300 — sai lệch đó nguy hiểm hơn là báo lỗi.
+
+// Dải hợp lệ của từng $M, chỉ số 0 = $M1. Mảng const → nằm ở FLASH, không tốn
+// RAM (máy đã dùng ~81% RAM). $M17/$M18 KHÔNG tồn tại trong Define.h nên đặt
+// min>max để mọi lệnh ghi vào đó đều bị từ chối.
+static const uint16_t PCL_CFG_MIN[PCL_CFG_MAXIDX] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M1..10
+    1, 1, 0, 0, 1, 0, 1, 1, 0, 0,      // $M11..20  ($M17,$M18: min>max = vô hiệu)
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M21..30
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M31..40
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M41..50
+    0, 0                                // $M51..52
+};
+static const uint16_t PCL_CFG_MAX[PCL_CFG_MAXIDX] = {
+       60,    60,    60,   100,   100, 65535,   600,   100,   300,    30,  // $M1..10
+       99,   247,     7,    60,   247, 65535,     0,     0,   120,   300,  // $M11..20
+      300,   600,   300,   300, 65535,    60,   120,   100,     1,   100,  // $M21..30
+      100,  1000,     1,   100,   100,   100,     1, 65535, 65535, 65535,  // $M31..40
+    10000, 10000, 10000,   100,     1,   120,     1,   300,  1000,  1000,  // $M41..50
+       60,   300                                                            // $M51..52
+};
+
+// Máy có đang ở trạng thái KHÔNG được đổi tham số không?
+// Chặn khi lửa đang cháy hoặc có thể bùng, và khi chuỗi tự động đang chạy:
+//   • gasSignal   — CÓ LỬA THẬT ở chân CH1 (kể cả thợ bật gas tay)
+//   • WU_R        — đang LÀM NÓNG MÁY (Preheat đang lái gas)
+//   • START_BTN_R — đang chạy AUTO
+//   • progStep    — từ MỒI LỬA (STP_GAS) tới hết vòng lặp mẻ (STP_LOOP_2)
+// Guard cũ chỉ phủ STP_CHARGE..STP_ESCAPE nên hở đúng lúc mồi lửa và làm nóng.
+static bool pcLinkCfgLocked(){
+    return (gasSignal == 1) || (WU_R == 1) || (START_BTN_R == 1) ||
+           (progStep >= STP_GAS && progStep <= STP_LOOP_2);
+}
 static void pcLinkConfigTask(){
     const uint16_t cmd = mbs.Hreg(PCL_CFG_CMD);
     if (cmd == PCL_CFG_IDLE) return;
@@ -156,12 +207,14 @@ static void pcLinkConfigTask(){
         mbs.Hreg(PCL_CFG_VAL, iMemHMI[idx]);
         mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_OK);
     } else if (cmd == PCL_CFG_WRITE) {
-        const bool roasting = (START_BTN_R == 1) ||
-                              (progStep >= STP_CHARGE && progStep <= STP_ESCAPE);
-        if (roasting) {
-            mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_ERR);    // khoá ghi khi đang rang
+        const uint16_t v  = mbs.Hreg(PCL_CFG_VAL);
+        const uint16_t lo = PCL_CFG_MIN[idx - 1];
+        const uint16_t hi = PCL_CFG_MAX[idx - 1];
+        if (pcLinkCfgLocked()) {
+            mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_LOCKED); // máy bận → không đổi tham số
+        } else if (lo > hi || v < lo || v > hi) {
+            mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_RANGE);  // ngoài dải (hoặc $M không tồn tại)
         } else {
-            const uint16_t v = mbs.Hreg(PCL_CFG_VAL);
             iMemHMI[idx] = v;                            // = xxx_R (change-detect tự lo _CV/_CP)
             nodeHMI.writeSingleRegister(idx + 2000, v);  // HMI giữ đúng số, Modbus_Master đọc lại khớp
             mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_OK);
