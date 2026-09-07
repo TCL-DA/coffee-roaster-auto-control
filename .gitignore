@@ -94,3 +94,15 @@ _codex_temp/
 
 # Zip dong goi lai tu thu muc ngay ben canh - thua
 tools/ScaleSimulator_src.zip
+
+# ── Chặn rò rỉ ra repo PUBLIC (xem feedback: không lộ thông tin nội bộ) ──
+# Firmware đã build: tên file hay kèm tên khách, và bản .bin là sản phẩm giao khách.
+# Nhà của chúng: F:\File-Manual_Update_2025
+*.bin
+*.hex
+*.elf
+# Project HMI Delta — bí quyết màn hình + bản đồ thanh ghi, không đưa lên public.
+*.dpa
+*.dps
+# Thư mục làm việc tạm của skill (PPT/SVG/ảnh dựng) — không phải mã nguồn.
+projects/
