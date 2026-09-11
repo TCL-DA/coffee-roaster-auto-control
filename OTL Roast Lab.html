@@ -681,6 +681,9 @@ html[data-motion="reduced"] .holdbtn.holding>.holdfill{transition:none;transform
 .tbtn.warn{border-color:color-mix(in srgb,var(--c-try) 55%,transparent);color:var(--c-try)}
 /* CHƯA vào mẻ thì "Kết thúc mẻ" KHÔNG được nổi hơn "Đánh lửa" — hạ về nút thường,
    vẫn bấm được (thợ có thể cần mở cửa xả ngoài mẻ), chỉ thôi hút mắt. */
+/* Chưa nối được máy: làm mờ cho mắt thấy, nhưng VẪN bấm được — chặn thật nằm ở
+   lúc bấm. Cố ý không dùng :disabled, xem chú thích ở updateRoastLive. */
+.tbtn.offline{opacity:.5}
 .tbtn.warn.idle{border-color:var(--hair-2);color:var(--mute)}
 .tbtn.warn.idle .ti{opacity:.5}
 .tbtn.warn.hit,
@@ -969,7 +972,14 @@ html[data-motion="reduced"] .holdbtn.holding>.holdfill{transition:none;transform
 /* ── BANNER FAULT (§19 mức GĐ1): sự cố nghiêm trọng đập vào mắt trên MỌI tab.
    Đỏ = mất kết nối giữa mẻ / máy treo / sensor chết; hổ phách = nhiễu thoáng qua.
    Đặt DƯỚI thanh trên (không che số live), pointer-events none — không chặn thao tác. ── */
-#faultBanner{position:absolute;top:118px;left:50%;transform:translateX(-50%);z-index:210;
+/* VỊ TRÍ: neo ở ĐÁY, không phải đỉnh. Bản cũ ghim `top:118px` giữa màn — đúng dải
+   mà mọi thanh công cụ và tiêu đề hộp thoại chiếm, nên nó đè lên chip lọc hồ sơ,
+   đè lên ô "Tên" của hộp Sửa hồ sơ, đè cả tiêu đề trang Cài đặt. Băng này
+   `pointer-events:none` nên thứ bị đè vẫn bấm được, nhưng không ĐỌC được — với
+   cảnh báo cảm biến thì che mất thông tin là hỏng đúng việc nó sinh ra để làm.
+   Đáy giữa là vùng duy nhất trống ở cả 6 tab; đặt trên thông báo thường (bottom
+   170px) một nấc để hai cái cùng hiện vẫn không chồng nhau. */
+#faultBanner{position:absolute;bottom:250px;left:50%;transform:translateX(-50%);z-index:210;
   display:none;align-items:center;gap:16px;padding:18px 34px;border-radius:var(--r-md);
   background:color-mix(in srgb,var(--danger) 16%,var(--panel));
   border:1.5px solid var(--danger);color:var(--danger);
@@ -1427,13 +1437,41 @@ html[data-accent="ember"] .roastbadge{
    Sửa hồ sơ mà không thấy hình thì phải tưởng tượng trong đầu — có giản đồ thì
    đổi một con số là thấy ngay đường cong đổi theo. */
 .pebox.wide{width:1240px}
-.pe2col{display:grid;grid-template-columns:1fr 460px;gap:30px;align-items:start}
+/* ══ BỐ CỤC MỚI 11/09/2026 — đường cong LÊN TRÊN, thông số XUỐNG DƯỚI ══════════
+   Chủ máy chốt. Lý do hợp lý: đường rang là KẾT QUẢ của mọi ô nhập bên dưới, mà
+   mắt đọc từ trên xuống — đặt kết quả lên đầu thì mỗi lần sửa một số là thấy ngay
+   hình đổi, không phải liếc ngang. Cột đôi cũ còn ép đường cong vào 460px nên nó
+   vừa bé vừa méo. Nay full chiều ngang.
+   Ô nhập xếp HAI CỘT để form không hoá một cột dài lê thê. */
+/* Dùng tiền tố #profedit cho CẢ khối: có ba luật `.pe2col`/`.pefield` nằm SAU
+   trong file (tầng sân khấu, dòng ~2186 và ~2242) vẫn ép hai cột và ép nhãn
+   230px. Chọn theo ID thì thắng bất kể thứ tự, khỏi phải dời code đi chỗ khác. */
+#profedit .pe2col{display:grid;grid-template-columns:minmax(0,1fr);gap:26px;align-items:start}
+#profedit .pe2col>.pe-side{order:0;position:static}
+#profedit .pe2col>.pe-fields{order:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 30px;align-content:start}
+/* Tiêu đề nhóm chiếm trọn hàng, và cách nhóm trên một nhịp cho dễ quét mắt. */
+#profedit .pe2col>.pe-fields>.pehint{grid-column:1/-1;margin-top:14px}
+#profedit .pe2col>.pe-fields>.pehint:first-child{margin-top:0}
+/* Trong lưới hai cột, nhãn phải nằm TRÊN ô chứ không bên trái: khuôn cũ ghim nhãn
+   250px + ô co giãn, nhét vào nửa bề ngang là cả nhãn lẫn ô đều tràn (đo được
+   26px và 71px). Xếp dọc vừa hết tràn vừa cho ô nhập trọn bề ngang để gõ. */
+#profedit .pe2col>.pe-fields>.pefield{display:flex;flex-direction:column;align-items:stretch;gap:6px;
+  min-width:0;padding:8px 0}
+#profedit .pe2col>.pe-fields>.pefield>.pel{width:auto;min-width:0;font-size:var(--fs-18);color:var(--mute);
+  letter-spacing:.02em}
+#profedit .pe2col>.pe-fields>.pefield>.peval{width:100%;min-width:0;max-width:100%;text-align:left;
+  box-sizing:border-box}
+/* Ô ngày có nút lịch của hệ điều hành nên bề rộng tối thiểu do trình duyệt định,
+   không chịu co theo width:100% — phải ép min-width:0 mới hết tràn 26px. */
+#profedit .pe2col>.pe-fields>.pefield>input[type="date"]{min-width:0;width:100%;max-width:100%}
+@media(max-width:900px){#profedit .pe2col>.pe-fields{grid-template-columns:minmax(0,1fr)}}
 .pe-fields{min-width:0}
 .pe-side{position:sticky;top:0;background:var(--inset);border:1px solid var(--hair);
   border-radius:var(--r-lg);padding:18px 18px 14px}
 .pe-side h4{margin:0 0 4px;font-family:var(--f-num);font-size:var(--fs-24);font-weight:700}
 .pe-side .pes-sub{font-size:var(--fs-16);color:var(--mute);margin-bottom:12px}
-#peCurve{width:100%;height:300px;display:block;border-radius:var(--r-md);background:var(--panel)}
+#peCurve{width:100%;height:320px;display:block;border-radius:var(--r-md);background:var(--panel)}
 .pe-miles{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:12px}
 .pe-mile{background:var(--panel);border:1px solid var(--hair);border-radius:var(--r-sm);
   padding:8px 4px;text-align:center}
@@ -1555,12 +1593,38 @@ html[data-theme="dark"]{--bg:#111216;--panel:#1c1d23;--card:#22242c;--inset:#161
 #stage:before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
  background-image:var(--wallpaper);background-size:cover;background-position:center;
  opacity:var(--wall-opacity);filter:blur(var(--wall-blur))}
-#topbar{background:var(--panel);border-bottom:1px solid var(--hair);gap:20px}
-#tabnav{height:max(84px,calc(var(--touch-min) + 16px));padding:7px;background:var(--inset);border:1px solid var(--hair);border-radius:22px;gap:3px}
-#tabnav .tab{min-width:122px;padding:0 20px;border-radius:16px;font-size:21px}
-#tabnav .tab.on{background:var(--panel);color:var(--txt);box-shadow:0 2px 8px #0000000c}
+/* ══ THANH ĐẦU DÙNG CHUNG — một dáng cho cả 6 tab (thống nhất 11/09/2026) ══
+   Trước đây app nuôi HAI thanh đầu: 18 luật `html:has(#pane-rang.on)` dựng riêng
+   một thanh cho màn Rang, 5 tab kia dùng thanh đời cũ. Đổi tab là thanh nhảy 8px,
+   chữ đổi cỡ, logo đổi dáng, và — nặng nhất, kế hoạch không ghi — ĐỔI CẢ BỘ CHỮ
+   của toàn sân khấu. Đo lại thì màn Rang mới là bản ĐÚNG thiết kế, nên các thông
+   số dưới đây lấy theo nó (và theo bản thiết kế), rồi xoá hết luật riêng. */
+#stage{--f-ui:'IBM Plex Sans','Segoe UI',sans-serif;
+  --f-num:'IBM Plex Sans','Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',monospace;font-family:var(--f-ui)}
+#topbar{height:100px;min-height:100px;background:var(--panel);
+  border-bottom:1px solid var(--hair);gap:22px;padding:0 26px;flex-wrap:nowrap}
+#topbar .brand{min-width:210px;gap:12px}
+/* Thiết kế vẽ logo là một ô đỏ chữ "R", không phải dấu OTL đầy đủ. */
+#topbar .brandmark{display:none}
+#topbar .brand:before{content:'R';display:grid;place-items:center;background:#D93A32;
+  color:#fff;width:35px;height:38px;border-radius:8px;font-size:25px;font-weight:800}
+#topbar .nm{font-size:25px;white-space:nowrap}
 .brand .nm{font-family:var(--f-ui);font-weight:650;letter-spacing:-1px}
 .brand .nm b{color:var(--txt)}
+/* Cụm tab là chip RỜI, không có khung bọc — khung bo tròn là dấu vết thanh đời cũ. */
+#tabnav{width:auto;order:0;flex:none;height:100%;padding:10px 0;gap:6px;
+  background:transparent;border:0;border-radius:0}
+#tabnav .tab{min-width:0;padding:0 28px;border-radius:16px;font-size:26px;font-weight:400}
+#tabnav .tab.on{color:var(--txt);font-weight:700}
+#clock{font-size:24px;min-width:88px}
+.linkchip{font-size:20px;height:50px;min-height:0;padding:0 14px;border-radius:30px}
+.linkchip .d{width:8px;height:8px}
+.tbuser{padding:8px 12px;gap:12px;border:1px solid var(--hair)}
+.tbuser .ava{width:44px;height:44px;border-radius:50%;font-size:22px}
+.tbuser .meta .u{font-size:23px}
+.tbuser .meta .r{font-size:17px}
+#topbar>.vsep{display:none}
 .greet,.pgtitle{font-family:var(--f-ui);font-weight:650;letter-spacing:-1.4px}
 .greet{font-size:52px}.greet b{font-weight:650}
 .greet-sub{margin-top:14px;margin-bottom:32px}
@@ -1646,7 +1710,11 @@ html[data-motion="full"] .overlay.on>div{animation:studio-sheet .3s var(--ease)}
 .subnav{background:var(--panel);border:1px solid var(--hair);border-radius:24px;margin:24px 20px 24px 24px;box-shadow:none}
 /* La bàn điều hướng: một nền chọn di chuyển giữa các tab, chữ và nút đứng yên. */
 #tabnav{position:relative;isolation:isolate}
-#tabnav:before{content:'';position:absolute;left:0;top:7px;bottom:7px;width:var(--nav-width,0px);transform:translateX(var(--nav-x,0px));background:var(--panel);border:1px solid var(--hair);border-radius:16px;box-shadow:0 2px 8px #0000000c;z-index:-1;pointer-events:none}
+/* BẪY khi bỏ khung bọc cụm tab (11/09): nền viên thuốc trước đây là `--panel` vì
+   nó nằm TRONG khung `--inset`. Thanh đầu cũng là `--panel`, nên vừa gỡ khung ra
+   là viên thuốc TÀNG HÌNH — mất luôn dấu báo tab nào đang mở. Đổi sang `--card`,
+   đúng thứ màn Rang vẫn dùng cho ô tab đang chọn. top/bottom theo padding mới. */
+#tabnav:before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:var(--nav-width,0px);transform:translateX(var(--nav-x,0px));background:var(--card);border:1px solid var(--hair);border-radius:16px;box-shadow:0 2px 8px #0000000c;z-index:-1;pointer-events:none}
 #tabnav .tab.on{background:transparent;box-shadow:none}
 html[data-motion="full"] #tabnav:before{transition:transform .32s cubic-bezier(.2,.8,.2,1),width .32s cubic-bezier(.2,.8,.2,1)}
 /* ── Đang KÉO viên thuốc (segmented control kiểu iOS) ──────────────────────
@@ -1659,8 +1727,6 @@ html[data-motion="full"] #tabnav:before{transition:transform .32s cubic-bezier(.
 #tabnav.segdragging,#tabnav.segdragging .tab.on{cursor:grabbing}
 /* Màn Rang tắt viên thuốc (dùng nền ô thay thế), nhưng ĐANG KÉO thì phải có nó
    mới thấy mình đang kéo cái gì. Chỉ hiện trong lúc kéo, thả ra là về như cũ. */
-html:has(#pane-rang.on) #tabnav.segdragging:before{display:block}
-html:has(#pane-rang.on) #tabnav.segdragging .tab.on{background:transparent}
 
 /* ── Viên thuốc DÙNG CHUNG cho 5 cụm còn lại (Cài đặt, 2 tab con Hồ sơ, Kho,
    chip lọc hồ sơ, chip lọc log). Các cụm này lúc thường KHÔNG có viên thuốc, nên
@@ -1695,6 +1761,240 @@ html[data-motion="full"] #stage.wall-changing:before{animation:layout-wall .45s 
 @keyframes layout-arrive{from{opacity:.55;transform:translateY(7px)}to{opacity:1;transform:none}}
 @keyframes layout-fade{from{opacity:.75}to{opacity:1}}
 @keyframes layout-wall{from{opacity:0}to{opacity:var(--wall-opacity)}}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TẦNG CHUYỂN ĐỘNG "MƯỢT" — 11/09/2026
+   ─────────────────────────────────────────────────────────────────────────────
+   Gốc của cảm giác GIẬT không nằm ở đường cong mà ở chỗ: `.pane` và `.overlay`
+   bật/tắt bằng `display`, mà `display` thì KHÔNG nội suy được — nên màn cũ biến
+   mất tức thì rồi màn mới mới trượt vào. Mắt đọc ra là một cú CẮT có đuôi, không
+   phải một cú CHUYỂN. Thêm đường cong đẹp cỡ nào cũng không chữa được.
+
+   Hai cơ chế dùng ở đây, Chromium trên máy vận hành (WebView2 152) có sẵn:
+   · `transition-behavior:allow-discrete` + `@starting-style` → nội suy được CẢ
+     lượt vào lẫn lượt RA của thuộc tính rời rạc như `display`. Không phải sửa
+     một dòng JS nào, nên hơn 20 hàm đóng/mở hộp thoại rải khắp file giữ nguyên.
+   · View Transitions API → đổi tab (xem gotoTab).
+
+   Trình duyệt cũ không hiểu thì bỏ qua lặng lẽ, app về đúng hành vi cũ.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Bộ đường cong. `--ease` cũ giữ nguyên cho phần đã dùng nó.
+   --ease-out  : dừng êm, dùng cho thứ ĐI VÀO (mắt bám được điểm dừng)
+   --ease-in   : rời nhanh, dùng cho thứ ĐI RA (đừng bắt người ta chờ lúc đóng)
+   --spring    : lò xo THẬT có vượt đà, viết bằng linear() — cubic-bezier không
+                 tả được vượt đà quá 1. Chỉ dùng cho vật thể nhỏ, nảy thấy rõ. */
+:root{
+  --ease-out:cubic-bezier(.32,.72,0,1);
+  --ease-in:cubic-bezier(.4,0,.9,.4);
+  --spring:linear(0,.0039 1.74%,.0157 2.61%,.0645 5.51%,.1449 8.68%,.3273 14.3%,
+    .6444 22.6%,.7723 26.35%,.8828 30.29%,.9291 32.4%,.9682 34.5%,1.0012 36.8%,
+    1.0261 39.05%,1.0442 41.45%,1.0547 44.05%,1.0574 46.55%,1.0534 49.4%,
+    1.0193 61.3%,1.0011 71.2%,.9981 77.2%,1);
+  --dur-tab:.34s; --dur-sheet:.3s; --dur-exit:.2s;
+}
+
+/* ── HỘP THOẠI: vào VÀ ra ─────────────────────────────────────────────────────
+   Nền mờ và tấm thẻ chạy RIÊNG: nền chỉ mờ dần, thẻ vừa mờ vừa nhích lên và
+   hơi phóng. Apple làm vậy vì hai lớp ở hai độ sâu khác nhau; cho chúng chạy
+   cùng một nhịp là mất chiều sâu. Lượt ra nhanh hơn lượt vào (.2s vs .3s) —
+   người dùng đã quyết định xong rồi, đừng bắt họ nhìn hoạt ảnh. */
+html[data-motion="full"] .overlay{
+  opacity:0;
+  transition:opacity var(--dur-exit) var(--ease-in),
+             backdrop-filter var(--dur-exit) var(--ease-in),
+             display var(--dur-exit) allow-discrete;
+}
+html[data-motion="full"] .overlay.on{
+  opacity:1;
+  transition:opacity var(--dur-sheet) var(--ease-out),
+             backdrop-filter var(--dur-sheet) var(--ease-out),
+             display var(--dur-sheet) allow-discrete;
+}
+@starting-style{ html[data-motion="full"] .overlay.on{opacity:0} }
+
+html[data-motion="full"] .overlay>*{
+  transition:opacity var(--dur-exit) var(--ease-in),
+             transform var(--dur-exit) var(--ease-in);
+}
+html[data-motion="full"] .overlay.on>*{
+  opacity:1;transform:none;
+  transition:opacity var(--dur-sheet) var(--ease-out),
+             transform var(--dur-sheet) var(--ease-out);
+}
+@starting-style{
+  html[data-motion="full"] .overlay.on>*{opacity:0;transform:translateY(16px) scale(.975)}
+}
+/* Lượt RA của tấm thẻ: tụt xuống một chút rồi tắt. */
+html[data-motion="full"] .overlay:not(.on)>*{opacity:0;transform:translateY(10px) scale(.99)}
+/* `studio-sheet` cũ chạy bằng @keyframes nên sẽ ĐÈ lên transition ở trên và làm
+   lượt ra mất tác dụng. Tắt nó đi, tầng này thay thế đầy đủ. */
+html[data-motion="full"] .overlay.on>div{animation:none}
+
+/* ── THÔNG BÁO: nảy nhẹ khi vào, rút gọn khi ra ──────────────────────────────
+   Thông báo là vật thể nhỏ và không mang tin hệ trọng, nên đây là chỗ ĐÁNG dùng
+   lò xo vượt đà — nó báo "có thứ mới tới" bằng chuyển động, thợ không phải rời
+   mắt khỏi mẻ đang rang. */
+html[data-motion="full"] #toast{
+  transition:opacity var(--dur-exit) var(--ease-in),transform var(--dur-exit) var(--ease-in)}
+html[data-motion="full"] #toast.show{
+  transition:opacity .28s var(--ease-out),transform .5s var(--spring)}
+
+/* ── ĐỔI TAB: hoà tan hai chiều bằng CSS ─────────────────────────────────────
+   Các pane đều `position:absolute;inset:0` nên chồng khít lên nhau — pane cũ mờ
+   đi và lùi nhẹ ra sau trong khi pane mới sáng lên và tiến tới. `allow-discrete`
+   giữ pane cũ sống đủ lâu để chạy hết lượt ra rồi mới `display:none`.
+   Lượt ra NGẮN hơn lượt vào để hai pane không cùng đậm một lúc thành đục.
+   CỐ Ý không dùng View Transitions ở đây — xem chú thích trong gotoTab(). */
+/* CHỈ hoà tan bằng opacity, CỐ Ý không thêm `transform:scale()` cho pane. Hai lý
+   do, lý do sau mới nặng: (1) bài kiểm bố cục đòi `#pane-rang` có transform
+   'none'; (2) một transform trên phần tử phủ toàn màn sẽ tạo CONTAINING BLOCK
+   mới cho mọi con `position:fixed` bên trong — đủ để đẩy lệch hộp thoại và bảng
+   cá nhân hoá. Một chút chiều sâu không đáng đổi lấy rủi ro đó. */
+html[data-motion="full"] .pane{
+  opacity:0;
+  transition:opacity .16s var(--ease-in),display .16s allow-discrete;
+}
+html[data-motion="full"] .pane.on{
+  opacity:1;
+  transition:opacity var(--dur-tab) var(--ease-out),display var(--dur-tab) allow-discrete;
+}
+@starting-style{
+  html[data-motion="full"] .pane.on{opacity:0}
+}
+/* Hai hoạt ảnh @keyframes đời cũ sẽ ĐÈ lên transition trên và giết lượt ra. */
+html[data-motion="full"] .pane.on:not(#pane-rang),
+html[data-motion="full"] #pane-rang.on{animation:none}
+
+/* ── ĐƯỜNG CONG HỒ SƠ: tự vẽ ra ──────────────────────────────────────────────
+   `pathLength="1"` chuẩn hoá mọi đường về cùng chiều dài 1 nên một luật chạy
+   đúng cho mọi hồ sơ, dài ngắn khác nhau bao nhiêu cũng vậy. */
+html[data-motion="full"] .ux-spark path[pathLength]{
+  stroke-dasharray:1;stroke-dashoffset:1;animation:spark-draw .85s var(--ease-out) forwards}
+@keyframes spark-draw{to{stroke-dashoffset:0}}
+
+/* ── MENU CÀI ĐẶT NHANH: bung ra từ chính cái nút bấm ────────────────────────
+   Ẩn dụ của iOS: bảng không "xuất hiện", nó NỞ RA từ chỗ ngón tay vừa chạm. Neo
+   `transform-origin` ở góc trên-phải — đúng chỗ nút tài khoản đứng — rồi cho nó
+   lớn lên từ 92%. Thêm một nhịp trượt xuống 8px để có hướng. Dùng lò xo nên cuối
+   hành trình có vượt đà rất nhẹ, đó là thứ làm nó "có trọng lượng".
+   Lượt ra thì KHÔNG lò xo: đóng mà còn nảy là cảm giác lưỡng lự. */
+html[data-motion="full"] .usermenu{
+  transform-origin:100% 0;
+  opacity:0;transform:translateY(-8px) scale(.92);
+  transition:opacity .15s var(--ease-in),transform .15s var(--ease-in),
+             display .15s allow-discrete;
+}
+html[data-motion="full"] .usermenu.on{
+  opacity:1;transform:none;
+  transition:opacity .22s var(--ease-out),transform .42s var(--spring),
+             display .42s allow-discrete;
+}
+@starting-style{
+  html[data-motion="full"] .usermenu.on{opacity:0;transform:translateY(-8px) scale(.92)}
+}
+/* Các dòng bên trong lần lượt hiện — "xếp tầng" kiểu iOS. Làm bằng animation-delay
+   theo thứ tự, KHÔNG cần JS. Chỉ 6 dòng đầu, sau đó thôi: xếp tầng dài quá thì
+   người ta phải CHỜ menu, mà menu là thứ cần nhanh. */
+html[data-motion="full"] .usermenu.on>*{animation:um-row .34s var(--ease-out) both}
+html[data-motion="full"] .usermenu.on>*:nth-child(1){animation-delay:.02s}
+html[data-motion="full"] .usermenu.on>*:nth-child(2){animation-delay:.04s}
+html[data-motion="full"] .usermenu.on>*:nth-child(3){animation-delay:.06s}
+html[data-motion="full"] .usermenu.on>*:nth-child(4){animation-delay:.08s}
+html[data-motion="full"] .usermenu.on>*:nth-child(5){animation-delay:.10s}
+html[data-motion="full"] .usermenu.on>*:nth-child(n+6){animation-delay:.12s}
+@keyframes um-row{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── VIÊN THUỐC TRƯỢT: ba nếp nữa mượn của iOS ───────────────────────────────
+   1 · CO THEO HƯỚNG ĐI. Segmented control của iOS bóp nhẹ viên thuốc theo trục
+       nó đang chạy rồi bung lại khi dừng — mắt đọc ra là quán tính. Làm bằng
+       `scaleX` trong lúc `.segmoving`, JS chỉ gắn/gỡ một lớp.
+   2 · CHỮ TAB TỤT LẠI. Nhãn tab đang chọn nhích ngược chiều một chút rồi về, nên
+       viên thuốc trông như KÉO chữ theo chứ không phải trượt dưới chữ.
+   3 · NHẤN LÀ LÚN. Chạm vào tab thì viên thuốc lún nhẹ — phản hồi xúc giác bằng
+       mắt, quan trọng với màn cảm ứng vì không có tiếng click. */
+html[data-motion="full"] #tabnav.segmoving:before{transform:translateX(var(--nav-x,0px)) scaleX(1.06)}
+html[data-motion="full"] #tabnav:active:before{transform:translateX(var(--nav-x,0px)) scale(.97)}
+html[data-motion="full"] #tabnav .tab{transition:color .2s var(--ease-out),transform .34s var(--spring)}
+html[data-motion="full"] #tabnav.segmoving .tab.on{transform:translateX(var(--nav-lag,0px))}
+
+/* ── CHUYỂN TAB: thêm chiều sâu, đừng chỉ hoà tan ────────────────────────────
+   Hoà tan trơn là "thô" vì không có HƯỚNG. iOS luôn cho biết mình đi tới hay lùi
+   lại. Ở đây: nội dung pane mới trượt vào theo đúng chiều vừa đổi tab (trái sang
+   phải nếu đi tới), và trượt rất ngắn — 14px, không phải nửa màn — vì đây là máy
+   công nghiệp. Chỉ NỘI DUNG trượt; nền pane đứng yên nên không thấy mép trắng.
+   Đặt trên con trực tiếp của pane để không tạo containing block trên chính pane. */
+html[data-motion="full"] .pane.on>*{
+  animation:pane-slide .38s var(--ease-out) both}
+html[data-motion="full"] #panes[data-dir="lui"] .pane.on>*{
+  animation-name:pane-slide-lui}
+@keyframes pane-slide{from{opacity:0;transform:translate3d(14px,0,0)}to{opacity:1;transform:none}}
+@keyframes pane-slide-lui{from{opacity:0;transform:translate3d(-14px,0,0)}to{opacity:1;transform:none}}
+
+/* Tắt chuyển động thì KHÔNG được để lại trạng thái nửa vời: đường cong phải hiện
+   đủ, hộp thoại phải mở tức thì. */
+/* ── TRANG CON CÀI ĐẶT: cũng phải có lượt vào, đừng nhảy phựt ────────────────
+   Bảy trang con (Kết nối · Calib gas · Model nhiệt · …) đang đổi bằng display
+   thuần, y như pane trước khi vá. Cho chúng cùng một ngữ pháp: trượt vào 10px,
+   ngắn hơn pane vì đây là chuyển trong-trang, không phải đổi màn. */
+html[data-motion="full"] .subpane.on{animation:sub-in .3s var(--ease-out) both}
+@keyframes sub-in{from{opacity:0;transform:translate3d(10px,0,0)}to{opacity:1;transform:none}}
+/* Danh sách trong hộp thoại hiện xếp tầng — dùng lại nhịp của menu. */
+html[data-motion="full"] .pkopt{animation:um-row .3s var(--ease-out) both}
+html[data-motion="full"] .pkopt:nth-child(2){animation-delay:.03s}
+html[data-motion="full"] .pkopt:nth-child(3){animation-delay:.06s}
+html[data-motion="full"] .pkopt:nth-child(n+4){animation-delay:.09s}
+
+/* ══ HỒNG — bong bóng trợ lý, hạng AssistiveTouch ═══════════════════════════
+   Đặt `position:fixed` bằng PIXEL THẬT, nằm ngoài sân khấu co giãn — cùng cách
+   `#ra-panel` của Codex làm, nếu không thì khi sân khấu thu nhỏ bong bóng cũng
+   teo theo và hết bấm được bằng ngón tay có găng.
+   Lúc rảnh thì MỜ đi như nút home ảo của iOS: có mặt mà không tranh mắt với mẻ
+   đang rang. Chạm vào là hiện đủ. */
+#otlBuddy{position:fixed;left:auto;right:22px;bottom:120px;z-index:99998;
+  width:62px;height:62px;padding:0;border:0;border-radius:50%;cursor:grab;
+  background:transparent;display:grid;place-items:center;
+  opacity:.62;filter:saturate(.85);touch-action:none;-webkit-tap-highlight-color:transparent;
+  transition:opacity .3s var(--ease-out),filter .3s var(--ease-out),
+             transform .42s var(--spring)}
+#otlBuddy:hover,#otlBuddy:focus-visible,#otlBuddy.awake{opacity:1;filter:none}
+#otlBuddy:active{cursor:grabbing;transform:scale(.92)}
+#otlBuddy.dragging{transition:none;cursor:grabbing;opacity:1;filter:none}
+#otlBuddy .bd-mark{width:46px;height:46px;display:block;border-radius:13px;
+  box-shadow:0 8px 22px -6px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06)}
+/* Tên chỉ hiện khi rê/chạm — lúc thường bong bóng phải gọn như nút home ảo. */
+#otlBuddy .bd-name{position:absolute;right:calc(100% + 10px);white-space:nowrap;
+  font-size:15px;font-weight:600;color:var(--txt);background:var(--panel);
+  border:1px solid var(--hair);border-radius:9px;padding:5px 10px;
+  opacity:0;transform:translateX(6px);pointer-events:none;
+  transition:opacity .2s var(--ease-out),transform .34s var(--spring)}
+#otlBuddy.left .bd-name{right:auto;left:calc(100% + 10px);transform:translateX(-6px)}
+#otlBuddy:hover .bd-name,#otlBuddy:focus-visible .bd-name{opacity:1;transform:none}
+/* Vòng sóng khi ĐANG NGHE — báo cho thợ biết micro đang mở, không cần nhìn chữ. */
+#otlBuddy .bd-ring{position:absolute;inset:-6px;border-radius:50%;
+  border:2px solid var(--accent);opacity:0;pointer-events:none}
+#otlBuddy.listening{opacity:1;filter:none}
+#otlBuddy.listening .bd-ring{animation:bd-listen 1.4s ease-out infinite}
+@keyframes bd-listen{0%{opacity:.85;transform:scale(.9)}100%{opacity:0;transform:scale(1.45)}}
+@media (prefers-reduced-motion:reduce){#otlBuddy .bd-ring{animation:none;opacity:.7}}
+
+/* Khung chat NỞ RA TỪ bong bóng — ẩn dụ mở app của iOS. Gốc phóng đặt bằng JS
+   theo vị trí thật của bong bóng, nên dù thợ đã kéo nó đi đâu thì khung vẫn bung
+   ra từ đúng chỗ ngón tay vừa chạm. */
+html[data-motion="full"] #ra-panel[open]{animation:bd-zoom .42s var(--ease-out) both}
+@keyframes bd-zoom{from{opacity:0;transform:scale(.24)}to{opacity:1;transform:none}}
+html[data-motion="reduced"] #ra-panel[open]{animation:none}
+
+html[data-motion="reduced"] .usermenu.on>*,
+html[data-motion="reduced"] .subpane.on,
+html[data-motion="reduced"] .pkopt,
+html[data-motion="reduced"] #otlBuddy,
+html[data-motion="reduced"] .pane.on>*{animation:none}
+html[data-motion="reduced"] .ux-spark path[pathLength]{animation:none;stroke-dashoffset:0}
+@media(prefers-reduced-motion:reduce){
+  .ux-spark path[pathLength]{animation:none!important;stroke-dashoffset:0!important}
+  ::view-transition-old(root),::view-transition-new(root){animation:none!important}
+}
 @media(hover:hover){.ov-profile:hover{border-color:var(--accent-label);background:var(--card)}.ps-choice:hover{transform:translateY(-2px);box-shadow:0 6px 16px #00000010}}
 /* Bảng tùy chỉnh dùng pixel thật, không bị thu nhỏ theo khung máy rang. */
 #personalDialog{position:fixed;inset:0;margin:auto;width:min(1040px,calc(100vw - 40px));height:min(790px,calc(100dvh - 40px));
@@ -2097,6 +2397,25 @@ html[lang=en] .outrow.od-unknown .oinfo:after{content:'No data'}
  #pane-rang:not(.simple) .rightcol>.clockcard .clockbig{font-size:72px}
  #pane-rang:not(.simple) .rightcol .ux-readings>.rcard{padding:10px 18px}
 }
+/* ══ Cụm tab LUÔN nằm trong một hàng với logo — cho CẢ 6 tab ══════════════════
+   BẪY đã ghi trong hồ sơ: `@media(max-width:1700px)` ở trên đo CỬA SỔ chứ không
+   đo sân khấu (#stage rộng cứng 2560px rồi mới thu nhỏ). Cửa sổ 1366 là nó ăn,
+   đẩy cụm tab xuống hàng riêng rộng hết bề ngang — dù sân khấu bên trong vẫn
+   2560. Trước đây chỉ màn Rang thoát được, nhờ 4 luật `!important` riêng; xoá
+   chúng đi thì Rang tụt theo 5 tab kia. Nhắc lại ở đây, không kèm điều kiện tab,
+   nên sáu màn cùng một dáng — đúng ý hướng A.
+
+   CHẶN DƯỚI 1180px: dưới mức đó thì để media query làm việc của nó, cho cụm tab
+   xuống hàng riêng. Ép nowrap ở MỌI bề rộng là cửa sổ 1024 bị nhồi đến mức chip
+   kết nối tràn ra ngoài 52px. Máy vận hành và màn của chủ máy đều ≥1366 nên vẫn
+   một hàng, đúng ý; hẹp hơn nữa thì xuống hàng còn hơn là tràn chữ. */
+@media(min-width:1180px){
+  #stage #topbar{flex-wrap:nowrap;height:100px;min-height:100px;padding:0 26px}
+  #stage #topbar #tabnav{order:0;width:auto!important;max-width:none!important;
+    min-width:max-content;flex:none;height:100%;background:transparent;border:0;border-radius:0}
+  #stage #topbar #tabnav .tab{flex:none!important;white-space:nowrap;width:auto;
+    min-width:max-content;max-width:none}
+}
 /* Khối Thiết bị phụ dựng theo bản thiết kế: tiêu đề chữ HOA + số đang bật, mỗi
    dòng bỏ icon và thay bằng CHẤM trạng thái bên phải — mắt chỉ cần quét một cột
    chấm là biết cái nào đang chạy, thay vì đọc màu viền từng nút. */
@@ -2140,24 +2459,6 @@ html[data-theme=dark] #pane-rang{--panel:#111216;--card:#17181e;--hair:#292b33;-
 }
 
 /* Màn Rang theo mẫu đã duyệt; kích thước theo khung nội bộ cao 1440. */
-html:has(#pane-rang.on) #stage{--f-ui:'IBM Plex Sans','Segoe UI',sans-serif;--f-num:'IBM Plex Sans','Segoe UI',sans-serif;--f-mono:'IBM Plex Mono',monospace;font-family:var(--f-ui)}
-html:has(#pane-rang.on) #topbar{height:100px;min-height:100px;padding:0 26px;gap:22px;flex-wrap:nowrap;background:var(--panel)}
-html:has(#pane-rang.on) #topbar .brand{min-width:210px;gap:12px}
-html:has(#pane-rang.on) #topbar .brandmark{display:none}
-html:has(#pane-rang.on) #topbar .brand:before{content:'R';display:grid;place-items:center;background:#dd3636;color:white;width:36px;height:38px;border-radius:8px;font-size:25px;font-weight:800}
-html:has(#pane-rang.on) #topbar .nm{font-size:25px;white-space:nowrap}
-html:has(#pane-rang.on) #topbar .nm b{color:var(--txt)}
-html:has(#pane-rang.on) #topbar #tabnav{width:auto;order:0;flex:none;height:100%;padding:10px 0;gap:6px}
-html:has(#pane-rang.on) #tabnav .tab{min-width:0;padding:0 28px;font-size:26px;font-weight:400}
-html:has(#pane-rang.on) #tabnav .tab.on{background:var(--card);color:var(--txt);font-weight:700}
-html:has(#pane-rang.on) #clock{font-size:24px;min-width:88px}
-html:has(#pane-rang.on) .linkchip{font-size:20px;height:50px;min-height:0;padding:0 14px;border-radius:30px}
-html:has(#pane-rang.on) .linkchip .d{width:8px;height:8px}
-html:has(#pane-rang.on) .tbuser{padding:8px 12px;gap:12px;border:1px solid var(--hair)}
-html:has(#pane-rang.on) .tbuser .ava{width:44px;height:44px;border-radius:50%;font-size:22px}
-html:has(#pane-rang.on) .tbuser .meta .u{font-size:23px}
-html:has(#pane-rang.on) .tbuser .meta .r{font-size:17px}
-html:has(#pane-rang.on) #topbar>.vsep{display:none}
 html[data-theme=dark] #stage #pane-rang{--bg:#08080a;--panel:#101013;--card:#16161b;--hair:#202025;--inset:#0c0c0f;--c-burner:#fa7b0c;background:var(--bg)}
 #stage #pane-rang:not(.simple) .rangbody{padding:16px 26px 18px;grid-template-columns:minmax(0,1fr) 560px!important;grid-template-rows:minmax(0,1fr) 218px;gap:18px;overflow:visible}
 #stage #pane-rang:not(.simple) .chartcol{gap:18px;min-height:0}
@@ -2236,6 +2537,13 @@ html[data-theme="light"] #stage #pane-rang:not(.simple) .bthero .ror .rv{color:#
 #stage #pane-rang .toolbar .tbtn{font-size:25px;min-width:0;min-height:90px;flex:1;margin:0;border:1px solid var(--hair);border-radius:16px;background:var(--card);height:auto;padding:14px}
 #stage #pane-rang #btnMark{order:0;flex:1.2}#stage #pane-rang #pauseBtn{order:1}#stage #pane-rang #btnCool{order:2}
 #stage #pane-rang #btnEscape,#stage #pane-rang #btnDrop{flex:.6;margin:18px 0 0 18px;order:8;color:#ef756b;background:#1c1112;border:1px solid #462327}
+/* CHƯA vào mẻ thì "Kết thúc mẻ" thôi hút mắt. Luật `.tbtn.warn.idle` ở phần chung
+   là MÃ CHẾT: nó chỉ có 3 lớp (0,3,0) nên thua cả `#btnDrop` lẫn luật ba-ID ngay
+   trên, kết quả là nút nguy hiểm nhất thanh đáy vẫn đỏ rực lúc máy đứng yên.
+   Nhắc lại ở đây với ĐÚNG độ đặc hiệu ba-ID + lớp thì mới ăn. JS đã bật/tắt lớp
+   `idle` đúng theo R.phase rồi (xem chỗ btnDrop.classList.toggle). */
+#stage #pane-rang #btnDrop.idle{color:var(--mute);background:var(--card);border-color:var(--hair)}
+#stage #pane-rang #btnDrop.idle .ti{opacity:.5}
 /* Nhãn "Cần xác nhận" — chữ 15px nên cần 4,5:1. Một màu gạch duy nhất không đủ
    cho cả hai nền (đo được 4,32 nền sáng / 4,39 nền tối), nên tách theo nền. */
 #stage #pane-rang .tb-dangerlbl{position:absolute;right:28px;top:5px;max-width:none;margin:0;font-size:15px;letter-spacing:2px;color:#96513e}
@@ -2248,10 +2556,6 @@ html[data-theme="dark"] #stage #pane-rang .tb-dangerlbl{color:#cf8571}
 #stage #pane-rang .match-more-panel button{min-height:70px;font-size:24px;flex:none;width:100%;margin:0;padding:12px}
 #stage #pane-rang .match-more-panel .subror{display:flex;font-size:24px;gap:16px}
 #stage #pane-rang.simple .match-charthead{display:none}
-html:has(#pane-rang.on) #topbar #tabnav{max-width:none!important;min-width:max-content;background:transparent;border:0;border-radius:0}
-html:has(#pane-rang.on) #tabnav:before{display:none}
-html:has(#pane-rang.on) #topbar #tabnav .tab{flex:none!important;white-space:nowrap;width:auto;min-width:max-content;max-width:none}
-html:has(#pane-rang.on) #topbar .linkchip{font-size:20px!important}
 #stage #pane-rang .rightcol .cap,#stage #pane-rang .rightcol .ror .rl{font-size:20px!important;letter-spacing:1.5px;text-transform:uppercase}
 #stage #pane-rang .mchip .mn{font-size:17px!important;letter-spacing:2px}
 #stage #pane-rang .mchip{opacity:1!important;filter:none!important}
@@ -3242,7 +3546,7 @@ html:has(#pane-rang.on) #stage #linkChip{min-height:calc(var(--touch-min)*.85)}
           <!-- Nhắc trước cụm nút nguy hiểm. Nay đúng như bản thiết kế: GIỮ 1 GIÂY.
                (Chú thích cũ ghi app "hỏi lại bằng hộp thoại" là SAI — cmdDrop và
                cmdEscape gọi thẳng machCmd, không có hộp thoại nào cả.) -->
-          <div class="tb-dangerlbl" id="tbDangerLbl" aria-hidden="true" data-i18n="tb.holdhint">Giữ 0,5 giây</div>
+          <div class="tb-dangerlbl" id="tbDangerLbl" aria-hidden="true" data-i18n="tb.holdhint">Giữ 0,5 giây để xác nhận</div>
           <button class="tbtn warn holdbtn" id="btnDrop" data-hold="drop"><i class="holdfill" aria-hidden="true"></i><svg class="ti ot" aria-hidden="true"><use href="#i-drop"/></svg><span data-i18n="tb.drop">Kết thúc mẻ</span></button>
           <button class="tbtn dis" id="loopBtn" title="Chỉ dùng ở chế độ TỰ ĐỘNG"><svg class="ti ot" aria-hidden="true"><use href="#i-loop"/></svg>Loop</button>
           <button class="tbtn" id="profNoBtn"><span class="ti pfn num" id="tbPfn">2</span><span data-i18n="tb.prof">Prof No.</span></button>
@@ -3833,11 +4137,11 @@ html:has(#pane-rang.on) #stage #linkChip{min-height:calc(var(--touch-min)*.85)}
       <div class="pefield"><span class="pel">Ngày rang</span><input class="peval" id="pe_date" type="date" autocomplete="off" oninput="peTmp.date=peDateFromISO(this.value)"></div>
       <div class="pefield"><span class="pel">Thợ rang</span><input class="peval" id="pe_roaster" type="text" readonly tabindex="-1"></div>
       </div><!-- /.pe-fields -->
-      <!-- XEM TRƯỚC: đổi số bên trái là đường bên phải vẽ lại ngay, khỏi phải
+      <!-- XEM TRƯỚC: đổi số bên dưới là đường phía trên vẽ lại ngay, khỏi phải
            tưởng tượng. Dùng chính buildTarget() của màn Rang nên hình y hệt lúc rang. -->
       <aside class="pe-side">
         <h4>Đường rang dự kiến</h4>
-        <div class="pes-sub">Đổi thông số bên trái → đường vẽ lại ngay</div>
+        <div class="pes-sub">Đổi thông số bên dưới → đường vẽ lại ngay</div>
         <canvas id="peCurve" width="880" height="600"></canvas>
         <div class="pe-miles" id="peMiles"></div>
         <div class="pe-warn" id="peWarn"></div>
@@ -3889,7 +4193,7 @@ html:has(#pane-rang.on) #stage #linkChip{min-height:calc(var(--touch-min)*.85)}
 
     <!-- Chi tiết 1 mẻ (GĐ3): thống kê pha + đồ thị curve đã lưu -->
     <div class="overlay" id="batchDetail" onclick="if(event.target.id==='batchDetail')closeBatch()">
-      <div class="pebox bdbox">
+      <div class="pebox bdbox zoom-target">
         <div class="bd-head"><div><div class="bd-title" id="bdTitle">Mẻ</div><div class="bd-sub" id="bdSub"></div></div>
           <button class="bigbtn ghost" onclick="closeBatch()">✕</button></div>
         <div class="bd-stats" id="bdStats"></div>
@@ -4127,6 +4431,40 @@ function overviewChoose(i){
 function gotoTab(name){
   if(name==='tongquan')uxLatest();
   if(!document.getElementById('pane-'+name))return;
+  /* ĐÃ THỬ VÀ BỎ: gói chỗ này trong `document.startViewTransition`. Hai lý do,
+     lý do thứ hai mới là lý do thật:
+     1. Đổi tab nhanh tay làm chuyển cảnh trước bị huỷ, promise từ chối với
+        "Transition was skipped" và nổi lên thành lỗi JS chưa ai bắt.
+     2. Nặng hơn — View Transitions gọi hàm đổi DOM của mình ở KHUNG HÌNH SAU,
+        nên `gotoTab()` hoá bất đồng bộ. Mọi chỗ gọi `gotoTab(x)` rồi đọc DOM
+        ngay sau đó sẽ đọc phải trạng thái CŨ. Đổi hợp đồng của một hàm điều
+        hướng trong app điều khiển máy để lấy hiệu ứng là đổi sai giá.
+     Nay hoà tan bằng CSS (`@starting-style` + `allow-discrete` ở phần .pane),
+     nên hàm này giữ nguyên tính ĐỒNG BỘ như trước. Thu phóng chi tiết mẻ vẫn
+     dùng View Transitions — chỗ đó vốn đã async nên không vướng. */
+  /* Ghi HƯỚNG đi để nội dung trượt vào đúng chiều — đi tới thì vào từ phải, lùi
+     lại thì từ trái. Không có hướng thì chuyển cảnh nào cũng giống nhau và mắt
+     không biết mình vừa đi đâu; đó chính là chỗ làm nó trông "thô". */
+  const panes=document.getElementById('panes');
+  if(panes){
+    const thutu=[...document.querySelectorAll('#tabnav .tab')].map(t=>t.dataset.tab);
+    const cu=(document.querySelector('.pane.on')||{}).id||'';
+    const i0=thutu.indexOf(cu.replace('pane-','')),i1=thutu.indexOf(name);
+    if(i0>-1&&i1>-1&&i1<i0)panes.dataset.dir='lui';else panes.removeAttribute('data-dir');
+  }
+  /* Viên thuốc đang chạy thì bóp nhẹ theo trục, chữ tab tụt lại một nhịp. Gỡ lớp
+     sau đúng thời lượng trượt của viên thuốc (.32s ở luật #tabnav:before). */
+  const nav=document.getElementById('tabnav');
+  if(nav&&document.documentElement.dataset.motion==='full'){
+    const o=nav.querySelector('.tab.on'),m=[...nav.querySelectorAll('.tab')].find(t=>t.dataset.tab===name);
+    if(o&&m&&o!==m){
+      nav.style.setProperty('--nav-lag',
+        (o.getBoundingClientRect().left<m.getBoundingClientRect().left?-4:4)+'px');
+      nav.classList.add('segmoving');
+      clearTimeout(nav._segT);
+      nav._segT=setTimeout(()=>nav.classList.remove('segmoving'),340);
+    }
+  }
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
   document.getElementById('pane-'+name).classList.add('on');
   document.querySelectorAll('#tabnav .tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
@@ -4287,6 +4625,34 @@ function toggleCmp(id){
   else{if(HIST_SEL.size>=6){toast(LANG==='vi'?'So tối đa 6 mẻ':'Max 6 batches');return;}HIST_SEL.add(id);}
   renderHistory();
 }
+/* ── THU PHÓNG: hộp chi tiết NỞ RA TỪ chính thứ vừa bấm ───────────────────────
+   Ý "matched geometry" của iOS: cùng một vật, hai chỗ đứng. Trình duyệt chụp ô
+   nguồn trước khi đổi DOM và tấm thẻ sau khi đổi, thấy hai ảnh CÙNG TÊN thì nó
+   tự nội suy vị trí + kích thước giữa hai bên — không phải tự tính toạ độ.
+   Tên phải DUY NHẤT tại mỗi thời điểm, nên gán lúc mở và gỡ ngay khi xong; quên
+   gỡ là lần thu phóng sau trình duyệt thấy hai vật trùng tên và bỏ qua cả hai. */
+const ZOOM_NAME='otl-zoom';
+function zoomOpen(nguon,moRa){
+  const muot=document.startViewTransition
+    && document.documentElement.dataset.motion==='full'
+    && nguon && nguon.isConnected;
+  if(!muot)return moRa();
+  const thay=document.querySelector('.zoom-target');
+  nguon.style.viewTransitionName=ZOOM_NAME;
+  if(thay)thay.style.viewTransitionName=ZOOM_NAME;
+  const don=()=>{nguon.style.viewTransitionName='';if(thay)thay.style.viewTransitionName='';};
+  try{
+    const vt=document.startViewTransition(()=>{nguon.style.viewTransitionName='';return moRa();});
+    /* Bấm nhanh hai dòng liền nhau là chuyển cảnh trước bị HUỶ, và cả ba promise
+       của nó cùng từ chối với "Transition was skipped". Không bắt thì chúng nổi
+       lên thành lỗi JS chưa xử lý — vô hại về chức năng nhưng làm bẩn log kỹ
+       thuật và khiến mọi bộ kiểm "0 lỗi JS" đỏ oan. Bị huỷ là chuyện bình
+       thường ở đây, nuốt gọn. */
+    vt.ready.catch(()=>{});
+    vt.updateCallbackDone.catch(()=>{});
+    vt.finished.catch(()=>{}).finally(don);
+  }catch(e){don();return moRa();}
+}
 /* ── Chi tiết 1 mẻ: thống kê pha (DTR/AUC/RoR đỉnh) + đồ thị curve (GĐ3 §18.7) ── */
 const CMP_COLORS=['#2563eb','#e11d2f','#16a34a','#db2777','#d98a1a','#7c3aed'];
 async function openBatch(id){
@@ -4297,7 +4663,10 @@ async function openBatch(id){
   document.getElementById('bdTitle').textContent=(row&&(row.code||('#'+id)))||('#'+id);
   document.getElementById('bdSub').textContent=(row&&row.prof_name||'')+(row&&row.status==='INTERRUPTED'?(vi?' · ⚡ mẻ gián đoạn':' · ⚡ interrupted'):'');
   const box=document.getElementById('bdStats');box.innerHTML=vi?'Đang tính…':'Computing…';
-  document.getElementById('batchDetail').classList.add('on');
+  /* Nở ra từ đúng dòng vừa bấm. Không tìm thấy dòng (mở bằng bàn phím, hay mở từ
+     chỗ khác) thì rơi về cách mở thường — không được vì thế mà không mở được. */
+  const dong=document.querySelector(`#pane-lichsu .histrow[data-bid="${id}"]`);
+  zoomOpen(dong,()=>document.getElementById('batchDetail').classList.add('on'));
   let st=null,cv=null;
   try{st=await a.db_batch_stats(id);cv=await a.db_batch_curve(id);}catch(e){}
   if(!st){box.innerHTML=`<div class="bd-stat"><div class="k">—</div><div class="v">${vi?'Mẻ mô phỏng (không có curve)':'No curve'}</div></div>`;
@@ -4735,7 +5104,7 @@ function cycleSort(){const o=['name','temp','time'],lbl={name:'Tên',temp:'Nhi�
   profSort=o[(o.indexOf(profSort)+1)%o.length];document.getElementById('sortLbl').textContent=lbl[profSort];renderProfiles();}
 /* sửa 1 hồ sơ */
 let peIdx=-1, peTmp=null;
-function editProfile(i){peIdx=i;peTmp=Object.assign({},loadProfiles()[i]);refreshPE();document.getElementById('profedit').classList.add('on');}
+function editProfile(i){peIdx=i;peTmp=Object.assign({},loadProfiles()[i]);refreshPE();document.getElementById('profedit').classList.add('on');requestAnimationFrame(peDrawPreview);}
 function refreshPE(){document.getElementById('pe_name').value=peTmp.name||'';
   document.getElementById('pe_notes').value=peTmp.notes||'';document.getElementById('pe_roast').textContent=peTmp.roast;
   document.getElementById('pe_charge').value=peTmp.chargeT||160;
@@ -4761,7 +5130,24 @@ function refreshPE(){document.getElementById('pe_name').value=peTmp.name||'';
    không phải bản vẽ riêng dễ lệch. Vẽ BT (đậm) + RoR dự kiến (nét đứt, trục phải). */
 function peDrawPreview(){
   const cv=document.getElementById('peCurve'); if(!cv)return;
-  const g=cv.getContext('2d'), W=cv.width, H=cv.height;
+  /* NÉT SẮC: canvas trước đây khai cứng 880×600 rồi bị CSS ép về 100%×300px —
+     tỉ lệ lệch nên chữ và nét đều méo, đó mới là gốc của cảm giác "thô", không
+     phải thiếu trang trí. Nay lấy đúng kích thước thật của ô rồi nhân với tỉ lệ
+     điểm ảnh màn hình, và chia ngược lại bằng scale() để mọi toạ độ bên dưới
+     giữ nguyên — không phải sửa một dòng vẽ nào. */
+  const rc=cv.getBoundingClientRect();
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  let W=cv.width,H=cv.height;
+  const g=cv.getContext('2d');
+  if(rc.width>2){
+    W=Math.round(rc.width); H=Math.round(rc.height);
+    const pw=W*dpr,ph=H*dpr;
+    if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph;}
+    /* Nhân tỉ lệ vào MA TRẬN vẽ rồi tính mọi toạ độ theo pixel CSS. Nếu chỉ phóng
+       canvas mà không làm bước này thì cỡ chữ '17px' hoá bé đi một nửa trên màn
+       2x — vẫn xấu, chỉ xấu kiểu khác. */
+    g.setTransform(dpr,0,0,dpr,0,0);
+  }
   const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   g.clearRect(0,0,W,H);
   const box=document.getElementById('peMiles'), warn=document.getElementById('peWarn');
@@ -4901,7 +5287,7 @@ function newProfile(){
     color:colors[loadProfiles().length % colors.length],
     date:new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/-/g,'/'),
     roaster:session?session.name:''};
-  refreshPE();document.getElementById('profedit').classList.add('on');
+  refreshPE();document.getElementById('profedit').classList.add('on');requestAnimationFrame(peDrawPreview);
 }
 /* Xoá hồ sơ (có xác nhận) */
 async function deleteProfile(i){
@@ -4996,7 +5382,7 @@ const I18N={vi:{
  'ph.title':'Làm nóng máy','ph.idle':'Sẵn sàng','ph.heating':'Đang làm nóng','ph.reached':'Đã đạt nhiệt','ph.drum':'Nhiệt trống','ph.target':'Mục tiêu','ph.settemp':'Nhiệt đích','ph.settime':'Thời gian','ph.min':'phút','ph.start':'LÀM NÓNG','ph.stop':'DỪNG',
  'chart.target':'Mục tiêu','hist.csv':'Xuất CSV','hist.compare':'So sánh mẻ',
  'prof.new':'Hồ sơ mới','prof.empty':'Chưa có hồ sơ rang nào','prof.emptyhint':'Tạo hồ sơ đầu tiên để bắt đầu rang','prof.nofilter':'Không có hồ sơ phù hợp bộ lọc.',
- 'tb.settings':'Cài đặt','tb.ignite':'Đánh lửa','tb.charge':'Nạp hạt','tb.eject':'Xả liệu','tb.pause':'Tạm dừng','tb.drop':'Kết thúc mẻ','tb.holdhint':'Giữ 0,5 giây','tb.prof':'Prof No.','tb.profile':'Hồ sơ','tb.view':'Đổi view',
+ 'tb.settings':'Cài đặt','tb.ignite':'Đánh lửa','tb.charge':'Nạp hạt','tb.eject':'Xả liệu','tb.pause':'Tạm dừng','tb.drop':'Kết thúc mẻ','tb.holdhint':'Giữ 0,5 giây để xác nhận','tb.prof':'Prof No.','tb.profile':'Hồ sơ','tb.view':'Đổi view',
  'set.locked':'Cài đặt đang khoá','set.needlogin':'Đăng nhập tài khoản có quyền để mở khoá.','set.note':'Thay đổi chưa áp dụng vào máy đang chạy',
  'sub.ketnoi':'Kết nối','sub.calib':'Calib gas','sub.model':'Model nhiệt','sub.maycfg':'Cài đặt máy','sub.taikhoan':'Tài khoản','sub.nhatky':'Nhật ký',
  'ketnoi.lead':'Cổng RS485 tới Artisan / module cảm biến. Trạng thái kết nối thời gian thực.','ketnoi.artisan':'Cổng Modbus (Artisan)','ketnoi.bt':'Module BT (CP210x)','ketnoi.dup':'Hai cổng đang trùng nhau — Artisan và ET không thể dùng chung một COM.',
@@ -5043,7 +5429,7 @@ const I18N={vi:{
  'ph.title':'Preheat','ph.idle':'Ready','ph.heating':'Heating','ph.reached':'Target reached','ph.drum':'Drum temp','ph.target':'Target','ph.settemp':'Set temp','ph.settime':'Time','ph.min':'min','ph.start':'PREHEAT','ph.stop':'STOP',
  'chart.target':'Target','hist.csv':'Export CSV','hist.compare':'Compare',
  'prof.new':'New profile','prof.empty':'No roast profiles yet','prof.emptyhint':'Create your first profile to start roasting','prof.nofilter':'No profiles match the filter.',
- 'tb.settings':'Settings','tb.ignite':'Ignite','tb.charge':'Charge','tb.eject':'Eject','tb.pause':'Pause','tb.drop':'Drop','tb.holdhint':'Hold 0.5 s','tb.prof':'Prof No.','tb.profile':'Profiles','tb.view':'Toggle view',
+ 'tb.settings':'Settings','tb.ignite':'Ignite','tb.charge':'Charge','tb.eject':'Eject','tb.pause':'Pause','tb.drop':'Drop','tb.holdhint':'Hold 0.5s to confirm','tb.prof':'Prof No.','tb.profile':'Profiles','tb.view':'Toggle view',
  'set.locked':'Settings locked','set.needlogin':'Sign in with a permitted account to unlock.','set.note':'Changes not yet applied to the running machine',
  'sub.ketnoi':'Connection','sub.calib':'Gas calib','sub.model':'Thermal model','sub.maycfg':'Machine setup','sub.taikhoan':'Accounts','sub.nhatky':'Audit log',
  'ketnoi.lead':'RS485 ports to Artisan / sensor module. Real-time connection status.','ketnoi.artisan':'Modbus port (Artisan)','ketnoi.bt':'BT module (CP210x)','ketnoi.dup':'Both ports are the same — Artisan and ET cannot share one COM.',
@@ -5458,10 +5844,130 @@ function appExit(){                                   // gọi khi ĐÃ giữ đ
    luôn thời lượng thanh chạy `.holdbtn.holding>.holdfill` và nhãn `tb.holdhint`
    — lệch nhau là thanh mới chạy nửa đường mà lệnh đã đi, thợ không tin nút nữa. */
 const HOLD_MS=500;
+/* Số giây cho NHÃN, lấy thẳng từ HOLD_MS nên không thể lệch khỏi hành vi thật.
+   dot=1 → dấu chấm thập phân (tiếng Anh), mặc định dấu phẩy (tiếng Việt). */
+function _holdSec(dot){const s=(HOLD_MS/1000).toFixed(1).replace(/\.0$/,'');
+  return dot?s:s.replace('.',',');}
+/* Chưa nối được máy thì chặn NGAY lúc đặt ngón xuống, đừng bắt thợ giữ đủ 0,5
+   giây nhìn thanh chạy đầy rồi mới báo không gửi được — machCmd() vẫn là chốt
+   thật, đây chỉ là nói sớm. CỐ Ý không dùng `btn.disabled` cho việc này: đặt
+   disabled trong vòng vẽ mỗi nhịp thì hễ vòng đó tắc là nút KẸT KHOÁ vĩnh viễn
+   và thợ mất quyền điều khiển máy, không có đường gỡ. Hỏi ngay lúc bấm thì
+   không có trạng thái nào dính lại. */
+/* ══════════ HỒNG — hành vi bong bóng trợ lý ═══════════════════════════════════
+   Hạng AssistiveTouch: kéo được khắp màn, thả ra thì HÍT về mép gần nhất, nhớ chỗ
+   đã đặt, và không bao giờ trôi ra ngoài màn khi đổi cỡ cửa sổ.
+   Chạm = mở khung chat (nở ra từ đúng vị trí bong bóng).
+   Giữ  = mở micro, nói xong chữ rơi thẳng vào ô nhập của khung chat.
+   Khung chat là của `roast_assistant_ui.js` (Codex) — ở đây CHỈ gọi, không sửa. */
+const BD_POS='otl_buddy_pos';
+function buddyInit(){
+  const b=document.getElementById('otlBuddy'); if(!b||b._on)return; b._on=1;
+  const M=14;                                  // chừa mép, khỏi dính sát cạnh
+  let kéo=false,dx=0,dy=0,x=0,y=0,t0=0,giữ=null,đãKéo=false;
+
+  const đặt=(nx,ny)=>{
+    const w=innerWidth,h=innerHeight,bw=b.offsetWidth,bh=b.offsetHeight;
+    x=Math.max(M,Math.min(w-bw-M,nx)); y=Math.max(M,Math.min(h-bh-M,ny));
+    b.style.left=x+'px'; b.style.top=y+'px'; b.style.right='auto'; b.style.bottom='auto';
+    b.classList.toggle('left',x<w/2);          // nhãn tên lật sang phía có chỗ
+  };
+  const hít=()=>{                              // thả tay → về mép gần nhất
+    const w=innerWidth,bw=b.offsetWidth;
+    đặt(x+bw/2<w/2?M:w-bw-M,y);
+  };
+  /* Khôi phục chỗ cũ. Cửa sổ có thể đã nhỏ đi từ lần trước nên `đặt()` tự kẹp lại
+     — không thì bong bóng nằm ngoài màn và thợ mất luôn trợ lý. */
+  /* CHỖ MẶC ĐỊNH: mép TRÁI, ngang tầm giữa màn. Bản đầu để góc phải-dưới và nó
+     CHE MẤT NÚT `Drum-Fan` trong dải Thiết bị phụ của màn Rang — bong bóng trợ lý
+     đè lên một nút điều khiển máy là không chấp nhận được. Cột phải của màn Rang
+     kín từ trên xuống (BT · ET · đồng hồ · đánh lửa · thiết bị phụ), còn mép trái
+     ngang giữa là vùng đồ thị, không có nút nào. Thợ vẫn kéo đi đâu tuỳ ý. */
+  const mặcĐịnh=()=>đặt(0,innerHeight*0.46);
+  try{const p=JSON.parse(localStorage.getItem(BD_POS)||'null');
+    if(p&&isFinite(p.x)&&isFinite(p.y))đặt(p.x,p.y);else mặcĐịnh();
+  }catch(e){mặcĐịnh();}
+  addEventListener('resize',()=>đặt(x,y));
+
+  b.addEventListener('pointerdown',e=>{
+    if(e.button)return;
+    kéo=true;đãKéo=false;t0=Date.now();
+    const r=b.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top;
+    b.setPointerCapture(e.pointerId);b.classList.add('awake');
+    giữ=setTimeout(()=>{giữ=null;if(!đãKéo)buddyNghe();},550);   // giữ lâu = nói
+  });
+  b.addEventListener('pointermove',e=>{
+    if(!kéo)return;
+    if(!đãKéo&&Math.hypot(e.clientX-(x+dx),e.clientY-(y+dy))>6){
+      đãKéo=true;b.classList.add('dragging');
+      if(giữ){clearTimeout(giữ);giữ=null;}      // đã kéo thì thôi coi là giữ
+    }
+    if(đãKéo)đặt(e.clientX-dx,e.clientY-dy);
+  });
+  const xong=()=>{
+    if(!kéo)return; kéo=false;
+    if(giữ){clearTimeout(giữ);giữ=null;}
+    b.classList.remove('dragging');
+    if(đãKéo){hít();try{localStorage.setItem(BD_POS,JSON.stringify({x,y}));}catch(e){}}
+    else if(Date.now()-t0<520)buddyMở();        // chạm nhanh = mở khung chat
+    setTimeout(()=>b.classList.remove('awake'),1400);
+  };
+  b.addEventListener('pointerup',xong);
+  b.addEventListener('pointercancel',xong);
+  b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();buddyMở();}});
+}
+/* Mở khung chat, đặt GỐC PHÓNG ở đúng chỗ bong bóng đang đứng để nó nở ra từ đó. */
+async function buddyMở(){
+  const b=document.getElementById('otlBuddy');
+  if(typeof window.otlAssistantOpen!=='function'){
+    toast(LANG==='en'?'Assistant is not available in this build':'Bản này chưa có trợ lý');return;}
+  try{await window.otlAssistantOpen();}catch(e){return;}
+  const p=document.getElementById('ra-panel');
+  if(p&&b){
+    const r=b.getBoundingClientRect(),q=p.getBoundingClientRect();
+    if(q.width>2)p.style.transformOrigin=
+      ((r.left+r.width/2-q.left)/q.width*100).toFixed(1)+'% '+
+      ((r.top+r.height/2-q.top)/q.height*100).toFixed(1)+'%';
+  }
+}
+/* Giữ để NÓI. Chữ rơi vào ô nhập của khung chat chứ KHÔNG tự gửi — thợ phải đọc
+   lại rồi mới bấm Gửi, vì nhận dạng tiếng Việt trong xưởng ồn sai là chuyện thường
+   và đây là trợ lý của một cái máy đang cháy. */
+function buddyNghe(){
+  const R_=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const b=document.getElementById('otlBuddy');
+  if(!R_){toast(LANG==='en'?'This device has no speech recognition'
+                           :'Máy này không có nhận dạng giọng nói');return;}
+  if(b&&b._rec){try{b._rec.stop();}catch(e){} return;}
+  const rec=new R_();
+  rec.lang=LANG==='en'?'en-US':'vi-VN';rec.interimResults=true;rec.continuous=false;
+  let text='';
+  rec.onresult=e=>{text='';for(let i=0;i<e.results.length;i++)text+=e.results[i][0].transcript;};
+  rec.onerror=()=>{toast(LANG==='en'?'Could not hear that':'Chưa nghe được, thử lại');};
+  rec.onend=async()=>{
+    if(b){b.classList.remove('listening');b._rec=null;}
+    const t=text.trim(); if(!t)return;
+    await buddyMở();
+    const inp=document.getElementById('ra-input');
+    if(inp){inp.value=inp.value?inp.value+' '+t:t;inp.focus();
+      inp.dispatchEvent(new Event('input',{bubbles:true}));}
+  };
+  try{rec.start();if(b){b._rec=rec;b.classList.add('listening');}
+    toast(LANG==='en'?'Listening… release and speak':'Đang nghe… nói đi');
+  }catch(e){if(b){b.classList.remove('listening');b._rec=null;}}
+}
+function _chuaNoiMay(){
+  const coCau=typeof dsBridge==='function'&&dsBridge();
+  if(!coCau)return false;                       // mô phỏng → cho chạy
+  if(typeof DS!=='undefined'&&DS&&DS.state==='connected')return false;
+  toast(LANG==='en'?'No machine connection — command cannot be sent'
+                   :'Chưa nối được máy — không gửi lệnh được');
+  return true;
+}
 const HOLD_JOBS={
-  escape:{ run:()=>cmdEscape(), key:'tb.eject',
+  escape:{ run:()=>cmdEscape(), key:'tb.eject', blocked:()=>_chuaNoiMay(),
            vi:['Đang giữ…','Đã xả liệu'], en:['Holding…','Discharged'] },
-  drop:  { run:()=>cmdDrop(),   key:'tb.drop',
+  drop:  { run:()=>cmdDrop(),   key:'tb.drop',  blocked:()=>_chuaNoiMay(),
            vi:['Đang giữ…','Đã kết thúc mẻ'], en:['Holding…','Batch ended'] },
   quit:  { run:()=>appExit(),   key:'um.exit', blocked:()=>appExitBlocked(),
            vi:['Đang giữ…','Đang tắt…'], en:['Holding…','Closing…'] }
@@ -5523,6 +6029,7 @@ function holdBind(btn){
 }
 document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('[data-hold]').forEach(holdBind);
+  try{buddyInit();}catch(e){}   // bong bóng trợ lý Hồng — hỏng thì app vẫn chạy
 });
 window.addEventListener('pywebviewready',()=>{        // vỏ thật mới bắn event này
   const a=window.pywebview&&window.pywebview.api;
@@ -6837,7 +7344,7 @@ function editCurrentProfile(){
     toast('Hồ sơ đã rang — mở BẢN MỚI để sửa (không đè bản gốc)',true);
   }else{ peIdx=idx; peTmp=Object.assign({},p); }
   R._editFromIdle=true;
-  refreshPE(); document.getElementById('profedit').classList.add('on');
+  refreshPE(); document.getElementById('profedit').classList.add('on');requestAnimationFrame(peDrawPreview);
 }
 async function startRoast(){
   if(R.phase==='RUNNING')return;
@@ -7504,6 +8011,32 @@ function updateRoastLive(){
   if(bd){
     bd.classList.toggle('hot', R.phase==='RUNNING' && R.mileT.TP!=null);
     bd.classList.toggle('idle', R.phase!=='RUNNING');   // chưa vào mẻ thì đừng hút mắt
+  }
+  /* MẤT KẾT NỐI thì khoá luôn nút lệnh máy. machCmd() đã chặn đúng và không để
+     lệnh nào lọt ra, nhưng nó chặn ở CUỐI đường: với "Xả liệu" và "Kết thúc mẻ"
+     thợ phải giữ đủ 0,5 giây, nhìn thanh chạy đầy, rồi mới bị báo "chưa nối được
+     máy". App biết lệnh bất khả thi ngay từ đầu mà không nói cho cái nút biết.
+     Khoá sớm + ghi lý do vào title. KHÔNG đụng các nút chỉ chạy trong app
+     (Ghi mốc, Prof No.) vì chúng vẫn dùng được lúc mất kết nối. */
+  /* Viết gộp một dòng ở bản đầu là SAI và đã làm hỏng giữ-để-xác-nhận: khi
+     `dsBridge` chưa kịp là hàm, vế đầu thành false rồi rơi sang `DS.state` —
+     kết quả là khoá SẠCH mọi nút lệnh, kể cả lúc chạy mô phỏng không có cầu nối.
+     Tách hai bước cho rõ, và khi KHÔNG BIẾT chắc thì mở chứ không khoá: machCmd()
+     mới là chốt thật, luật này chỉ là lời nhắc sớm. Khoá nhầm thì thợ mất quyền
+     điều khiển máy — đắt hơn nhiều so với việc để họ bấm rồi nhận toast từ chối. */
+  /* Chưa nối máy thì BÁO cho mắt thấy, nhưng KHÔNG đặt `disabled`. Bản đầu đặt
+     disabled ngay ở đây và đó là sai: vòng vẽ này mà tắc — dữ liệu chết, ngoại lệ
+     ở hàm phía trên — thì nút kẹt khoá vĩnh viễn, thợ mất quyền điều khiển máy mà
+     không có đường gỡ. Nay chỉ làm mờ + ghi lý do vào title; việc chặn thật nằm ở
+     lúc BẤM (xem `_chuaNoiMay` và `job.blocked`), nên không có trạng thái dính. */
+  const coCauNoi=typeof dsBridge==='function'&&dsBridge();
+  const mayRanh=!coCauNoi||(typeof DS!=='undefined'&&DS&&DS.state==='connected');
+  for(const id of ['btnCharge','btnEscape','btnCool','pauseBtn','btnDrop','btnIgnite']){
+    const el=document.getElementById(id);if(!el)continue;
+    el.classList.toggle('offline',!mayRanh);
+    if(!mayRanh)el.title=LANG==='en'?'No machine connection — command cannot be sent'
+      :'Chưa nối được máy — không gửi lệnh được';
+    else if(/không gửi lệnh được|cannot be sent/.test(el.title||''))el.title='';
   }
   const started=(R.phase==='RUNNING'||R.phase==='DONE');   // đã bắt đầu mẻ?
   // đồng hồ thời gian mẻ
@@ -8349,7 +8882,17 @@ function renderMachineCfg(){
   mcMarkDirty();
 }
 function mcEdit(k,el){
+  const raw=String(el.value).trim();
   const v=_mcClamp(k,el.value);MC.cur[k]=v;el.value=v;mcMarkDirty();
+  /* NÓI RA khi số bị sửa. Trước đây _mcClamp lặng lẽ kéo số về biên rồi
+     mcCellAutoWrite đẩy thẳng xuống máy sau 1 giây — thợ gõ 300 tưởng máy nhận
+     300, thực tế $M nhận 100. Lúc không nối máy thì càng im, không có cả toast
+     "đã ghi" để mà nghi. */
+  const n=parseFloat(raw.replace(',','.')),p=MC_ALL[k];
+  if(p&&raw!==''&&String(v)!==raw){
+    if(!isFinite(n))toast(`“${raw}” không phải số — ${p[2]} giữ ${v}${p[3]?' '+p[3]:''}`);
+    else if(n<p[4]||n>p[5])toast(`${p[2]} chỉ nhận ${p[4]}–${p[5]}${p[3]?' '+p[3]:''} — đã sửa ${raw} thành ${v}`);
+  }
   mcCellAutoWrite(k);   // nối máy + không rang → tự ghi ô này xuống máy sau ~1s
 }
 function mcMarkDirty(){
@@ -9506,7 +10049,13 @@ function ovPrepRender(message,action){
   const box=document.getElementById('ovPrep');if(!box)return;
   OVPREP_ACTION=action||'hoso';
   txt('ovPrepTitle',uxText('Chuẩn bị mẻ rang','Prepare a batch'));
-  txt('ovPrepSub',message||'');
+  /* BỎ tiền tố "N · " trước khi dùng lại câu này. `message` do uxTick() dựng theo
+     thang 4 BƯỚC của dải #uxGuide, còn thẻ này có thang 3 BƯỚC riêng (1 Làm nóng
+     máy · 2 Chọn hồ sơ · 3 Nạp hạt). Dán nguyên si là hai hệ số đá nhau: chưa
+     chọn hồ sơ thì thẻ ghi "1 · Chọn hồ sơ" ngay trên danh sách mà bước 1 là
+     "Làm nóng máy" và "Chọn hồ sơ" mới là bước 2. Ở đây các bước đã tự đánh số
+     bằng hình rồi, nên câu dẫn chỉ cần là câu. */
+  txt('ovPrepSub',String(message||'').replace(/^\s*\d+\s*·\s*/,''));
   txt('ovPrepGo',R.phase==='RUNNING'?uxText('Xem mẻ đang rang','View live roast')
      :uxText('Mở điều khiển rang','Open roast controls'));
 
@@ -9639,7 +10188,7 @@ function uxSpark(cv,color='#2f6fe0'){
   for(const [t,b] of pts){minT=Math.min(minT,t);maxT=Math.max(maxT,t);minB=Math.min(minB,b);maxB=Math.max(maxB,b);}
   const stride=Math.max(1,Math.ceil(pts.length/300));
   const d=pts.filter((_,i)=>i%stride===0||i===pts.length-1).map(([t,b],i)=>(i?'L':'M')+(8+(t-minT)/Math.max(1,maxT-minT)*584).toFixed(1)+','+(112-(b-minB)/Math.max(1,maxB-minB)*100).toFixed(1)).join(' ');
-  return `<svg class="ux-spark" viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="${uxText('Đường BT đã ghi; trục ngang thời gian, trục dọc nhiệt độ','Recorded BT; time horizontally, temperature vertically')}"><path d="M8 112H592" stroke="var(--hair)"/><path d="${d}" fill="none" stroke="${uxColor(color)}" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>`;
+  return `<svg class="ux-spark" viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="${uxText('Đường BT đã ghi; trục ngang thời gian, trục dọc nhiệt độ','Recorded BT; time horizontally, temperature vertically')}"><path d="M8 112H592" stroke="var(--hair)"/><path pathLength="1" d="${d}" fill="none" stroke="${uxColor(color)}" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>`;
 }
 function uxProfileExtra(p,i){
   const id=+p.bgBatch,cv=p.curve||UX.profileCurves.get(id);
@@ -9694,11 +10243,27 @@ async function uxRenderHistory(){
   hp.title=hp.disabled?uxText('Đang ở trang đầu','Already on the first page'):'';
   hn.disabled=!UX.historyMore;
   hn.title=hn.disabled?uxText('Không còn mẻ nào phía sau','No more batches after this'):'';
+  /* Trước/Sau đã khoá đúng từ lâu, nhưng BA nút còn lại thì không — mở kho rỗng
+     là Xuất CSV / Xóa bộ lọc / Bỏ chọn mẻ đều bấm được mà chẳng làm gì. Khoá
+     theo đúng thứ mỗi nút cần: CSV cần có dòng, "Xóa bộ lọc" cần có bộ lọc đang
+     đặt (kho rỗng mà đang lọc thì VẪN phải bấm được để thoát ra), "Bỏ chọn mẻ"
+     cần có mẻ đang chọn. */
+  const filtering=!!(q||from||to);
+  const csv=document.getElementById('histCsvBtn');
+  if(csv){csv.disabled=!rows.length;
+    csv.title=csv.disabled?uxText('Chưa có mẻ nào để xuất','No batches to export')
+      :uxText('Xuất bảng lịch sử ra lich-su-me.csv trong thư mục hồ sơ','Export the history table to lich-su-me.csv in the profile folder');}
+  const hr=document.getElementById('uxHistReset');
+  if(hr){hr.disabled=!filtering;
+    hr.title=hr.disabled?uxText('Chưa đặt bộ lọc nào','No filters applied'):'';}
+  const hc=document.getElementById('uxHistClear');
+  if(hc){hc.disabled=!HIST_SEL.size;
+    hc.title=hc.disabled?uxText('Chưa chọn mẻ nào','No batches selected'):'';}
   txt('uxHistStatus',error?uxText('Không đọc được kho mẻ. Bấm xóa bộ lọc để thử lại.','Cannot read batch storage. Reset filters to retry.'):
     (local?uxText('Mô phỏng cục bộ · ','Local simulation · '):uxText('Kho mẻ · ','Batch storage · '))+(rows.length?`${offset+1}–${offset+rows.length}`:uxText('Chưa có mẻ phù hợp','No matching batches')));
   b.innerHTML=rows.map(r=>{const selected=HIST_SEL.has(r.id),click=local?'':` onclick="openBatch(${Number(r.id)})"`;
     const time=r.drop_sec!=null?fmtMMSS(r.drop_sec):(r.time||'—');
-    return `<tr class="histrow${selected?' sel':''}"${click}><td class="hsel">${!local&&r.live?`<input class="ux-cmp-check" type="checkbox" aria-label="${esc(uxText('So sánh mẻ ','Compare batch ')+r.code)}" ${selected?'checked':''} onclick="event.stopPropagation()" onchange="toggleCmp(${Number(r.id)})">`:''}</td>
+    return `<tr class="histrow${selected?' sel':''}" data-bid="${esc(String(r.id))}"${click}><td class="hsel">${!local&&r.live?`<input class="ux-cmp-check" type="checkbox" aria-label="${esc(uxText('So sánh mẻ ','Compare batch ')+r.code)}" ${selected?'checked':''} onclick="event.stopPropagation()" onchange="toggleCmp(${Number(r.id)})">`:''}</td>
     <td class="code">${esc(r.code||'#'+r.id)}</td><td><span class="prof"><span class="dot" style="background:${uxColor(r.color)}"></span>${esc(r.prof_name||'—')}${!r.live?' <span class="histtag">'+uxText('MÔ PHỎNG','SIMULATION')+'</span>':''}${r.status==='INTERRUPTED'?' <span class="histtag intr">'+uxText('GIÁN ĐOẠN','INTERRUPTED')+'</span>':''}</span></td>
     <td class="num">${esc(time)}</td><td class="temp">${r.drop_temp==null?'—':Math.round(r.drop_temp)+'°C'}</td><td class="dev">${r.dev_pct==null?'—':Number(r.dev_pct)+'%'}</td><td class="num">${r.charge_kg==null?'—':Number(r.charge_kg).toFixed(2)+' kg'}</td><td class="date">${esc(r.started_at?.slice(0,10)||r.date||'—')}</td></tr>`;}).join('')||`<tr><td colspan="7" class="ux-empty">${error?uxText('Lịch sử tạm thời không khả dụng.','History temporarily unavailable.'):uxText('Các mẻ đã lưu sẽ xuất hiện tại đây.','Saved batches will appear here.')}</td></tr>`;
   const cmp=document.getElementById('histCmpBtn');cmp.style.display=HIST_SEL.size>=2?'':'none';txt('cmpCount',HIST_SEL.size);
@@ -9917,7 +10482,11 @@ function matchRoastInit(){
     mark.hidden=R.phase!=='RUNNING';
     more.querySelector('summary').textContent=uxText('Thao tác','Actions');
     pane.querySelector('.od-aux-name').textContent=uxText('Thiết bị phụ','Auxiliary devices');
-    txt('tbDangerLbl',uxText('Cần xác nhận','Confirmation required'));
+    /* Nhãn phải DẠY thợ cách bấm, không chỉ báo là cần xác nhận. Bản cũ ghi
+       "Cần xác nhận" — trên màn cảm ứng thợ sẽ chạm, chạm nữa, không gì xảy ra,
+       vì hai nút này CHỈ ăn khi GIỮ đủ HOLD_MS. Lấy số giây thẳng từ HOLD_MS để
+       nhãn không bao giờ lệch khỏi hành vi thật. */
+    txt('tbDangerLbl',uxText('Giữ '+_holdSec()+' giây để xác nhận','Hold '+_holdSec(1)+'s to confirm'));
   };
   tick();setInterval(tick,500);
   new ResizeObserver(()=>requestAnimationFrame(drawChart)).observe(chart);
@@ -9983,5 +10552,21 @@ function odOutputStates(){
 new MutationObserver(odOutputStates).observe(document.querySelector('.outcard'),{subtree:true,childList:true,characterData:true});
 odOutputStates();
 </script>
+    <!-- ══════════ HỒNG — trợ lý AI, bong bóng nổi kiểu AssistiveTouch ══════════
+         Tên lấy từ "than hồng", chính là tên màu chủ đạo của bản thiết kế. Logo
+         là ANH EM với dấu OTL trên thanh đầu: cùng ô bo góc đỏ #D93A32, ruột đổi
+         thành đốm than. Bong bóng chỉ là NÚT MỞ — khung chat là `#ra-panel` do
+         `tools/roast_assistant_ui.js` dựng (phần của Codex), ở đây không đụng vào. -->
+    <button id="otlBuddy" type="button" aria-label="Hồng — trợ lý AI. Chạm để mở, giữ để nói."
+            title="Hồng — trợ lý AI · chạm để mở · giữ để nói">
+      <span class="bd-ring" aria-hidden="true"></span>
+      <svg class="bd-mark" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="0" y="0" width="40" height="40" rx="11" fill="#D93A32"/>
+        <path d="M20 8.5c3.4 4.1 5.1 7 5.1 9.6 0 1.6-.7 3-1.9 4 .5-1.4.3-2.8-.7-4.2-.6 3.3-2.4 4.6-4.2 6.3-1.6 1.5-2.5 3-2.5 4.8 0 .6.1 1.2.3 1.7-2.3-1.5-3.7-4-3.7-6.9 0-4.5 3.1-8.1 7.6-15.3Z"
+              fill="#fff" opacity=".95"/>
+        <circle cx="20" cy="29.4" r="2.5" fill="#FFD9A8"/>
+      </svg>
+      <span class="bd-name" aria-hidden="true">Hồng</span>
+    </button>
 </body>
 </html>
