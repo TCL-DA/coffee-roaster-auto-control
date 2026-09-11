@@ -12,6 +12,31 @@ Nhiều tham số khi so sánh nhiệt được firmware nhân ×10 (`_CV`) vì 
 
 ---
 
+> ## ⛔ ĐẨY SỐ THANH GHI TỪ v3.10.0 (10/09/2026) — ĐỌC TRƯỚC KHI TRA
+>
+> Chèn `dropTrim` vào **$M54** nên **7 thanh ghi sau nó lùi một bậc**:
+>
+> | $M | Trước v3.10.0 | Từ v3.10.0 |
+> |----|----|----|
+> | 54 | preheatDeadline | **`dropTrim`** (MỚI) |
+> | 55 | preheatHoldSettle | preheatDeadline |
+> | 56 | preheatTargetBand | preheatHoldSettle |
+> | 57 | developmentWarn | preheatTargetBand |
+> | 58 | autoDropMin | developmentWarn |
+> | 59 | manualEscapeExtra | autoDropMin |
+> | 60 | loopDoorStuck | manualEscapeExtra |
+> | 61 | — | loopDoorStuck |
+>
+> Khung đọc `rwMemHMI()` nới **60 → 61** thanh ghi (buffer ModbusMaster 64, còn dư 3 ô).
+> `iMemHMI[]` nới lên **[62]**, `PCL_CFG_MAXIDX` = **61**.
+>
+> **Firmware và màn HMI PHẢI nạp THÀNH CẶP.** Nạp firmware mới với màn cũ thì ô cũ của
+> `preheatHoldSettle` (10–30) rơi vào `preheatDeadline` ⇒ hạn sấy lồng 10–30 giây ⇒
+> **preheat báo lỗi mọi mẻ**. Firmware có kẹp cứng `dropTrim` về dải 0..10 nên ô 54 sai
+> thì chỉ TẮT tính năng, không dịch nhiệt xả — nhưng các ô còn lại KHÔNG có chốt đó.
+>
+> Xem [[project_khach_balan_dev_stall]], [[project_auto_stall_cuoi_me]].
+
 ## 1. Timer xy-lanh & cơ cấu (đơn vị: GIÂY — tick trong `timerPoll_1000ms()`)
 
 | $M | Tên | Đơn vị | Ý nghĩa (theo code) |
@@ -34,6 +59,7 @@ Nhiều tham số khi so sánh nhiệt được firmware nhân ×10 (`_CV`) vì 
 | 9 | `turnGasPoint` | °C | **Nhiệt bật gas** — dưới mốc này chưa lên gas chính (so sánh ×10). |
 | 20 | `yellowPhase` | °C | Mốc nhiệt **DE / chuyển vàng** (kết thúc pha sấy). Cũng làm ranh giới đổi `maxStep` gas AUTO. |
 | 21 | `fcsPhase` | °C | Mốc nhiệt **FCs (nổ lần 1)**. |
+| **54** | `dropTrim` | 0.1 °C | **Biên chỉnh nhiệt xả theo sai lệch THỜI GIAN** (v3.10.0+). Thợ cài 0.0–1.0 °C; `0` = tắt. Lê hơn giờ xả mẫu > 15 s → nhiệt xả **− dropTrim**; nhanh hơn > 15 s → **+ dropTrim**. Chỉ chạy khi DEV đã quá 3 phút. Firmware **kẹp cứng 0..10**, ngoài dải coi như 0. Mục đích: giữ **Agtron không vọt lố** khi thời gian rang trôi lệch — màu hạt do TỔNG NHIỆT hấp thụ quyết định, phụ thuộc cả thời gian lẫn nhiệt độ. ⚠ Là **bậc thang, không tỉ lệ**: lệch 16 s và 120 s bù giống nhau. |
 | 23 | `chargeTemp` | °C | **Nhiệt nạp mẻ** — lồng phải đạt mức này (±`chTolerange`) mới cho charge. |
 | 10 | `chTolerange` | °C | **Dung sai nhiệt nạp** quanh `chargeTemp` (so sánh ×10). Xem memory profile charge −1/+3. |
 | 24 | `btSV` | °C | **Set value BT** ghi cho bộ điều khiển nhiệt Delta (so sánh ×10). |
@@ -49,7 +75,7 @@ Nhiều tham số khi so sánh nhiệt được firmware nhân ×10 (`_CV`) vì 
 | 8 | `preGas` | % | **Gas mồi/nạp (BBP)** đặt lúc charge (`gasPercent = preGas_R`). |
 | 4 | `TpCalib` | % (bậc) | **Trần bậc tăng gas AUTO trước DE** — giới hạn `numIncGas`. `RoR_Control.h`: `maxStep` khi BT<DE. |
 | 5 | `DeCalib` | % (bậc) | **Trần bậc tăng gas AUTO từ DE→FCs**. |
-| 31 | `FcsCalib` | % (bậc) | **Trần bậc tăng gas AUTO sau FCs**. Xem `[[project_gas_calib_auto]]`, `[[project_ror_gas_cut_crack]]`. |
+| 31 | `FcsCalib` | % (bậc) | **Trần bậc tăng gas AUTO sau FCs**. ⛔ **PHẢI ≥ 5** — bậc bù nhỏ nhất là 5% (sàn cứng bếp NP), đặt 1–4 là bộ bù CHẾT. Trần chỉ cắn khi lệch ≥ (M31/5)×0.5 °C, nên M31=30 ≈ không có trần trong dải thực tế. Xem `[[project_gas_calib_auto]]`. |
 | 28 | `maxGasSet` | % | **Trần gas tuyệt đối** — map DAC: `4095 * maxGasSet/100`. Chặn cả gas AUTO load từ SD. |
 | 36 | `burnerValue` | % | **Đặt gas thủ công** (chế độ manual: `gasPercent = constrain(burnerValue,0,100)`). |
 | 37 | `autoOff` | 0/1 | **Tự cắt lửa** khi kết thúc (cool). |
@@ -94,8 +120,9 @@ Nhiều tham số khi so sánh nhiệt được firmware nhân ×10 (`_CV`) vì 
 | 11 | `loop` | mẻ | **Số mẻ rang lặp lại** (KHÔNG phải "Sample"). Đếm lùi mỗi mẻ; `>1` → rang tiếp (STP_LOOP_2), `≤1` → dừng. |
 | 12 | `modbusID` | ID | **Slave ID** của board trên bus Modbus. |
 | 13 | `modbusBaud` | mã | **Mã baudrate** Modbus. |
-| 30 | `preCool` | °C | **Bật làm nguội sớm** theo nhiệt (so sánh ×10). |
+| 30 | `preCool` | 0.1 °C | **Bật làm nguội sớm** theo nhiệt: bật cooling+mixer khi `BT ≥ DROP_PRO − preCool`. Giá trị ở thang **×10** — HMI hiện `0.2` thì thanh ghi là `2` = 0.2 °C. ⛔ Firmware trước 10/09/2026 nhân 10 lần nữa nên hiểu thành 2.0 °C; máy nào chưa nạp bản vá thì ô này đang chạy gấp 10 lần số hiển thị. Từ v3.10.0 mốc so sánh là **nhiệt xả ĐÃ CHỈNH** theo `dropTrim`, không phải `DROP_PRO_R` thô. |
 | 45 | `autoFill` | 0/1 | **Bật tự động fill** cà phê từ destoner → silo. |
+| 53 | `autoEscape` | 0/1 | **Tự động mở cửa xả**. `1` = chạy đủ làm mát → tách đá → escape. `0` = chỉ thổi mát đủ `coolTimer` rồi tắt bồn nguội, không tách đá, không tự mở cửa — thợ xả tay. ⛔ HMI đời cũ chưa có ô gạt sẽ đọc về 0 ⇒ máy đó phải build với `MACHINE_HAS_AUTO_ESCAPE_SWITCH 0` để firmware bỏ qua thanh ghi và luôn tự xả. |
 
 ---
 

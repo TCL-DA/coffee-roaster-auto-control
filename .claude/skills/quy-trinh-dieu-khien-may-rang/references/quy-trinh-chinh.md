@@ -124,14 +124,22 @@ Khi `chargeTemp_R_CV > 0` và `STP_GAS ≤ progStep < STP_TP` và chưa `trendPr
 
 ### STP_TP (6) — Bắt điểm quay đầu · `"WAIT TP"` / `"CHECK TP"`
 - Vào khi : đã nạp nhân.
-- Làm : chỉ xét khi **`timeRoast > ulimitTPTime` VÀ `BT < ulimitTPTemp`** (hai chặn để không bắt TP giả lúc mới đổ hạt). Trong vùng xét:
-  - BT còn giảm (`BT ≤ BT_TP_Pre`) → cập nhật `BT_TP_Pre` = đáy mới, nhãn `"CHECK TP"`.
-  - BT bật tăng (`BT > BT_TP_Pre`) → chốt `BT_TP_SAVE = BT_TP_Pre`, `TIME_TP_SAVE = timeRoast` (+ phút/giây), ghi event `"TP"`, `STT_EVENT_TP_REACHED`.
+- Làm — **chạy mỗi nhịp, kể cả trước khi cửa sổ dò mở** (sửa 2026-09-10):
+  - **Bám đáy**: `BT < BT_TP_Pre` → `BT_TP_Pre` = đáy mới, `TIME_TP_DIP` = giây của đáy. Nhờ vậy `BT_TP_Pre` LUÔN là đáy thật; hai nhánh dự phòng bên dưới mới có số đúng mà chốt. (Trước đây chỉ bám trong cửa sổ, nên nhánh cứu chốt nhầm chính nhiệt lúc nạp.)
+  - **Ghi nhận đã tụt dưới ngưỡng**: `BT < ulimitTPTemp` → `tpDipSeen = true` (chốt một chiều, không xoá trong mẻ).
+  - **Bằng chứng cú tụt thật** `tpDipReal` = `BT_TP_Pre ≤ BT_CHARGE_SAVE − TP_MIN_DROP_CV` (20.0 °C). Đây là điều kiện phân biệt *"chưa tụt tới"* với *"đã tụt xong"* — thiếu nó thì mọi nhịp BT nhích lên ngay sau nạp đều bị hiểu là đáy mẻ.
+- Chốt TP — ba nhánh, xét theo thứ tự:
+  1. **Bình thường**: `timeRoast > ulimitTPTime` && `tpDipReal` && `BT < ulimitTPTemp`. BT còn giảm → nhãn `"CHECK TP"`; BT bật tăng → chốt `BT_TP_SAVE = BT_TP_Pre`, `TIME_TP_SAVE = timeRoast`, event `"TP"`, `STT_EVENT_TP_REACHED`.
+  2. **Cứu TP (trượt cửa sổ)**: `timeRoast > ulimitTPTime` && `tpDipReal` && **`tpDipSeen`** && `BT ≥ ulimitTPTemp` → BT đã từng xuống dưới ngưỡng rồi bật ngược lên qua nó, tức đáy đã trôi mất → chốt theo `BT_TP_Pre` / `TIME_TP_DIP`, kèm `STT_WARN_TP_ASSUMED`.
+  3. **Hết hạn cứng** `timeRoast > TP_HARD_TMO` (240 s) → chốt theo đáy đã ghi kèm `STT_WARN_TP_ASSUMED`. Nhánh chống kẹt cuối cùng, cho trường hợp đáy nằm TRÊN `ulimitTPTemp` (nạp rất nóng) hoặc cảm biến đứng số.
 - Thoát khi : bắt được TP → `STP_YELLOW` (`STT_ROAST_YELLOW`).
-- Kẹt được? : **ĐÃ VÁ 2026-07-30 (R2), hai lớp.** (1) *Cứu TP*: hết `ulimitTPTime` mà BT đã trượt qua `ulimitTPTemp` → chốt luôn `BT_TP_Pre` đang giữ làm TP, ghi kèm dấu "TP suy đoán", sang `STP_YELLOW`. (2) *Chốt độc lập*: khối DROP hạ cổng từ `STP_YELLOW` xuống **`STP_CHARGE`** — auto-drop đúng bất kể máy có bắt được mốc hay không. Trước khi vá: trượt cửa sổ là đứng ở TP suốt mẻ **và máy không tự xả** → cháy mẻ.
+- Kẹt được? : **Không.** Nhánh 3 luôn thoát được vì chỉ phụ thuộc thời gian. Ngoài ra khối DROP hạ cổng xuống `STP_CHARGE` (R2 lớp 2, 2026-07-30) nên auto-drop đúng bất kể có bắt được mốc hay không.
+
+> ⚠ **Vì sao có `tpDipReal` và `tpDipSeen`** (sự cố 2026-09-10): nhánh cứu bản 30/07 chỉ xét `timeRoast > 20 && BT ≥ 150 °C`. Mẻ nạp ở 205 °C mà BT chưa kịp rơi dưới 150 °C trong 20 giây — hoặc BT còn đang ĐI LÊN lúc bấm charge — sẽ bị chốt TP giả ngay giây 21 với số TP **bằng đúng nhiệt lúc nạp**, rồi `STP_YELLOW` thấy BT đang cao hơn mốc vàng nên chốt DE luôn trong cùng nhịp. Hai mốc đầu mẻ sai hết. Hai cờ mới bắt buộc phải có bằng chứng cú tụt xảy ra thật trước khi được chốt.
 
 ### STP_YELLOW (7) — Kết thúc pha sấy (DE / Dry End) · `"WAIT YELLOW"`
-- Thoát khi : `BT ≥ yellowPhase_R_CV` → lưu `BT_YELLOW_SAVE`, `TIME_YELLOW_SAVE` (+ phút/giây), event `"DRY End"`, `STT_EVENT_YELLOW_REACHED` → `STP_FCS` (`STT_ROAST_FCS`).
+- Thoát khi : `BT ≥ yellowPhase_R_CV` **VÀ `timeRoast ≥ TIME_TP_SAVE + DE_MIN_GAP`** (5 s, thêm 2026-09-10) → lưu `BT_YELLOW_SAVE`, `TIME_YELLOW_SAVE` (+ phút/giây), event `"DRY End"`, `STT_EVENT_YELLOW_REACHED` → `STP_FCS` (`STT_ROAST_FCS`).
+- Vì sao có `DE_MIN_GAP`: sàn chống dồn mốc. TP ở đáy (~75 °C) mà DE ở mốc vàng (~150 °C) thì không đời nào cách nhau dưới 5 giây — hai mốc dính liền nhau luôn có nghĩa là TP vừa bị chốt bậy. Chỉ phụ thuộc thời gian nên không tạo đường kẹt mới.
 - Kẹt được? : Nếu BT không lên tới mốc (gas quá thấp) thì chờ mãi. Từ bước này auto-drop **đã** hoạt động, nên thợ vẫn còn đường xả.
 
 ### STP_FCS (8) — Chờ nứt lần 1 (First Crack) · `"WAIT FCS"`
@@ -151,6 +159,16 @@ Khi `chargeTemp_R_CV > 0` và `STP_GAS ≤ progStep < STP_TP` và chưa `trendPr
   - `PER_DEV_SAVE = TIME_DEV_SAVE × 1000 / timeRoast` — **phần nghìn**, ví dụ 185 = 18,5 %.
 - Thoát khi : **không có điều kiện thoát trong case này.** Ra khỏi DEV bằng [khối DROP](#4-khoi-xa-drop).
 - Kẹt được? : **ĐÃ VÁ 2026-07-30 (R3) — báo, không tự xả.** `PER_DEV_SAVE` vượt `DEV_WARN_PERMIL` → chuông + `setMachineStatus` cảnh báo **một lần trong mẻ** (cờ `devWarned`). Vẫn không có trần thời gian và **máy không tự xả**: tự xả một mẻ chưa tới nhiệt là làm hỏng mẻ, quyết định để cho thợ.
+- **CHỐT CỨU ĐOẠN CUỐI (thêm 2026-09-10, `endBatchRescue()` trong `Program.h`).** Chạy mỗi giây, **độc lập** với bộ bù gas thường và **không dính deadband** của nó.
+  - Cổng: `progStep == STP_DEV` && `dropTempTarget() − END_GUARD_BAND ≤ BT < dropTempTarget()` && mẻ **không** nóng hơn hồ sơ quá 0,6 °C.
+  - Kích theo **ETA**, không chờ BT đứng hẳn: `ETA = (số đơn vị 0,1 °C còn tới nhiệt xả) × (số giây giữa 2 lần BT nhích 0,1 °C)`. `ETA > END_MAX_ETA` → bơm.
+  - Bước bơm theo **gas NỀN của hồ sơ** (`sdGas[]`, trước mọi bù): nền < 10 % → `END_GAS_BUMP_LOW`; nền ≥ 10 % → `END_GAS_BUMP_HI`. Dưới 5 % bếp NP không phản ứng.
+  - Giữ ≥ `END_PULSE_MIN` giây rồi mới xét. Nhánh "BT đã nhích → giữ nguyên" **phải xét cả ETA** — chỉ hỏi "có nhích không" là chưa đủ, BT nhích 15 s/lần vẫn là lê mà nhánh này reset đồng hồ nên nhánh leo thang không bao giờ đếm tới nơi (bug đã vá 10/09).
+  - Chưa nhích sau `END_ESCALATE` giây → cộng thêm một bậc, trần `END_RESCUE_MAX`. Hết trần → chuông + `STT_WARN_END_RESCUE_TMO` (421), **KHÔNG tự xả**.
+  - **KHÔNG cộng dồn** với bộ bù thường: `gas = max(gas_sau_calib, gas_nền + offset_cứu)`. Cộng dồn thì nền 30 % + calib 10 % + cứu 10 % = 50 % gas ở 216 °C → cháy vỏ.
+  - Vì sao cần: khi hồ sơ đã hết, mục tiêu `sdBT[lastTimeSD]` **chính là nhiệt xả** nên sai lệch chỉ CO LẠI ⇒ bộ bù thường **mù hoàn toàn** trong 0,6 °C cuối.
+- **Deadband bộ bù gas siết 3 nấc** (2026-09-10): trước FCs ±1,0 °C (`clRangeBt`) · FCs→hết phút 2 của DEV ±0,6 °C (`CALIB_DEADBAND_FCS`) · **DEV từ phút 2** ±0,3 °C (`CALIB_DEADBAND_LATE`, mốc `CALIB_LATE_DEV_SEC`). Bậc bù nhỏ nhất vẫn 5 % ⇒ nấc ±0,3 có tỉ lệ vọt cao hơn, thấy hunting thì nâng lên 4–5.
+- ⚠ `TIME_DEV_SAVE` **trước 2026-09-10 không được reset** ở `STP_DATA` — mẻ mới thừa số mẻ trước. Đã vá; nay nó quyết định cả deadband lẫn nhiệt xả động nên không được để sót lại.
 
 ---
 
@@ -159,8 +177,27 @@ Khi `chargeTemp_R_CV > 0` và `STP_GAS ≤ progStep < STP_TP` và chưa `trendPr
 Nằm **ngoài switch**, chạy khi **`progStep ≥ STP_CHARGE`** (hạ cổng từ `STP_YELLOW` ngày 2026-07-30, lớp 2 của R2). Đặt ngoài switch để bấm xả được ở bất kỳ bước nào từ lúc hạt vào lồng, không phải chờ tới DEV — và để auto-drop không phụ thuộc việc máy có bắt được mốc TP hay không.
 
 ### 4a. Tự động (chỉ khi `progStatus == STT_PROGRAM_AUTO`)
-- **Auto drop**: `BT ≥ DROP_PRO_R` && `progStep < STP_LOOP_1` → `STT_ROAST_DROP`, ghi `DROP_BTN_W = 1` (máy tự bấm xả).
-- **Pre-cool**: `BT ≥ DROP_PRO_R − preCool_R_CV` (khi `preCool_R_CV > 0`) → nếu `coolTimer_R > 0 && coolStep == 0` thì `coolStep = COOL_STEP_COOLING`. Mục đích: bồn nguội đã chạy sẵn trước lúc hạt rơi xuống.
+- **Auto drop**: `BT ≥ dropTempTarget()` && `progStep < STP_LOOP_1` → `STT_ROAST_DROP`, ghi `DROP_BTN_W = 1` (máy tự bấm xả).
+- **Pre-cool**: `BT ≥ dropTempTarget() − preCool_R_CV` (khi `preCool_R_CV > 0`) → nếu `coolTimer_R > 0 && coolStep == 0` thì `coolStep = COOL_STEP_COOLING`.
+
+> ### ⚠ `dropTempTarget()` — nhiệt xả ĐỘNG (thêm 2026-09-10)
+> Từ v3.10.0 **KHÔNG dùng thẳng `DROP_PRO_R`** ở bất kỳ chỗ quyết định xả nào. Nhiệt xả
+> tự chỉnh theo sai lệch thời gian so với hồ sơ:
+>
+> | Điều kiện | Nhiệt xả |
+> |---|---|
+> | `timeRoast > sdProfileEndTi + ADAPT_DROP_DEV_SEC` | **− `dropTrim`** (lê hơn mẫu → xả sớm) |
+> | trong ±`ADAPT_DROP_DEV_SEC` | giữ nguyên `DROP_PRO_R` |
+> | `timeRoast < sdProfileEndTi − ADAPT_DROP_DEV_SEC` | **+ `dropTrim`** (nhanh hơn mẫu → xả trễ) |
+>
+> Chỉ chạy khi `progStep == STP_DEV` && `TIME_DEV_SAVE > ADAPT_DROP_MIN_DEV`. `dropTrim`
+> = **$M54**, thợ cài 0,0–1,0 °C, `0` = tắt; firmware **kẹp cứng 0..10**.
+>
+> **Lý do:** màu hạt do TỔNG NHIỆT hấp thụ quyết định (thời gian × nhiệt độ), nên mẻ lê
+> sẫm hơn dù xả cùng nhiệt độ ⇒ bù bằng cách xả sớm hơn. Giữ **Agtron không vọt lố**.
+>
+> ⛔ **Phải gọi hàm này ở CẢ 5 chỗ**: auto-drop · pre-cool · cửa sổ chốt cứu · tính ETA ·
+> trần chống chia-0. Sót một chỗ là auto-drop và bồn nguội nhắm hai mốc khác nhau.
 
 ### 4b. Khi `DROP_BTN_R == 1` && `progStep < STP_LOOP_1`
 - Rẽ theo chế độ **trước tiên**: `progStatus == STT_PROGRAM_SAVE` → tắt `START_BTN_W`, tắt `warnDeleteProfile`, mở khoá HMI, `sdLogEndEn = 1`, `STT_EVENT_ROAST_END`, `progStep = 0`.
@@ -213,4 +250,5 @@ Chi tiết 3 máy phụ và toàn bộ timer: [quy-trinh-phu.md](quy-trinh-phu.m
 | 2026-07-30 | Lập spec đầu tiên từ code hiện có (`Program.h` 1388→2374) | Tách quy trình ra khỏi code để sửa an toàn |
 | 2026-07-30 | **Code R1–R6** rồi build (RAM 81,4 %) và **nạp STM32**: trần chờ lửa 60 s, cứu TP + hạ cổng DROP xuống `STP_CHARGE`, cảnh báo DEV, trần LOOP_2 60 s, huỷ Start tắt gas theo `autoOff_R`, gộp escape. **Chưa chạy nghiệm thu trên mẻ thật.** | Sáu chỗ kẹt rà ra từ spec, chủ máy chốt "sửa hết rồi build" |
 | 2026-07-30 | Đồng bộ spec theo code đã vá (bước 1, 3, 4, 6, 9, 14, khối DROP) | Spec đang tả bản trước khi vá — code là sự thật |
+| 2026-09-10 | **Chống TP giả + DE dồn theo** ở `STP_TP`/`STP_YELLOW`: bám đáy từ giây CHARGE (`TIME_TP_DIP`), thêm `tpDipReal` (đáy phải thấp hơn nhiệt nạp ≥ `TP_MIN_DROP_CV` 20 °C) và `tpDipSeen` chặn nhánh cứu, thêm hạn cứng `TP_HARD_TMO` 240 s chống kẹt, thêm `DE_MIN_GAP` 5 s giữa TP và DE | Chạy thử với hồ sơ nạp 205 °C: giây 21 máy chốt TP giả bằng nhiệt nạp rồi chốt DE luôn. Nhánh cứu 30/07 không phân biệt được "chưa tụt tới" với "đã tụt xong" |
 | 2026-07-30 | Thêm [quyet-dinh-cho-code.md](quyet-dinh-cho-code.md): loại hạt `$M17`, dải nhiệt nạp theo loại hạt, kẹp về biên gần nhất, charge tay có nút riêng đi đủ `1→3→4`, chuỗi mồi 2 lần bếp NP, premix `BURNER LOCK`, cờ lỗi + Xoá lỗi `$M18`, cho charge sớm | Phiên thảo luận với chủ máy — **ý định, chưa code dòng nào** |
