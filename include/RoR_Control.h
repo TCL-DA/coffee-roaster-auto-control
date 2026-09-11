@@ -49,7 +49,7 @@ static bool     rorCtrl_initialized  = false;
 // Window 10s để tránh nhiễu từ profile thô
 void rorCtrl_populateSdRorBT() {
     const uint8_t WINDOW = 10; // giây
-    for (uint16_t t = 0; t < sdTempTi; t++) {
+    for (uint16_t t = 0; t < sdProfileEndTi; t++) {
         if (t < WINDOW) {
             sdRorBT[t] = 0;
             continue;

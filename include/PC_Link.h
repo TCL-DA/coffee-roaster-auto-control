@@ -148,7 +148,7 @@ static void pclSafety(){
 // ── Handshake CẤU HÌNH $M (đọc/ghi 1 tham số) ───────────────────────────────
 // App đặt CFG_IDX (và CFG_VAL nếu ghi) rồi CFG_CMD = 1(đọc)/2(ghi). Firmware xử
 // ĐÚNG 1 tham số, điền CFG_VAL/CFG_STATUS rồi set CFG_CMD = 0 báo xong.
-//   • idx = SỐ $M (1..52) = chính chỉ số iMemHMI[] → đọc/ghi thẳng.
+//   • idx = SỐ $M (1..60) = chính chỉ số iMemHMI[] → đọc/ghi thẳng.
 //   • GHI bị CHẶN khi máy BẬN, và bị TỪ CHỐI khi giá trị NGOÀI DẢI.
 //   • Ghi = set iMemHMI[idx] + writeSingleRegister(idx+2000). KHÔNG đụng _CP →
 //     để change-detect ở Modbus_Master.h tự chạy (tính lại _CV, side-effect chuẩn
@@ -162,25 +162,8 @@ static void pclSafety(){
 //   dải = TỪ CHỐI, không kẹp im lặng: kẹp thì thợ tưởng đã đặt 500 mà máy chạy
 //   300 — sai lệch đó nguy hiểm hơn là báo lỗi.
 
-// Dải hợp lệ của từng $M, chỉ số 0 = $M1. Mảng const → nằm ở FLASH, không tốn
-// RAM (máy đã dùng ~81% RAM). $M17/$M18 KHÔNG tồn tại trong Define.h nên đặt
-// min>max để mọi lệnh ghi vào đó đều bị từ chối.
-static const uint16_t PCL_CFG_MIN[PCL_CFG_MAXIDX] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M1..10
-    1, 1, 0, 0, 1, 0, 1, 1, 0, 0,      // $M11..20  ($M17,$M18: min>max = vô hiệu)
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M21..30
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M31..40
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,      // $M41..50
-    0, 0                                // $M51..52
-};
-static const uint16_t PCL_CFG_MAX[PCL_CFG_MAXIDX] = {
-       60,    60,    60,   100,   100, 65535,   600,   100,   300,    30,  // $M1..10
-       99,   247,     7,    60,   247, 65535,     0,     0,   120,   300,  // $M11..20
-      300,   600,   300,   300, 65535,    60,   120,   100,     1,   100,  // $M21..30
-      100,  1000,     1,   100,   100,   100,     1, 65535, 65535, 65535,  // $M31..40
-    10000, 10000, 10000,   100,     1,   120,     1,   300,  1000,  1000,  // $M41..50
-       60,   300                                                            // $M51..52
-};
+// Dải hợp lệ sinh từ protocol/pc_link.json vào PC_Link_Map.h. $M17/$M18 có
+// min>max để mọi lệnh ghi vào hai ô không dùng này đều bị từ chối.
 
 // Máy có đang ở trạng thái KHÔNG được đổi tham số không?
 // Chặn khi lửa đang cháy hoặc có thể bùng, và khi chuỗi tự động đang chạy:
@@ -215,9 +198,14 @@ static void pcLinkConfigTask(){
         } else if (lo > hi || v < lo || v > hi) {
             mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_RANGE);  // ngoài dải (hoặc $M không tồn tại)
         } else {
-            iMemHMI[idx] = v;                            // = xxx_R (change-detect tự lo _CV/_CP)
-            nodeHMI.writeSingleRegister(idx + 2000, v);  // HMI giữ đúng số, Modbus_Master đọc lại khớp
-            mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_OK);
+            const uint8_t wr = nodeHMI.writeSingleRegister(idx + 2000, v);
+            if (wr == nodeHMI.ku8MBSuccess) {
+                iMemHMI[idx] = v;                        // chỉ nhận sau khi HMI xác nhận
+                mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_OK);
+            } else {
+                mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_HMI);
+                errorCount++;
+            }
         }
     } else {
         mbs.Hreg(PCL_CFG_STATUS, PCL_CFG_ST_ERR);        // cmd lạ
@@ -248,6 +236,7 @@ void handle_PC_Link(){
     mbs.Hreg(PCL_R_SCALE,   (uint16_t)netW100);       // cân phễu ×100 (61.35kg = 6135)
     mbs.Hreg(PCL_R_RORKG,   (uint16_t)rorKG);         // tốc độ cân ×100 (hút = âm)
     mbs.Hreg(PCL_R_SCALETG, (uint16_t)netWTG_R);      // cân đích ×10 (Setup kg trên HMI)
+    mbs.Hreg(PCL_R_VACEN,   (uint16_t)vacuumSetFlag_R); // PID gió theo áp hút: 0=tắt 1=bật
 
     uint16_t ph = 0;
     if (START_BTN_R == 1) {
@@ -296,7 +285,11 @@ void handle_PC_Link(){
             (int16_t)SELECT_FILE_R,                 // PCL_W_PROFILE — phản chiếu slot đang chọn
             (int16_t)progStatus,                    // PCL_W_MODE — 1=SAVE, 2=AUTO
             (int16_t)netWTG_R,                      // PCL_W_SCALETG — cân đích ×10
-            (int16_t)autoLoader_R                   // PCL_W_AUTOLOADER
+            (int16_t)autoLoader_R,                  // PCL_W_AUTOLOADER
+            (int16_t)vacuumSetFlag_R,               // PCL_W_VACEN — PHẢI phản chiếu:
+            // thiếu ô này thì gương treo ở 0 trong khi máy đang bật PID gió; app ghi 0
+            // để tắt là pclChanged thấy 0==0, KHÔNG làm gì, mà giao diện báo đã tắt.
+            0                                       // PCL_W_AGENT — tắt PC control = xoá then
         };
         for (int i = 0; i < PCL_W_COUNT; i++) {
             mbs.Hreg(PCL_W_BASE + i, (uint16_t)sp[i]);
@@ -316,7 +309,11 @@ void handle_PC_Link(){
             (int16_t)SELECT_FILE_R,                 // PCL_W_PROFILE — phản chiếu slot đang chọn
             (int16_t)progStatus,                    // PCL_W_MODE — 1=SAVE, 2=AUTO
             (int16_t)netWTG_R,                      // PCL_W_SCALETG — cân đích ×10
-            (int16_t)autoLoader_R                   // PCL_W_AUTOLOADER
+            (int16_t)autoLoader_R,                  // PCL_W_AUTOLOADER
+            (int16_t)vacuumSetFlag_R,               // PCL_W_VACEN — PHẢI phản chiếu:
+            // thiếu ô này thì gương treo ở 0 trong khi máy đang bật PID gió; app ghi 0
+            // để tắt là pclChanged thấy 0==0, KHÔNG làm gì, mà giao diện báo đã tắt.
+            0                                       // PCL_W_AGENT — tắt PC control = xoá then
         };
         for (int i = 0; i < PCL_W_COUNT; i++) {
             mbs.Hreg(PCL_W_BASE + i, (uint16_t)sp[i]);

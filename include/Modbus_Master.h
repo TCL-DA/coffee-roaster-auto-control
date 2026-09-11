@@ -123,12 +123,12 @@ void upgradeGraphData(){
 void rwMemHMI(){
     uint8_t result = 0;
     uint16_t fst_address = 2001;
-    uint8_t Numaddress = 53;
+    const uint8_t Numaddress = 61;  // $M1..$M61; nhỏ hơn buffer 64 thanh ghi của ModbusMaster
     result = nodeHMI.readHoldingRegisters(fst_address, Numaddress); //160ms
     if(result == nodeHMI.ku8MBSuccess){
         modbusNoteSuccess(MB_DEV_HMI);
-        for(int i = 1; i < Numaddress; i++) {
-            iMemHMI_CP[i] = nodeHMI.getResponseBuffer(i-1); // nạp vao mảng array tạm
+        for(uint8_t i = 0; i < Numaddress; i++) {
+            iMemHMI_CP[i + 1] = nodeHMI.getResponseBuffer(i); // M1 ở buffer 0; M61 ở buffer 60
         }
 
          //Charge duration
@@ -296,8 +296,15 @@ void rwMemHMI(){
 
         //Khoảng rơ bật gas
         if(preCool_R !=preCool_R_CP){
-            preCool_R = preCool_R_CP;   
-            preCool_R_CV = preCool_R*10;
+            preCool_R = preCool_R_CP;
+            // $M30 gửi xuống ĐÃ ở thang x10 (HMI hiện 1 số lẻ, app Roast Lab ghi
+            // chú "×10"), nên gán thẳng — nhân 10 lần nữa là thổi to gấp 10.
+            preCool_R_CV = preCool_R;
+        }
+
+        //Biên chỉnh nhiệt xả theo lệch thời gian ($M54)
+        if(dropTrim_R != dropTrim_R_CP){
+            dropTrim_R = dropTrim_R_CP;
         }
 
         //Fcs
@@ -413,6 +420,18 @@ void rwMemHMI(){
         if(wuTemp_R != wuTemp_R_CP){
             wuTemp_R = wuTemp_R_CP;  
         }
+
+        if(autoEscape_R != autoEscape_R_CP){
+            autoEscape_R = autoEscape_R_CP;
+        }
+
+        if(preheatDeadline_R != preheatDeadline_R_CP) preheatDeadline_R = preheatDeadline_R_CP;
+        if(preheatHoldSettle_R != preheatHoldSettle_R_CP) preheatHoldSettle_R = preheatHoldSettle_R_CP;
+        if(preheatTargetBand_R != preheatTargetBand_R_CP) preheatTargetBand_R = preheatTargetBand_R_CP;
+        if(developmentWarn_R != developmentWarn_R_CP) developmentWarn_R = developmentWarn_R_CP;
+        if(autoDropMin_R != autoDropMin_R_CP) autoDropMin_R = autoDropMin_R_CP;
+        if(manualEscapeExtra_R != manualEscapeExtra_R_CP) manualEscapeExtra_R = manualEscapeExtra_R_CP;
+        if(loopDoorStuck_R != loopDoorStuck_R_CP) loopDoorStuck_R = loopDoorStuck_R_CP;
 
     }else{
         errorCount++;
@@ -1243,4 +1262,3 @@ void checkError() {
 //         GREEN_YELLOW_STM_CP = true;     
 //     }
 // }
-

@@ -351,6 +351,9 @@
 #define STT_ERR_DROP_STUCK_OPEN     417 // Cửa xả không đóng lại sau khi xả — đã dừng, không nạp mẻ mới
 #define STT_WARN_TUNE_BUSY          418 // Đang sấy lồng — đã huỷ factory tune gió (dùng chung ô tiến trình)
 #define STT_WARN_FF_TABLE_FULL      419 // Bảng feed-forward gió đã đầy — dữ liệu quét bị thiếu
+// ── Chốt cứu đoạn cuối mẻ (thêm 2026-09-10) ──
+#define STT_END_RESCUE_ON           420 // BT đứng sát nhiệt xả — đang bù thêm gas để về đích
+#define STT_WARN_END_RESCUE_TMO     421 // Bù hết mức mà BT vẫn không lên — kiểm gas/béc, cân nhắc xả tay
 
 // Tổng cộng: ~380 mã trạng thái, bắt đầu từ 1
 

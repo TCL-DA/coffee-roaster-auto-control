@@ -5,12 +5,17 @@ Sửa JSON rồi chạy: python protocol/gen_pc_link.py
 Bản đồ register + giải mã gói dữ liệu máy rang, dùng chung với firmware.
 """
 
-VERSION = 1
+VERSION = 3
 BAUD_DEFAULT = 9600
 SLAVE_DEFAULT = 1
 
-R_BASE, R_COUNT = 100, 22
+R_BASE, R_COUNT = 100, 23
 W_BASE, W_COUNT = 140, 23
+
+# Khối ĐỌC theo ĐÚNG thứ tự offset. Máy chạy firmware cũ có ít ô hơn,
+# app lùi số ô rồi lấy R_KEYS[số_ô_đọc_được:] làm danh sách trường
+# 'máy chưa có' — khỏi phải nhớ sửa tay mỗi lần thêm ô mới (otl_link).
+R_KEYS = ["bt", "et", "ror_bt", "ror_et", "ror_pro", "gas", "air", "drum", "sv", "vac", "step", "t_roast", "phase", "flags", "hb", "drum_hz", "prof_pct", "prof_ok", "prof_sel", "scale", "ror_kg", "scale_tg", "vac_en"]
 
 # tên → chỉ số trong khối GHI (offset từ W_BASE)
 W_INDEX = {
@@ -182,13 +187,77 @@ DERIVE = {
 CFG_BASE = 170
 CFG_REG = {
     "cmd": 170,   # 0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)
-    "idx": 171,   # số $M cần đọc/ghi (1..52)
+    "idx": 171,   # số $M cần đọc/ghi (1..60)
     "val": 172,   # giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)
-    "status": 173,   # 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải cho phép của tham số
+    "status": 173,   # 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải · 5=HMI từ chối hoặc không phản hồi lệnh ghi
 }
-CFG_MAXIDX = 52
+CFG_MAXIDX = 61
 CFG_CMD = {'idle': 0, 'read': 1, 'write': 2}
-CFG_STATUS = {'busy': 0, 'ok': 1, 'err': 2, 'locked': 3, 'range': 4}
+CFG_STATUS = {'busy': 0, 'ok': 1, 'err': 2, 'locked': 3, 'range': 4, 'hmi': 5}
+CFG_RANGE = {
+    1: (0, 60),
+    2: (0, 60),
+    3: (0, 60),
+    4: (0, 100),
+    5: (0, 100),
+    6: (0, 65535),
+    7: (0, 600),
+    8: (0, 100),
+    9: (0, 300),
+    10: (0, 30),
+    11: (1, 99),
+    12: (1, 247),
+    13: (0, 7),
+    14: (0, 60),
+    15: (1, 247),
+    16: (0, 65535),
+    17: (1, 0),
+    18: (1, 0),
+    19: (0, 120),
+    20: (0, 300),
+    21: (0, 300),
+    22: (0, 600),
+    23: (0, 3000),
+    24: (0, 300),
+    25: (0, 65535),
+    26: (0, 60),
+    27: (0, 120),
+    28: (0, 100),
+    29: (0, 1),
+    30: (0, 100),
+    31: (0, 100),
+    32: (0, 1000),
+    33: (0, 1),
+    34: (0, 100),
+    35: (0, 100),
+    36: (0, 100),
+    37: (0, 1),
+    38: (0, 65535),
+    39: (0, 65535),
+    40: (0, 65535),
+    41: (0, 10000),
+    42: (0, 10000),
+    43: (0, 10000),
+    44: (0, 100),
+    45: (0, 1),
+    46: (0, 120),
+    47: (0, 1),
+    48: (0, 300),
+    49: (0, 1000),
+    50: (0, 1000),
+    51: (0, 60),
+    52: (0, 300),
+    53: (0, 1),
+    54: (0, 10),
+    55: (60, 900),
+    56: (10, 120),
+    57: (10, 30),
+    58: (100, 300),
+    59: (120, 600),
+    60: (0, 30),
+    61: (5, 60),
+}
+CFG_META = {23: {'name': 'chargeTemp10', 'unit': '°C', 'scale': 10, 'default': 1800, 'desc': 'nhiệt độ nạp, số thô ×10 (1800 = 180,0°C)'}, 53: {'name': 'autoEscape', 'unit': 'bool', 'scale': 1, 'default': 1, 'desc': '1 = tự động mở cửa xả sau làm mát; 0 = chỉ làm mát'}, 54: {'name': 'dropTrim10', 'unit': '°C', 'scale': 10, 'default': 3, 'desc': 'Biên chỉnh nhiệt xả theo sai lệch thời gian, ×10 (0 = TẮT, xả đúng nhiệt hồ sơ; 10 = ±1.0 °C). Chỉ tác dụng khi DEV đã quá 3 phút.'}, 55: {'name': 'preheatDeadlineSec', 'unit': 's', 'scale': 1, 'default': 180, 'zero_uses_default': True, 'desc': 'thời hạn PID preheat đạt nhiệt mục tiêu'}, 56: {'name': 'preheatHoldSettleSec', 'unit': 's', 'scale': 1, 'default': 45, 'zero_uses_default': True, 'desc': 'thời gian bỏ qua chuyển tiếp trước khi đánh giá giữ nhiệt'}, 57: {'name': 'preheatTargetBand10', 'unit': '°C', 'scale': 10, 'default': 30, 'zero_uses_default': True, 'desc': 'dải vào trạng thái giữ nhiệt, số thô ×10 (30 = 3,0°C)'}, 58: {'name': 'developmentWarnPermil', 'unit': '‰', 'scale': 1, 'default': 300, 'zero_uses_default': True, 'desc': 'ngưỡng cảnh báo tỷ lệ phát triển, phần nghìn (300 = 30,0%)'}, 59: {'name': 'autoDropMinSec', 'unit': 's', 'scale': 1, 'default': 120, 'zero_uses_default': True, 'desc': 'thời gian tối thiểu sau charge mới cho phép auto-drop'}, 60: {'name': 'manualEscapeExtraSec', 'unit': 's', 'scale': 1, 'default': 15, 'zero_uses_default': False, 'desc': 'số giây cộng thêm khi tự đóng escape mở tay; 0 là giá trị hợp lệ. HMI mới phải khởi tạo 15 nếu muốn mặc định; firmware không thể phân biệt số 0 cố ý với HMI cũ chưa có ô này'}, 61: {'name': 'loopDoorStuckSec', 'unit': 's', 'scale': 1, 'default': 60, 'zero_uses_default': True, 'desc': 'thời gian chờ cửa drop đóng ở vòng lặp trước khi báo kẹt'}}
 
 # Chốt an toàn khi app là bộ điều khiển
 FAILSAFE = {
@@ -231,4 +300,5 @@ def decode(regs):
         "scale": to_signed(regs[19]) / 100.0,   # cân phễu netW100 (61.35kg = 6135; âm khi trôi zero)
         "ror_kg": to_signed(regs[20]) / 100.0,   # tốc độ cân rorKG (hút ra = âm, 1kg/phút = 100)
         "scale_tg": regs[21] / 10.0,   # cân đích netWTG_R — hút tới còn ngần này thì tự cắt (Setup kg trên HMI)
+        "vac_en": regs[22],   # PID gió theo áp hút đang BẬT hay không (vacuumSetFlag_R). Thêm 2026-09-09: khối GHI có ô vacen từ 30/07 nhưng khối ĐỌC thì không, nên app ra lệnh xong không có đường đọc lại — gương chỉ có một chiều
     }

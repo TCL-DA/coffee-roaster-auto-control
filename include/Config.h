@@ -2,7 +2,13 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang OTL-15-AUTO (15 kg, tự động) — mã hồ sơ M09.
+ * Cấu hình hiện tại: máy rang 30 kg tự động — nền preset M06, bản noVacuum.
+ *   Dựng cho bản gửi khách v3.9.0 (08/09/2026), kế thừa bản v3.7.0 đã giao 03/09/2026.
+ *   KHÔNG cân, KHÔNG cảm biến áp hút (noVacuum). Cảm biến áp đấu ngõ ACI biến tần
+ *   DRUM (slave 4) nên MACHINE_VACUUM_FROM_DRUM để 1 cho đúng phần cứng — vô hiệu
+ *   chừng nào MACHINE_HAS_VACUUM_SENSOR còn 0, bật lại là chạy đúng ngay.
+ *   Cấu hình máy 15 kg M09 xem docs/config/config-15kg-auto-M09.md.
+ * (Header cũ) máy rang OTL-15-AUTO (15 kg, tự động) — mã hồ sơ M09.
  *   Cụm đi kèm: OL-120-AUTO (hút liệu 120 kg) + OD-15-V2 (tách đá) + AF-15-ĐỨNG (đốt khói).
  *   Bộ nạp liệu OL-120-AUTO dùng XI LANH ĐIỆN 30 mm/s, hành trình 30 mm.
  *   (Seri máy và khách hàng: xem bảng tra ngoài repo, 112_Quanly\BANG-TRA-MA-MAY.md)
@@ -33,12 +39,12 @@
 #define MACHINE_HAS_GAS_CONTROL           1  // Điều khiển gas bằng DAC và relay gas
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần (slave 4)
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió nối RS485 Modbus (cần cho vacuum)
-#define MACHINE_HAS_VACUUM_SENSOR         1  // Có cảm biến áp suất hút/vacuum, dùng PID gió
-#define MACHINE_HAS_SCALE_FEEDER          1  // Có đầu cân Bluetooth cho auto-loader
+#define MACHINE_HAS_VACUUM_SENSOR         0  // KHÔNG cảm biến áp hút — bản noVacuum, tắt PID gió
+#define MACHINE_HAS_SCALE_FEEDER          0  // KHÔNG đầu cân — feeder chạy theo timer feederSet_R
 #define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  15 // Khối lượng mẻ rang danh định (kg) — máy OTL-15-AUTO (suy ngưỡng auto-loader: 15×80/10 = 12.0kg)
+#define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30 kg
 // KHOÁ LOẠI ĐẦU ĐỐT LÚC BUILD.
 //   1 = ÉP đầu đốt THƯỜNG (khuếch tán), BỎ QUA thanh ghi HMI 29. Dùng cho máy chắc chắn
 //       không phải premix — nhất là HMI đời cũ không có ô chọn bếp, đọc reg 29 ra rác thì
@@ -97,7 +103,7 @@
 // Dùng khi cảm biến áp suất nối vào ngõ analog ACI của biến tần drum thay vì quạt
 // gió. Cùng địa chỉ thanh ghi (AIR_INV_ACI_RAW_REGISTER) vì 2 biến tần cùng model.
 // ---------------------------------------------------------------------------
-#define MACHINE_VACUUM_FROM_DRUM          0
+#define MACHINE_VACUUM_FROM_DRUM          1
 
 // ---------------------------------------------------------------------------
 // Địa chỉ thanh ghi Modbus của biến tần drum.
@@ -363,7 +369,7 @@
 #define PH_TUNE_HOLD_DEV                  20     // lệch HOLD > 2°C (0.1°C) = tune chưa đạt
 // Bỏ qua giai đoạn chuyển tiếp khi vừa vào HOLD (BT còn cách target tới ±3°C lúc
 // mới vào, chưa kịp ổn định). Chỉ đo độ ổn định SAU khoảng này (giây).
-#define PH_HOLD_SETTLE_SEC                45
+#define PH_HOLD_SETTLE_SEC                45     // mặc định khi M55=0 (HMI cũ)
 
 // Gain scheduling theo mức SV (giống Hanyoung n.PID) — lưu nhiều bộ hệ số theo
 // nhiệt độ. Khách luân phiên nhiều mức (vd 240/170): tune mỗi mức 1 lần, sau đó
@@ -446,7 +452,7 @@
 //   ratio > PH_DL_RATIO_HI  → quá chậm  → tăng gas
 //   trong khoảng             → đúng tiến độ → giữ
 // Kiểm tra mỗi 5 giây (cùng chu kỳ gas eval)
-#define PH_DEADLINE_SEC                   180   // deadline đạt target (giây = 3 phút)
+#define PH_DEADLINE_SEC                   180   // mặc định khi M54=0; deadline đạt target
 #define PH_DEADLINE_STEP                  10    // bước tăng/giảm gas (%)
 #define PH_DL_RATIO_LO                    80    // ratio × 100: dưới ngưỡng này = quá nhanh
 #define PH_DL_RATIO_HI                    120   // ratio × 100: trên ngưỡng này = quá chậm
@@ -469,7 +475,7 @@
 #define PH_APPROACH_BAND                  250   // 25°C
 
 // Cách target ≤ giá trị này → GĐ4 / vùng giữ (đơn vị 0.1°C)
-#define PH_TARGET_BAND                    30    // ±3°C
+#define PH_TARGET_BAND                    30    // mặc định khi M56=0; ±3°C
 
 // ---------------------------------------------------------------------------
 // TIMING
@@ -507,13 +513,89 @@
 // ── Chốt an toàn máy trạng thái rang (thêm 2026-07-30, xem skill quy-trinh-dieu-khien-may-rang) ──
 // Trần pha phát triển, PHẦN NGHÌN (300 = 30%). Chỉ kêu chuông + báo mã, KHÔNG tự xả —
 // tự xả một mẻ chưa tới nhiệt là làm hỏng mẻ.
-#define DEV_WARN_PERMIL                 300
+#define DEV_WARN_PERMIL                 300     // mặc định khi M57=0
 // Giây đứng ở STP_LOOP_2 mà cửa xả vẫn mở → coi là xi-lanh kẹt, dừng, không nạp mẻ mới.
-#define LOOP2_STUCK_SEC                  60
+#define LOOP2_STUCK_SEC                  60      // mặc định khi M60=0
 // R7: giây tối thiểu kể từ lúc NẠP mới cho auto-drop và bồn nguội sớm được kích.
 // Không mẻ nào xả trong 2 phút đầu; chặn này phòng hồ sơ có nhiệt xả THẤP HƠN nhiệt nạp
 // (rang nhẹ / ca cao) làm máy bắn lệnh xả ngay khi vừa đổ hạt.
-#define DROP_MIN_SEC                    120
+#define DROP_MIN_SEC                    120      // mặc định khi M58=0
+// ── CHỐT CỨU ĐOẠN CUỐI MẺ (thêm 2026-09-10) ─────────────────────────────────
+// Bộ bù gas thường (calibGasByProfile) MÙ trong 0.6 °C cuối trước nhiệt xả: khi
+// lastTimeSD đã đóng băng thì mục tiêu CHÍNH LÀ nhiệt xả, nên sai lệch chỉ co lại
+// và cửa sổ xác nhận 10 s không bao giờ đóng được. Mẻ RoR thấp (hồ sơ vuốt gas về
+// 0%, hoặc nhiệt độ môi trường thấp hơn mẻ mẫu) sẽ đứng lại và không tự xả.
+// Khối này chạy ĐỘC LẬP, có bộ đếm riêng, KHÔNG dính deadband.
+// Đặt END_RESCUE_EN = 0 để TẮT hoàn toàn.
+// Xem docs/plan/2026-09-10-auto-stall-cuoi-me.md.
+#define END_RESCUE_EN                     1
+// Bước bơm phụ thuộc MỨC GAS NỀN của hồ sơ tại giây đó (sdGas[], TRƯỚC mọi bù):
+//   gas nền THẤP  → bếp đang ở gần mức đóng, vùng phi tuyến, đáp ứng kém
+//                   → phải bơm bước LỚN mới có tác dụng
+//   gas nền đủ cao → bếp đang ở vùng tuyến tính, bước nhỏ đã đủ
+// SÀN CỨNG 5%: trên bếp NP dưới 5% gas không có tác dụng (bếp premix có thể thấp
+// hơn). Đây cũng là lý do numIncGas = calibGas*5 có sàn 1 bậc.
+#define END_GAS_LOW_THR                   10    // % — ranh giới "gas nền thấp"
+#define END_GAS_BUMP_LOW                  10    // % — bước khi gas nền < ngưỡng trên
+#define END_GAS_BUMP_HI                   5     // % — bước khi gas nền >= ngưỡng trên
+// Chỉ chạy trong ngần này (×0.1 °C) trước nhiệt xả. 20 = 2.0 °C.
+#define END_GUARD_BAND                    20
+// BT nhích ngần này (×0.1 °C) là coi như bù có tác dụng. 1 = 0.1 °C — đo trên 4 mẻ
+// thật: BT KHÔNG BAO GIỜ đi xuống, nên 1 đơn vị đã đủ tin, không cần lọc thêm.
+#define END_BT_TICK                       1
+// TIÊU CHÍ DỰ BÁO (ETA) — ra tay TRƯỚC khi BT đứng hẳn.
+// Chờ BT đứng hẳn rồi mới bơm là đã muộn: cửa sổ dò + trễ nhiệt bếp→hạt (~30 s) ăn
+// hết ngân sách thời gian. Nên máy ước lượng "với nhịp này còn bao lâu tới nhiệt xả":
+//     ETA = (số đơn vị 0.1 °C còn lại) × (số giây giữa 2 lần BT nhích)
+// ETA vượt ngần này giây → coi là KHÔNG KỊP, bơm ngay, không chờ đứng hẳn.
+// Tự co giãn: càng xa nhiệt xả càng ra tay sớm, sát đích thì rộng tay.
+#define END_MAX_ETA                       30
+// Sàn chống rung: ít nhất ngần này giây trong cửa sổ mới cho phép bơm lần đầu.
+#define END_STALL_WATCH                   3
+// Giữ tối thiểu ngần này giây rồi mới xét BT có nhích không (chủ máy chốt: ≥10 s).
+#define END_PULSE_MIN                     10
+// Chưa nhích sau ngần này giây thì cộng thêm một bước. Phải ≥ trễ nhiệt bếp→hạt
+// (15–30 s), nếu không sẽ leo thang trước khi thấy kết quả bước trước → vọt nhiệt.
+#define END_ESCALATE                      35
+// Trần tổng cộng, %. 15 = 3 bước. Hết trần mà BT vẫn đứng → kêu chuông + báo mã,
+// KHÔNG tự xả (xả một mẻ chưa tới nhiệt là hỏng mẻ — cùng nguyên tắc DEV_WARN).
+#define END_RESCUE_MAX                    15
+
+// ── DEADBAND BỘ BÙ GAS — siết dần về cuối mẻ ────────────────────────────────
+// Đơn vị ×0.1 °C. Trước FCs dùng clRangeBt (=10, ±1.0 °C) khai trong Define.h.
+// Càng về cuối càng siết vì sai số tích lũy ở đoạn này quyết chất hạt.
+// ⚠ Bậc bù nhỏ nhất là 5% (sàn cứng bếp NP). Siết deadband xuống dưới 5 mà không
+//   hạ được bậc bù thì tỉ lệ "phản ứng / kích hoạt" tăng lên — dễ hunting.
+#define CALIB_DEADBAND_FCS                6     // ±0.6 °C — từ FCs tới hết phút 2 của DEV
+#define CALIB_DEADBAND_LATE               3     // ±0.3 °C — DEV từ phút 2 trở đi
+#define CALIB_LATE_DEV_SEC                120   // giây DEV để chuyển sang nấc siết
+
+// ── NHIỆT XẢ ĐỘNG THEO SAI LỆCH THỜI GIAN (thêm 2026-09-10) ─────────────────
+// Mẻ rang hấp thụ nhiệt theo CẢ thời gian lẫn nhiệt độ. Cùng một nhiệt xả, mẻ đi
+// chậm hơn mẫu đã ngậm nhiều nhiệt hơn ⇒ nên xả SỚM hơn một chút; mẻ đi nhanh hơn
+// mẫu thì ngậm ít hơn ⇒ xả TRỄ hơn một chút. Bù lại sai lệch thời gian bằng nhiệt.
+//   trễ  hơn mẫu > ADAPT_DROP_DEV_SEC giây → nhiệt xả  −ADAPT_DROP_STEP
+//   nhanh hơn mẫu > ADAPT_DROP_DEV_SEC giây → nhiệt xả  +ADAPT_DROP_STEP
+//   trong khoảng đó → giữ nguyên nhiệt xả của hồ sơ
+// CHỈ áp dụng khi pha phát triển ĐÃ DÀI hơn ADAPT_DROP_MIN_DEV — mẻ DEV ngắn thì
+// vài giây lệch không đủ đổi chất hạt, chỉnh nhiệt xả chỉ thêm nhiễu.
+// BIÊN CHỈNH nay do THỢ cài trên HMI qua $M54 (0.0–1.0 °C, 0 = TẮT).
+// Hằng dưới chỉ là giá trị gợi ý để khởi tạo ô HMI mới — firmware KHÔNG dùng nó.
+#define DROP_TRIM_DEFAULT           3     // ×0.1 °C — 3 = 0.3 °C
+#define ADAPT_DROP_DEV_SEC                15    // giây lệch mới bắt đầu chỉnh
+#define ADAPT_DROP_MIN_DEV                180   // giây — chỉ khi DEV đã quá 3 phút
+
+// Chế độ "chỉ làm mát" ($M53 autoEscape = 1): chuỗi cooling KHÔNG mở escape nữa nên
+// thợ xả tay. Cửa mở tay tự đóng sau escapeDuration_R + số giây này — xả tay chậm hơn
+// xả tự động nên cộng thêm. Đặt 0 = đóng đúng bằng escapeDuration_R như xả tự động.
+#define ESCAPE_MANUAL_EXTRA_SEC          15      // giá trị khởi tạo cho HMI mới; M59=0 là hợp lệ
+// CÓ Ô GẠT $M53 TRÊN MÀN HMI CHƯA?
+//   1 = HMI có ô gạt "TỰ ĐỘNG MỞ CỬA XẢ" ghi $M53 → firmware nghe theo ô đó
+//       ($M53 = 1 tự mở escape + tách đá · $M53 = 0 chỉ làm mát, thợ xả tay).
+//   0 = HMI ĐỜI CŨ chưa có ô này → firmware BỎ QUA $M53 và luôn tự mở escape như cũ.
+// ⛔ Để 1 trên máy mà HMI chưa có ô gạt là $M53 đọc về 0 ⇒ MÁY NGỪNG TỰ XẢ, cà phê
+//    nằm lì trong khay nguội mà không báo lỗi gì. Nạp máy khách thì kiểm ô gạt TRƯỚC.
+#define MACHINE_HAS_AUTO_ESCAPE_SWITCH    1
 
 #if MACHINE_VR_SOURCE_FROM_HMI
 #define SOURCE_AI_VR_FROM_HMI true

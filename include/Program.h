@@ -517,8 +517,13 @@ void sdRead(){
                                 char* f = _tsvNext(&p);                     // Time2 (roast time — index)
                                 if(!f || f[0] == '\0') continue;            // Bỏ qua hàng trước CHARGE (Time2 rỗng)
                                 int mm=0, ss=0; sscanf(f, "%d:%d", &mm, &ss);
-                                sdTempTi = (uint16_t)(mm*60 + ss);
-                                if(sdTempTi >= PROFILE_MAX_SECONDS) continue;
+                                // Gán vào biến tạm rồi mới kiểm dải: gán thẳng vào sdTempTi
+                                // thì dòng vượt dải tuy bị bỏ qua nhưng sdTempTi vẫn GIỮ số rác.
+                                // Nếu đó là dòng cuối file, sdTempTi > PROFILE_MAX_SECONDS làm
+                                // lastTimeSD vượt biên → sdBT[lastTimeSD] đọc ra ngoài mảng.
+                                uint16_t tiTmp = (uint16_t)(mm*60 + ss);
+                                if(tiTmp >= PROFILE_MAX_SECONDS) continue;
+                                sdTempTi = tiTmp;
 
                                 f = _tsvNext(&p);                           // ET
                                 sdTempET = f ? atoi(f) : 0;
@@ -580,6 +585,10 @@ void sdRead(){
                         uint16_t rtFCs  = csvFCs;
                         uint16_t rtDROP = (csvDropIdx > 0) ? csvDropIdx :
                                           (csvDROP > csvCHARGE) ? csvDROP - csvCHARGE : 0;
+                        // Chốt điểm cuối hồ sơ = giây XẢ, không phải giây cuối file.
+                        // Dùng rtDROP vì nó đã hợp nhất 2 nguồn (event DROP trên dòng và
+                        // "DROP:" ở header) nên vẫn chạy được với file thợ quên bấm event.
+                        sdProfileEndTi = (rtDROP > 0 && rtDROP < PROFILE_MAX_SECONDS) ? rtDROP : sdTempTi;
                         TP_PRO_S_R   = rtTP;
                         DE_PRO_S_R   = rtDRYe;
                         FCS_PRO_S_R  = rtFCs;
@@ -705,6 +714,10 @@ void sdRead(){
                                         &CHARGE_PRO_R, &TP_PRO_R, &TP_PRO_S_R, &DE_PRO_R, &DE_PRO_S_R,
                                         &FCS_PRO_R, &FCS_PRO_S_R, &DEV_PRO_R, &DEV_PRO_S_R,
                                         &DROP_PRO_R, &DROP_PRO_S_R);
+                                        // Chốt điểm cuối hồ sơ TRƯỚC khi tách M/S — lúc này
+                                        // DROP_PRO_S_R còn là TỔNG GIÂY, sau dòng dưới thì không.
+                                        sdProfileEndTi = (DROP_PRO_S_R > 0 && DROP_PRO_S_R < PROFILE_MAX_SECONDS)
+                                                       ? (uint16_t)DROP_PRO_S_R : sdTempTi;
                                         TP_PRO_M_R   = TP_PRO_S_R/60;   TP_PRO_S_R   %= 60;
                                         DE_PRO_M_R   = DE_PRO_S_R/60;   DE_PRO_S_R   %= 60;
                                         FCS_PRO_M_R  = FCS_PRO_S_R/60;  FCS_PRO_S_R  %= 60;
@@ -752,6 +765,7 @@ void sdRead(){
                 FCS_PRO_R = 0; FCS_PRO_M_R = 0; FCS_PRO_S_R = 0;
                 DEV_PRO_R = 0; DEV_PRO_M_R = 0; DEV_PRO_S_R = 0;
                 DROP_PRO_R = 0; DROP_PRO_M_R = 0; DROP_PRO_S_R = 0;
+                sdProfileEndTi = 0;
                 sdReadStep = SD_3; //Chuyển trạng thái show màn hình
             break;            
 
@@ -805,12 +819,221 @@ void sdRead(){
 // trước rang TẮT → sau rang tắt lại; trước rang BẬT sẵn → sau rang giữ bật.
 static uint8_t roastVacFlagSaved = 0;
 
+// Kẹp bậc bù về trần của pha. Giữ đúng phép so sánh ">=" của bản gốc.
+static inline int16_t calibClampStep(int16_t step, int16_t limit){
+    return (step >= limit) ? limit : step;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bộ bù gas theo sai lệch BT so với hồ sơ mẫu. Tách khỏi calibProgram() cho dễ đọc,
+// HÀNH VI GIỮ NGUYÊN 100%.
+//
+// Hai điểm dưới đây trông như lỗi nhưng là CỐ Ý, đã xác nhận với chủ máy — ĐỪNG "sửa":
+//   1. Bậc bù tính lại mỗi 10 giây, nhưng ÁP MỖI GIÂY khi BT còn lệch. Áp mỗi giây là
+//      để duy trì lực bù liên tục; đẩy 2 dòng cộng/trừ vào trong khối 10 giây là hỏng.
+//   2. Cửa sổ 10 giây khớp trễ nhiệt bếp→hạt (15–30 s), đóng vai trò lọc xác nhận xu
+//      hướng, chống hunting. Đừng chỉnh con số này.
+// Xem memory project_gas_calib_auto và docs/plan/2026-09-10-auto-stall-cuoi-me.md.
+// ─────────────────────────────────────────────────────────────────────────────
+static void calibGasByProfile(uint16_t btTarget){
+    //Deadband siết dần theo 3 nấc — càng về cuối càng đòi bám mẫu chặt:
+    //  trước FCs      ±1.0°C (clRangeBt) — đỡ nhạy nhiễu giai đoạn đầu
+    //  FCs → DEV 2'   ±0.6°C            — giữ Dev time bám mẫu
+    //  DEV từ 2' trở đi ±0.3°C          — đoạn quyết chất hạt, sai số tích lũy nhanh nhất
+    //Nấc 3 gác thêm progStep == STP_DEV vì TIME_DEV_SAVE chỉ có nghĩa trong pha đó.
+    uint16_t clRange = clRangeBt;
+    if(Temperature_BT >= FCS_PRO_R) clRange = CALIB_DEADBAND_FCS;
+    if(progStep == STP_DEV && TIME_DEV_SAVE >= CALIB_LATE_DEV_SEC) clRange = CALIB_DEADBAND_LATE;
+    const bool btLow  = (Temperature_BT <  btTarget - clRange);  //lạnh hơn mẫu → thêm gas
+    const bool btHigh = (Temperature_BT >  btTarget + clRange);  //nóng hơn mẫu → bớt gas
+
+    //Bám mẫu trong deadband → nhả sạch trạng thái bù
+    if(!btLow && !btHigh){
+        timeCalibGas = 0;
+        numIncGas    = 0;
+        calibGas     = 0;
+        return;
+    }
+
+    timeCalibGas++; //Đếm số giây liên tục nằm ngoài deadband
+    if(timeCalibGas >= 10){
+        //Bậc bù tỉ lệ độ lệch. Sàn 1 bậc = 5% vì trên bếp NP dưới 5% gas không có
+        //tác dụng (bếp premix có thể thấp hơn).
+        calibGas = abs((int)Temperature_BT - (int)btTarget) / 5;
+        if(calibGas <= 0) calibGas = 1;
+        numIncGas = calibGas * 5;
+
+        //Trần bậc theo pha (DE / YEL / FCS).
+        //CỐ Ý để 3 lệnh if RIÊNG, KHÔNG phải else-if: hồ sơ thiếu mốc FCs làm
+        //FCS_PRO_R = 0, khi đó vùng "BT < DE" và vùng "BT >= FCS" CHỒNG nhau và bản
+        //gốc kẹp hai lần liên tiếp. Gộp thành else-if là ĐỔI HÀNH VI.
+        if(Temperature_BT <  DE_PRO_R)
+            numIncGas = calibClampStep(numIncGas, TpCalib_R);
+        if(Temperature_BT >= DE_PRO_R && Temperature_BT < FCS_PRO_R)
+            numIncGas = calibClampStep(numIncGas, DeCalib_R);
+        if(Temperature_BT >= FCS_PRO_R)
+            numIncGas = calibClampStep(numIncGas, FcsCalib_R);
+
+        timeCalibGas = 0;
+    }
+
+    //btLow và btHigh loại trừ nhau (clRange không âm) nên nhánh này tương đương
+    //đúng 2 lệnh if của bản gốc.
+    gasPercent = btLow ? (gasPercent + numIncGas) : (gasPercent - numIncGas);
+    gasPercent = constrain(gasPercent, 0, 100);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHIỆT XẢ ĐỘNG — bù sai lệch THỜI GIAN bằng NHIỆT ĐỘ.
+// Mẻ đi chậm hơn mẫu đã ngậm nhiều nhiệt hơn ở cùng một nhiệt độ ⇒ xả sớm hơn.
+// Mẻ đi nhanh hơn thì ngược lại. Chỉ chạy khi DEV đã dài (mẻ DEV ngắn thì vài giây
+// lệch không đổi được chất hạt). MỌI chỗ quyết định xả đều phải gọi hàm này, không
+// được dùng thẳng DROP_PRO_R nữa, nếu không auto-drop và bồn nguội sẽ lệch nhau.
+// ─────────────────────────────────────────────────────────────────────────────
+static uint16_t dropTempTarget(){
+    uint16_t dropT = DROP_PRO_R;
+    //Biên chỉnh lấy từ $M54, thợ cài 0.0–1.0 °C trên HMI. 0 = TẮT, xả đúng nhiệt hồ sơ.
+    const int16_t step = dropTrim10();
+    //Chỉ chỉnh khi: có bật · đang ở pha phát triển · hồ sơ có nhiệt xả và có giây xả ·
+    //DEV đã đủ dài. Thiếu bất kỳ điều kiện nào → giữ nguyên nhiệt xả hồ sơ.
+    if(step > 0 && progStep == STP_DEV && dropT > (uint16_t)step
+       && sdProfileEndTi > 0 && TIME_DEV_SAVE > ADAPT_DROP_MIN_DEV){
+        if(timeRoast > (uint16_t)(sdProfileEndTi + ADAPT_DROP_DEV_SEC)){
+            dropT -= (uint16_t)step;           //lê hơn mẫu → xả sớm hơn
+        }else if(sdProfileEndTi > ADAPT_DROP_DEV_SEC
+              && timeRoast < (uint16_t)(sdProfileEndTi - ADAPT_DROP_DEV_SEC)){
+            dropT += (uint16_t)step;           //nhanh hơn mẫu → xả trễ hơn
+        }
+    }
+    return dropT;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHỐT CỨU ĐOẠN CUỐI MẺ — chạy mỗi giây, ĐỘC LẬP với bộ bù gas thường.
+//
+// Vì sao cần: khi lastTimeSD đã đóng băng ở giây xả, mục tiêu sdBT[] CHÍNH LÀ
+// DROP_PRO_R, nên sai lệch chỉ CO LẠI khi BT còn bò lên. Bộ bù thường đòi lệch
+// > 0.6 °C liên tục 10 giây ⇒ trong 0.6 °C cuối nó MÙ HOÀN TOÀN. Mẻ RoR thấp
+// (hồ sơ vuốt gas về 0%, hoặc trời lạnh hơn mẻ mẫu) đứng lại ở đó và KHÔNG BAO
+// GIỜ chạm nhiệt xả — mà STP_DEV không có điều kiện thoát.
+//
+// Khối này dùng bộ đếm RIÊNG, đo bằng ĐƠN VỊ BT THÔ (không đụng rorBT/Kalman):
+//   BT không nhích 0.1 °C suốt END_STALL_WATCH giây  → coi là ĐỨNG, bơm 5%
+//   giữ ≥ END_PULSE_MIN giây, BT nhích 0.1 °C        → ĐẠT, giữ nguyên mức gas
+//   quá END_ESCALATE giây vẫn không nhích            → cộng thêm 5%, tối đa 3 bước
+//   hết trần vẫn đứng                                → chuông + báo mã, KHÔNG tự xả
+// ─────────────────────────────────────────────────────────────────────────────
+static int16_t  endRescueOffset = 0;   // tổng % gas đang bơm thêm
+static uint16_t endRescueMark   = 0;   // BT lúc bơm bước gần nhất
+static uint16_t endRescueTimer  = 0;   // giây kể từ bước bơm gần nhất
+static uint16_t endStallMark    = 0;   // BT lần nhích gần nhất
+static uint16_t endStallTimer   = 0;   // giây kể từ lần nhích gần nhất
+static uint16_t endTickGap      = 0;   // nhịp đo được: giây giữa 2 lần BT nhích
+static bool     endRescueWarned = false;
+
+static void endRescueReset(){
+    endRescueOffset = 0; endRescueTimer = 0;
+    endStallTimer   = 0; endStallMark = Temperature_BT;
+    endTickGap      = 0;
+    endRescueWarned = false;
+}
+
+// Còn bao lâu nữa tới nhiệt xả, theo nhịp nhích hiện tại. 0xFFFF = đứng hẳn/không đo được.
+// Nhịp lấy LỚN HƠN giữa nhịp đã đo và thời gian đang trôi từ lần nhích cuối — nên khi BT
+// vừa khựng lại là ETA phình lên ngay, không phải chờ hết một nhịp mới biết.
+static uint16_t endRescueEta(){
+    const uint16_t dropT = dropTempTarget();
+    if(Temperature_BT >= dropT) return 0;
+    const uint16_t unitsLeft = (uint16_t)(dropT - Temperature_BT);
+    uint16_t gap = (endTickGap > endStallTimer) ? endTickGap : endStallTimer;
+    if(gap == 0) gap = 1;
+    const uint32_t eta = (uint32_t)unitsLeft * gap;
+    return (eta > 0xFFFEu) ? 0xFFFFu : (uint16_t)eta;
+}
+
+// Bước bơm theo mức gas NỀN của hồ sơ: gas nền thấp thì bếp đang ở gần mức đóng,
+// vùng phi tuyến, phải bơm bước lớn mới nhúc nhích.
+static inline int16_t endRescueStep(int16_t baseGas){
+    return (baseGas < END_GAS_LOW_THR) ? END_GAS_BUMP_LOW : END_GAS_BUMP_HI;
+}
+
+static void endBatchRescue(uint16_t btTarget, int16_t baseGas){
+#if END_RESCUE_EN
+    //Cổng theo KHOẢNG CÁCH TỚI NHIỆT XẢ, không theo mốc FCs: STP_DEV phụ thuộc $M21
+    //cài đúng, còn khoảng cách tới nhiệt xả thì không phụ thuộc việc bắt mốc.
+    const uint16_t dropT = dropTempTarget();
+    const bool inWindow = (progStep == STP_DEV)
+                       && (dropT > END_GUARD_BAND)
+                       && (Temperature_BT >= (uint16_t)(dropT - END_GUARD_BAND))
+                       && (Temperature_BT <  dropT);
+    if(!inWindow){ endRescueReset(); return; }
+
+    //Bộ bù BT đang muốn GIẢM gas ⇒ mẻ KHÔNG thiếu nhiệt. Lê lúc đó là chuyện khác
+    //(gió quá lớn, mẻ quá tải) và không được chữa bằng gas. Nhả offset, đứng im.
+    if(Temperature_BT > btTarget + 6){ endRescueReset(); return; }
+
+    //Cập nhật nhịp nhích của BT (dùng cho cả ETA lẫn dò đứng)
+    endStallTimer++;
+    if(Temperature_BT >= endStallMark + END_BT_TICK){
+        endTickGap    = endStallTimer;   //chốt nhịp vừa đo được
+        endStallMark  = Temperature_BT;
+        endStallTimer = 0;
+    }
+
+    if(endRescueOffset == 0){
+        //CHƯA bơm — bơm khi DỰ BÁO không kịp, không chờ BT đứng hẳn
+        if(endStallTimer >= END_STALL_WATCH && endRescueEta() > END_MAX_ETA){
+            endRescueOffset = endRescueStep(baseGas);
+            endRescueMark   = Temperature_BT;
+            endRescueTimer  = 0;
+            setMachineStatus(STT_END_RESCUE_ON);
+        }
+    }else{
+        //ĐANG bơm — theo dõi BT có nhích không
+        endRescueTimer++;
+        if(endRescueTimer >= END_PULSE_MIN && Temperature_BT >= endRescueMark + END_BT_TICK
+           && endRescueEta() <= END_MAX_ETA){
+            //Bù có tác dụng VÀ đủ nhanh để kịp giờ → GIỮ nguyên mức gas, dời mốc.
+            //PHẢI xét cả ETA: chỉ hỏi "BT có nhích không" là chưa đủ — BT nhích 15 giây
+            //một lần vẫn là lê, mà nhánh này lại reset đồng hồ nên nhánh leo thang bên
+            //dưới không bao giờ đếm tới nơi. Đó là lý do bản trước giữ nguyên 10% kể cả
+            //khi còn 75 giây nữa mới tới nhiệt xả.
+            endRescueMark  = Temperature_BT;
+            endRescueTimer = 0;
+        }else if(endRescueTimer >= END_ESCALATE){
+            if(endRescueOffset < END_RESCUE_MAX && endRescueEta() > END_MAX_ETA){
+                endRescueOffset += endRescueStep(baseGas);
+                if(endRescueOffset > END_RESCUE_MAX) endRescueOffset = END_RESCUE_MAX;
+                endRescueMark  = Temperature_BT;
+                endRescueTimer = 0;
+                setMachineStatus(STT_END_RESCUE_ON);
+            }else if(!endRescueWarned){
+                //Hết trần mà vẫn đứng: hết gas / tắc béc / hạt đã chín.
+                //Cộng thêm chỉ làm cháy vỏ → dừng, báo thợ, để thợ quyết.
+                endRescueWarned = true;
+                buzzerTimerEn   = 1;
+                setMachineStatus(STT_WARN_END_RESCUE_TMO);
+            }
+        }
+    }
+
+    //NÂNG TỚI mức mong muốn, KHÔNG cộng mù lên trên bộ bù thường.
+    //Hai bộ trả lời CÙNG một câu hỏi ("mẻ thiếu bao nhiêu nhiệt") nên phải lấy cái
+    //LỚN HƠN. Cộng lại thì ở BT ≤ nhiệt xả −0.7 °C hai bộ chồng nhau: hồ sơ gas nền
+    //30% + calib 10% + chốt cứu 10% = 50% gas ở 216 °C → cháy vỏ.
+    const int16_t want = constrain(baseGas + endRescueOffset, 0, 100);
+    if(gasPercent < want) gasPercent = want;
+#else
+    (void)btTarget; (void)baseGas;
+#endif
+}
+
 void calibProgram(){
-    //Cập nhập dữ liệu từ SD mỗi giây
-    //Dữ liệu gốc từ SD
-    //Gió và trống sẽ được giữ nguyên
-    //Dữ liệu chỉ được cập nhật khi thời gian rang bằng thời gian file mẫu
-    if(timeRoast<=sdTempTi){
+    //Phát lại hồ sơ mẫu theo từng giây: gas / gió / trống lấy thẳng từ SD.
+    //Chỉ GAS được bù thêm theo sai lệch BT; gió và trống giữ nguyên số của mẫu.
+    // Kẹp tại giây XẢ của mẫu, KHÔNG phải giây cuối file. Vượt qua đó thì đóng băng
+    // ở điểm xả thay vì bò vào đuôi làm nguội (gas 0 + gió mở hết) của hồ sơ.
+    if(timeRoast<=sdProfileEndTi){
         lastTimeSD = timeRoast;
     }
 #if MACHINE_HAS_VACUUM_SENSOR
@@ -842,71 +1065,14 @@ void calibProgram(){
 #endif
 
 
-    //Hiệu chỉnh gas theo phase
-    //Bắt đầu hiệu chỉnh sau khi TP
-    //Auto gas khi temp BT nằm ngoài định mức
+    //Hiệu chỉnh gas theo phase — chỉ bắt đầu sau TP, khi BT nằm ngoài định mức
+    // RoR control chỉ dùng cho preheat, không can thiệp gas khi rang auto
     if(progStep>STP_TP){
-        //Từ FCS trở đi siết deadband xuống ±0.6°C (=6) để giữ Dev time bám mẫu chặt hơn
-        //Trước FCS giữ ±1.0°C (clRangeBt) cho đỡ nhạy nhiễu giai đoạn đầu
-        uint16_t clRange = (Temperature_BT>=FCS_PRO_R) ? 6 : clRangeBt;
-        if( Temperature_BT>sdBT[lastTimeSD]+clRange
-        ||  Temperature_BT<sdBT[lastTimeSD]-clRange){
-            timeCalibGas++; //Đếm hiệu chỉnh gas
-            //Tăng giảm gas theo BT (cách 10s)
-            if(timeCalibGas>=10){
-                //Tính toán độ lệch nhiệt độ
-                //Tính ra bậc tăng gas
-                calibGas = abs(Temperature_BT - sdBT[lastTimeSD])/5; 
-                
-                if(calibGas<=0) calibGas=1;    
-            
-                //Bước 5% gas
-                //Trên bếp NP, bước gas đạt tối thiểu 5% mới có tác dụng
-                //Trên bếp premix, bước gas có thể thấp hơn
-                //numIncGas = calibGas*Bước;
-                numIncGas = calibGas*5;
-
-                //Giới hạn gas, khi rang đang ở giai đoạn DE
-                if(Temperature_BT<DE_PRO_R){
-                    if(numIncGas>=TpCalib_R){
-                        numIncGas =  TpCalib_R;   
-                    }
-                }
-
-                //Giới hạn gas, khi rang đang ở giai đoạn YEL
-                if(Temperature_BT>=DE_PRO_R && Temperature_BT<FCS_PRO_R){
-                    if(numIncGas>=DeCalib_R){
-                        numIncGas = DeCalib_R;   
-                    }
-                }
-
-                //Giới hạn gas, khi rang đang ở giai đoạn FCS
-                if(Temperature_BT>=FCS_PRO_R){
-                    if(numIncGas>=FcsCalib_R){
-                        numIncGas =  FcsCalib_R;   
-                    }
-                }                
-                timeCalibGas = 0;
-            }
-
-            //BT thực tế thấp hơn SD thì tăng gas
-            if(Temperature_BT<(sdBT[lastTimeSD]-clRange))
-                gasPercent = gasPercent+numIncGas;
-
-            //BT thực tế cao hơn SD thì giảm gas
-            if(Temperature_BT>(sdBT[lastTimeSD]+clRange))
-                gasPercent = gasPercent-numIncGas;
-
-            if(gasPercent>100)  gasPercent = 100;
-            if(gasPercent<0)  gasPercent = 0;
-        }else{
-            timeCalibGas = 0;
-            numIncGas = 0;
-            calibGas = 0;
-        }
-
-        // RoR control chỉ dùng cho preheat, không can thiệp gas khi rang auto
+        calibGasByProfile(sdBT[lastTimeSD]);
     }
+    //Chốt cứu đoạn cuối — CHẠY SAU bộ bù thường, không dính deadband của nó.
+    //baseGas = gas NỀN của hồ sơ (trước mọi bù) → quyết định bước bơm to hay nhỏ.
+    endBatchRescue(sdBT[lastTimeSD], (int16_t)sdGas[lastTimeSD]);
     nodeHMI.writeSingleRegister(burnerValue_W + 2000, gasPercent); //cập nhật gas lên HMI
 }
 
@@ -1346,9 +1512,29 @@ void loaderAdapt(){
     }else{
         result = (err100 > 0) ? "UNDER" : "OVER";      // dư cà(hút thiếu)→dif cần nhỏ hơn ; hút dư→dif cần lớn hơn
         // Học dif cho Ô (cân, ror) của mẻ này. dif lẽ ra đúng = dif đã dùng − err. Cần ror & cân đủ lớn.
-        // FEEDER_DIF_FIXED > 0 → dif do người đặt, KHÔNG học và KHÔNG ghi SD (tránh làm hỏng bảng
-        // + tránh ghi thẻ khi thẻ đang dở chứng). Vẫn chấm điểm & ghi log để theo dõi.
-#if (FEEDER_DIF_FIXED == 0)
+        // FEEDER_DIF_MANUAL → dif do người đặt bằng công thức trong Config.h, KHÔNG học và
+        // KHÔNG ghi SD (tránh làm hỏng bảng + tránh ghi thẻ khi thẻ đang dở chứng).
+        // Vẫn chấm điểm & ghi log để theo dõi.
+#if FEEDER_DIF_MANUAL
+        // TỰ HIỆU CHUẨN base TRONG RAM (không đụng thẻ SD).
+        // err100 > 0 = hút THIẾU → cắt quá sớm → base phải NHỎ lại.
+        // err100 < 0 = hút DƯ    → cắt quá muộn → base phải LỚN lên.
+        // Chỉ tới được đây khi mẻ đủ lớn VÀ đã trượt deadband "hút OK" (lệch > 0,09 kg),
+        // nên máy đang chạy đúng thì base đứng yên tuyệt đối, không giật.
+        {
+            int16_t oldBase = coastBase100;
+            int32_t nb = (int32_t)oldBase - err100 * FEEDER_LEARN_GAIN / 100;
+            if(nb < FEEDER_COAST_MIN100) nb = FEEDER_COAST_MIN100;
+            if(nb > FEEDER_COAST_MAX100) nb = FEEDER_COAST_MAX100;
+            coastBase100 = (int16_t)nb;
+            difNew100    = (int16_t)nb;              // cột difNew của log = base mới
+            if(loaderDbgEn){
+                SerialComputer.print("LDR learn: err="); SerialComputer.print(err100);
+                SerialComputer.print(" base ");          SerialComputer.print(oldBase);
+                SerialComputer.print(" -> ");            SerialComputer.println(coastBase100);
+            }
+        }
+#else
         if(adaptRorMag >= 100 && adaptStartW100 >= 100){
             int32_t difReal100 = adaptDif100 - err100;
             if(difReal100 < 0) difReal100 = 0;
@@ -1414,6 +1600,19 @@ void updateRoastPhaseFlags() {
     nodeHMI.writeSingleRegister(showPointDry_W      - 1, dry);  delay(1);
     nodeHMI.writeSingleRegister(showPointMaillard_W - 1, mail); delay(1);
     nodeHMI.writeSingleRegister(showPointDEV_W      - 1, dev);  delay(1);
+}
+
+/* $M53 autoEscape — MỘT CHỖ DUY NHẤT định nghĩa nghĩa của thanh ghi này.
+   1 = máy TỰ mở cửa escape (kèm tách đá) sau khi làm mát xong — nếp cũ từ trước tới nay.
+   0 = CHỈ LÀM MÁT: hết giờ tắt bồn nguội, không tách đá, không tự mở cửa; thợ xả tay.
+   MACHINE_HAS_AUTO_ESCAPE_SWITCH = 0 (HMI đời cũ chưa có ô gạt) thì BỎ QUA thanh ghi và
+   luôn trả true — máy cũ nạp firmware mới vẫn tự xả y nguyên. */
+static inline bool autoEscapeEnabled(){
+#if MACHINE_HAS_AUTO_ESCAPE_SWITCH
+    return (autoEscape_R != 0);
+#else
+    return true;
+#endif
 }
 
 void programScan(){
@@ -1556,6 +1755,7 @@ void programScan(){
                 TIME_FCS_SEC_SAVE = TIME_FCS_SAVE%60;
 
                 PER_DEV_SAVE = 0;
+                TIME_DEV_SAVE = 0;      //bị bỏ sót: giữ dev time của MẺ TRƯỚC sang mẻ mới
                 TIME_DEV_MIN_SAVE = 0;
                 TIME_DEV_SEC_SAVE = 0;
                 
@@ -1566,6 +1766,8 @@ void programScan(){
                 timeDROPAbsolute = 0;
 
                 timeRoast = 0;
+                tpDipSeen = false;      // Bằng chứng cú tụt TP — mẻ mới phải dò lại từ đầu
+                TIME_TP_DIP = 0;
                 // Reset các chốt an toàn của mẻ (2026-07-30) — mẻ mới phải bắt đầu sạch,
                 // không mang cờ cảnh báo hay bộ đếm của mẻ trước sang
                 gasWaitTiEn = false; gasWaitTi = 0;
@@ -1701,6 +1903,8 @@ void programScan(){
                     setMachineStatus(STT_EVENT_CHARGE_OPENED);
 
                     BT_TP_Pre = Temperature_BT; //Lưu biến nhiệt để check TP
+                    tpDipSeen = false;          //Bám đáy tính từ giây nạp này
+                    TIME_TP_DIP = 0;
 
                     //Enable record airflow, drum, flame, gas signal
 
@@ -1717,13 +1921,31 @@ void programScan(){
                 }
             break;
 
-            case STP_TP:
+            case STP_TP: {
                 //Condition to TP
                 STEP_STRING = "WAIT TP";
-                if(timeRoast>ulimitTPTime && Temperature_BT<ulimitTPTemp){
+
+                /* Bám đáy NGAY TỪ GIÂY CHARGE, không chờ cửa sổ dò mở (2026-09-10).
+                   Trước đây BT_TP_Pre chỉ được cập nhật bên trong cửa sổ, nên khi cửa
+                   sổ chưa mở lần nào thì nó vẫn giữ nguyên nhiệt lúc nạp — nhánh cứu
+                   bên dưới lấy đúng số đó làm TP. Bám liên tục thì BT_TP_Pre luôn là
+                   đáy THẬT và TIME_TP_DIP là giây của đáy đó. */
+                if(Temperature_BT < BT_TP_Pre){
+                    BT_TP_Pre = Temperature_BT;
+                    TIME_TP_DIP = timeRoast;
+                }
+                if(Temperature_BT < ulimitTPTemp) tpDipSeen = true;
+
+                /* Bằng chứng "đã tụt thật": đáy ghi được phải thấp hơn nhiệt nạp ít
+                   nhất TP_MIN_DROP_CV. Đây là thứ phân biệt "chưa tụt tới" với "đã
+                   tụt xong" — thiếu nó thì nhịp BT nhích lên ngay sau khi đổ hạt
+                   (quán tính đầu dò) cũng bị chốt thành TP. */
+                bool tpDipReal = (BT_CHARGE_SAVE >= TP_MIN_DROP_CV) &&
+                                 (BT_TP_Pre + TP_MIN_DROP_CV <= BT_CHARGE_SAVE);
+
+                if(timeRoast>ulimitTPTime && tpDipReal && Temperature_BT<ulimitTPTemp){
                     if(Temperature_BT<=BT_TP_Pre){
-                        BT_TP_Pre = Temperature_BT; //Lưu biến nhiệt để check TP
-                        STEP_STRING = "CHECK TP";
+                        STEP_STRING = "CHECK TP";   //còn tụt — đáy đã cập nhật ở trên
 
                     }else{
                         BT_TP_SAVE = BT_TP_Pre; //Set nhiệt TP
@@ -1735,16 +1957,19 @@ void programScan(){
                         setMachineStatus(STT_ROAST_YELLOW); progStep = STP_YELLOW; // Next to check yellow
                     }
                 }
-                /* ⛔ CỨU TP KHI TRƯỢT CỬA SỔ (R2 lớp 1, 2026-07-30)
-                   Hai điều kiện trên là AND. Nếu BT vượt ulimitTPTemp TRƯỚC khi timeRoast
-                   qua ulimitTPTime (mẻ nhẹ, lồng nóng, hoặc ulimitTPTime cài quá dài) thì
-                   cửa sổ dò KHÔNG BAO GIỜ mở → kẹt ở đây suốt mẻ, các mốc sau không có,
-                   và auto-drop cũng chết theo. Chốt TP theo đáy ĐÃ ghi được (BT_TP_Pre là
-                   đáy thật, chỉ là chưa thấy nhịp bật lên) rồi đi tiếp, kèm mã cảnh báo
-                   để hồ sơ biết số TP này là ước lượng. */
-                else if(timeRoast>ulimitTPTime && Temperature_BT>=ulimitTPTemp){
+                /* ⛔ CỨU TP KHI TRƯỢT CỬA SỔ (R2 lớp 1, 2026-07-30; siết lại 2026-09-10)
+                   Cửa sổ dò là AND của hai điều kiện. Nếu BT vượt ulimitTPTemp TRƯỚC khi
+                   timeRoast qua ulimitTPTime thì cửa sổ KHÔNG BAO GIỜ mở → kẹt suốt mẻ.
+                   Nhưng bản 30/07 chốt TP chỉ dựa vào "hết giờ + BT đang cao", nên mẻ nạp
+                   nóng chưa kịp tụt (hoặc BT còn đang ĐI LÊN lúc bấm charge) bị chốt TP
+                   giả ngay giây 21 rồi kéo DE chốt theo. Giờ đòi thêm hai bằng chứng:
+                   tpDipReal (đáy đã thấp hơn nhiệt nạp) và tpDipSeen (đã từng xuống dưới
+                   ulimitTPTemp rồi mới bật ngược lên qua nó) — đúng nghĩa "đáy đã trôi
+                   mất", chứ không phải "đáy chưa tới". */
+                else if(timeRoast>ulimitTPTime && tpDipReal && tpDipSeen
+                        && Temperature_BT>=ulimitTPTemp){
                     BT_TP_SAVE = BT_TP_Pre;
-                    TIME_TP_SAVE = timeRoast;
+                    TIME_TP_SAVE = TIME_TP_DIP;     //giây của đáy thật, không phải giây phát hiện
                     TIME_TP_MIN_SAVE = TIME_TP_SAVE/60;
                     TIME_TP_SEC_SAVE = TIME_TP_SAVE%60;
                     strcpy(sdCsvPendingEvent, "TP");
@@ -1753,12 +1978,31 @@ void programScan(){
                     if(enDebug) SerialComputer.println("TP window missed -> assumed TP from BT_TP_Pre");
                     setMachineStatus(STT_ROAST_YELLOW); progStep = STP_YELLOW;
                 }
-                break;
+                /* Hạn cứng chống kẹt: đáy nằm TRÊN ulimitTPTemp (nạp rất nóng) hoặc đầu
+                   dò đứng số thì hai nhánh trên không bao giờ đủ điều kiện. Chốt theo đáy
+                   đã ghi được rồi đi tiếp — nhánh này chỉ phụ thuộc thời gian nên luôn
+                   thoát được, không tạo đường kẹt mới. */
+                else if(timeRoast > TP_HARD_TMO){
+                    BT_TP_SAVE = BT_TP_Pre;
+                    TIME_TP_SAVE = TIME_TP_DIP;
+                    TIME_TP_MIN_SAVE = TIME_TP_SAVE/60;
+                    TIME_TP_SEC_SAVE = TIME_TP_SAVE%60;
+                    strcpy(sdCsvPendingEvent, "TP");
+                    setMachineStatus(STT_WARN_TP_ASSUMED);
+                    setMachineStatus(STT_EVENT_TP_REACHED);
+                    if(enDebug) SerialComputer.println("TP hard timeout -> assumed TP from lowest BT");
+                    setMachineStatus(STT_ROAST_YELLOW); progStep = STP_YELLOW;
+                }
+            } break;
 
             case STP_YELLOW:
                 STEP_STRING = "WAIT YELLOW";
-                //Check YL
-                if(Temperature_BT>=yellowPhase_R_CV){// đã đạt mốc yellow
+                /* Check YL — DE phải cách TP tối thiểu DE_MIN_GAP giây (2026-09-10).
+                   TP nằm ở đáy (~75 °C), DE ở mốc vàng (~150 °C): không mẻ nào đi hết
+                   quãng đó dưới 5 giây. Hai mốc dính liền nhau luôn có nghĩa là TP vừa
+                   bị chốt bậy lúc BT còn cao. Sàn này chỉ dựa vào thời gian nên không
+                   tạo thêm đường kẹt. */
+                if(Temperature_BT>=yellowPhase_R_CV && timeRoast>=TIME_TP_SAVE+DE_MIN_GAP){// đã đạt mốc yellow
                     BT_YELLOW_SAVE = Temperature_BT;
                     TIME_YELLOW_SAVE = timeRoast;
                     TIME_YELLOW_MIN_SAVE = TIME_YELLOW_SAVE/60;
@@ -1795,7 +2039,7 @@ void programScan(){
                    rang mãi tới khi thợ để ý. Nhưng tự xả một mẻ chưa tới nhiệt là làm
                    hỏng mẻ, nên chốt ở mức kêu chuông + báo mã, để thợ quyết.
                    Ngưỡng theo TỈ LỆ (phần nghìn) cho khớp cách thợ nghĩ, không theo giây. */
-                if(!devWarned && PER_DEV_SAVE >= DEV_WARN_PERMIL){
+                if(!devWarned && PER_DEV_SAVE >= developmentWarnPermil()){
                     devWarned = true;
                     buzzerTimerEn = 1;
                     setMachineStatus(STT_WARN_DEV_TOO_LONG);
@@ -1854,7 +2098,7 @@ void programScan(){
                    tín hiệu đọc nút) thì không bao giờ đếm → đứng ở WCANCEL mãi. Mẻ đã xả
                    xong nên không nguy hiểm, nhưng TUYỆT ĐỐI không nạp mẻ mới khi cửa xả
                    còn mở. Hết hạn thì dừng hẳn và báo mã cho thợ vào xem xi-lanh. */
-                if(loop2Ti >= LOOP2_STUCK_SEC && DROP_BTN_R == 1){
+                if(loop2Ti >= loopDoorStuckSec() && DROP_BTN_R == 1){
                     setMachineStatus(STT_ERR_DROP_STUCK_OPEN);
                     buzzerTimerEn = 1;
                     nodeHMI.writeSingleRegister(START_BTN_W-1, 0);
@@ -1944,16 +2188,16 @@ void programScan(){
                timeRoastEn bật đúng lúc bấm nạp và tắt lúc xả/huỷ nên nó là cờ "đang có hạt"
                chính xác hơn progStep. Chặn thêm DROP_MIN_SEC phòng hồ sơ xả thấp hơn nạp.
                KHÔNG gác nhánh xả TAY bên dưới — thợ phải bấm xả được mọi lúc. */
-            bool batchRunning = (timeRoastEn == 1 && timeRoast > DROP_MIN_SEC);
+            bool batchRunning = (timeRoastEn == 1 && timeRoast > autoDropMinSec());
 
             //Xử lí các tình huống trong khi rang auto
             if(progStatus == STT_PROGRAM_AUTO && batchRunning){
                 //Phát hiện auto drop khi rang auto
-                if(Temperature_BT>=DROP_PRO_R && progStep<STP_LOOP_1){
+                if(Temperature_BT>=dropTempTarget() && progStep<STP_LOOP_1){
                     setMachineStatus(STT_ROAST_DROP); nodeHMI.writeSingleRegister(DROP_BTN_W-1, 1); //Turn on drop
                 }
                 //Tự bật cooling trước khi drop
-                if(Temperature_BT>=(DROP_PRO_R-preCool_R_CV)&&preCool_R_CV>0){
+                if(Temperature_BT>=(dropTempTarget()-preCool_R_CV)&&preCool_R_CV>0){
                     //Bật cooling&mixer nếu nhập số lớn hơn 0
                     if(coolTimer_R>0&&coolStep==0) coolStep = COOL_STEP_COOLING;
                 }
@@ -2161,9 +2405,14 @@ void programScan(){
     if (ci < 0) ci = loaderCfgNearest(qw, qr10);
     if (ci >= 0) dif100 = cfgDif100[ci];                                   // dif đã học
     else dif100 = (int32_t)((int64_t)rorMag * feederTkg * adaptStartW100 / 60000000LL);
-#if (FEEDER_DIF_FIXED > 0)
-    // dif SỐ CỨNG: bỏ qua giá trị vừa tra ở trên (qw/qr10/ci vẫn tính để in log đối chiếu).
-    dif100 = (int32_t)FEEDER_DIF_FIXED;
+#if FEEDER_DIF_MANUAL
+    // dif THỦ CÔNG: bỏ qua giá trị vừa tra ở trên (qw/qr10/ci vẫn tính để in log đối chiếu).
+    // Đường thẳng theo cỡ mẻ ĐẶT TRÊN HMI (netWTG_R, ×10 kg) — hằng số suốt mẻ, không dao
+    // động theo ror, nên ngưỡng cắt vẫn đứng yên như bản dif số cứng.
+    // coastBase100 là biến RAM TỰ HỌC sau mỗi mẻ (xem loaderAdapt) → một firmware chạy
+    // được cả máy xi lanh khí lẫn xi lanh điện, không cần hiệu chuẩn tay.
+    dif100 = (int32_t)coastBase100
+           + (int32_t)netWTG_R * FEEDER_COAST_PER_KG / 100;   // set(kg)×PER_KG/1000, netWTG_R đã ×10
 #endif
     if (dif100 > (int32_t)FEEDER_DIF_MAX * 10) dif100 = (int32_t)FEEDER_DIF_MAX * 10;
     if (dif100 < 0) dif100 = 0;
@@ -2225,6 +2474,7 @@ void programScan(){
         SerialComputer.print(" raw=");     SerialComputer.print(raw_rorKG * 10); // ror thô trước Kalman (cùng thang ror)
         SerialComputer.print(" ror=");     SerialComputer.print(rorKG);
         SerialComputer.print(" dif=");     SerialComputer.print(dif100);
+        SerialComputer.print(" base=");    SerialComputer.print(coastBase100);  // base coast dang tu hoc (x100 kg)
         SerialComputer.print(" thr=");     SerialComputer.print(thr);
         SerialComputer.print(" wS=");      SerialComputer.print(adaptStartW100);
         SerialComputer.print(" ph=");      SerialComputer.print(loaderAdaptPhase);
@@ -2386,6 +2636,76 @@ void programScan(){
         destonerTimerEn = 0; //Resetncounter
     }
 
+    /* Escape mở BẰNG TAY ở chế độ "chỉ làm mát" ($M53 autoEscape == 0).
+       Chuỗi cooling không mở escape nữa nên không ai bật escapeTimerEn ⇒ cửa xy-lanh
+       nằm mở tới khi thợ nhớ ra. Mọi xy-lanh khác đều có timer tự đóng, cửa escape
+       không được là ngoại lệ. Xả tay chậm hơn xả tự động nên cộng ESCAPE_MANUAL_EXTRA_SEC.
+
+       Hai cái gác, đừng bỏ:
+       • PC_CONTROL_BTN_R == 0 — lúc app lái máy thì khối PC bên dưới lo escape.
+       • coolStep != COOL_STEP_ESCAPE_OFF — phòng thợ gạt $M53 giữa chuỗi xả tự động;
+         hai nơi cùng đụng escapeTimer là chuỗi cooling không thoát (bài học R6).
+
+       escManualDone: sau khi tự đóng phải CHỜ nút nhả (ESCAPE_BTN_R về 0) mới cho đếm
+       lại. Không có nó thì HMI chưa kịp hạ cờ là firmware thấy R==1 → bật timer lại →
+       cứ mỗi manualEscapeSec giây lại bắn một lệnh đóng. */
+    {
+        static bool escManualArmed = false;  //escapeTimer hiện do KHỐI NÀY giữ
+        static bool escManualDone  = false;  //đã tự đóng, chờ nút nhả mới đếm lại
+
+        const bool escManualMode = (!autoEscapeEnabled() && PC_CONTROL_BTN_R==0 &&
+                                    coolStep!=COOL_STEP_ESCAPE_OFF);
+
+        if(!escManualMode){
+            /* Rời chế độ GIỮA CHỪNG: thợ gạt $M53 về 0, bật PC control, hoặc chuỗi xả
+               tự động vừa giành lấy escape. Timer nào khối này đang giữ phải NHẢ VỀ 0.
+               Để treo là hỏng mẻ SAU: escapeTimerEn còn bật với escapeTimer lớn thì lần
+               mở escape kế tiếp vừa mở đã thấy "quá giờ" và đóng ngay, cà phê không kịp
+               thoát khỏi khay nguội. */
+            if(escManualArmed){
+                escapeTimerEn = 0;
+                escapeTimer = 0;
+                escManualArmed = false;
+                if(enDebug) SerialComputer.println("Manual escape: auto-close released");
+                //Rời chế độ: thợ gạt $M53 về 1, bật PC control, hoặc chuỗi tự động giành escape
+            }
+            escManualDone = false;
+        }else{
+            const int16_t manualEscapeSec = escapeDuration_R + manualEscapeExtraSec();
+
+            if(ESCAPE_BTN_R==0) escManualDone = false;   //Nút đã nhả, cho phép đếm mẻ xả sau
+
+            //Thợ vừa mở cửa bằng tay → bắt đầu đếm giờ tự đóng
+            if(ESCAPE_BTN_R==1 && escapeTimerEn==0 && !escManualDone){
+                escapeTimer = 0;
+                escapeTimerEn = 1;
+                escManualArmed = true;
+                if(enDebug) SerialComputer.println("Manual escape: auto-close armed");
+            }
+            //Còi báo trước 5 giây — tay thợ có thể còn trong cửa
+            if(escManualArmed && escapeTimer>=(manualEscapeSec-5)){
+                buzzerTimerEn = 1;
+            }
+            //Huỷ khi thợ tự đóng cửa trước (xét TRƯỚC nhánh hết giờ, thợ luôn thắng máy)
+            if(escManualArmed && ESCAPE_BTN_R==0 && escapeTimer>=1){
+                escapeTimerEn = 0;
+                escapeTimer = 0;
+                escManualArmed = false;
+            }
+            //Hết giờ → đóng cửa
+            else if(escManualArmed && escapeTimer>=manualEscapeSec){
+                nodeHMI.writeSingleRegister(ESCAPE_BTN_W-1, 0);  //Turn off escape
+                setMachineStatus(STT_EVENT_ESCAPE_CLOSED);
+                escapeTimerEn = 0;
+                escapeTimer = 0;
+                escManualArmed = false;
+                escManualDone = true;   //Chờ nút nhả rồi mới đếm lại
+                buzzerTimerEn = 1;
+                delay(1);
+            }
+        }
+    }
+
     /* ⛔ R6 (2026-07-30): khối escape này chỉ dành cho lúc APP/PC mở escape ngoài chuỗi
        làm mát. Thêm điều kiện coolStep==0 vì khi chuỗi COOL_STEP_ESCAPE_OFF đang chạy thì
        CHÍNH NÓ lo đóng escape; hai khối cùng reset escapeTimer là chuỗi cooling có thể
@@ -2504,14 +2824,21 @@ void programScan(){
         
         break;  
 
-        case COOL_STEP_ESCAPE_ON:
-            STEP_COOLING_STRING = "WAESCAPE";
+        case COOL_STEP_ESCAPE_ON: {
+            /* $M53 autoEscape_R (xem autoEscapeEnabled): 1 = chuỗi đầy đủ (destoner +
+               escape) như từ trước tới nay, 0 = CHỈ LÀM MÁT — thổi đủ coolTimer_R giây
+               rồi tắt bồn nguội, không tự bật tách đá, không tự mở cửa escape; thợ xả tay. */
+            // Một biểu thức DUY NHẤT cho cả bước: HMI/app ghi rác (2, 255…) vào $M53 thì
+            // vẫn rơi gọn về một trong hai hành vi, không sinh trạng thái lai
+            // (bỏ destoner nhưng vẫn mở escape).
+            const bool coolOnly = !autoEscapeEnabled();
+            STEP_COOLING_STRING = coolOnly ? "ONLYCOOL" : "WAESCAPE";
             //Call buzzer before escape run
             if(coolTimer>=(coolTimer_R-5)){
                 buzzerTimerEn = 1; //Call buzzer
             }
-            //Bật trước destoner
-            if(destonerSet_R>0){
+            //Bật trước destoner — bỏ qua khi thợ chọn chỉ làm mát
+            if(!coolOnly && destonerSet_R>0){
                 STEP_COOLING_STRING = "WAESDES";
                 if(coolTimer>=(coolTimer_R-destonerPre_R)){
                     destonerTimerEn = 1; //Turn on destoner timer
@@ -2521,16 +2848,34 @@ void programScan(){
             }
             //Wait to cooling complete
             if(coolTimer>=coolTimer_R){
-                STEP_COOLING_STRING = "ONES";
-                setMachineStatus(STT_ROAST_ESCAPE);
-                nodeHMI.writeSingleRegister(ESCAPE_BTN_W-1, 1);  //Turn on escape
-                escapeTimerEn = 1;  //Enable escape timer auto close count;
-                setMachineStatus(STT_EVENT_ESCAPE_OPENED);
-                delay(1);
-                coolStep = COOL_STEP_ESCAPE_OFF; //Next to check escape off
+                if(coolOnly){
+                    //Chỉ làm mát: hết giờ thì tắt bồn nguội, KHÔNG mở escape
+                    STEP_COOLING_STRING = "OFFCO";
+                    nodeHMI.writeSingleRegister(COOLING_BTN_W-1, 0);  // Tắt cooling
+#ifdef SOURCE_AI_VR_FROM_HMI
+                    // Bản SOURCE_AI_VR_FROM_HMI tách dây mixer riêng, không đấu chung với cooling.
+                    nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 0);  // Tắt mixer riêng
+#endif
+                    setMachineStatus(STT_ACT_COOLING_OFF);
+                    coolTimerEn = 0; //Turn off cool timer
+                    coolTimer = 0;
+                    buzzerTimerEn = 1; //Call buzzer báo thợ ra xả tay
+                    coolStep = 0; //Turn off cooling program
+                    delay(1);
+                }else{
+                    STEP_COOLING_STRING = "ONES";
+                    setMachineStatus(STT_ROAST_ESCAPE);
+                    nodeHMI.writeSingleRegister(ESCAPE_BTN_W-1, 1);  //Turn on escape
+                    escapeTimer = 0;    //Bộ đếm PHẢI về 0 tại đây: đường nào đó bỏ timer
+                                        //treo là mẻ này vừa mở escape đã bị đóng ngay
+                    escapeTimerEn = 1;  //Enable escape timer auto close count;
+                    setMachineStatus(STT_EVENT_ESCAPE_OPENED);
+                    delay(1);
+                    coolStep = COOL_STEP_ESCAPE_OFF; //Next to check escape off
+                }
             }
-            
-        break; 
+
+        } break;
         case COOL_STEP_ESCAPE_OFF:
             //Wait to cooling complete
             STEP_COOLING_STRING = "WAESCOFF";
@@ -2594,8 +2939,6 @@ void programScan(){
         coolTimerLog = -1;
     }
 }
-
-
 
 
 

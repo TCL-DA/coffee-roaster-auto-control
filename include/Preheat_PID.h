@@ -362,7 +362,7 @@ void preheat() {
         gasPercent = 0;
         nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);
 
-        if (bt10 > targetBT10 + PH_TARGET_BAND) {
+        if (bt10 > targetBT10 + preheatTargetBand10()) {
             wuState = WU_COOLING;
             wuDeadTimer = 0;
             setMachineStatus(STT_PREHEAT_COOLING);
@@ -625,7 +625,7 @@ void preheat() {
         if (phPrevTarget != 0 && targetBT10 != phPrevTarget) {
             phHoldMaxDev = 0;
             phMaxBT = bt10;
-            if (abs(targetBT10 - bt10) > PH_TARGET_BAND) {
+            if (abs(targetBT10 - bt10) > preheatTargetBand10()) {
                 wuState = WU_HEATING;          // SV mới còn xa → đốt/hạ lại
                 phBtStart = bt10;              // gốc lookahead mới
             } else {
@@ -636,9 +636,9 @@ void preheat() {
         phPrevTarget = targetBT10;
         if (bt10 > phMaxBT) phMaxBT = bt10;   // theo dõi BT cao nhất (đánh giá vọt)
         // Khi đang HOLDING: theo dõi độ lệch |BT−SV| lớn nhất ĐỂ ĐÁNH GIÁ ổn định.
-        // Bỏ qua PH_HOLD_SETTLE_SEC giây đầu (giai đoạn chuyển tiếp, BT chưa kịp ổn).
+        // Bỏ qua thời gian M55 giây đầu (giai đoạn chuyển tiếp, BT chưa kịp ổn).
         if (wuState == WU_HOLDING &&
-            (uint16_t)(wuElapsed - phHoldStartSec) >= PH_HOLD_SETTLE_SEC) {
+            (uint16_t)(wuElapsed - phHoldStartSec) >= preheatHoldSettleSec()) {
             int16_t dev = (int16_t)targetBT10 - bt10; if (dev < 0) dev = -dev;
             if (dev > phHoldMaxDev) phHoldMaxDev = dev;
         }
@@ -685,7 +685,7 @@ void preheat() {
 
         // Vào HOLDING khi BT lần đầu chạm vùng target ±3°C
         // Chuyển sang bộ hệ số HOLD + reset Iterm (bumpless: tránh giật khi đổi bộ số)
-        if (wuState == WU_HEATING && abs(gap) <= PH_TARGET_BAND) {
+        if (wuState == WU_HEATING && abs(gap) <= preheatTargetBand10()) {
             wuState = WU_HOLDING;
             phReachedHold = true;   // đã đạt target → bắt đầu đo độ ổn định HOLD
             phHoldStartSec = wuElapsed;   // mốc để bỏ qua giai đoạn chuyển tiếp
@@ -704,14 +704,15 @@ void preheat() {
 
         // ── SV hiệu dụng với lookahead (Artisan "Lookahead 6s") ──────────────
         // HEATING: SV_eff = điểm trên đường tiến độ tại (elapsed + lookahead).
-        // Đường tiến độ đi từ phBtStart → target trong PH_DEADLINE_SEC (3 phút),
+        // Đường tiến độ đi từ phBtStart → target trong thời hạn M54,
         // KHÔNG dùng toàn bộ Time preheat (Time gồm cả thời gian giữ nhiệt sau đó).
         // Quá mốc 3 phút → svEff = target. PID nhìn trước để phản ứng sớm.
         int16_t svEff = targetBT10;
         if (wuState == WU_HEATING && targetBT10 > phBtStart) {
             int32_t tAhead = (int32_t)wuElapsed + PH_PID_LOOKAHEAD_SEC;
-            if (tAhead < PH_DEADLINE_SEC) {
-                svEff = phBtStart + (int16_t)((int32_t)(targetBT10 - phBtStart) * tAhead / PH_DEADLINE_SEC);
+            const uint16_t deadlineSec = preheatDeadlineSec();
+            if (tAhead < deadlineSec) {
+                svEff = phBtStart + (int16_t)((int32_t)(targetBT10 - phBtStart) * tAhead / deadlineSec);
                 if (svEff > targetBT10) svEff = targetBT10;
                 if (svEff < phBtStart)  svEff = phBtStart;
             }

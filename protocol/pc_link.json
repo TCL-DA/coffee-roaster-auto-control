@@ -11,7 +11,7 @@
     "scale = số máy gửi ÷ scale → đơn vị kỹ thuật (BT 2153 ÷10 = 215.3°C).",
     "signed = register 16-bit đọc theo số có dấu (RoR, áp hút có thể âm)."
   ],
-  "version": 1,
+  "version": 3,
   "read": {
     "base": 100,
     "comment": "Máy → app. Cập nhật mỗi vòng loop, app đọc trọn khối trong 1 frame 0x03.",
@@ -187,6 +187,14 @@
         "signed": false,
         "unit": "kg",
         "desc": "cân đích netWTG_R — hút tới còn ngần này thì tự cắt (Setup kg trên HMI)"
+      },
+      {
+        "key": "vac_en",
+        "c": "VACEN",
+        "scale": 1,
+        "signed": false,
+        "unit": "",
+        "desc": "PID gió theo áp hút đang BẬT hay không (vacuumSetFlag_R). Thêm 2026-09-09: khối GHI có ô vacen từ 30/07 nhưng khối ĐỌC thì không, nên app ra lệnh xong không có đường đọc lại — gương chỉ có một chiều"
       }
     ]
   },
@@ -618,8 +626,8 @@
   },
   "config": {
     "base": 170,
-    "count": 52,
-    "comment": "Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi máy bận (rang·mồi lửa·làm nóng·còn lửa) và bị TỪ CHỐI khi giá trị ngoài dải — firmware KHÔNG tin app, tự kiểm dải lần nữa. Xem khối config trong PC_Link.h.",
+    "count": 61,
+    "comment": "Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 60 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..61) = chính chỉ số iMemHMI[]; firmware chỉ cập nhật iMemHMI[idx] và báo OK sau khi HMI xác nhận ghi nodeHMI(idx+2000). GHI bị CHẶN khi máy bận (rang·mồi lửa·làm nóng·còn lửa), bị TỪ CHỐI khi giá trị ngoài dải hoặc HMI không nhận.",
     "regs": [
       {
         "key": "cmd",
@@ -629,7 +637,7 @@
       {
         "key": "idx",
         "c": "IDX",
-        "desc": "số $M cần đọc/ghi (1..52)"
+        "desc": "số $M cần đọc/ghi (1..60)"
       },
       {
         "key": "val",
@@ -639,7 +647,7 @@
       {
         "key": "status",
         "c": "STATUS",
-        "desc": "0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải cho phép của tham số"
+        "desc": "0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải · 5=HMI từ chối hoặc không phản hồi lệnh ghi"
       }
     ],
     "cmd_idle": 0,
@@ -649,7 +657,213 @@
     "status_ok": 1,
     "status_err": 2,
     "status_locked": 3,
-    "status_range": 4
+    "status_range": 4,
+    "status_hmi": 5,
+    "min": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      60,
+      10,
+      10,
+      100,
+      120,
+      0,
+      5
+    ],
+    "max": [
+      60,
+      60,
+      60,
+      100,
+      100,
+      65535,
+      600,
+      100,
+      300,
+      30,
+      99,
+      247,
+      7,
+      60,
+      247,
+      65535,
+      0,
+      0,
+      120,
+      300,
+      300,
+      600,
+      3000,
+      300,
+      65535,
+      60,
+      120,
+      100,
+      1,
+      100,
+      100,
+      1000,
+      1,
+      100,
+      100,
+      100,
+      1,
+      65535,
+      65535,
+      65535,
+      10000,
+      10000,
+      10000,
+      100,
+      1,
+      120,
+      1,
+      300,
+      1000,
+      1000,
+      60,
+      300,
+      1,
+      10,
+      900,
+      120,
+      30,
+      300,
+      600,
+      30,
+      60
+    ],
+    "params": {
+      "23": {
+        "name": "chargeTemp10",
+        "unit": "°C",
+        "scale": 10,
+        "default": 1800,
+        "desc": "nhiệt độ nạp, số thô ×10 (1800 = 180,0°C)"
+      },
+      "53": {
+        "name": "autoEscape",
+        "unit": "bool",
+        "scale": 1,
+        "default": 1,
+        "desc": "1 = tự động mở cửa xả sau làm mát; 0 = chỉ làm mát"
+      },
+      "54": {
+        "name": "dropTrim10",
+        "unit": "°C",
+        "scale": 10,
+        "default": 3,
+        "desc": "Biên chỉnh nhiệt xả theo sai lệch thời gian, ×10 (0 = TẮT, xả đúng nhiệt hồ sơ; 10 = ±1.0 °C). Chỉ tác dụng khi DEV đã quá 3 phút."
+      },
+      "55": {
+        "name": "preheatDeadlineSec",
+        "unit": "s",
+        "scale": 1,
+        "default": 180,
+        "zero_uses_default": true,
+        "desc": "thời hạn PID preheat đạt nhiệt mục tiêu"
+      },
+      "56": {
+        "name": "preheatHoldSettleSec",
+        "unit": "s",
+        "scale": 1,
+        "default": 45,
+        "zero_uses_default": true,
+        "desc": "thời gian bỏ qua chuyển tiếp trước khi đánh giá giữ nhiệt"
+      },
+      "57": {
+        "name": "preheatTargetBand10",
+        "unit": "°C",
+        "scale": 10,
+        "default": 30,
+        "zero_uses_default": true,
+        "desc": "dải vào trạng thái giữ nhiệt, số thô ×10 (30 = 3,0°C)"
+      },
+      "58": {
+        "name": "developmentWarnPermil",
+        "unit": "‰",
+        "scale": 1,
+        "default": 300,
+        "zero_uses_default": true,
+        "desc": "ngưỡng cảnh báo tỷ lệ phát triển, phần nghìn (300 = 30,0%)"
+      },
+      "59": {
+        "name": "autoDropMinSec",
+        "unit": "s",
+        "scale": 1,
+        "default": 120,
+        "zero_uses_default": true,
+        "desc": "thời gian tối thiểu sau charge mới cho phép auto-drop"
+      },
+      "60": {
+        "name": "manualEscapeExtraSec",
+        "unit": "s",
+        "scale": 1,
+        "default": 15,
+        "zero_uses_default": false,
+        "desc": "số giây cộng thêm khi tự đóng escape mở tay; 0 là giá trị hợp lệ. HMI mới phải khởi tạo 15 nếu muốn mặc định; firmware không thể phân biệt số 0 cố ý với HMI cũ chưa có ô này"
+      },
+      "61": {
+        "name": "loopDoorStuckSec",
+        "unit": "s",
+        "scale": 1,
+        "default": 60,
+        "zero_uses_default": true,
+        "desc": "thời gian chờ cửa drop đóng ở vòng lặp trước khi báo kẹt"
+      }
+    }
   },
   "failsafe": {
     "_doc": [

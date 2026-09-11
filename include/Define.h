@@ -52,7 +52,7 @@ uint16_t errorCount = 0;
 bool modbusGasCutoffLatched = false;
 
 //Array
-int16_t iMemHMI[60], iMemHMI_CP[60]; //$M HMI
+int16_t iMemHMI[62], iMemHMI_CP[62]; //$M0..$M61; chỉ số 0 để trống cho khớp số $M
 uint16_t dAddress[500], dAddress_CP[500]; //40xxx HMI
 uint8_t cAddress[50], cAddress_CP[50]; //Coils
 uint8_t progStatus = 1;
@@ -128,7 +128,7 @@ boolean memBuzzerEn = false;
 boolean idBaudSetEn = false;        //Enable updating modbus id and baudrate
 
 //Debug
-boolean enDebug = 0; //Enable/disable debug via Serial Computer
+boolean enDebug = 0; //Enable/disable debug via Serial Computer — TẮT cho bản giao khách
 volatile bool fireCutFlag = false;  // ISR sets this when BT > 250C, loop() handles Modbus
 volatile bool forceDrumFanOnFlag = false;  // ISR sets this when BT/ET > 80C, loop() handles Modbus
 
@@ -172,6 +172,10 @@ uint16_t loaderSeq = 0;            // /loader.csv line seq, continuous across re
 bool     adaptWStartPending = false; // true = waiting for hopper to settle to re-latch wStart after suction on
 int16_t  suctionOffset100 = 0;     // x100 kg: suction makes hopper falsely heavy; subtract from weight when comparing cut threshold
 bool     adaptArmed = false;       // true = valid suction edge; only learn when armed (avoids junk samples)
+// Base coast (x100 kg) for manual-dif mode. Seeded at boot, then self-tuned in RAM from
+// the measured error of every batch. RAM only - never touches the SD card, so it restarts
+// from the seed after a power cycle and re-converges within 2-3 batches.
+int16_t  coastBase100 = FEEDER_COAST_SEED100;
 int16_t difNetW = 0;//Weight difference between total weight and target
 int16_t dif = 0;  //Adjust weighing offset
 
@@ -231,6 +235,15 @@ uint8_t aLoaderStep = 0; //Auto Loader
 uint16_t BT_TP_Pre = 0;
 uint8_t ulimitTPTime = 20; //Allowed time to check TP
 uint16_t ulimitTPTemp = 1500; //Allowed temperature to check TP
+/* Chống TP giả (2026-09-10). Nhánh cứu TP bản 30/07 chỉ xét thời gian + ngưỡng
+   nhiệt, nên mẻ nạp nóng (BT chưa kịp rơi dưới ulimitTPTemp trong ulimitTPTime)
+   bị chốt TP ngay giây 21 bằng CHÍNH nhiệt lúc nạp, kéo DE chốt theo trong cùng
+   nhịp. Ba biến dưới đây bắt buộc phải có BẰNG CHỨNG cú tụt xảy ra thật. */
+uint16_t TIME_TP_DIP = 0;      // Giây (theo timeRoast) ứng với đáy BT đã ghi được
+boolean  tpDipSeen = false;    // BT đã từng xuống dưới ulimitTPTemp trong mẻ này
+#define TP_MIN_DROP_CV  200    // Đáy phải thấp hơn nhiệt nạp ≥ 20.0°C mới tính là đã tụt
+#define TP_HARD_TMO     240    // Hạn cứng 4 phút — quá thì chốt TP ước lượng, không để kẹt
+#define DE_MIN_GAP      5      // DE phải cách TP tối thiểu 5 giây (sàn chống dồn mốc)
 uint8_t countIgnition = 0;
 const char* STEP_STRING = "NONE";
 const char* STEP_COOLING_STRING = "NONE";
@@ -694,6 +707,15 @@ boolean enLoadDateProfile = false;  // flag for loop() to call loadAllProfileDat
 #define maxPT_W             50  //Max limit of pressure transmitter
 #define wuTime_W            51  //Warm up time
 #define wuTemp_W            52  //Warm up temperature
+#define autoEscape_W        53  //Auto escape turn on
+#define dropTrim_W     54  //Biên chỉnh nhiệt xả theo lệch thời gian, ×10 °C (0=TẮT, 10=±1.0°C)
+#define preheatDeadline_W   55  //Thời hạn đạt nhiệt preheat, giây
+#define preheatHoldSettle_W 56  //Thời gian ổn định trước khi đánh giá giữ nhiệt, giây
+#define preheatTargetBand_W 57  //Dải vào giữ nhiệt preheat, ×10 °C
+#define developmentWarn_W   58  //Ngưỡng cảnh báo development, phần nghìn
+#define autoDropMin_W       59  //Thời gian tối thiểu trước auto-drop, giây
+#define manualEscapeExtra_W 60  //Thời gian cộng thêm khi đóng escape tay, giây
+#define loopDoorStuck_W     61  //Thời gian chờ cửa drop đóng, giây
 
 //Internal register read
 #define chargeDuration_R    iMemHMI[chargeDuration_W]  //$M1 - charge cylinder timer
@@ -731,7 +753,7 @@ boolean enLoadDateProfile = false;  // flag for loop() to call loadAllProfileDat
 // #define destonerValue_R     iMemHMI[destonerValue_W]  // destonerValue_W not defined
 #define maxGasSet_R         iMemHMI[maxGasSet_W]
 #define burnerPremix_R      iMemHMI[burnerPremix_W]
-#define preCool_R           iMemHMI[preCool_W]
+#define preCool_R           iMemHMI[preCool_W]   //don vi 0.1C (thang x10)
 #define FcsCalib_R          iMemHMI[FcsCalib_W]
 #define netWTG_R            iMemHMI[netWTG_W]
 #define autoLoader_R        iMemHMI[autoLoader_W]
@@ -754,6 +776,15 @@ boolean enLoadDateProfile = false;  // flag for loop() to call loadAllProfileDat
 #define maxPT_R             iMemHMI[maxPT_W]  //Max limit of pressure transmitter
 #define wuTime_R            iMemHMI[wuTime_W]  //Warm up time
 #define wuTemp_R            iMemHMI[wuTemp_W]  //Warm up temperature
+#define autoEscape_R        iMemHMI[autoEscape_W]  //Auto escape turn on
+#define dropTrim_R    iMemHMI[dropTrim_W]
+#define preheatDeadline_R   iMemHMI[preheatDeadline_W]
+#define preheatHoldSettle_R iMemHMI[preheatHoldSettle_W]
+#define preheatTargetBand_R iMemHMI[preheatTargetBand_W]
+#define developmentWarn_R   iMemHMI[developmentWarn_W]
+#define autoDropMin_R       iMemHMI[autoDropMin_W]
+#define manualEscapeExtra_R iMemHMI[manualEscapeExtra_W]
+#define loopDoorStuck_R     iMemHMI[loopDoorStuck_W]
 
 //Internal memory register - temp variables
 #define chargeDuration_R_CP     iMemHMI_CP[chargeDuration_W]  //$M1 - charge cylinder timer
@@ -814,6 +845,34 @@ boolean enLoadDateProfile = false;  // flag for loop() to call loadAllProfileDat
 #define maxPT_R_CP              iMemHMI_CP[maxPT_W]  //Max limit of pressure transmitter
 #define wuTime_R_CP             iMemHMI_CP[wuTime_W]  //Warm up time
 #define wuTemp_R_CP             iMemHMI_CP[wuTemp_W]  //Warm up temperature
+#define autoEscape_R_CP         iMemHMI_CP[autoEscape_W]  //Auto escape turn on
+#define dropTrim_R_CP     iMemHMI_CP[dropTrim_W]
+#define preheatDeadline_R_CP    iMemHMI_CP[preheatDeadline_W]
+#define preheatHoldSettle_R_CP  iMemHMI_CP[preheatHoldSettle_W]
+#define preheatTargetBand_R_CP  iMemHMI_CP[preheatTargetBand_W]
+#define developmentWarn_R_CP    iMemHMI_CP[developmentWarn_W]
+#define autoDropMin_R_CP        iMemHMI_CP[autoDropMin_W]
+#define manualEscapeExtra_R_CP  iMemHMI_CP[manualEscapeExtra_W]
+#define loopDoorStuck_R_CP      iMemHMI_CP[loopDoorStuck_W]
+
+// HMI cũ chưa có M54..M60 sẽ trả 0. Các accessor sau giữ hành vi cũ bằng giá trị
+// Config.h; riêng M59 dùng 0 thật sự để cho phép đóng đúng escapeDuration_R.
+// HMI mới phải khởi tạo M59=15 nếu muốn mặc định 15 giây, vì firmware không thể
+// phân biệt số 0 người dùng cố ý đặt với số 0 của HMI chưa có ô cấu hình.
+static inline uint16_t preheatDeadlineSec(){ return preheatDeadline_R > 0 ? preheatDeadline_R : PH_DEADLINE_SEC; }
+static inline uint16_t preheatHoldSettleSec(){ return preheatHoldSettle_R > 0 ? preheatHoldSettle_R : PH_HOLD_SETTLE_SEC; }
+static inline int16_t preheatTargetBand10(){ return preheatTargetBand_R > 0 ? preheatTargetBand_R : PH_TARGET_BAND; }
+// Biên chỉnh nhiệt xả ($M54), ×0.1 °C. KẸP DẢI 0..10 là CHỐT AN TOÀN:
+// màn HMI ĐỜI CŨ ghi preheatDeadline (180..900) vào ô 54 — nếu tin thẳng thì
+// nhiệt xả lệch tới 90 °C. Ngoài dải ⇒ coi như 0 = TẮT, xả đúng nhiệt hồ sơ.
+static inline int16_t dropTrim10(){
+    const int16_t v = dropTrim_R;
+    return (v >= 0 && v <= 10) ? v : 0;
+}
+static inline uint16_t developmentWarnPermil(){ return developmentWarn_R > 0 ? developmentWarn_R : DEV_WARN_PERMIL; }
+static inline uint16_t autoDropMinSec(){ return autoDropMin_R > 0 ? autoDropMin_R : DROP_MIN_SEC; }
+static inline uint16_t manualEscapeExtraSec(){ return (uint16_t)manualEscapeExtra_R; }
+static inline uint16_t loopDoorStuckSec(){ return loopDoorStuck_R > 0 ? loopDoorStuck_R : LOOP2_STUCK_SEC; }
 
 //----------------------End
 
@@ -1016,6 +1075,13 @@ uint8_t  sdDrum[PROFILE_MAX_SECONDS];
 int16_t  sdRorBT[PROFILE_MAX_SECONDS];
 uint8_t  sdVacuumSetFlag[PROFILE_MAX_SECONDS];   // vacuumSetFlag each second (0=direct, 1=PID)
 int16_t  sdVacuumSetpoint[PROFILE_MAX_SECONDS];  // vacuumSetpoint (Pa) each second
+
+// Giây XẢ của hồ sơ mẫu. KHÁC sdTempTi (= giây cuối FILE): file xuất từ Artisan
+// còn ghi tiếp cả pha làm nguội sau DROP, ở đó sdGas[]=0 và sdAirflow[] mở hết.
+// Không chặn thì lastTimeSD đi vào vùng đó, máy cắt gas ngay lúc mẻ sắp tới nhiệt
+// xả → BT không bao giờ chạm DROP_PRO_R, auto-drop không kích, mẻ treo.
+// Xem docs/plan/2026-09-10-auto-stall-cuoi-me.md mục 2.
+uint16_t sdProfileEndTi = 0;
 
 #define sdTempTi      sdTempData[0] //Temp assign - Time - Sd
 #define sdTempBT      sdTempData[1] //Temp assign - BT - Sd
@@ -1256,6 +1322,5 @@ void ModbusRS485Config(){
 
     SerialComputer.println("=> Modbus Master RTU OK");
 }
-
 
 

@@ -165,13 +165,21 @@ void debug() {
   static uint32_t profLastPrint = 0;
   if (millis() - profLastPrint >= 2000) {
     profLastPrint = millis();
-    SerialComputer.print("Loop " + String(calTime) + "ms |");
-    for (uint8_t i = 0; i < PROF_N; i++) {
-      SerialComputer.print(" " + String(profName[i]) + " " + String(profMs[i]));
-      if (profMax[i] > profMs[i]) SerialComputer.print("/" + String(profMax[i]));
-      profMax[i] = 0;
-    }
-    SerialComputer.println();
+    // Ho so thoi gian vong loop — tam TAT de soi rieng preCool. Bo dau // cua
+    // khoi duoi de bat lai khi can san loop cham.
+    // SerialComputer.print("Loop " + String(calTime) + "ms |");
+    // for (uint8_t i = 0; i < PROF_N; i++) {
+    //   SerialComputer.print(" " + String(profName[i]) + " " + String(profMs[i]));
+    //   if (profMax[i] > profMs[i]) SerialComputer.print("/" + String(profMax[i]));
+    // }
+    // SerialComputer.println();
+    for (uint8_t i = 0; i < PROF_N; i++) profMax[i] = 0;   // van xa dinh moi vong in
+
+    // Soi nhanh $M30 preCool (do sam quat lam mat truoc DROP). Thanh ghi o thang
+    // x10, nen in ca so tho lan so do thuc de doi chieu voi o tren HMI.
+    SerialComputer.print("preCool_R=");   SerialComputer.print(preCool_R);
+    SerialComputer.print(" -> ");         SerialComputer.print(preCool_R_CV / 10.0f, 1);
+    SerialComputer.println("C truoc DROP");
   }
   // SerialComputer.print("Loop: " + String(calTime) + "ms");
   // if (feederTimerEn)     SerialComputer.print(" | Feeder: "   + String(feederTimer));

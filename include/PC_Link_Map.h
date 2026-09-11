@@ -6,9 +6,9 @@
 #ifndef PC_LINK_MAP_H
 #define PC_LINK_MAP_H
 
-#define PCL_VERSION    1
+#define PCL_VERSION    3
 
-// ── Khối ĐỌC (máy → app) — 100..121 ──
+// ── Khối ĐỌC (máy → app) — 100..122 ──
 // Máy → app. Cập nhật mỗi vòng loop, app đọc trọn khối trong 1 frame 0x03.
 #define PCL_R_BASE     100
 #define PCL_R_BT        (PCL_R_BASE + 0 )  // nhiệt hạt [°C] ×10
@@ -33,7 +33,8 @@
 #define PCL_R_SCALE     (PCL_R_BASE + 19)  // cân phễu netW100 (61.35kg = 6135; âm khi trôi zero) [kg] ×100 (có dấu)
 #define PCL_R_RORKG     (PCL_R_BASE + 20)  // tốc độ cân rorKG (hút ra = âm, 1kg/phút = 100) [kg/phút] ×100 (có dấu)
 #define PCL_R_SCALETG   (PCL_R_BASE + 21)  // cân đích netWTG_R — hút tới còn ngần này thì tự cắt (Setup kg trên HMI) [kg] ×10
-#define PCL_R_COUNT    22
+#define PCL_R_VACEN     (PCL_R_BASE + 22)  // PID gió theo áp hút đang BẬT hay không (vacuumSetFlag_R). Thêm 2026-09-09: khối GHI có ô vacen từ 30/07 nhưng khối ĐỌC thì không, nên app ra lệnh xong không có đường đọc lại — gương chỉ có một chiều
+#define PCL_R_COUNT    23
 
 // Bit của phase
 #define PCLP_DRY  0x01   // đã qua TP  (progStep >= STP_TP)
@@ -91,14 +92,14 @@ static const int16_t PCL_W_MIN[PCL_W_COUNT] = {0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0,
 static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1, 1, 1, 1, 32767, 1, 1, 1, 1, 1, 30, 2, 990, 1, 1, 1};
 
 // ── Khối CẤU HÌNH $M (handshake app↔máy) — 170..173 ──
-// Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 52 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..52) = chính chỉ số iMemHMI[]; firmware đọc/ghi thẳng iMemHMI[idx] + nodeHMI(idx+2000). GHI bị CHẶN khi máy bận (rang·mồi lửa·làm nóng·còn lửa) và bị TỪ CHỐI khi giá trị ngoài dải — firmware KHÔNG tin app, tự kiểm dải lần nữa. Xem khối config trong PC_Link.h.
+// Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 60 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..61) = chính chỉ số iMemHMI[]; firmware chỉ cập nhật iMemHMI[idx] và báo OK sau khi HMI xác nhận ghi nodeHMI(idx+2000). GHI bị CHẶN khi máy bận (rang·mồi lửa·làm nóng·còn lửa), bị TỪ CHỐI khi giá trị ngoài dải hoặc HMI không nhận.
 #define PCL_CFG_BASE   170
 #define PCL_CFG_CMD     (PCL_CFG_BASE + 0)  // 0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)
-#define PCL_CFG_IDX     (PCL_CFG_BASE + 1)  // số $M cần đọc/ghi (1..52)
+#define PCL_CFG_IDX     (PCL_CFG_BASE + 1)  // số $M cần đọc/ghi (1..60)
 #define PCL_CFG_VAL     (PCL_CFG_BASE + 2)  // giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)
-#define PCL_CFG_STATUS  (PCL_CFG_BASE + 3)  // 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải cho phép của tham số
+#define PCL_CFG_STATUS  (PCL_CFG_BASE + 3)  // 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải · 5=HMI từ chối hoặc không phản hồi lệnh ghi
 #define PCL_CFG_COUNT  4
-#define PCL_CFG_MAXIDX 52   // số $M lớn nhất (idx hợp lệ 1..MAXIDX)
+#define PCL_CFG_MAXIDX 61   // số $M lớn nhất (idx hợp lệ 1..MAXIDX)
 #define PCL_CFG_IDLE   0
 #define PCL_CFG_READ   1
 #define PCL_CFG_WRITE  2
@@ -106,6 +107,11 @@ static const int16_t PCL_W_MAX[PCL_W_COUNT] = {100, 100, 100, 3000, 250, 1, 1, 1
 #define PCL_CFG_ST_ERR 2
 #define PCL_CFG_ST_LOCKED 3   // máy bận → từ chối ghi
 #define PCL_CFG_ST_RANGE  4   // giá trị ngoài dải → từ chối ghi
+#define PCL_CFG_ST_HMI    5   // HMI từ chối/không phản hồi lệnh ghi
+
+// Dải từng $M lấy từ source-of-truth; chỉ số mảng 0 ứng với $M1.
+static const uint16_t PCL_CFG_MIN[PCL_CFG_MAXIDX] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 10, 10, 100, 120, 0, 5};
+static const uint16_t PCL_CFG_MAX[PCL_CFG_MAXIDX] = {60, 60, 60, 100, 100, 65535, 600, 100, 300, 30, 99, 247, 7, 60, 247, 65535, 0, 0, 120, 300, 300, 600, 3000, 300, 65535, 60, 120, 100, 1, 100, 100, 1000, 1, 100, 100, 100, 1, 65535, 65535, 65535, 10000, 10000, 10000, 100, 1, 120, 1, 300, 1000, 1000, 60, 300, 1, 10, 900, 120, 30, 300, 600, 30, 60};
 
 // ── Chốt an toàn khi APP là bộ điều khiển ──────────────────────────────
 #define PCL_APP_TMO_S    3   // app không nhấp heartbeat quá ngần này giây → nhả quyền về HMI + còi
