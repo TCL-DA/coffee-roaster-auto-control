@@ -1072,7 +1072,6 @@ uint16_t sdET[PROFILE_MAX_SECONDS];
 uint8_t  sdAirflow[PROFILE_MAX_SECONDS];
 uint8_t  sdGas[PROFILE_MAX_SECONDS];
 uint8_t  sdDrum[PROFILE_MAX_SECONDS];
-int16_t  sdRorBT[PROFILE_MAX_SECONDS];
 uint8_t  sdVacuumSetFlag[PROFILE_MAX_SECONDS];   // vacuumSetFlag each second (0=direct, 1=PID)
 int16_t  sdVacuumSetpoint[PROFILE_MAX_SECONDS];  // vacuumSetpoint (Pa) each second
 

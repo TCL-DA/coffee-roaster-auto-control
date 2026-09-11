@@ -1,3 +1,8 @@
+// ⛔ MODULE NÀY CHƯA ĐƯỢC ĐẤU VÀO ĐÂU — rorCtrl_update() không có chỗ nào gọi.
+// Giữ lại làm bộ khung cho sàn RoR toàn pha DEV sau này (có sẵn dead-time, tích luỹ
+// offset, kẹp theo pha). Chốt cứu đoạn cuối đang chạy là endBatchRescue() trong
+// Program.h — dùng ETA đếm đơn vị BT thô, KHÔNG dùng file này.
+// Xem docs/plan/2026-09-10-auto-stall-cuoi-me.md mục 5.
 // RoR_Control.h
 // Burner control module: dùng RoR_ET làm early warning, kiểm soát RoR_BT và BT
 // Tách biệt hoàn toàn khỏi calibProgram()
@@ -44,22 +49,6 @@ static bool     rorCtrl_initialized  = false;
 
 // ─── Hàm tiện ích ─────────────────────────────────────────────────────────────
 
-// Populate sdRorBT[] từ sdBT[] — gọi một lần sau khi load profile xong
-// Tính đạo hàm sdBT theo thời gian, đơn vị 0.1°C/min
-// Window 10s để tránh nhiễu từ profile thô
-void rorCtrl_populateSdRorBT() {
-    const uint8_t WINDOW = 10; // giây
-    for (uint16_t t = 0; t < sdProfileEndTi; t++) {
-        if (t < WINDOW) {
-            sdRorBT[t] = 0;
-            continue;
-        }
-        // (sdBT[t] - sdBT[t-WINDOW]) / WINDOW * 60  → °C/min × 10 = 0.1°C/min
-        int32_t delta = (int32_t)sdBT[t] - (int32_t)sdBT[t - WINDOW];
-        sdRorBT[t] = (int16_t)(delta * 6); // delta/10 * 60 = delta*6 (units stay in 0.1°C/min)
-    }
-}
-
 // Reset state — gọi khi bắt đầu AUTO hoặc sau khi thoát AUTO
 void rorCtrl_reset() {
     rorCtrl_gasOffset   = 0;
@@ -97,8 +86,10 @@ void rorCtrl_update() {
     }
 
     // ── Tính sai lệch RoR BT ────────────────────────────────────────────────
-    // sdRorBT[t] và rorBT đều đơn vị 0.1°C/min
-    int16_t rorTarget  = sdRorBT[lastTimeSD];
+    // rorBT_pro tính CÙNG công thức, CÙNG cửa sổ 3 s, CÙNG thang với rorBT
+    // (0.01 °C/phút). Trước đây dùng sdRorBT[] — mảng 5040 byte ở thang 0.1 °C/phút,
+    // LỆCH 10 LẦN so với rorBT. Đã bỏ mảng, dùng thẳng rorBT_pro.
+    int16_t rorTarget  = rorBT_pro;
     int16_t rorError   = rorTarget - rorBT;     // dương = RoR thực thấp hơn target → cần tăng gas
 
     // ── Tính sai lệch BT ────────────────────────────────────────────────────

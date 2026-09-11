@@ -567,7 +567,6 @@ void sdRead(){
                                     sdGas[sdTempTi]            = sdTempGas;
                                     sdDrum[sdTempTi]           = sdTempDrum;
                                     // NOTE: ROR isn't present in the TSV/CSV format used here, keep 0 as placeholder
-                                    sdRorBT[sdTempTi]          = sdTempRorBT;
                                     sdVacuumSetFlag[sdTempTi]  = sdTempVacFlag;
                                     sdVacuumSetpoint[sdTempTi] = sdTempVacSP;
                                 }
@@ -683,7 +682,6 @@ void sdRead(){
                                             sdAirflow[sdTempTi]        = sdTempAir;
                                             sdGas[sdTempTi]            = sdTempGas;
                                             sdDrum[sdTempTi]           = sdTempDrum;
-                                            sdRorBT[sdTempTi]          = sdTempRorBT;
                                             sdVacuumSetFlag[sdTempTi]  = sdTempVacFlag;
                                             sdVacuumSetpoint[sdTempTi] = sdTempVacSP;
                                         }
@@ -791,7 +789,6 @@ void sdRead(){
                 nodeHMI.writeSingleRegister(chargeTemp_W+2000,  sdProfileLoadOK ? CHARGE_PRO_R : 1800); delay(5); //
                 nodeHMI.writeSingleRegister(LOADING_SHOW_W-1,   percentLoadProfile); delay(5);
 
-                rorCtrl_populateSdRorBT(); // Tính sdRorBT[] từ sdBT[] sau khi load xong
 
                 sdReadStep = SD_4;
                 setMachineStatus(sdProfileLoadOK ? STT_SD_LOAD_OK : sdProfileLoadFailStatus);
