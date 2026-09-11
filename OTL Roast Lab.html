@@ -1245,9 +1245,14 @@ html[data-theme="light"]{--elev:0 2px 5px rgba(20,30,50,.06),0 14px 34px rgba(20
 .profcard .ph>div:last-child{flex:none}
 .profcard .pn{font-family:var(--f-num);font-weight:700;font-size:var(--fs-26);overflow-wrap:anywhere}
 .profcard .pnotes{font-size:var(--fs-18);color:var(--dim);margin-top:4px;overflow-wrap:anywhere}
+/* `--rb` do JS đặt theo mức rang (xem roastTone). Không có thì rơi về tông cũ,
+   nên chỗ nào chưa truyền vẫn hiện bình thường chứ không mất màu. Chữ lấy nền
+   đặc + mực sáng để giữ tương phản ở CẢ hai nền — dùng chính --rb làm màu chữ
+   trên nền mờ thì mức đậm (nâu đất) tụt xuống dưới ngưỡng đọc trên nền tối. */
 .roastbadge{flex:none;font-size:var(--fs-18);font-weight:600;padding:9px 20px;border-radius:var(--r-lg);
-  background:color-mix(in srgb,var(--c-gas) 16%,transparent);color:var(--gold-ink);
-  border:1px solid color-mix(in srgb,var(--c-gas) 32%,transparent)}
+  background:color-mix(in srgb,var(--rb,var(--c-gas)) 88%,#000 12%);color:#fff;
+  border:1px solid color-mix(in srgb,var(--rb,var(--c-gas)) 60%,transparent);
+  text-shadow:0 1px 2px rgba(0,0,0,.35)}
 .profcard .pmeta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0;
   background:var(--inset);border-radius:var(--r-sm);padding:14px 18px}
 .profcard .pmeta>div{min-width:0}
@@ -1945,6 +1950,33 @@ html[data-motion="full"] .pkopt:nth-child(2){animation-delay:.03s}
 html[data-motion="full"] .pkopt:nth-child(3){animation-delay:.06s}
 html[data-motion="full"] .pkopt:nth-child(n+4){animation-delay:.09s}
 
+/* ══ Ô TRẠNG THÁI MẺ (ý Dynamic Island) ═════════════════════════════════════
+   Neo đỉnh-giữa: đó là chỗ mắt tìm thông tin trạng thái, và là chỗ duy nhất
+   không đụng bong bóng Hồng (mép trái) lẫn băng sự cố (đáy).
+   Nền ĐẶC màu mực, không trong suốt — nó nổi trên nội dung khác nhau ở 5 tab,
+   trong suốt là chữ chồng lên chữ. */
+#batchPill{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:99997;
+  display:flex;align-items:center;gap:12px;padding:9px 18px;border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  background:#15171c;color:#f2f2f3;cursor:pointer;
+  font-size:16px;line-height:1;white-space:nowrap;
+  box-shadow:0 12px 34px -10px #000c,0 0 0 1px #ffffff0d}
+#batchPill[hidden]{display:none}
+#batchPill:hover{border-color:var(--accent)}
+#batchPill .bp-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none}
+#batchPill .bp-t{font-family:var(--f-mono);font-weight:600;letter-spacing:.5px}
+#batchPill .bp-sep{width:1px;height:15px;background:#ffffff26}
+#batchPill .bp-bt{font-family:var(--f-num);font-weight:700;color:var(--accent-txt,#f2811f)}
+#batchPill .bp-ph{color:#a6acb8;font-size:14px}
+/* Nhịp thở rất nhẹ ở chấm — báo "đang chạy" mà không kéo mắt khỏi việc đang làm.
+   Chỉ hoạt hoá `opacity`, không đụng box-shadow (thứ bắt tô lại mỗi khung hình). */
+html[data-motion="full"] #batchPill .bp-dot{animation:bp-beat 2s ease-in-out infinite}
+html[data-motion="full"] #batchPill{animation:bp-in .42s var(--spring) both}
+@keyframes bp-beat{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes bp-in{from{opacity:0;transform:translate(-50%,-16px) scale(.86)}
+                 to{opacity:1;transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){#batchPill,#batchPill .bp-dot{animation:none}}
+
 /* ══ HỒNG — bong bóng trợ lý, hạng AssistiveTouch ═══════════════════════════
    Đặt `position:fixed` bằng PIXEL THẬT, nằm ngoài sân khấu co giãn — cùng cách
    `#ra-panel` của Codex làm, nếu không thì khi sân khấu thu nhỏ bong bóng cũng
@@ -2095,7 +2127,18 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *:before,html[data-mot
 .ux-filters input:not([type="checkbox"]){min-height:var(--touch-min,64px);border:1px solid var(--hair);border-radius:16px;background:var(--panel);color:var(--txt);padding:12px 20px;font:500 23px var(--f-ui);min-width:0}
 .ux-filters input[type="search"]{flex:1;min-width:300px}.ux-filters label{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:21px}
 .ux-paging{display:flex;align-items:center;gap:14px;flex:none;margin-bottom:18px;font-size:22px;color:var(--mute)}.ux-paging>span{flex:1}
-.ux-empty{text-align:center;padding:60px!important;color:var(--mute)}
+/* TRẠNG THÁI RỖNG. Bản cũ chỉ có chữ ở trên rồi để trống 373px phía dưới — thợ
+   nhìn ra một cái bảng HỎNG chứ không phải một cái kho chưa có gì. Kéo chữ ra
+   giữa khoảng trống và cho nó một dấu hiệu: khoảng trống lúc đó thành CHỦ Ý. */
+/* Các ô vừa được cho dùng bàn phím phải CÓ viền tiêu điểm — Tab tới mà không
+   thấy mình đang đứng ở đâu thì coi như vẫn chưa dùng được. */
+:is(.lg,.mchip,.oinfo,.pick,.val)[role="button"]:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.ux-empty{text-align:center;padding:60px!important;color:var(--mute);
+  height:clamp(200px,38vh,380px);vertical-align:middle}
+.ux-empty:before{content:'';display:block;width:54px;height:54px;margin:0 auto 16px;
+  border-radius:50%;border:2px dashed var(--hair-2);opacity:.75;
+  background:radial-gradient(circle at 50% 50%,var(--hair) 0 26%,transparent 27%)}
 .ux-cmp-check,.ux-select input{width:34px;height:34px;accent-color:var(--accent);cursor:pointer}
 .ux-profile-curve{display:flex;align-items:center;gap:16px;margin:0}.ux-profile-curve>.ux-spark{flex:1;min-width:0;height:64px}
 .ux-profile-curve>.ux-no-curve{flex:1;min-width:0}
@@ -4972,13 +5015,27 @@ function drawBatchCurve(canvasId,series){
     s.cv.bt.forEach(v=>{if(v!=null)vMax=Math.max(vMax,v);});
     (s.cv.et||[]).forEach(v=>{if(v!=null)vMax=Math.max(vMax,v);});});
   tMax=Math.max(60,tMax);vMax=Math.max(100,Math.ceil((vMax+12)/50)*50);
-  const x=t=>L+(W-L-Rp)*t/tMax, y=v=>H-B-(H-B-T)*v/vMax;
+  /* CỬA SỔ XEM (thu phóng). Không có thì xem trọn mẻ, y như trước. Giữ trong
+     `cv._zoom` chứ không phải biến chung: hai đồ thị (chi tiết mẻ và so sánh mẻ)
+     cùng gọi hàm này, dùng chung một biến là phóng cái này nhảy cả cái kia. */
+  cv._tMax=tMax;
+  let z0=0,z1=tMax;
+  if(cv._zoom&&cv._zoom.t1>cv._zoom.t0){z0=Math.max(0,cv._zoom.t0);z1=Math.min(tMax,cv._zoom.t1);}
+  if(z1-z0<20){z0=0;z1=tMax;}                       // phóng quá sâu thì về trọn mẻ
+  const x=t=>L+(W-L-Rp)*(t-z0)/(z1-z0), y=v=>H-B-(H-B-T)*v/vMax;
   const hair=css('--hair'),dim=css('--dim');
   g.strokeStyle=hair;g.fillStyle=dim;g.font='600 14px '+css('--f-num');g.lineWidth=1;
   for(let v=0;v<=vMax;v+=50){const Y=y(v);g.beginPath();g.moveTo(L,Y);g.lineTo(W-Rp,Y);g.stroke();
     g.textAlign='right';g.fillText(v,L-8,Y+5);}
-  const tStep=tMax<=600?120:300;
-  for(let t=0;t<=tMax;t+=tStep){const X=x(t);g.textAlign='center';g.fillText(fmtMMSS(t),X,H-B+22);}
+  /* Bước nhãn thời gian bám theo BỀ RỘNG CỬA SỔ, không theo cả mẻ — phóng sâu mà
+     vẫn nhảy 5 phút một nhãn thì cả màn chỉ còn một cái nhãn. */
+  const span=z1-z0;
+  const tStep=span<=120?30:span<=300?60:span<=900?120:300;
+  for(let t=Math.ceil(z0/tStep)*tStep;t<=z1;t+=tStep){
+    const X=x(t);g.textAlign='center';g.fillText(fmtMMSS(t),X,H-B+22);}
+  /* CẮT BIÊN vùng vẽ: phóng to là đường chạy ra ngoài trục, đè lên nhãn nhiệt độ
+     bên trái. Cắt rồi mới vẽ, xong thì trả lại. */
+  g.save();g.beginPath();g.rect(L,T,W-L-Rp,H-B-T);g.clip();
   valid.forEach(s=>{
     const et=s.cv.et||[];
     if(et.length){g.save();g.globalAlpha=.4;g.beginPath();let pen=false;
@@ -4988,6 +5045,66 @@ function drawBatchCurve(canvasId,series){
     s.cv.t.forEach((t,i)=>{const v=s.cv.bt[i];if(v==null){pen=false;return;}const X=x(t),Y=y(v);pen?g.lineTo(X,Y):g.moveTo(X,Y);pen=true;});
     g.strokeStyle=s.color;g.lineWidth=3.5;g.lineJoin='round';g.stroke();
   });
+  g.restore();                                     // trả lại vùng cắt biên
+  /* Đang phóng thì NÓI RA, kèm cách thoát. Không nói thì thợ lỡ tay phóng vào
+     rồi tưởng mất dữ liệu — đây là chỗ xem lại mẻ đã rang, không phải trò chơi. */
+  if(z0>0||z1<tMax){
+    const nhan=(LANG==='en'?'Zoomed · double-click to reset':'Đang phóng · bấm đúp để xem lại cả mẻ');
+    g.font='600 13px '+css('--f-ui');g.textAlign='right';g.fillStyle=css('--mute');
+    g.fillText(nhan,W-Rp,T+14);
+  }
+  zoomBind(cv,series);
+}
+/* ══ THU PHÓNG đồ thị xem lại mẻ ═══════════════════════════════════════════════
+   Lăn chuột hoặc chụm hai ngón để phóng QUANH ĐIỂM ĐANG TRỎ (không phải quanh
+   giữa — phóng quanh giữa là thứ đang nhìn trôi mất). Kéo để trượt ngang.
+   Bấm đúp về cả mẻ.
+   CỐ Ý chỉ làm cho đồ thị XEM LẠI, không đụng đồ thị màn Rang: đó là dụng cụ
+   chính lúc 30kg hạt đang cháy, phóng nhầm giữa mẻ là mất tầm nhìn đúng lúc cần. */
+function zoomBind(cv,series){
+  if(cv._zb)return; cv._zb=1;
+  const ve=()=>drawBatchCurve(cv.id,series);
+  const đặt=(t0,t1)=>{
+    const M=cv._tMax||600, rộng=Math.max(20,Math.min(M,t1-t0));
+    let a=Math.max(0,Math.min(M-rộng,t0));
+    cv._zoom=(rộng>=M)?null:{t0:a,t1:a+rộng}; ve();
+  };
+  const cửaSổ=()=>cv._zoom?[cv._zoom.t0,cv._zoom.t1]:[0,cv._tMax||600];
+  const tTạiX=px=>{const r=cv.getBoundingClientRect(),L=70,Rp=24;
+    const [a,b]=cửaSổ(), f=(px-r.left-L)/Math.max(1,r.width-L-Rp);
+    return a+(b-a)*Math.max(0,Math.min(1,f));};
+  cv.style.touchAction='none';
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const [a,b]=cửaSổ(), neo=tTạiX(e.clientX), k=e.deltaY>0?1.25:0.8;
+    đặt(neo-(neo-a)*k, neo+(b-neo)*k);
+  },{passive:false});
+  cv.addEventListener('dblclick',()=>{cv._zoom=null;ve();});
+  /* Kéo để trượt, và hai ngón để chụm. Một cơ chế pointer lo cả chuột lẫn chạm. */
+  const ngón=new Map(); let kéoT=null,kéoW=null;
+  cv.addEventListener('pointerdown',e=>{
+    ngón.set(e.pointerId,e.clientX); cv.setPointerCapture(e.pointerId);
+    if(ngón.size===1){kéoT=tTạiX(e.clientX);kéoW=cửaSổ();}
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!ngón.has(e.pointerId))return;
+    const cũ=[...ngón.values()]; ngón.set(e.pointerId,e.clientX);
+    if(ngón.size>=2){                                  // chụm hai ngón
+      const m=[...ngón.values()], mớiKc=Math.abs(m[0]-m[1]), cũKc=Math.abs(cũ[0]-cũ[1]);
+      if(cũKc>8&&mớiKc>8){
+        const [a,b]=cửaSổ(), neo=tTạiX((m[0]+m[1])/2), k=cũKc/mớiKc;
+        đặt(neo-(neo-a)*k, neo+(b-neo)*k);
+      }
+    }else if(kéoW){                                    // một ngón = trượt ngang
+      const r=cv.getBoundingClientRect(),L=70,Rp=24;
+      const [a,b]=kéoW, đv=(b-a)/Math.max(1,r.width-L-Rp);
+      const lệch=(e.clientX-(r.left+L+(kéoT-a)/(b-a)*(r.width-L-Rp)))*đv;
+      if(cv._zoom)đặt(a-lệch,b-lệch);
+    }
+  });
+  const thôi=e=>{ngón.delete(e.pointerId);if(!ngón.size){kéoT=null;kéoW=null;}};
+  cv.addEventListener('pointerup',thôi);
+  cv.addEventListener('pointercancel',thôi);
 }
 /* ── So sánh nhiều mẻ: chồng curve + bảng chỉ số cạnh nhau ── */
 async function openCompare(){
@@ -5056,7 +5173,7 @@ function renderProfiles(){
     g.innerHTML = list.map(({p,i})=>`
     <div class="profcard" style="border-left-color:${uxColor(p.color)}">
       <div class="ph"><div><div class="pn">${esc(p.name)}</div>${p.notes?`<div class="pnotes">${esc(p.notes)}</div>`:''}</div>
-        ${p.roast?`<span class="roastbadge">${esc(roastLabel(p.roast))}</span>`:''}</div>
+        ${p.roast?`<span class="roastbadge" style="--rb:${roastTone(p.roast)}">${esc(roastLabel(p.roast))}</span>`:''}</div>
       <div class="pmeta"><div><div class="k">${T('pm.charge')}</div><div class="v num">${p.chargeT?p.chargeT+'°C':'—'}</div></div>
         <div><div class="k">${T('pm.drop')}</div><div class="v temp num">${p.temp}°C</div></div>
         <div><div class="k">${T('pm.time')}</div><div class="v num">${esc(p.time)}</div></div></div>
@@ -5444,6 +5561,22 @@ let LANG='vi';
 function T(k,fb){const d=I18N[LANG];return (d&&d[k]!=null)?d[k]:(fb!=null?fb:k);}
 /* Mức rang là DỮ LIỆU thợ tự đặt — chỉ dịch 3 mức chuẩn, mức tự đặt giữ nguyên. */
 const ROAST_KEY={'Rang nhạt':'roast.light','Rang vừa':'roast.medium','Rang đậm':'roast.dark'};
+/* MÀU NHÃN MỨC RANG. Trước đây cả ba mức dùng chung một tông nên màu của nhãn
+   chẳng mang tin gì — đọc chữ mới biết, mà quét một lưới 12 thẻ thì mắt không
+   đọc từng chữ. Nay suy tông từ VỊ TRÍ trong danh sách chứ không ghim cứng theo
+   tên: khách tự thêm/bớt mức (3 mức, 5 mức…) nên tên là của họ, chỉ có thứ tự
+   nhạt→đậm là chắc chắn. Một mức duy nhất thì về giữa thang, khỏi chia cho 0.
+   Thang màu đi từ vàng rơm (nhạt) qua hổ phách tới nâu đất (đậm) — đúng màu hạt
+   thật, thợ nhìn là liên tưởng được ngay. */
+function roastTone(v){
+  let ds=[];try{ds=loadRoasts();}catch(e){}
+  const i=ds.indexOf(v), n=ds.length;
+  const t=(i<0||n<2)?.5:i/(n-1);          // 0 = nhạt nhất, 1 = đậm nhất
+  const H=[46,32,18], S=[62,64,52], L=[52,48,40];  // vàng rơm → hổ phách → nâu đất
+  const k=t*2, j=Math.min(1,Math.floor(k)), f=k-j;
+  const m=(a)=>Math.round(a[j]+(a[Math.min(2,j+1)]-a[j])*f);
+  return `hsl(${m(H)} ${m(S)}% ${m(L)}%)`;
+}
 function roastLabel(v){const k=ROAST_KEY[v];return k?T(k,v):v;}
 function applyLang(){
   uxLabels();uxCommandRender();uxTick();const d=I18N[LANG];
@@ -5854,6 +5987,63 @@ function _holdSec(dot){const s=(HOLD_MS/1000).toFixed(1).replace(/\.0$/,'');
    disabled trong vòng vẽ mỗi nhịp thì hễ vòng đó tắc là nút KẸT KHOÁ vĩnh viễn
    và thợ mất quyền điều khiển máy, không có đường gỡ. Hỏi ngay lúc bấm thì
    không có trạng thái nào dính lại. */
+/* ══ BÀN PHÍM cho các ô bấm-bằng-chuột ════════════════════════════════════════
+   Năm loại điều khiển được dựng bằng <div> có onclick chứ không phải <button>:
+   `.lg` (bật/tắt đường trên đồ thị) · `.mchip` (sửa mốc) · `.oinfo` (sửa gas/gió/
+   trống) · `.pick` (ô chọn trong Cài đặt) · `.val`. Chuột bấm được, bàn phím thì
+   không, và trình đọc màn hình không đọc ra là nút.
+   Vá ở MỘT chỗ thay vì sửa 14 điểm markup — và nhờ MutationObserver nên ô nào
+   sinh ra về sau (thẻ hồ sơ, dòng lịch sử vẽ lại) cũng được vá luôn.
+   CỐ Ý không đổi <div> thành <button>: nhiều ô này nằm trong lưới/flex và đang
+   ăn theo luật CSS của thẻ div, đổi tag là vỡ bố cục ở chỗ khác. */
+/* Ô trạng thái mẻ: chỉ hiện khi ĐANG RANG và thợ đang đứng ở tab khác. Ở màn
+   Rang thì thừa — mọi số đã có sẵn to đùng trên đó. Đọc từ ĐÚNG nguồn mà màn
+   Rang dùng, không tự tính lại, để hai chỗ không bao giờ lệch nhau. */
+function batchPillTick(){
+  const el=document.getElementById('batchPill'); if(!el)return;
+  const dangRang=(typeof R!=='undefined'&&R&&R.phase==='RUNNING');
+  const oRang=!!document.querySelector('#pane-rang.on');
+  const hien=dangRang&&!oRang;
+  if(el.hidden===hien)el.hidden=!hien;     // chỉ đụng DOM khi THẬT SỰ đổi
+  if(!hien)return;
+  txt('bpTime',fmtMMSS(R.elapsed||0));
+  const d=(typeof DS!=='undefined'&&DS&&DS.snap)||{};
+  txt('bpBt',Number.isFinite(d.bt)?Math.round(d.bt)+'°':'—°');
+  /* Mốc gần nhất ĐÃ QUA, không phải mốc sắp tới: thợ cần biết mình đang ở đâu
+     trên chặng đường, chứ không phải đoán chặng kế. */
+  let ph='';
+  try{const done=Object.keys(R.mileT||{}).filter(k=>R.mileT[k]!=null);
+    if(done.length)ph=done[done.length-1];}catch(e){}
+  txt('bpPhase',ph||'');
+}
+function a11yQuet(goc){
+  (goc||document).querySelectorAll('[onclick]').forEach(el=>{
+    const tag=el.tagName.toLowerCase();
+    if(['button','a','input','select','textarea'].includes(tag))return;
+    if(el.hasAttribute('tabindex'))return;
+    const oc=(el.getAttribute('onclick')||'').trim();
+    /* Bỏ qua LỚP BỌC: thứ chỉ chặn nổi bọt hoặc bắt cú bấm ra nền hộp thoại —
+       chúng không phải điều khiển, gắn tabindex vào là thêm rác cho phím Tab. */
+    if(/stopPropagation\(\)\s*;?$/.test(oc))return;
+    if(/^if\s*\(\s*event\.target/.test(oc))return;
+    el.setAttribute('tabindex','0');
+    if(!el.getAttribute('role'))el.setAttribute('role','button');
+  });
+}
+function a11yBatDau(){
+  a11yQuet(document);
+  /* Enter/Space trên các ô đó = bấm. Bắt ở tầng document nên không phải gắn
+     listener cho từng ô, và ô sinh sau cũng ăn ngay. */
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const el=e.target;
+    if(!el||!el.getAttribute||el.getAttribute('role')!=='button')return;
+    if(['button','a','input','select','textarea'].includes(el.tagName.toLowerCase()))return;
+    e.preventDefault();el.click();
+  });
+  const gom=()=>{if(gom._t)return;gom._t=requestAnimationFrame(()=>{gom._t=0;a11yQuet(document);});};
+  try{new MutationObserver(gom).observe(document.body,{childList:true,subtree:true});}catch(e){}
+}
 /* ══════════ HỒNG — hành vi bong bóng trợ lý ═══════════════════════════════════
    Hạng AssistiveTouch: kéo được khắp màn, thả ra thì HÍT về mép gần nhất, nhớ chỗ
    đã đặt, và không bao giờ trôi ra ngoài màn khi đổi cỡ cửa sổ.
@@ -6030,6 +6220,7 @@ function holdBind(btn){
 document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('[data-hold]').forEach(holdBind);
   try{buddyInit();}catch(e){}   // bong bóng trợ lý Hồng — hỏng thì app vẫn chạy
+  try{a11yBatDau();}catch(e){}  // cho các ô bấm-bằng-chuột dùng được bằng bàn phím
 });
 window.addEventListener('pywebviewready',()=>{        // vỏ thật mới bắn event này
   const a=window.pywebview&&window.pywebview.api;
@@ -10149,6 +10340,7 @@ function uxTick(){
   else{step=2;message=uxText('3 · BT trong ngưỡng nạp · Kiểm tra máy rồi bấm Bắt đầu rang.','3 · BT in charge range · Check the machine, then Start roast.');action='rang';}
   if(guide.textContent!==message)guide.textContent=message;guide.dataset.step=step;
   ovPrepRender(message,action);
+  try{batchPillTick();}catch(e){}   // ô trạng thái mẻ theo thợ sang tab khác
   if(dsBridge())uxPreheat();else txt('uxHeatSource',uxText('Mô phỏng · không điều khiển máy','Simulation · no machine control'));
   const c=UX.command;if(c&&['sending','queued'].includes(c.state)&&Date.now()-c.at>10000)uxCommandUpdate(c.name,'timeout',c.id);
   uxAccountSave();
@@ -10552,6 +10744,18 @@ function odOutputStates(){
 new MutationObserver(odOutputStates).observe(document.querySelector('.outcard'),{subtree:true,childList:true,characterData:true});
 odOutputStates();
 </script>
+    <!-- ══════════ Ô TRẠNG THÁI MẺ — đi theo thợ sang mọi tab ══════════════════
+         Ý Dynamic Island: đang rang mà rời màn Rang thì vẫn phải thấy mẻ tới đâu.
+         Chỉ hiện khi ĐANG RANG và đang ở tab khác — ở màn Rang thì thừa. Bấm vào
+         là về thẳng màn Rang. Đặt ngoài sân khấu co giãn như bong bóng Hồng. -->
+    <button id="batchPill" type="button" hidden onclick="gotoTab('rang')"
+            aria-live="polite" title="Đang rang — chạm để về màn Rang">
+      <span class="bp-dot" aria-hidden="true"></span>
+      <span class="bp-t num" id="bpTime">00:00</span>
+      <span class="bp-sep" aria-hidden="true"></span>
+      <span class="bp-bt num" id="bpBt">—°</span>
+      <span class="bp-ph" id="bpPhase"></span>
+    </button>
     <!-- ══════════ HỒNG — trợ lý AI, bong bóng nổi kiểu AssistiveTouch ══════════
          Tên lấy từ "than hồng", chính là tên màu chủ đạo của bản thiết kế. Logo
          là ANH EM với dấu OTL trên thanh đầu: cùng ô bo góc đỏ #D93A32, ruột đổi
