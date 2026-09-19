@@ -110,8 +110,8 @@ void reset_update(){
     }
     delay(5);
     buzzerTimerEn = 0; //Turn off buzzer
-    rorBTSamp_1 = 0;
-    rorBTSamp_2 = 0;
+    rorBTCh.primed = false; //nhịp RoR kế tiếp nạp phẳng đệm bằng nhiệt hiện tại → RoR = 0, không vọt rác
+    rorETCh.primed = false;
     SerialComputer.println("=> RESET DATA");
 }
 

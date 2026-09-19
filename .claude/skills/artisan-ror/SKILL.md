@@ -67,7 +67,7 @@ mở lại file. Cờ phân biệt là `self.flagon` (đang ghi) và `optimalSmo
 
 | Việc | Lúc đang rang | Sau khi rang |
 |------|---------------|--------------|
-| Làm mượt ET/BT | **không** làm mượt, chỉ vá lỗ hổng (`canvas.py:9090`) | cuộn cửa sổ hanning theo `curvefilter` |
+| Làm mượt ET/BT | **đường vẽ** không mượt, chỉ vá lỗ hổng (`canvas.py:9090`) — nhưng **đầu vào RoR có mượt**: `tstemp2` = decay trọng số `1..curvefilter`, cửa sổ ĐẦY (`canvas.py:4972-5004`) | cuộn cửa sổ hanning theo `curvefilter` |
 | Lọc trung vị (Smooth Spikes) | **không** (`filter_dropouts = filterDropOuts and not flagon`) | có, k = 5 cho đường / 3 cho RoR |
 | Thuật toán RoR | hai điểm mút hoặc polyfit | thêm được Savitzky-Golay nếu bật Optimal Smoothing |
 | Làm mượt RoR | decay (trọng số tăng dần, không trễ pha) | hanning đối xứng (mượt hơn nhưng cần biết tương lai) |

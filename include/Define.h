@@ -288,8 +288,6 @@ boolean svEn = false;
 
 #define TP_LIMIT_TIME       20
 //ror calculate
-SimpleKalmanFilter rorBTKalmanFilter(1, 1, 0.005); //Kalman filter for ror BT (q nhỏ = mượt hơn, trễ hơn chút)
-SimpleKalmanFilter rorETKalmanFilter(1, 1, 0.01); //Kalman filter for ror BT and ET
 SimpleKalmanFilter rorKGKalmanFilter(1, 1, 0.7); //Kalman ror scale: q=0.7 fast tracking (1s window) - short batches need timely ror; accepts some noise
 SimpleKalmanFilter diff_KalmanFilter(150, 150, 0.1); // target <=+/-5Pa
 
@@ -298,23 +296,35 @@ SimpleKalmanFilter diff_KalmanFilter(150, 150, 0.1); // target <=+/-5Pa
 #endif
 bool trendPreStarted = false;     // đã bật trend trước charge chưa (reset mỗi mẻ)
 
-int16_t rorBTArray[10];
-int16_t rorETArray[10];
-int16_t rorBT=0, raw_rorBT=0, rorET=0, raw_rorET=0, old_rorBT=0;
+int16_t rorBT=0, rorET=0; //RoR °C/phút ×100 — xem rorArtisanStep() trong Program.h
 int16_t rorBT_pro=0; //RoR of reference profile at current time (same unit as rorBT)
 int16_t rorKG=0, raw_rorKG=0, kgSamp_1=0; //Scale RoR: suction rate (unit x100, 1kg/min=100)
 uint16_t rorCount = 0;
+
+//RoR kiểu Artisan — tham số ở Config.h (ROR_SAMPLE_SEC / ROR_DELTA_SPAN_SEC / ROR_SMOOTHING / ROR_CURVE_SMOOTH)
+#define ROR_NCF   (2*(ROR_CURVE_SMOOTH)+1)                                   //số mẫu làm mượt BT/ET (Smooth Curves)
+#define ROR_WCF   (ROR_NCF*(ROR_NCF+1)/2)                                     //tổng trọng số 1..NCF
+#define ROR_NSPAN (((ROR_DELTA_SPAN_SEC)+(ROR_SAMPLE_SEC)/2)/(ROR_SAMPLE_SEC)) //Delta Span → số mẫu (làm tròn)
+#define ROR_L     ((ROR_NSPAN)+1 < 3 ? 3 : (ROR_NSPAN)+1)                    //left_index của Artisan (≥3 để TB 5 điểm)
+#define ROR_NST   (ROR_L+2)                                                   //số mẫu đã mượt cần giữ
+#define ROR_NR    ((ROR_SMOOTHING)<1 ? 1 : (((ROR_SMOOTHING)%2==0) ? (ROR_SMOOTHING) : (ROR_SMOOTHING)+1))
+#define ROR_WNR   (ROR_NR*(ROR_NR+1)/2)                                       //tổng trọng số 1..NR
+struct RorArtisanCh {
+    int32_t raw[ROR_NCF];          //nhiệt ×10
+    int32_t st[ROR_NST];           //Σ w·raw  (nhiệt ×10 × ROR_WCF)
+    int32_t ror[ROR_NR];           //RoR °C/phút ×100 trước Smoothing
+    uint8_t iRaw, iSt, iRor;       //ô GHI kế tiếp = mẫu cũ nhất
+    volatile bool primed;          //false → nhịp kế tiếp nạp phẳng đệm (khởi động / RESET DATA)
+};
+RorArtisanCh rorBTCh = {};
+RorArtisanCh rorETCh = {};
 uint16_t rorCountKG = 0; //Separate counter for scale RoR (1s window)
 bool     loaderDbgEn = false;   //Loader debug: auto-on when loader pressed, off 10s after loader off
 uint32_t loaderDbgOffMs = 0;    //Timestamp of loader off to count 10s
 uint32_t loaderDbgPrintMs = 0;  //Timestamp to print loader debug once/1s
 
 
-#define rorBTSamp_1 rorBTArray[1] 
-#define rorBTSamp_2 rorBTArray[2]
 
-#define rorETSamp_1 rorETArray[1] 
-#define rorETSamp_2 rorETArray[2]
 
 //----------------------Define HMI
 //$, internal HMI

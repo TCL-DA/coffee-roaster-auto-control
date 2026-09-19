@@ -130,8 +130,12 @@ else None
 - Ngoài trần RoR → `None`. **Vượt trần thì mất điểm, không bị kẹp về biên** — nên đường RoR sẽ *đứt*
   chứ không *phẳng đầu*. Nhìn thấy RoR đứt đoạn là biết đã vượt trần, không phải mất tín hiệu.
 
-Lúc đang rang, phép kẹp ở `canvas.py:5094-5098` có thêm một trần cứng `maxRoRlimit` chồng lên trần
-người dùng: `max(-maxRoRlimit, RoRlimitm) < v < min(maxRoRlimit, RoRlimit)`.
+Lúc đang rang, phép kẹp ở `canvas.py:5094-5098` có thêm một trần cứng `maxRoRlimit = 170` (`canvas.py:2019`)
+chồng lên trần người dùng: `max(-maxRoRlimit, RoRlimitm) < v < min(maxRoRlimit, RoRlimit)`.
+
+Phép kẹp này chỉ đặt `None` cho **biến vẽ** (`rateofchange2plot`). Còn `self.rateofchange2` giữ nguyên số
+chưa cắt, và đó là số đi vào biến `R2` của cảnh báo / công thức (`canvas.py:6989`) — nên cảnh báo theo RoR
+vẫn thấy giá trị vượt trần dù đường vẽ đã đứt.
 
 ---
 

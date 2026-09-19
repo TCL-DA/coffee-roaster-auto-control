@@ -116,9 +116,23 @@ static void pclSafety(){
         if (pclAgentLatch && !pclAppLost &&
             (now - pclAppSeenMs) > (uint32_t)PCL_AGENT_TMO_S * 1000UL) {
             pclAppLost = true;
-            nodeHMI.writeSingleRegister(PC_CONTROL_BTN_W - 1, 0);   // trả quyền cho HMI
+            // ── ĐỔI 11/09/2026 theo lệnh chủ máy ──────────────────────────
+            // TRƯỚC: firmware tự ghi PC_CONTROL_BTN = 0 để "trả quyền về HMI".
+            // Chủ máy chốt: nút PC control là NÚT CỦA NGƯỜI DÙNG — ngoài họ ra
+            // không phần mềm nào được bật/tắt nó. Firmware tự gạt nút sau lưng
+            // thợ thì thợ nhìn vào tủ thấy một trạng thái mình không đặt, và
+            // tưởng máy hỏng (đã xảy ra thật 11/09: tắt 3 lần liên tiếp).
+            //
+            // Mục đích an toàn KHÔNG mất: thứ nguy hiểm khi tác nhân tự động im
+            // lặng không phải cái nút, mà là GAS CỨ CHÁY ở mức lệnh cuối khi
+            // không còn ai trông. Nên nay đóng thẳng gas và hú còi gọi thợ, còn
+            // nút PC control để nguyên chỗ thợ đặt.
+            // Cờ pclAppLost vẫn bật → PCLF_PCLOST vẫn báo lên app, và tự xoá
+            // ngay khi tác nhân nhấp nhịp tim trở lại (xem nhánh appHb ở trên),
+            // nên thợ không phải chạy ra tủ gạt lại nút mỗi lần AI nghĩ lâu.
+            nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);    // ĐÓNG GAS
             buzzerTimerEn = 1;                                      // gọi thợ
-            SerialComputer.println("=> PC_Link: mat tac nhan tu dong -> nha quyen ve HMI");
+            SerialComputer.println("=> PC_Link: mat tac nhan tu dong -> dong gas (giu nguyen PC control)");
         }
     } else {
         pclAppSeenMs  = 0;

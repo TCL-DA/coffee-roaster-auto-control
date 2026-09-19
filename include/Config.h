@@ -2,11 +2,17 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại: máy rang 30 kg tự động — nền preset M06, bản noVacuum.
- *   Dựng cho bản gửi khách v3.9.0 (08/09/2026), kế thừa bản v3.7.0 đã giao 03/09/2026.
- *   KHÔNG cân, KHÔNG cảm biến áp hút (noVacuum). Cảm biến áp đấu ngõ ACI biến tần
- *   DRUM (slave 4) nên MACHINE_VACUUM_FROM_DRUM để 1 cho đúng phần cứng — vô hiệu
- *   chừng nào MACHINE_HAS_VACUUM_SENSOR còn 0, bật lại là chạy đúng ngay.
+ * Cấu hình hiện tại (20/09/2026) — firmware v3.12.0: máy 30 kg tự động rang cacao,
+ *   mã hồ sơ M03 (docs/config/config-30kg-cacao-M03.md). CÓ loader (đầu cân
+ *   Bluetooth), CÓ vacuum (cảm biến áp đấu ACI biến tần GIÓ slave 5), CÓ biến tần
+ *   drum, CÓ biến trở VR vật lý, KHÔNG module IO relay ngoài, HMI đời cũ chưa có ô $M53.
+ *   v3.12.0 so với v3.11.0: RoR BT/ET tính theo chuỗi Artisan (mẫu 1s, Delta Span 10s,
+ *   Smoothing 3, Smooth Curves 2 — xem khối ROR_* cuối file), bỏ Kalman; trần RoR ET
+ *   ±20 → ±95 °C/phút; watchdog PC_Link đóng gas thay vì gạt nút PC control.
+ * (Bản trước) v3.11.0 15/09/2026: 30 kg auto, loader + vacuum gió, KHÔNG VR,
+ *   CÓ IO relay Modbus ngoài (ID 7) — gói ở 112_Quanly/43_Update_CMS_26/150926.
+ * (Bản trước) 30 kg noVacuum nền preset M06 — giao v3.10.0 10/09/2026, Config.h lưu
+ *   kèm ở 112_Quanly/43_Update_CMS_26/100926.
  *   Cấu hình máy 15 kg M09 xem docs/config/config-15kg-auto-M09.md.
  * (Header cũ) máy rang OTL-15-AUTO (15 kg, tự động) — mã hồ sơ M09.
  *   Cụm đi kèm: OL-120-AUTO (hút liệu 120 kg) + OD-15-V2 (tách đá) + AF-15-ĐỨNG (đốt khói).
@@ -39,9 +45,9 @@
 #define MACHINE_HAS_GAS_CONTROL           1  // Điều khiển gas bằng DAC và relay gas
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần (slave 4)
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió nối RS485 Modbus (cần cho vacuum)
-#define MACHINE_HAS_VACUUM_SENSOR         0  // KHÔNG cảm biến áp hút — bản noVacuum, tắt PID gió
-#define MACHINE_HAS_SCALE_FEEDER          0  // KHÔNG đầu cân — feeder chạy theo timer feederSet_R
-#define MACHINE_HAS_IO_RELAY_MODULE       0  // KHÔNG module relay ngoài — relay qua GPIO onboard
+#define MACHINE_HAS_VACUUM_SENSOR         1  // CÓ cảm biến áp hút — PID gió qua biến tần gió
+#define MACHINE_HAS_SCALE_FEEDER          1  // CÓ đầu cân Bluetooth cho auto-loader
+#define MACHINE_HAS_IO_RELAY_MODULE       0  // M03 KHÔNG có module relay ngoài Modbus
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
 #define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30 kg
@@ -103,7 +109,7 @@
 // Dùng khi cảm biến áp suất nối vào ngõ analog ACI của biến tần drum thay vì quạt
 // gió. Cùng địa chỉ thanh ghi (AIR_INV_ACI_RAW_REGISTER) vì 2 biến tần cùng model.
 // ---------------------------------------------------------------------------
-#define MACHINE_VACUUM_FROM_DRUM          1
+#define MACHINE_VACUUM_FROM_DRUM          0  // cảm biến áp đấu ACI biến tần GIÓ (slave 5)
 
 // ---------------------------------------------------------------------------
 // Địa chỉ thanh ghi Modbus của biến tần drum.
@@ -118,7 +124,7 @@
 // 0 = đọc VR vật lý trên chân analog của board.
 // 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
 // ---------------------------------------------------------------------------
-#define MACHINE_VR_SOURCE_FROM_HMI        0  // máy CÓ biến trở vật lý — drum/air/gas đọc từ VR trên board
+#define MACHINE_VR_SOURCE_FROM_HMI        0  // M03 CÓ biến trở vật lý trên board
 
 // ---------------------------------------------------------------------------
 // TREND bật SỚM trước charge.
@@ -595,7 +601,24 @@
 //   0 = HMI ĐỜI CŨ chưa có ô này → firmware BỎ QUA $M53 và luôn tự mở escape như cũ.
 // ⛔ Để 1 trên máy mà HMI chưa có ô gạt là $M53 đọc về 0 ⇒ MÁY NGỪNG TỰ XẢ, cà phê
 //    nằm lì trong khay nguội mà không báo lỗi gì. Nạp máy khách thì kiểm ô gạt TRƯỚC.
-#define MACHINE_HAS_AUTO_ESCAPE_SWITCH    1
+#define MACHINE_HAS_AUTO_ESCAPE_SWITCH    0  // M03: HMI đời cũ chưa có ô gạt $M53 → luôn tự mở escape
+
+// ---------------------------------------------------------------------------
+// RoR BT / ET — tính y hệt Artisan lúc đang rang (canvas.py sample_processing):
+//   1. Smooth Curves: BT/ET → trung bình trọng số 1..(2·UI+1), mẫu mới nhất nặng nhất
+//   2. Delta Span:    RoR = (mẫu mới nhất − TB 5 mẫu quanh điểm trái) / Delta Span
+//   3. Smoothing:     trung bình trọng số 1..N trên N giá trị RoR gần nhất,
+//                     N = round((2·UI+1)/2) kiểu Python = UI nếu chẵn, UI+1 nếu lẻ
+// Ba ô dưới đây đặt ĐÚNG số trong hộp Curves → Filters của Artisan thì RoR trên HMI
+// khớp Artisan. Smoothing đếm theo SỐ MẪU: Smoothing 30 ở mẫu 2s = 60s lịch sử RoR.
+// Chốt 20/09/2026: mẫu 1s / span 10s / smoothing 3 / curve 2 — trễ ~7-8s, giật <0,3 °C/phút.
+// Thử 3 mẻ giả tưởng (gas đổi thưa → gas nhảy 0↔100% ở 190-210 °C): bản 20s/30 trễ ~30s,
+// có lúc BT tụt 38s mà HMI vẫn báo RoR dương; bản này bám đúng chiều ~90% thời gian.
+// ---------------------------------------------------------------------------
+#define ROR_SAMPLE_SEC                    1   // = Sampling Interval (giây) — đặt 2 nếu muốn khớp Artisan để mẫu 2s
+#define ROR_DELTA_SPAN_SEC                10  // = ô Delta Span (giây)
+#define ROR_SMOOTHING                     3   // = ô Smoothing (UI)
+#define ROR_CURVE_SMOOTH                  2   // = ô Smooth Curves (UI)
 
 #if MACHINE_VR_SOURCE_FROM_HMI
 #define SOURCE_AI_VR_FROM_HMI true

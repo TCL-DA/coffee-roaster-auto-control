@@ -6,6 +6,73 @@
 void loadAllProfileDates(); // forward declaration
 #include "RoR_Control.h"
 
+// ─── RoR kiểu Artisan (chế độ đang rang) ────────────────────────────────────────
+// Giá trị ở tuổi a (0 = mới nhất) trong đệm vòng, iNext = ô ghi kế tiếp.
+static inline int32_t rorAge(const int32_t *buf, uint8_t size, uint8_t iNext, uint8_t age){
+    int16_t k = (int16_t)iNext - 1 - (int16_t)age;
+    while(k < 0) k += size;
+    return buf[k];
+}
+// Delta Span: (5·st mới nhất − Σ5 st quanh điểm trái) → RoR °C/phút ×100 (compute_ror_simple).
+static inline int32_t rorSpan(int32_t stNew, int32_t left5){
+    int32_t r = (5*stNew - left5) * 120 / ((int32_t)ROR_WCF * (ROR_L-1) * ROR_SAMPLE_SEC);
+    if(r > 100000)  r = 100000;           //chặn rác trước Smoothing (±1000 °C/phút)
+    if(r < -100000) r = -100000;
+    return r;
+}
+// Một nhịp RoR cho 1 kênh (BT hoặc ET). Trả RoR °C/phút ×100 đã qua Smoothing.
+static int32_t rorArtisanStep(RorArtisanCh &c, int16_t temp){
+    if(!c.primed){
+        if(temp == 0) return 0;           //chưa đọc được nhiệt — chờ, đừng nạp đệm bằng 0
+        for(uint8_t i = 0; i < ROR_NCF; i++) c.raw[i] = temp;
+        for(uint8_t i = 0; i < ROR_NST; i++) c.st[i]  = (int32_t)temp * ROR_WCF;
+        for(uint8_t i = 0; i < ROR_NR;  i++) c.ror[i] = 0;
+        c.iRaw = c.iSt = c.iRor = 0;
+        c.primed = true;
+    }
+    //1. Smooth Curves — trọng số 1..NCF, mẫu mới nhất nặng nhất
+    c.raw[c.iRaw] = temp; if(++c.iRaw >= ROR_NCF) c.iRaw = 0;
+    int32_t st = 0;
+    for(uint8_t a = 0; a < ROR_NCF; a++) st += (int32_t)(ROR_NCF - a) * rorAge(c.raw, ROR_NCF, c.iRaw, a);
+    c.st[c.iSt] = st; if(++c.iSt >= ROR_NST) c.iSt = 0;
+    //2. Delta Span — điểm trái lấy TB 5 mẫu quanh nó (tuổi L-3..L+1), điểm phải là mẫu mới nhất
+    int32_t left = 0;
+    for(uint8_t a = ROR_L-3; a <= ROR_L+1; a++) left += rorAge(c.st, ROR_NST, c.iSt, a);
+    c.ror[c.iRor] = rorSpan(st, left); if(++c.iRor >= ROR_NR) c.iRor = 0;
+    //3. Smoothing — trọng số 1..NR trên NR giá trị RoR gần nhất
+    int32_t acc = 0;
+    for(uint8_t a = 0; a < ROR_NR; a++) acc += (int32_t)(ROR_NR - a) * rorAge(c.ror, ROR_NR, c.iRor, a);
+    return acc / ROR_WNR;
+}
+// Cùng chuỗi đó chạy trên hồ sơ mẫu sdBT[] (1 phần tử/giây) tại giây t — không trạng thái.
+// Trước giây 0 coi như bằng sdBT[0]. Để rorBT_pro trễ ĐÚNG như rorBT, hai đường so thẳng được.
+static int32_t rorArtisanProfile(int32_t t){
+    int32_t stv[ROR_NR + ROR_L + 2];      //st ở tuổi m = 0..NR+L+1 (bước ROR_SAMPLE_SEC)
+    for(uint8_t m = 0; m < ROR_NR + ROR_L + 2; m++){
+        int32_t sum = 0;
+        for(uint8_t a = 0; a < ROR_NCF; a++){
+            int32_t idx = t - (int32_t)(m + a) * ROR_SAMPLE_SEC;
+            if(idx < 0) idx = 0;
+            sum += (int32_t)(ROR_NCF - a) * (int16_t)sdBT[idx];
+        }
+        stv[m] = sum;
+    }
+    int32_t acc = 0;
+    for(uint8_t k = 0; k < ROR_NR; k++){
+        int32_t left = 0;
+        for(uint8_t a = ROR_L-3; a <= ROR_L+1; a++) left += stv[k + a];
+        acc += (int32_t)(ROR_NR - k) * rorSpan(stv[k], left);
+    }
+    return acc / ROR_WNR;
+}
+// Làm tròn RoR ×100 về bội số 10 (giữ độ phân giải 0.1 °C/phút như bản cũ) rồi kẹp trần.
+static inline int16_t rorOut(int32_t r, int32_t lim){
+    r = (r >= 0) ? (r + 5) / 10 * 10 : (r - 5) / 10 * 10;
+    if(r > lim)  r = lim;
+    if(r < -lim) r = -lim;
+    return (int16_t)r;
+}
+
 void timerPoll_1000ms(){
     // ── PRIORITY 1: keep drum/fan on while BT or ET is hotter than 80°C ─────
     // ISR context: NO Modbus calls — use flag pattern only
@@ -106,42 +173,15 @@ void timerPoll_1000ms(){
     }
 
 
-    //Tính toán ror, áp dụng lọc phẳng kalman
-    rorCount++; 
-    if(rorCount==3){
-        raw_rorBT = (Temperature_BT-rorBTSamp_1)*20;
-        raw_rorET = (Temperature_ET-rorETSamp_1)*20;
-
-        // old_rorBT = old_rorBT/10;
-        // raw_rorBT = (old_rorBT+raw_rorBT)/2;
-        rorBT = rorBTKalmanFilter.updateEstimate(raw_rorBT); //Lọc kalman
-        rorET = rorETKalmanFilter.updateEstimate(raw_rorET); //Lọc kalman
-        // raw_rorBT = raw_rorBT*10;
-        if(rorBT>(950)) rorBT = 950;    // trần ±95°C/phút (950 ×10 = 9500 = 95.00)
-        if(rorBT<(-950)) rorBT = -950;
-        rorBT = rorBT*10;
-
-        if(rorET>(200)) rorET = 200;
-        if(rorET<(-200)) rorET = -200;
-        rorET = rorET*10;
-        //update BT
-        // old_rorBT = raw_rorBT;
-        rorBTSamp_1 = Temperature_BT;
-        rorETSamp_1 = Temperature_ET;
-
-        //RoR của profile mẫu tại thời điểm hiện tại — tính cùng cách rorBT thực
-        //(window 3s, *20 rồi *10) để so sánh trực tiếp với rorBT.
-        //Không cần Kalman vì sdBT[] mẫu đã mượt sẵn. Chỉ có nghĩa khi rang AUTO.
-        if(lastTimeSD>=3){
-            int16_t raw_rorBT_pro = ((int16_t)sdBT[lastTimeSD]-(int16_t)sdBT[lastTimeSD-3])*20;
-            if(raw_rorBT_pro>950)  raw_rorBT_pro = 950;    // cùng trần ±95°C/phút với rorBT
-            if(raw_rorBT_pro<-950) raw_rorBT_pro = -950;
-            rorBT_pro = raw_rorBT_pro*10;
-        }else{
-            rorBT_pro = 0;
-        }
-
-        rorCount = 0; //Reset count
+    //RoR BT / ET — chuỗi y hệt Artisan lúc đang rang, mỗi ROR_SAMPLE_SEC giây (tham số ở Config.h).
+    //Trần ±95 °C/phút cho cả BT và ET (ET trước đây ±20 — kẹp phẳng đầu khi đổi gas mạnh).
+    //rorBT_pro dùng CÙNG chuỗi để so thẳng với rorBT.
+    rorCount++;
+    if(rorCount >= ROR_SAMPLE_SEC){
+        rorCount = 0;
+        rorBT = rorOut(rorArtisanStep(rorBTCh, Temperature_BT), 9500);
+        rorET = rorOut(rorArtisanStep(rorETCh, Temperature_ET), 9500);
+        rorBT_pro = (lastTimeSD >= 1) ? rorOut(rorArtisanProfile(lastTimeSD), 9500) : 0;
     }
 
     //RoR cân — bộ đếm RIÊNG, cửa sổ 1 giây (bám NHANH cho mẻ ngắn: mẻ nhỏ chỉ chảy ~2-3s), tách khỏi rorBT/rorET (3s).
