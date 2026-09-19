@@ -296,7 +296,14 @@ SimpleKalmanFilter diff_KalmanFilter(150, 150, 0.1); // target <=+/-5Pa
 #endif
 bool trendPreStarted = false;     // đã bật trend trước charge chưa (reset mỗi mẻ)
 
-int16_t rorBT=0, rorET=0; //RoR °C/phút ×100 — xem rorArtisanStep() trong Program.h
+int16_t rorBT=0, rorET=0; //RoR °C/phút ×100 — xem rorArtisanStep() trong Program.h (HMI, app, dự đoán mốc)
+//RoR RIÊNG cho Preheat.h — tính ĐÚNG như bản ≤ v3.11.0 (hiệu 3 giây + Kalman, trần BT ±95 / ET ±20).
+//Preheat đặt ngưỡng 0,1–0,5 °C/phút theo tín hiệu cũ; bộ lọc HMI mới nhanh + giật hơn nên không dùng chung.
+SimpleKalmanFilter rorBTphKalman(1, 1, 0.005);
+SimpleKalmanFilter rorETphKalman(1, 1, 0.01);
+int16_t rorBT_ph = 0, rorET_ph = 0;         //°C/phút ×100, cùng thang rorBT
+int16_t rorPhSampBT = 0, rorPhSampET = 0;   //nhiệt 3 giây trước
+uint8_t rorPhCount = 0;
 int16_t rorBT_pro=0; //RoR of reference profile at current time (same unit as rorBT)
 int16_t rorKG=0, raw_rorKG=0, kgSamp_1=0; //Scale RoR: suction rate (unit x100, 1kg/min=100)
 uint16_t rorCount = 0;

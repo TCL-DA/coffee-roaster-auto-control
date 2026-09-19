@@ -13,6 +13,8 @@ Nguồn phía mình: `include/Program.h:107-118` (firmware), `tools/roast_derive
 > Trần BT và ET đều ±95 °C/phút (ET trước đây ±20). Chọn 1s/10/3 sau 3 mẻ giả tưởng: bản 20s/30 trễ ~30 s,
 > có lúc BT tụt 38 s mà HMI vẫn báo RoR dương; bản 1s/10/3 trễ 7–8 s, giật < 0,3 °C/phút.
 > **Mục 1–2 dưới đây là lịch sử** (3 s + Kalman → hồi quy 11 mẫu → Artisan 20s/30 → 1s/10/3, cùng ngày).
+> **Preheat KHÔNG dùng bộ lọc mới:** `Preheat.h` đọc `rorBT_ph`/`rorET_ph` — tính đúng cách cũ (hiệu 3 s +
+> Kalman q 0.005/0.01, trần ±95/±20), vì preheat đặt ngưỡng 0,1–0,5 °C/phút theo tín hiệu cũ.
 > `tools/roast_derive.py` + `pc_link.json` **CHƯA đổi theo**.
 
 Firmware BT — `Program.h`, trong `timerPoll_1000ms()`, **mỗi giây**:

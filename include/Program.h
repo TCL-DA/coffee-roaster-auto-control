@@ -173,6 +173,25 @@ void timerPoll_1000ms(){
     }
 
 
+    //RoR cho Preheat — GIỮ ĐÚNG cách tính cũ (≤ v3.11.0), từng phép một: hiệu 3 giây + Kalman,
+    //trần BT ±95, ET ±20. Ép int16 như bản cũ (raw_rorBT là int16_t) để hành vi preheat không đổi.
+    rorPhCount++;
+    if(rorPhCount == 3){
+        int16_t rawB = (Temperature_BT - rorPhSampBT) * 20;
+        int16_t rawE = (Temperature_ET - rorPhSampET) * 20;
+        int16_t rB = rorBTphKalman.updateEstimate(rawB);
+        int16_t rE = rorETphKalman.updateEstimate(rawE);
+        if(rB > 950)  rB = 950;
+        if(rB < -950) rB = -950;
+        if(rE > 200)  rE = 200;
+        if(rE < -200) rE = -200;
+        rorBT_ph = rB * 10;
+        rorET_ph = rE * 10;
+        rorPhSampBT = Temperature_BT;
+        rorPhSampET = Temperature_ET;
+        rorPhCount = 0;
+    }
+
     //RoR BT / ET — chuỗi y hệt Artisan lúc đang rang, mỗi ROR_SAMPLE_SEC giây (tham số ở Config.h).
     //Trần ±95 °C/phút cho cả BT và ET (ET trước đây ±20 — kẹp phẳng đầu khi đổi gas mạnh).
     //rorBT_pro dùng CÙNG chuỗi để so thẳng với rorBT.

@@ -122,7 +122,7 @@ static uint8_t   phGasLostCount        = 0;   // đếm giây gas signal mất k
 // ── Phase 0.1: Cập nhật rorBT_smooth — gọi mỗi giây từ phThermalMonitor() ────
 inline void phUpdateRorSmooth() {
     // EMA: alpha = 0.2 → tau ≈ 5s, đủ lọc jitter mà không trễ quá nhiều
-    rorBT_smooth = (int16_t)((int32_t)rorBT_smooth * 8 / 10 + (int32_t)rorBT * 2 / 10);
+    rorBT_smooth = (int16_t)((int32_t)rorBT_smooth * 8 / 10 + (int32_t)rorBT_ph * 2 / 10);
 }
 
 // ── Phase 0.2: Sensor drop detection — gọi mỗi giây ─────────────────────────
@@ -300,9 +300,9 @@ void phCsvLog(int16_t score10) {
     phCsvFile.print(Temperature_ET);     phCsvFile.print(',');
     phCsvFile.print(gasPercent);         phCsvFile.print(',');
     phCsvFile.print(airflowPercent);     phCsvFile.print(',');
-    phCsvFile.print(rorBT);              phCsvFile.print(',');
+    phCsvFile.print(rorBT_ph);              phCsvFile.print(',');
     phCsvFile.print(rorBT_smooth);       phCsvFile.print(',');
-    phCsvFile.print(rorET);              phCsvFile.print(',');
+    phCsvFile.print(rorET_ph);              phCsvFile.print(',');
     phCsvFile.print((uint8_t)wuState);   phCsvFile.print(',');
     phCsvFile.print(phCsvReason);        phCsvFile.print(',');
     phCsvFile.print(phFaultFlags, HEX);  phCsvFile.print(',');
@@ -677,9 +677,9 @@ void phThermalMonitor() {
     phCheckSensorDrop();
     phCheckRorExtreme();
 
-    int16_t dRorET = rorET - phEtRorPrev;
-    phEtRorPrev  = rorET;
-    phEtHeatLoad = rorET;
+    int16_t dRorET = rorET_ph - phEtRorPrev;
+    phEtRorPrev  = rorET_ph;
+    phEtHeatLoad = rorET_ph;
 
     // Coast time: thời gian BT còn tăng sau tắt gas, scale bởi phAdaptCoastMul (học từ thực tế)
     // ET đang giảm (dRorET < -10) → nhiệt vào đang yếu dần → base ~8s
@@ -691,12 +691,12 @@ void phThermalMonitor() {
 
     // BT coast = rorBT × coastSec / 60 (đổi từ °C/min sang °C trong coastSec giây)
     // Nhân thêm hệ số ET: nếu rorET > rorBT → còn nhiều nhiệt đang đến → coast lớn hơn
-    int16_t etBoost = (rorET > rorBT + 20) ? (rorET - rorBT) / 4 : 0;  // max ~25
-    phBtCoast = (int16_t)constrain((int32_t)(rorBT + etBoost) * coastSec / 60, 0, 200);
+    int16_t etBoost = (rorET_ph > rorBT_ph + 20) ? (rorET_ph - rorBT_ph) / 4 : 0;  // max ~25
+    phBtCoast = (int16_t)constrain((int32_t)(rorBT_ph + etBoost) * coastSec / 60, 0, 200);
 
     // ET confirmation: đếm giây rorET đã tăng rõ so với baseline lúc step
     // phEtAtStep = rorET tại lúc recordStep() — so sánh đúng, không bị ghi đè
-    if (phGainWaiting && rorET > phEtAtStep + 10) {
+    if (phGainWaiting && rorET_ph > phEtAtStep + 10) {
         if (phEtConfirm < 20) phEtConfirm++;
     }
 }
@@ -707,7 +707,7 @@ void phThermalMonitor() {
 // Trả +1/-1 (bước gas 5%), 0 (giữ). Dead time PH_CTRL_DEAD_SEC giữa các bước.
 
 int8_t preheatBurnerControl(uint8_t mode, int16_t targetBT10, uint16_t heatDeadlineSec) {
-    int16_t rorNow = rorBT;
+    int16_t rorNow = rorBT_ph;
     int16_t dRorBT = rorNow - phRorPrev;
     phRorPrev = rorNow;
 
@@ -786,7 +786,7 @@ int8_t preheatBurnerControl(uint8_t mode, int16_t targetBT10, uint16_t heatDeadl
         phRorAtStep = rorNow; phGainBT10 = btNow;
         phGainWaiting = 1; phGainWaitCount = 0;
         phEtConfirm   = 0;
-        phEtAtStep    = rorET;   // baseline ET để đo phản hồi sau step
+        phEtAtStep    = rorET_ph;   // baseline ET để đo phản hồi sau step
         phCtrlDeadTimer = PH_CTRL_DEAD_SEC;
     };
 
@@ -839,7 +839,7 @@ int8_t preheatBurnerControl(uint8_t mode, int16_t targetBT10, uint16_t heatDeadl
             recordStep(); return +1;
         }
         // ET đang dẫn trước BT → chờ BT theo tối đa 15s, không tăng gas vội
-        if (rorET > 20 && rorBT < rorET/2 && delta < 0) {
+        if (rorET_ph > 20 && rorBT_ph < rorET_ph/2 && delta < 0) {
             if (phBTNoRiseCount < 15) { phBTNoRiseCount++; return 0; }
         } else {
             phBTNoRiseCount = 0;
@@ -1057,12 +1057,12 @@ void preheat() {
 
         int16_t etBtGap  = (int16_t)Temperature_ET - (int16_t)Temperature_BT;
         int8_t  airStep  = 0;
-        if      (rorBT > rorTarget + 10 && etBtGap <= 100) airStep = +1;
-        else if (rorBT < rorTarget - 30 && etBtGap >= -50) airStep = -1;
+        if      (rorBT_ph > rorTarget + 10 && etBtGap <= 100) airStep = +1;
+        else if (rorBT_ph < rorTarget - 30 && etBtGap >= -50) airStep = -1;
 
         if (enDebug && ++phCoolDbgTimer >= 5) {
             phCoolDbgTimer = 0;
-            SerialComputer.print("COOL rorBT="); SerialComputer.print(rorBT);
+            SerialComputer.print("COOL rorBT="); SerialComputer.print(rorBT_ph);
             SerialComputer.print(" tgt=");       SerialComputer.print(rorTarget);
             SerialComputer.print(" air=");       SerialComputer.println(wuAirPercent);
         }
@@ -1237,7 +1237,7 @@ void preheat() {
 
     case WU_HEATING: {
         phThermalMonitor();
-        if (enDebug && wuElapsed >= 10 && wuElapsed <= 12 && rorET <= 0)
+        if (enDebug && wuElapsed >= 10 && wuElapsed <= 12 && rorET_ph <= 0)
             SerialComputer.println("PREHEAT WARN: rorET not rising at 10s");
         tunePercent = phCalcProgress(targetBT10);
         nodeHMI.writeSingleRegister(MIN_HMI_W - 1, wuElapsed / 60);
@@ -1267,7 +1267,7 @@ void preheat() {
             phHoldPendingStep = phHoldConfirmSec = 0;
             // Clamp gas về holdGasMax (45%) ngay khi vào HOLDING — tránh quán tính từ gas cao
             if (wuGasPercent > 45) { wuGasPercent = 45; phCtrlDeadTimer = PH_CTRL_DEAD_SEC; }
-            if (rorBT > 20 || (int16_t)Temperature_ET >= targetBT10) {
+            if (rorBT_ph > 20 || (int16_t)Temperature_ET >= targetBT10) {
                 if (wuGasPercent > 0) { wuGasPercent = constrain(wuGasPercent-5, 0, 45); phCtrlDeadTimer = PH_CTRL_DEAD_SEC; }
                 gasPercent = wuGasPercent;
                 if (wuAirPercent < 30) wuAirPercent = 30;
@@ -1470,7 +1470,7 @@ void preheat() {
                 }
                 phStableCount = 0;
             } else {
-                if (abs(btHoldErr) <= 20 && abs(rorBT) <= 20) {
+                if (abs(btHoldErr) <= 20 && abs(rorBT_ph) <= 20) {
                     if (++phStableCount >= PH_STABLE_SEC) {
                         phFFLearn((int16_t)Temperature_BT, wuGasPercent);
                         phFFLearnThermal((int16_t)Temperature_BT, wuGasPercent,
@@ -1483,7 +1483,7 @@ void preheat() {
             // Air điều chỉnh nhẹ trong STABLE
             if      (btHoldErr >  50 && wuAirPercent > holdAirLow) wuAirPercent = constrain(wuAirPercent - 10, holdAirLow, holdAirMax);
             else if (btHoldErr >  20 && wuAirPercent > holdAirLow) wuAirPercent = constrain(wuAirPercent -  5, holdAirLow, holdAirMax);
-            else if (btHoldErr < -50 && rorBT > 0)                 wuAirPercent = constrain(wuAirPercent +  5,          0, holdAirMax);
+            else if (btHoldErr < -50 && rorBT_ph > 0)                 wuAirPercent = constrain(wuAirPercent +  5,          0, holdAirMax);
         }
 
         gasPercent     = constrain(wuGasPercent, 0, 100);
@@ -1588,7 +1588,7 @@ void preheat() {
             int16_t airTarget = 25;
             if (error >  100)                                 airTarget = 22;  // BT thấp, giữ nhiệt
             if (error < -100)                                 airTarget = 30;  // BT cao, thoát nhiệt
-            if (rorBT < -50)                                  airTarget = 20;  // BT đang rơi
+            if (rorBT_ph < -50)                                  airTarget = 20;  // BT đang rơi
             if ((int16_t)Temperature_ET > targetBT10 + 150)   airTarget = 35;  // ET cao, pha loãng
 
             if      (wuAirPercent < airTarget - 1) wuAirPercent = constrain(wuAirPercent + 2, 20, 40);
@@ -1601,7 +1601,7 @@ void preheat() {
             bool isStrictStable =
                 abs(error) <= 50 &&
                 abs(rorBT_smooth) <= 30 &&   // dùng smooth thay vì raw
-                abs(rorET) <= 50 &&
+                abs(rorET_ph) <= 50 &&
                 wuGasPercent == phLastGasObs &&
                 wuAirPercent == phLastAirObs &&
                 wuElapsed > 60 &&
