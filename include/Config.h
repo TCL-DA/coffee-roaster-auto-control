@@ -10,6 +10,7 @@
  *   Smoothing 3, Smooth Curves 2 — xem khối ROR_* cuối file), bỏ Kalman; trần RoR ET
  *   ±20 → ±95 °C/phút; watchdog PC_Link đóng gas thay vì gạt nút PC control.
  *   Preheat KHÔNG đổi: đọc rorBT_ph/rorET_ph tính đúng cách cũ (3s + Kalman).
+ *   VR: sửa tự học mốc 100% — đỗ VR 90–97% không còn tự nhảy 100% / tụt về 0%.
  * (Bản trước) v3.11.0 15/09/2026: 30 kg auto, loader + vacuum gió, KHÔNG VR,
  *   CÓ IO relay Modbus ngoài (ID 7) — gói ở 112_Quanly/43_Update_CMS_26/150926.
  * (Bản trước) 30 kg noVacuum nền preset M06 — giao v3.10.0 10/09/2026, Config.h lưu

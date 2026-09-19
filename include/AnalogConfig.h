@@ -20,6 +20,7 @@ float smoothedGasAI = 0;
 #define AI_CAL_SAVE_INTERVAL_MS  30000UL
 #define AI_PERCENT_FULL_MARGIN   8
 #define AI_PERCENT_FULL_PERCENT  98
+#define AI_CAL_MAX_BOOT_PERCENT  90  // mốc 100% đọc từ thẻ thấp hơn 90% mặc định lúc build = do học nhầm → bỏ
 
 static uint16_t aiCalMinRaw[3] = {0, 0, 0};
 static uint16_t aiCalStableLowRaw[3] = {0, 0, 0};
@@ -50,6 +51,8 @@ static int16_t analogPercentFromRaw(uint16_t rawValue, float smoothedRaw, uint16
 }
 
 void analogCalLoadFromSD() {
+    // Mặc định lúc build (Define.h, theo board) — sàn để lọc mốc 100% đã bị co trên thẻ.
+    const uint16_t airDef = CH1AInMax, drumDef = CH2AInMax, gasDef = CH3AInMax;
     aiCalMinRaw[0] = 0;
     aiCalMinRaw[1] = 0;
     aiCalMinRaw[2] = 0;
@@ -87,6 +90,12 @@ void analogCalLoadFromSD() {
         if (airMin  > (uint16_t)(((uint32_t)airMax  * AI_CAL_ZERO_MAX_PERCENT) / 100)) { airMin  = 0; aiCalSavePending = true; }
         if (drumMin > (uint16_t)(((uint32_t)drumMax * AI_CAL_ZERO_MAX_PERCENT) / 100)) { drumMin = 0; aiCalSavePending = true; }
         if (gasMin  > (uint16_t)(((uint32_t)gasMax  * AI_CAL_ZERO_MAX_PERCENT) / 100)) { gasMin  = 0; aiCalSavePending = true; }
+
+        // Mốc 100% cũ trên thẻ có thể đã bị HẠ nhầm (bản ≤ v3.12.0 học đỉnh ở bất kỳ mức ≥ 90%: thợ đỗ
+        // gió/gas 93% → mốc tụt dần). Thấp hơn 90% mặc định → bỏ, dùng mặc định, lần lưu sau ghi đè file.
+        if (airMax  < (uint16_t)(((uint32_t)airDef  * AI_CAL_MAX_BOOT_PERCENT) / 100)) { airMax  = airDef;  aiCalSavePending = true; }
+        if (drumMax < (uint16_t)(((uint32_t)drumDef * AI_CAL_MAX_BOOT_PERCENT) / 100)) { drumMax = drumDef; aiCalSavePending = true; }
+        if (gasMax  < (uint16_t)(((uint32_t)gasDef  * AI_CAL_MAX_BOOT_PERCENT) / 100)) { gasMax  = gasDef;  aiCalSavePending = true; }
 
         if (analogCalValidRange(airMin, airMax)) {
             aiCalMinRaw[0] = airMin;
@@ -164,7 +173,16 @@ static void analogCalTrackRange(uint8_t channel, uint16_t rawValue, uint16_t *ma
     uint16_t learnedMax = aiCalStableHighRaw[channel] + AI_CAL_MARGIN_RAW;
     if (learnedMax > AI_CAL_MAX_RAW) learnedMax = AI_CAL_MAX_RAW;
 
-    if (learnedMax > *minValue + AI_CAL_MIN_SPAN_RAW && abs((int)learnedMax - (int)(*maxValue)) >= AI_CAL_DELTA_RAW) {
+    // HẠ mốc 100% chỉ khi VR đứng yên ở mức màn ĐANG hiện 100% sẵn (≥ AI_PERCENT_FULL_PERCENT) — hạ lúc đó
+    // không đổi số trên màn. Bản cũ hạ ở bất kỳ mức ≥ 90%: thợ đỗ 93% → 12 s sau tự nhảy 100%, thợ vặn
+    // xuống lại → mốc tụt tiếp → sau vài lần dưới AI_CAL_MIN_RAW → analogPercentFromRaw() trả 0% bất kể VR.
+    // NÂNG mốc thì vẫn như cũ (VR vượt mốc hiện tại = đỉnh thật cao hơn).
+    uint16_t fullRaw = *minValue + (uint16_t)(((uint32_t)span * AI_PERCENT_FULL_PERCENT) / 100);
+    bool lowering = learnedMax < *maxValue;
+
+    if ((!lowering || aiCalStableHighRaw[channel] >= fullRaw) &&
+        learnedMax >= AI_CAL_MIN_RAW &&
+        learnedMax > *minValue + AI_CAL_MIN_SPAN_RAW && abs((int)learnedMax - (int)(*maxValue)) >= AI_CAL_DELTA_RAW) {
         *maxValue = learnedMax;
         aiCalSavePending = true;
         aiCalStableHighMillis[channel] = now;
