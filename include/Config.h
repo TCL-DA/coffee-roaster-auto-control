@@ -11,6 +11,7 @@
  *   ±20 → ±95 °C/phút; watchdog PC_Link đóng gas thay vì gạt nút PC control.
  *   Preheat KHÔNG đổi: đọc rorBT_ph/rorET_ph tính đúng cách cũ (3s + Kalman).
  *   VR: sửa tự học mốc 100% — đỗ VR 90–97% không còn tự nhảy 100% / tụt về 0%.
+ *   RoR: span 20s + smoothing 6 (mịn gấp đôi bản span 10 / smoothing 3).
  * (Bản trước) v3.11.0 15/09/2026: 30 kg auto, loader + vacuum gió, KHÔNG VR,
  *   CÓ IO relay Modbus ngoài (ID 7) — gói ở 112_Quanly/43_Update_CMS_26/150926.
  * (Bản trước) 30 kg noVacuum nền preset M06 — giao v3.10.0 10/09/2026, Config.h lưu
@@ -613,13 +614,15 @@
 //                     N = round((2·UI+1)/2) kiểu Python = UI nếu chẵn, UI+1 nếu lẻ
 // Ba ô dưới đây đặt ĐÚNG số trong hộp Curves → Filters của Artisan thì RoR trên HMI
 // khớp Artisan. Smoothing đếm theo SỐ MẪU: Smoothing 30 ở mẫu 2s = 60s lịch sử RoR.
-// Chốt 20/09/2026: mẫu 1s / span 10s / smoothing 3 / curve 2 — trễ ~7-8s, giật <0,3 °C/phút.
+// Chốt 20/09/2026: mẫu 1s / span 20s / smoothing 6 / curve 2 — giật 0,13 °C/phút, trễ ~15s.
+// (Bản trước span 10 / smoothing 3: giật 0,27 — chủ máy thấy chưa mịn. Ở mẫu 1s, DELTA SPAN quyết
+//  định độ giật, không phải SMOOTHING: span 10→20 giật giảm nửa, còn smoothing 3→6 chỉ 0,27→0,24.)
 // Thử 3 mẻ giả tưởng (gas đổi thưa → gas nhảy 0↔100% ở 190-210 °C): bản 20s/30 trễ ~30s,
 // có lúc BT tụt 38s mà HMI vẫn báo RoR dương; bản này bám đúng chiều ~90% thời gian.
 // ---------------------------------------------------------------------------
 #define ROR_SAMPLE_SEC                    1   // = Sampling Interval (giây) — đặt 2 nếu muốn khớp Artisan để mẫu 2s
-#define ROR_DELTA_SPAN_SEC                10  // = ô Delta Span (giây)
-#define ROR_SMOOTHING                     3   // = ô Smoothing (UI)
+#define ROR_DELTA_SPAN_SEC                20  // = ô Delta Span (giây) — ở mẫu 1s, ô NÀY quyết định độ giật
+#define ROR_SMOOTHING                     6   // = ô Smoothing (UI)
 #define ROR_CURVE_SMOOTH                  2   // = ô Smooth Curves (UI)
 
 #if MACHINE_VR_SOURCE_FROM_HMI
