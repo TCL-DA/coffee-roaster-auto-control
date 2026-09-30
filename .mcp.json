@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "otl-roaster": {
+      "type": "stdio",
+      "command": "C:/Users/truon/AppData/Local/Programs/Python/Python311/python.exe",
+      "args": ["F:/Project/100_OTL_06ALS - CMS - Cacao/tools/mcp_roaster/server.py"],
+      "env": {
+        "OTL_API_BASE": "http://127.0.0.1:8555"
+      }
+    },
+    "otl-manual": {
+      "type": "stdio",
+      "command": "C:/Users/truon/AppData/Local/Programs/Python/Python311/python.exe",
+      "args": ["F:/Project/100_OTL_06ALS - CMS - Cacao/tools/mcp_manual/server.py"]
+    },
+    "otl-serial-terminal": {
+      "type": "stdio",
+      "command": "C:/Users/truon/AppData/Local/Programs/Python/Python311/python.exe",
+      "args": ["F:/Project/100_OTL_06ALS - CMS - Cacao/tools/mcp_serial_terminal/server.py"],
+      "env": {
+        "OTL_SERIAL_API_BASE": "http://127.0.0.1:8765"
+      }
+    }
+  }
+}
