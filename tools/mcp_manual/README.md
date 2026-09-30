@@ -27,7 +27,27 @@ Cần Illustrator đang cài và `pip install pymupdf`.
 
 ```
 manual_dung(content="airlock-repair-en/content.jsx")
+
+manual_dung(content=["airlock-repair-en/content.jsx",          # nhiều bản một lượt,
+                     "airlock-repair-en/content-vi.jsx"],      # chung một phiên
+            nhanh=True)                                        # bản nháp: bỏ lưu .ai
 ```
+
+## Tốc độ
+
+Đo thật 30/09/2026 trên tài liệu 15 trang. Thời gian dồn gần hết vào Illustrator:
+khởi động **nguội ~32 s**, đóng tài liệu cũ ~2 s (**~9 s** nếu để dồn), vẽ ~4 s,
+lưu `.ai` ~1,2 s, lưu `.pdf` ~1,0 s. Render PNG và rà soát cộng lại **chưa tới 0,5 s** —
+tối ưu hai khâu đó là vô nghĩa.
+
+Server làm sẵn ba việc: đóng tài liệu ngay trong lần chạy đó, dựng nhiều tài liệu trong
+**một** phiên PowerShell, và `nhanh=true` bỏ bước lưu `.ai`.
+
+**17 s → 9 s mỗi tài liệu.** ⛔ Đừng tắt Illustrator giữa chừng — bật lại mất 32 giây,
+nhiều hơn cả việc dựng.
+
+Code dựng dùng chung với `make.py` của skill `manual-otl` (server nạp thẳng file đó),
+nên không nuôi hai bản lệch nhau.
 
 Trả về số trang, đường dẫn PDF, danh sách cảnh báo trang thưa chữ, và cảnh báo sớm chỗ
 thiếu dấu cách trước `\u2013` — lỗi dính chữ từng lọt ra tận bìa tài liệu gửi khách.

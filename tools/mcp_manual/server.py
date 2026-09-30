@@ -18,14 +18,14 @@ nằm trong skill `manual-otl` — đọc skill đó trước khi soạn nội d
 ⚠ Máy chỉ bắt được trang THƯA CHỮ. Chồng chữ, tràn khung, logo chạm tiêu đề thì
 không thấy — dựng xong vẫn phải xem ảnh bằng mắt rồi mới giao.
 """
+import importlib.util
 import io
 import json
 import os
 import re
-import subprocess
 import sys
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 MAC_DINH_ENGINE = (r"F:\Project\100_OTL_06ALS - CMS - Cacao"
                    r"\.claude\skills\manual-otl\assets\engine.jsx")
@@ -40,6 +40,23 @@ CAO_TOI_THIEU = 430   # khối chữ cuối kết thúc cao hơn → nửa dư�
 
 class LoiGoi(Exception):
     """Lỗi đã lường trước — báo gọn cho người gọi, không phải sự cố server."""
+
+
+def _nap_make():
+    """Dùng chung code dựng với make.py của skill, không nuôi hai bản lệch nhau.
+
+    make.py nằm cạnh engine.jsx. Nó giữ phần khó: nối file, đóng tài liệu ngay
+    trong lần chạy (nếu không, lần sau mất ~2 giây dọn và dễ dồn thành ~9 giây),
+    bỏ bước lưu .ai khi chạy nhanh, và dựng nhiều tài liệu trong MỘT phiên
+    PowerShell thay vì bắt COM lại từng lần.
+    """
+    p = os.path.join(os.path.dirname(ENGINE), "make.py")
+    if not os.path.exists(p):
+        raise LoiGoi("không thấy make.py cạnh engine: %s" % p)
+    spec = importlib.util.spec_from_file_location("otl_make", p)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
 
 
 # ── tiện ích ───────────────────────────────────────────────────────────────
@@ -62,40 +79,8 @@ def _soat_dau_cach(noi_dung):
             re.findall(r'.{0,24}(?<=[^\s"])\\u2013.{0,20}', noi_dung)]
 
 
-def _noi_file(content):
-    thu_muc = os.path.dirname(content)
-    ten = os.path.basename(content)
-    ra = os.path.join(thu_muc, ten if ten.startswith("manual") else "manual-" + ten)
-    if not os.path.exists(ENGINE):
-        raise LoiGoi("không thấy engine.jsx: %s" % ENGINE)
-    e = io.open(ENGINE, encoding="utf-8").read()
-    c = io.open(content, encoding="utf-8").read()
-    io.open(ra, "w", encoding="utf-8", newline="").write(e + c)
-    return ra, _soat_dau_cach(c)
-
-
-def _chay_illustrator(jsx):
-    ps = ("$ai = New-Object -ComObject Illustrator.Application; "
-          "while ($ai.Documents.Count -gt 0) { $ai.ActiveDocument.Close(2) }; "
-          '$ai.DoJavaScriptFile("%s")' % jsx.replace("/", "\\"))
-    try:
-        r = subprocess.run(["powershell", "-NonInteractive", "-Command", ps],
-                           capture_output=True, text=True, timeout=600)
-    except subprocess.TimeoutExpired:
-        raise LoiGoi("Illustrator không trả lời sau 10 phút — mở Illustrator xem "
-                     "có hộp thoại nào đang chặn không")
-    out = (r.stdout or "").strip()
-    if "OK pages=" not in out:
-        raise LoiGoi("Illustrator không dựng được:\n%s\n%s"
-                     % (out, (r.stderr or "").strip()[:800]))
-    return out
-
-
-def _tim_pdf(jsx):
-    s = io.open(jsx, encoding="utf-8").read()
-    base = re.findall(r'var base = "([^"]+)"', s)
-    ten = re.findall(r'new File\(base \+ "([^"]+\.pdf)"\)', s)
-    return (base[-1] + ten[-1]) if (base and ten) else None
+def _soat_dau_cach_file(content):
+    return _soat_dau_cach(io.open(content, encoding="utf-8").read())
 
 
 def _ra_soat(pdf, ve_anh, dpi):
@@ -129,25 +114,49 @@ def _ra_soat(pdf, ve_anh, dpi):
 
 # ── công cụ ────────────────────────────────────────────────────────────────
 def manual_dung(a):
-    content = _duong_dan(a.get("content"))
+    """Dựng một hoặc NHIỀU tài liệu. Nhiều tài liệu thì dùng chung một phiên
+    PowerShell — nhanh hơn hẳn gọi lẻ từng cái."""
+    mk = _nap_make()
+    xin = a.get("content")
+    ds = xin if isinstance(xin, list) else [xin]
+    if not ds:
+        raise LoiGoi("thiếu content")
+    ds = [_duong_dan(x) for x in ds]
     ve_anh = a.get("render_anh", True)
+    nhanh = bool(a.get("nhanh", False))
     dpi = int(a.get("dpi", 80))
-    jsx, dinh_chu = _noi_file(content)
-    ket = {"content": content, "ket_qua_illustrator": _chay_illustrator(jsx)}
-    if dinh_chu:
-        ket["loi_dinh_chu"] = {
-            "so_cho": len(dinh_chu), "vi_du": dinh_chu[:5],
+
+    jsxs, dinh = [], {}
+    for c in ds:
+        d = _soat_dau_cach_file(c)
+        if d:
+            dinh[os.path.basename(c)] = d[:5]
+        jsxs.append(mk.noi_file(c, nhanh))
+
+    ket_ils = mk.chay_illustrator(jsxs)
+
+    ra = []
+    for c, jsx, kq in zip(ds, jsxs, ket_ils):
+        m = {"content": c, "ket_qua_illustrator": kq}
+        pdf = mk.tim_pdf(jsx)
+        if pdf and os.path.exists(pdf):
+            m["pdf"] = pdf
+            m["ra_soat"] = _ra_soat(pdf, ve_anh, dpi)
+        else:
+            m["ghi_chu"] = ("không đọc được đường dẫn PDF từ content — file "
+                            "content phải tự gọi doc.saveAs(...) ở cuối")
+        ra.append(m)
+
+    kq = {"so_tai_lieu": len(ra), "tai_lieu": ra}
+    if nhanh:
+        kq["che_do"] = "nhanh — đã bỏ bước lưu .ai, chỉ xuất .pdf"
+    if dinh:
+        kq["loi_dinh_chu"] = {
+            "cho": dinh,
             "cach_sua": "thiếu dấu cách trước \\u2013 — sửa trong file content "
-                        "bằng script Python (đừng dùng công cụ sửa tay, nó cắt "
-                        "khoảng trắng cuối chuỗi) rồi dựng lại"}
-    pdf = _tim_pdf(jsx)
-    if pdf and os.path.exists(pdf):
-        ket["pdf"] = pdf
-        ket["ra_soat"] = _ra_soat(pdf, ve_anh, dpi)
-    else:
-        ket["ghi_chu"] = ("không đọc được đường dẫn PDF từ content — file content "
-                          "phải tự gọi doc.saveAs(...) ở cuối như các bản mẫu")
-    return ket
+                        "bằng script Python (công cụ sửa tay cắt mất khoảng "
+                        "trắng cuối chuỗi) rồi dựng lại"}
+    return kq if len(ra) > 1 or isinstance(xin, list) else ra[0]
 
 
 def manual_ra_soat(a):
@@ -207,9 +216,15 @@ TOOLS = [
                     "thưa chữ — chồng chữ, tràn khung, logo chạm tiêu đề thì phải xem "
                     "ảnh bằng mắt mới thấy.",
      "inputSchema": {"type": "object", "properties": {
-         "content": {"type": "string", "description": "file nội dung, ví dụ "
+         "content": {"description": "file nội dung, ví dụ "
                      "airlock-repair-en/content.jsx — tương đối so với thư mục "
-                     "122_Manual_AI, hoặc đường dẫn tuyệt đối"},
+                     "122_Manual_AI, hoặc đường dẫn tuyệt đối. Truyền MẢNG nhiều "
+                     "file để dựng chung một phiên, nhanh hơn hẳn gọi lẻ",
+                     "anyOf": [{"type": "string"},
+                               {"type": "array", "items": {"type": "string"}}]},
+         "nhanh": {"type": "boolean", "description": "bản nháp: bỏ bước lưu .ai, "
+                   "chỉ xuất .pdf. Nhanh hơn khoảng 1,2 giây mỗi tài liệu. Bản "
+                   "giao khách thì để mặc định (false) cho có file .ai mà sửa"},
          "render_anh": {"type": "boolean", "description": "có render PNG để soi không "
                         "(mặc định có)"},
          "dpi": {"type": "integer", "description": "độ phân giải ảnh, mặc định 80; "

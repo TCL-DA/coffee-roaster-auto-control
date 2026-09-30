@@ -37,7 +37,31 @@ dàn trang do `assets/engine.jsx` lo — không tự vẽ tay từng khung chữ
 
 ```bash
 python "<skill>\assets\make.py" content.jsx
+python "<skill>\assets\make.py" content.jsx content-vi.jsx   # nhiều bản, CHUNG một phiên
+python "<skill>\assets\make.py" content.jsx --nhanh          # bản nháp: bỏ lưu .ai
 ```
+
+### Dựng cho nhanh — đo thật 30/09/2026, tài liệu 15 trang
+
+| Khâu | Thời gian |
+|---|---|
+| Illustrator khởi động **nguội** | **~32 s** — chỉ tốn một lần |
+| Đóng tài liệu còn sót lại | ~2 s (**~9 s** nếu để dồn nhiều bản) |
+| Vẽ 15 trang | ~4 s |
+| Lưu `.ai` | ~1,2 s |
+| Lưu `.pdf` | ~1,0 s |
+| Render PNG + rà soát | ~0,5 s |
+
+Ba việc `make.py` làm sẵn, không phải nhớ:
+
+1. **Đóng tài liệu ngay trong lần chạy đó** — không để dồn sang lần sau.
+2. **Nhiều file thì dùng chung một phiên PowerShell**, không bắt COM lại từng lần.
+3. `--nhanh` bỏ bước lưu `.ai` khi chỉ cần xem bố cục.
+
+Kết quả: **17 s → 11 s mỗi tài liệu** (`--nhanh`: **9 s**).
+
+⛔ **Đừng tắt Illustrator giữa chừng** — bật lại mất 32 giây, nhiều hơn cả việc dựng.
+Tối ưu render PNG hay khâu rà soát là vô nghĩa: cả hai cộng lại chưa tới 0,5 giây.
 
 `make.py` làm liền một mạch: nối engine + nội dung → chạy Illustrator qua COM → render PNG →
 rà máy tìm trang thưa chữ. Nhận nhiều file một lượt (`content.jsx content-vi.jsx`), có
