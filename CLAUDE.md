@@ -149,3 +149,41 @@ Loop: 87ms | Charge: 12 | Roast: 245 | CalSD: 34
 - Phân tích PID: chạy `/pid-analysis`
 - Trace state machine: chạy `/state-trace`
 - Commit: dùng `/commit`
+
+---
+
+## Dựng tài liệu cho khách (manual, hướng dẫn sửa)
+
+Quy ước đầy đủ nằm trong skill [`manual-otl`](.claude/skills/manual-otl/SKILL.md). Tóm tắt:
+
+- **Bắt đầu tài liệu mới** thì chép
+  [`references/content-mau-toi-thieu.jsx`](.claude/skills/manual-otl/references/content-mau-toi-thieu.jsx)
+  — bộ khung chạy được ngay, có đủ hàm dàn trang và chú thích từng hàm. Hai file
+  `content-mau-preheat*.jsx` cạnh đó là ví dụ dày hơn, lấy từ chương đã giao khách.
+- **Dựng bằng một lệnh**: `python .claude/skills/manual-otl/assets/make.py <content>.jsx`,
+  hoặc qua MCP `otl-manual` (`tools/mcp_manual/`), công cụ `manual_dung`.
+
+⛔ **Ba luật không được bỏ qua:**
+
+1. **`OK pages=N` KHÔNG có nghĩa là tài liệu xong.** Dòng đó chỉ nói script chạy trót lọt.
+   Máy chỉ rà được trang thưa chữ; chồng chữ, tràn khung, logo chạm tiêu đề thì nó không thấy.
+   **Phải render PNG và soi bằng mắt** rồi mới được nói là xong.
+2. **KHÔNG viết tên, địa chỉ hay liên hệ của đối tác vào repo này** — repo từng để PUBLIC.
+   Thông tin thương hiệu từng đối tác để ở `112_Quanly\122_Manual_AI\BAN-OEM-DOI-TAC.md`.
+3. **Bản OEM là bản SINH RA bằng script, không sửa tay.** Sửa bản gốc rồi chạy lại script.
+   Script phải tự dừng khi còn sót dấu vết thương hiệu gốc, và phải kiểm lại **trên chính
+   file PDF** (`manual_kiem_chuoi_cam`) — đọc mã nguồn là chưa đủ, ảnh bìa cũ vẫn có thể mang
+   dấu nhận dập trên tôn máy.
+
+---
+
+## Giao diện app Roast Lab — làm chung với Codex
+
+Trước khi sửa `OTL Roast Lab.html` hoặc `tools/test_ui_*`:
+
+1. Đọc khoá `docs/ui/UI-LOCK.md` — nếu Codex đang giữ thì KHÔNG sửa.
+2. Đọc đặc tả thiết kế `docs/ui/2026-09-07-design-spec.md`.
+3. Bản thiết kế gốc mirror ở `docs/ui/design-web/` (kéo về bằng `DesignSync`).
+
+Quy ước đầy đủ cho cả hai bên: mục "Bản thiết kế Claude Design và cách Claude +
+Codex làm chung trên app" trong [AGENTS.md](AGENTS.md).
