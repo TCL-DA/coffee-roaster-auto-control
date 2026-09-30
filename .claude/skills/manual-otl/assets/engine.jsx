@@ -10,6 +10,11 @@ var F_REG = "ArialMT", F_BOLD = "Arial-BoldMT", F_ITAL = "Arial-ItalicMT",
     F_BI = "Arial-BoldItalicMT";
 
 var doc, page = 0, y = TOP, chapterHeader = "";
+// ── thuong hieu: dat lai trong content TRUOC khi goi COVER() ───────────────
+var PGPREFIX = "PH-";                      // tien to so trang o chan trang
+var LOGO = "logo-otl.png";                 // tim trong IMGDIR truoc, roi OLDDIR
+var LOGO_W_COVER = 58, LOGO_W_HEAD = 34;   // be ngang logo (pt) tren bia / dau trang
+var FOOTLINE = "Copyright (c) O Tesla Industry CO., Ltd";
 var IMGDIR = "F:/Project/112_Quanly/122_Manual_AI/preheat-vi/images/";
 var OLDDIR = IMGDIR + "_tu-manual-cu/";
 var missing = [];
@@ -39,12 +44,13 @@ function newDocBare() {
 // ── TRANG BÌA ──────────────────────────────────────────────────────────────
 function COVER(kicker, title, subtitle, machine, footline) {
     newDocBare();
-    var lg = new File(OLDDIR + "logo-otl.png");
+    var lg = new File(IMGDIR + LOGO);
+    if (!lg.exists) lg = new File(OLDDIR + LOGO);
     if (lg.exists) {
         var pi = doc.placedItems.add(); pi.file = lg;
-        var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3], s = 58 / w0;
+        var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3], s = LOGO_W_COVER / w0;
         pi.width = w0 * s; pi.height = h0 * s;
-        pi.position = [X(W - MR - 58), Y(92)];
+        pi.position = [X(W - MR - LOGO_W_COVER), Y(92)];
     }
     mkText(ML, 96, 300, kicker, F_REG, 12.5, 17, C_TEXT, Justification.LEFT);
     mkText(ML, 122, 340, title, F_BOLD, 25, 31, C_BLACK, Justification.LEFT);
@@ -75,12 +81,13 @@ function need(h) { if (y + h > BOT) addPage(); }
 
 // ── nền mỗi trang: logo + header + footer ──────────────────────────────────
 function decorate() {
-    var lg = new File(OLDDIR + "logo-otl.png");
+    var lg = new File(IMGDIR + LOGO);
+    if (!lg.exists) lg = new File(OLDDIR + LOGO);
     if (lg.exists) {
         var pi = doc.placedItems.add();
         pi.file = lg;
         var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3];
-        var s = 34 / w0;
+        var s = LOGO_W_HEAD / w0;
         pi.width = w0 * s; pi.height = h0 * s;
         pi.position = [X(ML), Y(HEAD_Y - 12)];
     }
@@ -88,13 +95,13 @@ function decorate() {
         mkText(ML + 60, HEAD_Y - 4, CW - 60, chapterHeader, F_REG, 10, 13, C_BLUE, Justification.RIGHT);
     }
     var f1 = doc.textFrames.add();
-    f1.contents = "Copyright (c) O Tesla Industry CO., Ltd";
+    f1.contents = FOOTLINE;
     f1.textRange.characterAttributes.textFont = app.textFonts.getByName(F_REG);
     f1.textRange.characterAttributes.size = 9;
     f1.textRange.characterAttributes.fillColor = C_BLUE;
     f1.position = [X(ML), Y(FOOT_Y)];
 
-    mkText(ML + 200, FOOT_Y - 3, CW - 200, "PH-" + (page + 1), F_REG, 9, 12, C_BLUE, Justification.RIGHT);
+    mkText(ML + 200, FOOT_Y - 3, CW - 200, PGPREFIX + (page + 1), F_REG, 9, 12, C_BLUE, Justification.RIGHT);
 }
 
 
@@ -202,7 +209,7 @@ function H1(str) {
     y += textH(tf, 24) + 22;
 }
 function H2(num, str) {
-    need(46);
+    need(200);   // tieu de + ~5 dong: muc ngan khong bi xe doi qua 2 trang
     var d = 21;
     var e = doc.pathItems.ellipse(Y(y - 3), X(ML), d, d);
     e.filled = true; e.stroked = false; e.fillColor = C_BADGE;
@@ -211,7 +218,7 @@ function H2(num, str) {
     y += Math.max(textH(tf, 17), d) + 12;
 }
 function H3(str) {
-    need(34);
+    need(150);   // nhu H2
     flow(ML, CW, str, F_BOLD, 11.5, 17, C_BLACK, Justification.LEFT, 7);
 }
 function P(str) { flow(ML, CW, str, F_REG, 11, 18, C_TEXT, Justification.FULLJUSTIFYLASTLINELEFT, 7); }

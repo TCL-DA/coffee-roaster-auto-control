@@ -33,32 +33,55 @@ dàn trang do `assets/engine.jsx` lo — không tự vẽ tay từng khung chữ
 
 ## Lệnh chạy
 
+**Một lệnh, đứng ở thư mục chứa file nội dung:**
+
 ```bash
-# 1. nối engine + nội dung
-cat engine.jsx content.jsx > manual.jsx
+python "<skill>\assets\make.py" content.jsx
 ```
 
+`make.py` làm liền một mạch: nối engine + nội dung → chạy Illustrator qua COM → render PNG →
+rà máy tìm trang thưa chữ. Nhận nhiều file một lượt (`content.jsx content-vi.jsx`), có
+`--khong-anh` để bỏ khâu render và `--dpi 110` khi cần soi kỹ. Nó cũng **cảnh báo sớm** chỗ
+thiếu dấu cách trước `–` — lỗi dính chữ hay lọt ra tận bìa.
+
+Kết quả in ra:
+
+```
+== content.jsx
+  OK pages=15
+  khong co trang thua chu
+```
+
+`OK pages=N | thieu anh: ...` — dòng "thiếu ảnh" liệt kê file chưa có, engine tự vẽ ô nét đứt
+thay chỗ nên vẫn dựng được khi ảnh chưa đủ.
+
+⚠ Máy rà chỉ bắt trang **thưa chữ**. Chồng chữ, tràn khung, logo chạm tiêu đề thì nó không
+thấy — vẫn phải **soi PNG bằng mắt** trước khi giao.
+
+<details><summary>Cách chạy tay từng bước (khi cần gỡ lỗi)</summary>
+
+```bash
+cat engine.jsx content.jsx > manual.jsx
+```
 ```powershell
-# 2. chạy qua COM (Illustrator tự mở nếu chưa chạy)
 $ai = New-Object -ComObject Illustrator.Application
 while ($ai.Documents.Count -gt 0) { $ai.ActiveDocument.Close(2) }   # dọn doc lỗi của lần trước
 $ai.DoJavaScriptFile("<đường dẫn tuyệt đối>\manual.jsx")
 ```
-
 ```bash
-# 3. render ra PNG để soi bố cục
 python -c "import fitz; d=fitz.open('ten.pdf');
 [d[i].get_pixmap(dpi=78).save(f'p_{i+1:02d}.png') for i in range(d.page_count)]"
 ```
-
-Script trả về chuỗi `OK pages=N | thieu anh: ...` — dòng "thiếu ảnh" liệt kê file chưa có,
-engine tự vẽ ô nét đứt thay chỗ nên vẫn dựng được khi ảnh chưa đủ.
+</details>
 
 ## API của engine
 
 | Hàm | Dùng để |
 |-----|---------|
-| `coverImage = "ten-anh.png"` | Chọn ảnh máy in lên bìa — đặt TRƯỚC `COVER()` (`may-rang-auto-bia.png` = máy Auto, `may-rang-bia.png` = máy 06/12) |
+| `coverImage = "ten-anh.png"` | Chọn ảnh máy in lên bìa — đặt TRƯỚC `COVER()` (`may-rang-auto-bia.png` = máy Auto, `may-rang-bia.png` = máy 06/12, `may-rang-cms-bia.png` = bản CMS đã gỡ dấu nhận OEM) |
+| `PGPREFIX = "AV-"` | Tiền tố số trang ở chân trang. Mặc định `"PH-"` (bộ preheat) — **tài liệu mới phải đặt lại**, nếu không mục lục và chân trang lệch nhau |
+| `LOGO`, `LOGO_W_COVER`, `LOGO_W_HEAD` | Logo và bề ngang (pt) trên bìa / đầu trang. Mặc định `logo-otl.png` 58/34. Bản OEM: `logo-cms.png` **105**/78 — logo CMS nằm ngang, tỉ lệ 2,77:1 |
+| `FOOTLINE` | Dòng bản quyền ở chân mọi trang. Mặc định O Tesla; bản OEM đổi sang tên đối tác |
 | `COVER(kicker, title, subtitle, machine, footline)` | Trang bìa (phải gọi ĐẦU TIÊN, thay `newDoc`) |
 | `COMPANY(tên, mô_tả, [[nhãn, giá_trị], ...], tiêu_đề_lưu_ý, thân_lưu_ý)` | Trang thông tin nhà sản xuất |
 | `TOCRESERVE()` … `TOCDRAW(tiêu_đề, "PH-")` | Mục lục: giữ chỗ ngay sau trang công ty, gọi `TOCDRAW` TRƯỚC khi xuất file — số trang tự điền từ các `H1` |
@@ -77,10 +100,33 @@ engine tự vẽ ô nét đứt thay chỗ nên vẫn dựng được khi ảnh 
 
 Engine tự đo chiều cao chữ và tự sang trang, nên **không tự tính toạ độ y**.
 
+## Bản OEM mang thương hiệu đối tác
+
+⛔ **Tên, địa chỉ và liên hệ của đối tác KHÔNG viết vào file này** — skill nằm trong repo git.
+Thông tin thương hiệu từng đối tác, tài nguyên logo và danh sách bản OEM đã làm nằm ở
+`F:\Project\112_Quanly\122_Manual_AI\BAN-OEM-DOI-TAC.md` (ngoài repo). Đọc file đó trước khi
+dựng bản OEM.
+
+Kỹ thuật thì như sau:
+
+- Nội dung kỹ thuật chỉ có **MỘT bản gốc**. Bản OEM là bản **sinh ra bằng script**, không chép
+  ra rồi sửa tay hai nơi — sửa bản gốc xong chạy lại script là xong.
+- Mẫu script: `122_Manual_AI\airlock-repair-en\lam-ban-cms.py` và `122_Manual_AI\tools\lam-ban-cms.py`.
+- Script phải **tự kiểm trước khi ghi file**: còn sót `O Tesla` · `\bOTL\b` · `otlpro` · MST ·
+  số điện thoại · địa chỉ nhà máy · `logo-otl.png` thì **dừng, không ghi**.
+- Kiểm lại lần nữa **trên chính file PDF** (bóc chữ bằng PyMuPDF), đừng chỉ tin script — ảnh
+  bìa cũ vẫn có thể mang dấu nhận OEM dập trên tôn máy mà script đọc mã nguồn không thấy.
+- Bề ngang logo trên bìa phụ thuộc độ dài tiêu đề. Dựng xong **đo khe hở giữa tiêu đề và logo**;
+  dưới ~25 pt là chật, phải thu logo. Đoạn đo có trong `BAN-OEM-DOI-TAC.md`.
+
 ## Bẫy đã trả giá — đọc trước khi sửa engine
 
 - **Canvas Illustrator chỉ 16384 pt.** Xếp artboard một hàng ngang là gãy từ trang 13 với lỗi
   `AOoC`. Engine xếp lưới `COLS = 5` — đừng đổi về hàng ngang.
+  Tài liệu >100 trang: dò 27/09/2026 trên Illustrator 28, artboard nhận được trong x ≥ −7800, mép trên ≤ +8600,
+  mép dưới ≥ −7742 (gốc lưới cũ ở 0,0 phí nửa canvas → chỉ ~108 trang). Dời gốc: `OX = -7700, OY = 4500`,
+  `COLS = 20` → 280 trang. Không đẩy OY sát 8600 vì hàm đo chữ đặt khung tạm ở y = −3000…−4000.
+  Mẫu: `112_Quanly\135_…\06_Rang-ca-phe\MillCityRoasters\build-v3\engine-mc.jsx`.
 - **`textFrame.paragraphs[0]` ném lỗi 1302** khi khung chữ rỗng. Luôn dùng
   `textRange.paragraphAttributes` bọc `try/catch`.
 - **`position` của text frame là góc trái-TRÊN**, không phải baseline. Tính theo baseline là
@@ -89,6 +135,18 @@ Engine tự đo chiều cao chữ và tự sang trang, nên **không tự tính 
   escape `\uXXXX`. Sửa bằng công cụ Write (ghi lại nguyên file) hoặc Python đọc/ghi UTF-8.
 - **Chữ canh đều** phải dùng `FULLJUSTIFYLASTLINELEFT`, không phải `FULLJUSTIFY` — nếu không
   dòng cuối mỗi đoạn bị kéo giãn hết chiều ngang.
+- **Tiêu đề mồ côi / mục bị xé đôi.** `H2` dự phòng **200 pt**, `H3` **150 pt** (30/09/2026, trước
+  đó 46/34 rồi 110/88 vẫn xé). Mức thấp hơn thì một mục ngắn bị cắt: tiêu đề + 1 đoạn ở cuối trang,
+  đoạn còn lại trôi sang trang sau nằm trơ. Trang vẫn hơi trống thì **thu ảnh trong mục đó** (ví dụ
+  `IMG(..., 300 → 200)`) để kéo cả mục lên, thường bớt được nguyên một trang.
+- **Công cụ Edit cắt khoảng trắng CUỐI chuỗi**, và không khớp được dòng chứa escape `\uXXXX`.
+  Sửa `"Phiên bản 2.0 ` → `"Phiên bản 2.1 ` là mất dấu cách, PDF in ra `2.1– 09/2026` dính chữ,
+  ngay trên **bìa**. Sửa các chuỗi này bằng **script Python ghi ra file** rồi chạy (KHÔNG dùng
+  heredoc — hỏng chữ Việt có dấu). Trước khi giao, quét `(?<=[^\s"])(\\u2013)` trên mọi
+  `content*.jsx` để bắt hết chỗ thiếu dấu cách.
+- **Đừng tin dòng `OK pages=N`.** Nó không báo lỗi trình bày. Bắt buộc render PNG và **soi bằng mắt**;
+  thêm bước rà bằng máy (đếm ký tự mỗi trang, cờ trang < 420 ký tự mà không có ảnh) để tìm nhanh
+  trang thưa trước khi soi.
 
 ## Tài nguyên có sẵn
 
