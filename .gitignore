@@ -67,6 +67,10 @@ desktop.ini
 # Kho ngoài dự án (skill tải về, repo tham chiếu)
 _external/
 
+# Kho phụ đề Mill City Roasters tạo cục bộ; bản build có thể đóng gói nhưng repo public không lưu.
+tools/roast_skills/mill-city-roasters/corpus.sqlite3
+tools/roast_skills/mill-city-roasters/corpus.sqlite3.tmp
+
 # Tài liệu PDF nhà sản xuất — nặng, không đưa vào git.
 # Bản chính lưu ở F:\ProjectJ_Quanly\Manuals, đừng chép lại vào repo.
 docs/ref/*.pdf
@@ -106,3 +110,9 @@ tools/ScaleSimulator_src.zip
 *.dps
 # Thư mục làm việc tạm của skill (PPT/SVG/ảnh dựng) — không phải mã nguồn.
 projects/
+tools/bt_tester_settings.json
+
+# Khoá OAuth (Google/YouTube…) — ai có là vào được tài khoản như chủ. KHÔNG bao giờ commit.
+client_secret*.json
+token.json
+*_oauth.json
