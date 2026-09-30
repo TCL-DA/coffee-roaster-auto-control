@@ -8,6 +8,14 @@
         "OTL_API_BASE": "http://127.0.0.1:8555"
       }
     },
+    "otl-youtube": {
+      "type": "stdio",
+      "command": "C:/Users/truon/AppData/Local/Programs/Python/Python311/python.exe",
+      "args": ["F:/Project/100_OTL_06ALS - CMS - Cacao/tools/mcp_youtube/server.py"],
+      "env": {
+        "OTL_YT_DIR": "F:/Project/114_Youtube"
+      }
+    },
     "otl-manual": {
       "type": "stdio",
       "command": "C:/Users/truon/AppData/Local/Programs/Python/Python311/python.exe",
