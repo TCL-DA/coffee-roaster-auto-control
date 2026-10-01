@@ -1,0 +1,12 @@
+# MCP otl-youtube 2.0 — xem NGUON.md để biết cái nào dùng vào việc gì.
+# Cài: pip install -r tools/mcp_youtube/requirements.txt
+
+# Nền gọi YouTube Data API + Analytics API. Bắt buộc.
+google-api-python-client>=2.100
+google-auth-oauthlib>=1.0
+
+# youtube_loi_thoai — lấy lời thoại không cần OAuth.
+youtube-transcript-api>=1.2
+
+# youtube_tim_cong_khai — tìm video công khai của người khác bằng khoá API.
+python-youtube>=0.9

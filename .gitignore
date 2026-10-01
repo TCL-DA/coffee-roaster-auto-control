@@ -116,3 +116,4 @@ tools/bt_tester_settings.json
 client_secret*.json
 token.json
 *_oauth.json
+api_key.txt
