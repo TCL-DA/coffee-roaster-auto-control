@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "otl-bt-sim": {
+      "command": "C:/Users/truon/AppData/Local/Programs/Python/Python311/python.exe",
+      "args": ["F:/Project/100_OTL_06ALS - CMS - Cacao/tools/mcp_bt_sim/server.py"],
+      "env": {
+        "OTL_BT_API_BASE": "http://127.0.0.1:8777"
+      }
+    }
+  }
+}
