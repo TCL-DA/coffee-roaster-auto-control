@@ -5,7 +5,10 @@
  * Cấu hình hiện tại (20/09/2026) — firmware v3.12.0: máy 30 kg tự động rang cacao,
  *   mã hồ sơ M03 (docs/config/config-30kg-cacao-M03.md). CÓ loader (đầu cân
  *   Bluetooth), CÓ vacuum (cảm biến áp đấu ACI biến tần GIÓ slave 5), CÓ biến tần
- *   drum, CÓ biến trở VR vật lý, KHÔNG module IO relay ngoài, HMI đời cũ chưa có ô $M53.
+ *   drum, KHÔNG biến trở VR vật lý (setpoint drum/gió/gas lấy từ HMI), CÓ module IO
+ *   relay ngoài Modbus ID 7 (CH1 Trống/Quạt, CH2 Khuấy — mixer tách dây riêng, không
+ *   đấu chung cooling), HMI đời cũ chưa có ô $M53.
+ *   (02/10/2026 đổi sang bộ phần cứng này — trùng bộ của v3.11.0, trên nền code v3.12.0.)
  *   v3.12.0 so với v3.11.0: RoR BT/ET tính theo chuỗi Artisan (mẫu 1s, Delta Span 10s,
  *   Smoothing 3, Smooth Curves 2 — xem khối ROR_* cuối file), bỏ Kalman; trần RoR ET
  *   ±20 → ±95 °C/phút; watchdog PC_Link đóng gas thay vì gạt nút PC control.
@@ -50,7 +53,7 @@
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió nối RS485 Modbus (cần cho vacuum)
 #define MACHINE_HAS_VACUUM_SENSOR         1  // CÓ cảm biến áp hút — PID gió qua biến tần gió
 #define MACHINE_HAS_SCALE_FEEDER          1  // CÓ đầu cân Bluetooth cho auto-loader
-#define MACHINE_HAS_IO_RELAY_MODULE       0  // M03 KHÔNG có module relay ngoài Modbus
+#define MACHINE_HAS_IO_RELAY_MODULE       1  // M03 CÓ module relay ngoài Modbus (ID 7): CH1 Trống/Quạt, CH2 Khuấy
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
 #define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30 kg
@@ -127,7 +130,7 @@
 // 0 = đọc VR vật lý trên chân analog của board.
 // 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
 // ---------------------------------------------------------------------------
-#define MACHINE_VR_SOURCE_FROM_HMI        0  // M03 CÓ biến trở vật lý trên board
+#define MACHINE_VR_SOURCE_FROM_HMI        1  // M03 KHÔNG có biến trở vật lý — setpoint lấy từ HMI
 
 // ---------------------------------------------------------------------------
 // TREND bật SỚM trước charge.

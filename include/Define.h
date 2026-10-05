@@ -128,7 +128,7 @@ boolean memBuzzerEn = false;
 boolean idBaudSetEn = false;        //Enable updating modbus id and baudrate
 
 //Debug
-boolean enDebug = 0; //Enable/disable debug via Serial Computer — TẮT cho bản giao khách
+boolean enDebug = 1; //⚠ BẬT TẠM 02/10/2026 để đọc dãy coil B1–B20 (chẩn đoán khoá B6) — TRẢ VỀ 0 trước khi giao khách
 volatile bool fireCutFlag = false;  // ISR sets this when BT > 250C, loop() handles Modbus
 volatile bool forceDrumFanOnFlag = false;  // ISR sets this when BT/ET > 80C, loop() handles Modbus
 
@@ -905,6 +905,15 @@ static inline uint16_t loopDoorStuckSec(){ return loopDoorStuck_R > 0 ? loopDoor
 //----------------------End
 
 //----------------------Coil Register
+// ⚠ CHIỀU KHOÁ — ĐÚNG NHƯ TÊN: ghi 1 = KHOÁ (Delta vẽ biển cấm), ghi 0 = MỞ.
+//   Chốt 03/10/2026 bằng 3 nguồn độc lập:
+//   (1) mã runtime Delta HMIApp: phần tử chỉ bấm được khi bit == mức khoá (0);
+//   (2) bộ mô phỏng HMIApp + board ảo chạy chính firmware này: B6=1 -> biển cấm trên
+//       Loader / Drum+Air / Mixer / Cooling; B2=1 -> biển cấm Switch to AUTO / PC Control;
+//   (3) soi panel thật qua VNC 02/10 sau khi nạp bản "ghi 1 = mở": đúng các nút đó mang biển cấm.
+//   Bản vá 02/10 (đảo 9 lệnh LOCK_BUTTON_W + ép coil 6 = 1) đọc video NGƯỢC chiều -> máy rảnh
+//   khoá hết, đang rang lại mở. Đã trả 9 lệnh về như cũ; coil 6 giữ 0 (mở). ĐỪNG ĐẢO LẠI.
+//   Bản trước khi sửa: F:\Project\112_Quanly\_backup\261003_firmware_truoc-sua-khoa-B2-B6.patch
 //Write
 #define SAMPLE_COIL_W   1 //Enable chart/sample
 #define LOCK_BUTTON_W   2 //Lock save

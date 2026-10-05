@@ -94,6 +94,13 @@ void reset_update(){
         }
         nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
         nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
+        // ⚠ CHIEU KHOA (do 03/10/2026 bang 3 nguon doc lap): bit = 1 la KHOA (hien bien cam),
+        // bit = 0 la MO. (1) ma runtime Delta HMIApp: phan tu chi bam duoc khi bit == muc khoa 0;
+        // (2) bo mo phong HMIApp that: B6=1 -> bien cam tren Loader / Drum+Air / Mixer / Cooling;
+        // (3) soi panel that qua VNC 02/10 sau khi nap ban ep B6=1: dung 4 nut do mang bien cam.
+        // Ban vá 02/10 (ghi 1 de "mo") dua tren doc video NGUOC chieu -> da tra lai.
+        // Coil 6 khong co macro HMI nao ghi -> firmware giu no o 0 (mo khoa nhom nut thiet bi).
+        nodeHMI.writeSingleCoil(LOCK_FEEDER_W-1, 0);  //Mở khoá nhóm nút thiết bị
         nodeHMI.writeSingleRegister(GENERAL_CONTROL_W-1, 0);  //Tắt chuông
         nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 0);  //Clear trend graph
         nodeHMI.writeSingleRegister(WU_W-1, 0);
@@ -453,7 +460,11 @@ void rwHMICoil()
     if (result == nodeHMI.ku8MBSuccess)
     {
         modbusNoteSuccess(MB_DEV_HMI);
-        // SerialComputer.print("B1-B20: ");
+
+        // Chi in khi co coil DOI trang thai (hoac lan doc dau tien). In moi vong quet
+        // la 40 ky tu @9600 ~ 40 ms, du de keo dai loop va lam hong nhip dieu khien.
+        static uint32_t coilPrev = 0xFFFFFFFF;
+        uint32_t coilNow = 0;
 
         uint16_t currentWord = 0;
         uint16_t prevWordIndex = 0xFFFF;
@@ -471,11 +482,33 @@ void rwHMICoil()
 
             uint8_t coilStatus = (currentWord >> bitIndex) & 0x01;
 
-            // SerialComputer.print(coilStatus);
-            // SerialComputer.print(" ");
+            // Coil B1 ung voi cAddress[1] (HMI danh so coil tu 1, vong lap tu 0).
+            // Truoc day gia tri doc ve bi vut di nen LOCK_*_R khong bao gio co du lieu.
+            cAddress[i + 1] = coilStatus;
+            if(coilStatus) coilNow |= (1UL << i);
         }
 
-        // SerialComputer.println();
+        // TU SUA coil 6 (LOCK_FEEDER_W = mo khoa nhom nut thiet bi).
+        // reset_update() chi ghi no DUNG 1 LAN luc khoi dong, lai nam sau dieu kien
+        // readHoldingRegisters thanh cong va KHONG co retry - panel HMI boot cham hon
+        // STM32 nen rat hay truot, ma coil 6 khong co cho ghi nao khac => ket o 0
+        // => 4 nut Loader / Drum+Air / Mixer / Cooling khoa cung vinh vien.
+        // Doc duoc roi thi ep lai o day, moi vong quet, chi ghi khi dang sai.
+        // MO khoa = 0 (bit = 1 la khoa — xem reset_update()).
+        if(cAddress[LOCK_FEEDER_W] != 0){
+            nodeHMI.writeSingleCoil(LOCK_FEEDER_W-1, 0);
+            if(enDebug) SerialComputer.println("FIX: unlock device buttons (coil 6 = 0)");
+        }
+
+        if(enDebug && coilNow != coilPrev){
+            SerialComputer.print("COILS B1-B20: ");
+            for(uint16_t i = 0; i < Numaddress; i++){
+                SerialComputer.print((coilNow >> i) & 1UL);
+                SerialComputer.print(' ');
+            }
+            SerialComputer.println();
+        }
+        coilPrev = coilNow;
     }
     else
     {
