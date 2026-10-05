@@ -128,7 +128,7 @@ boolean memBuzzerEn = false;
 boolean idBaudSetEn = false;        //Enable updating modbus id and baudrate
 
 //Debug
-boolean enDebug = 1; //⚠ BẬT TẠM 02/10/2026 để đọc dãy coil B1–B20 (chẩn đoán khoá B6) — TRẢ VỀ 0 trước khi giao khách
+boolean enDebug = 0; //Enable/disable debug via Serial Computer — TẮT cho bản giao khách
 volatile bool fireCutFlag = false;  // ISR sets this when BT > 250C, loop() handles Modbus
 volatile bool forceDrumFanOnFlag = false;  // ISR sets this when BT/ET > 80C, loop() handles Modbus
 

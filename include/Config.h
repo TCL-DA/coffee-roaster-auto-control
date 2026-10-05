@@ -9,6 +9,11 @@
  *   relay ngoài Modbus ID 7 (CH1 Trống/Quạt, CH2 Khuấy — mixer tách dây riêng, không
  *   đấu chung cooling), HMI đời cũ chưa có ô $M53.
  *   (02/10/2026 đổi sang bộ phần cứng này — trùng bộ của v3.11.0, trên nền code v3.12.0.)
+ *   v3.13.0 (04/10/2026, gói FW-01 — CHƯA NẠP): mã trạng thái 413–421 và 48–50 nay lên
+ *   HMI (trước đó bị bộ lọc MachineStatus.h chặn, gồm mã 413 báo cháy); mã nghiêm trọng
+ *   401–430 ghi lên HMI trước và không rơi khi hàng đợi đầy; chiều khoá B2/B6 trả về đúng
+ *   (1 = KHOÁ); enDebug = 0; cờ MACHINE_HAS_AUTO_ESCAPE_SWITCH ghi đè được lúc build.
+ *   HMI phải có dòng cảnh báo cho 15 mã mới (45–50, 413–421) thì thợ mới thấy chữ.
  *   v3.12.0 so với v3.11.0: RoR BT/ET tính theo chuỗi Artisan (mẫu 1s, Delta Span 10s,
  *   Smoothing 3, Smooth Curves 2 — xem khối ROR_* cuối file), bỏ Kalman; trần RoR ET
  *   ±20 → ±95 °C/phút; watchdog PC_Link đóng gas thay vì gạt nút PC control.
@@ -607,7 +612,11 @@
 //   0 = HMI ĐỜI CŨ chưa có ô này → firmware BỎ QUA $M53 và luôn tự mở escape như cũ.
 // ⛔ Để 1 trên máy mà HMI chưa có ô gạt là $M53 đọc về 0 ⇒ MÁY NGỪNG TỰ XẢ, cà phê
 //    nằm lì trong khay nguội mà không báo lỗi gì. Nạp máy khách thì kiểm ô gạt TRƯỚC.
+// Ghi đè lúc build mà không sửa file: PLATFORMIO_BUILD_FLAGS=-DMACHINE_HAS_AUTO_ESCAPE_SWITCH=1
+// → ra bản đi kèm HMI ĐÃ CÓ ô gạt $M53. Mặc định dưới đây = bản cho panel còn HMI đời cũ.
+#ifndef MACHINE_HAS_AUTO_ESCAPE_SWITCH
 #define MACHINE_HAS_AUTO_ESCAPE_SWITCH    0  // M03: HMI đời cũ chưa có ô gạt $M53 → luôn tự mở escape
+#endif
 
 // ---------------------------------------------------------------------------
 // RoR BT / ET — tính y hệt Artisan lúc đang rang (canvas.py sample_processing):

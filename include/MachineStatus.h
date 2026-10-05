@@ -358,9 +358,16 @@
 // Tổng cộng: ~380 mã trạng thái, bắt đầu từ 1
 
 // ── Biến trạng thái (dùng chung) ─────────────────────────────────────────────
-static uint16_t sttQueue[10];
-static uint8_t  sttQHead = 0;
-static uint8_t  sttQTail = 0;
+// Hàng đợi tuyến tính: sttQueue[0] là mã chờ lâu nhất. Chỉ 10 phần tử nên dồn mảng khi
+// lấy ra là đủ rẻ, đổi lại lấy được mã ở GIỮA hàng (mã nghiêm trọng đi trước).
+#define STT_QUEUE_LEN 10
+// Nhịp ghi mã lên HMI. Bảng cảnh báo của HMI lấy mẫu thanh ghi STT theo chu kỳ riêng: đo trên
+// HMIApp 04/10/2026, mã chỉ đứng 1,0 s thì KHÔNG được ghi nhận, đứng 1,2 s thì được. Mã thường
+// giữ nhịp cũ 1000 ms; mã nghiêm trọng đứng yên 3000 ms rồi mã kế mới được ghi đè, để HMI chắc
+// chắn ghi nhận và thợ kịp thấy.
+#define STT_FLUSH_MS      1000
+#define STT_CRIT_HOLD_MS  3000
+static uint16_t sttQueue[STT_QUEUE_LEN];
 static uint8_t  sttQCount = 0;
 static uint16_t sttLastSent = 0;
 static uint32_t sttLastFlushMs = 0;
@@ -375,6 +382,10 @@ inline bool sttIsOperatorVisible(uint16_t code) {
             (code >= 38 && code <= 43)) return false;
         return true;
     }
+    // 45–47 là bước tiến trình làm nóng (chờ hội tụ / thổi sạch / chế độ chính xác) — vẫn ẩn.
+    // 48–50 là CẢNH BÁO (invariant sai, mất lửa giữa chừng, cảm biến nhảy) — phải lên HMI.
+    // Trước 04/10/2026 dải làm nóng dừng ở 44 nên cả ba mã bị lọc mất.
+    if (code >= 48 && code <= 50) return true;
     if (code >= 51 && code <= 67) {
         if (code == 51 || code == 53 || code == 54 || code == 56 ||
             code == 64 || code == 65) return false;
@@ -437,31 +448,67 @@ inline bool sttIsOperatorVisible(uint16_t code) {
         return true;
     }
     if (code >= 381 && code <= 385) return true;
-    if (code >= 401 && code <= 412) return true;
+    // CẢ KHỐI 401–430 (lỗi nghiêm trọng) luôn lên HMI, kể cả mã thêm sau này.
+    // Trước 04/10/2026 điều kiện dừng ở 412 → 413 (báo cháy RoR), 414 (cắt gas), 417 (kẹt
+    // cửa xả)… thêm sau đều bị lọc mất mà không ai hay. Thêm mã mới vào khối này KHÔNG cần
+    // sửa chỗ này, nhưng HMI phải có dòng cảnh báo cùng số thì thợ mới thấy chữ.
+    if (code >= 401 && code <= 430) return true;
     return false;
 }
 
-// Đẩy mã trạng thái vào hàng đợi (không chặn, bỏ mã cũ nhất nếu đầy)
+// Mã nghiêm trọng (khối 401–430): ghi lên HMI TRƯỚC mã thường, không bị rơi khi hàng đợi đầy.
+inline bool sttIsCritical(uint16_t code) {
+    return code >= 401 && code <= 430;
+}
+
+// Lấy phần tử thứ idx ra khỏi hàng đợi, dồn các mã phía sau lên (giữ nguyên thứ tự)
+static inline void sttQRemove(uint8_t idx) {
+    for (uint8_t i = idx; i + 1 < sttQCount; i++) sttQueue[i] = sttQueue[i + 1];
+    sttQCount--;
+}
+
+// Đẩy mã trạng thái vào hàng đợi (không chặn)
 // Mã không trong whitelist bị lọc bỏ hoàn toàn
+// Hàng đợi đầy: bỏ mã THƯỜNG cũ nhất. Mã nghiêm trọng chỉ bị bỏ khi cả 10 ô đều là mã
+// nghiêm trọng và mã mới cũng nghiêm trọng (bỏ mã cũ nhất).
 inline void setMachineStatus(uint16_t code) {
     if (!sttIsOperatorVisible(code)) return;
     if (code == sttLastSent) return;
-    if (sttQCount >= 10) {
-        sttQTail = (sttQTail + 1) % 10;
-        sttQCount--;
+    const bool critical = sttIsCritical(code);
+    if (critical) {
+        // Mã nghiêm trọng đang chờ sẵn thì không xếp thêm — nơi phát lặp không chiếm hết hàng đợi.
+        // Mã thường KHÔNG gộp: chuỗi 161,162,161 phải gửi đủ để trạng thái cuối trên HMI đúng.
+        for (uint8_t i = 0; i < sttQCount; i++) {
+            if (sttQueue[i] == code) return;
+        }
     }
-    sttQueue[sttQHead] = code;
-    sttQHead = (sttQHead + 1) % 10;
-    sttQCount++;
+    if (sttQCount >= STT_QUEUE_LEN) {
+        uint8_t drop = STT_QUEUE_LEN;                 // chưa tìm thấy mã thường
+        for (uint8_t i = 0; i < sttQCount; i++) {
+            if (!sttIsCritical(sttQueue[i])) { drop = i; break; }
+        }
+        if (drop == STT_QUEUE_LEN) {                  // cả hàng đợi là mã nghiêm trọng
+            if (!critical) return;                    // mã thường không được đẩy mã nghiêm trọng ra
+            drop = 0;
+        }
+        sttQRemove(drop);
+    }
+    sttQueue[sttQCount++] = code;
 }
 
 // Ghi 1 mã lên HMI mỗi 1000ms — gọi từ rwHMI_2() trong vòng lặp chính
+// Có mã nghiêm trọng đang chờ thì ghi mã đó trước (đúng thứ tự phát), rồi mới tới mã thường.
+// Mã đang nằm trên HMI là mã nghiêm trọng thì chờ đủ STT_CRIT_HOLD_MS mới ghi mã kế.
 inline void flushMachineStatus() {
     if (sttQCount == 0) return;
-    if ((uint32_t)(millis() - sttLastFlushMs) < 1000) return;
-    uint16_t code = sttQueue[sttQTail];
-    sttQTail      = (sttQTail + 1) % 10;
-    sttQCount--;
+    const uint16_t gapMs = sttIsCritical(sttLastSent) ? STT_CRIT_HOLD_MS : STT_FLUSH_MS;
+    if ((uint32_t)(millis() - sttLastFlushMs) < gapMs) return;
+    uint8_t idx = 0;
+    for (uint8_t i = 0; i < sttQCount; i++) {
+        if (sttIsCritical(sttQueue[i])) { idx = i; break; }
+    }
+    uint16_t code = sttQueue[idx];
+    sttQRemove(idx);
     sttLastSent   = code;
     sttLastFlushMs = millis();
     nodeHMI.writeSingleRegister(STT_W - 1, code);
