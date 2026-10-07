@@ -1,0 +1,6 @@
+# Board ảo: chỉ giữ mã nguồn. Dữ liệu sinh khi chạy — không đưa vào git
+out/
+log/
+sdcard/
+*.exe
+*.pdb
