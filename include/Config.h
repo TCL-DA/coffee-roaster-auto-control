@@ -143,7 +143,7 @@
 // thì bật ghi trend (để đồ thị có sẵn đoạn tiến tới charge, giống Artisan).
 // Đơn vị 0.1°C: 100 = 10°C, 150 = 15°C.
 // ---------------------------------------------------------------------------
-#define TREND_PRECHARGE_BAND              100
+#define TREND_PRECHARGE_BAND              300  // 07/10/2026 chủ máy: charge 180 thì bật đồ thị từ ~150 °C
 
 // ---------------------------------------------------------------------------
 // AUTO-DIF FEEDER — đóng feeder sớm, tính theo VẬT LÝ (tốc độ hút × lượng cà):

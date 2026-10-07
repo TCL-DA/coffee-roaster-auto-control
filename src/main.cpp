@@ -143,6 +143,7 @@ void loop() {
   controlIO();
   updateStatusMC();         // cập nhật cờ ready/not-ready theo sức khỏe Modbus runtime
   updateRoastPhaseFlags();  // cập nhật cờ giai đoạn rang (Dry/Maillard/DEV) lên HMI
+  roastMarkTask();          // max RoR TP→FCs + đánh dấu mốc cho đồ thị HMI / web PC (không đụng hồ sơ SD)
   mbs.task();               // lúc rang programScan có thể ghi SD lâu — phục vụ app trước khi sang vòng mới
   profTock(PF_PRG);         // gồm cả loadAllProfileDates hiếm gặp ở trên — chấp nhận
 

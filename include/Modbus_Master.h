@@ -81,6 +81,16 @@ void enforceModbusGasCutoff() {
 #endif
 }
 
+// Bật/tắt ghi đồ thị (History H0001). Ghi cả coil B1 cũ lẫn word W40058: điều kiện ghi của HMI
+// đọc bản word qua bit nội bộ, vì panel thật không đọc đúng coil Link2 do board ghi (đo 07/10/2026).
+void setTrendSample(uint8_t v){
+    // Trả lệnh xoá đồ thị về 0 trước khi ghi: lần Start sau ghi 1 lại mới thành cạnh 0→1, HMI mới xoá.
+    // Trước đây ô này kẹt ở 1 từ mẻ thứ 2 → đồ thị nối tiếp mẻ cũ (đo 07/10/2026).
+    if(v) nodeHMI.writeSingleRegister(CLEAR_HIS_CONTROL_W-1, 0);
+    nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, v);
+    nodeHMI.writeSingleRegister(TREND_SAMPLE_W-1, v);
+}
+
 void reset_update(){
     uint8_t result = 0;
     uint16_t fst_address = 0;
@@ -92,7 +102,7 @@ void reset_update(){
             nodeHMI.writeSingleRegister(i, 0);
             delay(1);
         }
-        nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
+        setTrendSample(0);  //Turn off trend graph sample
         nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
         // ⚠ CHIEU KHOA (do 03/10/2026 bang 3 nguon doc lap): bit = 1 la KHOA (hien bien cam),
         // bit = 0 la MO. (1) ma runtime Delta HMIApp: phan tu chi bam duoc khi bit == muc khoa 0;
@@ -562,7 +572,7 @@ void rwHMI_1(){
             DRUM_FAN_BTN_R = DRUM_FAN_BTN_R_CP;
             mbs.Hreg(DRUM_FAN_W, DRUM_FAN_BTN_R);     delay(1);
 #if MACHINE_HAS_IO_RELAY_MODULE
-            nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(1); // Relay ngoài 1: drum/fan
+            nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
 #endif
         }
 
@@ -571,7 +581,7 @@ void rwHMI_1(){
             MIXER_BTN_R = MIXER_BTN_R_CP;
             mbs.Hreg(MIXER_W, MIXER_BTN_R);     delay(1);
 #if MACHINE_HAS_IO_RELAY_MODULE
-            nodeIORelay.writeSingleCoil(CH2_IO_RL_W, MIXER_BTN_R); delay(1); // Relay ngoài 2: mixer
+            nodeIORelay.writeSingleCoil(CH2_IO_RL_W, MIXER_BTN_R); delay(10); // Relay ngoài 2: mixer — chờ 10ms nhả bus (07/10/2026)
 #endif
         }
         
@@ -928,14 +938,21 @@ void readTempBT(){
         modbusNoteSuccess(MB_DEV_BT);
         Temperature_BT = nodeBT.getResponseBuffer(0);// Em lấy data ra sài bằng mảng data[i] với code hiện tại thì data[0]: Nhiệt Độ (PV) -- data[1]: nhiệt độ SET (SV)...b
         if(svEn){
-            nodeBT.writeSingleRegister(btSVReg_R, btSV_R_CV);
-            svEn = false;
+            static uint8_t svRetry = 0;
+            delay(10);   // đồng hồ vừa trả lời lệnh đọc — chờ nhả bus rồi mới ghi (xem readWriteDrumINV)
+            if (nodeBT.writeSingleRegister(btSVReg_R, btSV_R_CV) == nodeBT.ku8MBSuccess || ++svRetry >= 3){
+                if(svRetry >= 3 && enDebug) SerialComputer.println(" ERROR WRITE BT SV - gave up");
+                svEn = false;   // ghi hụt thì vòng sau ghi lại, tối đa 3 lần (timeout 2s/lần)
+                svRetry = 0;
+            }
         }
     }
     else{
         errorCount++;
         modbusNoteFailure(MB_DEV_BT, STT_MB_BT_ERROR);
-        if(enDebug) SerialComputer.println(" ERROR READ BT");
+        if(enDebug){
+            SerialComputer.print(" ERROR READ BT res=0x"); SerialComputer.println(result, HEX);
+        }
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
     delay(10);  // GIỮ 10ms: đồng hồ nhiệt nhả bus chậm — siết 2ms là khung kế bị nuốt
@@ -959,7 +976,9 @@ void readTempET(){
     else{
         errorCount++;
         modbusNoteFailure(MB_DEV_ET, STT_MB_ET_ERROR);
-        if(enDebug) SerialComputer.println(" ERROR READ ET");
+        if(enDebug){
+            SerialComputer.print(" ERROR READ ET res=0x"); SerialComputer.println(result, HEX);
+        }
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
     delay(10);  // GIỮ 10ms: sau ET là hỏi BT ngay — đồng hồ nhiệt cần ~10ms nhả bus,
@@ -994,10 +1013,23 @@ void readWriteDrumINV(){
         Drum_Freq_CP = nodeDrum.getResponseBuffer(0);//
         if(drumHzTimer>1){
             drumHz = map(drumPercent,0,100,3000,5000);
-            nodeDrum.writeSingleRegister(DRUM_INV_FREQ_WRITE_REGISTER, drumHz);
-            drumHzTiEn = 0;   
-            drumHzTimer = 0;  
-            STEP_DRUM_WRITE = "DONE";
+            // Chờ 10ms cho biến tần nhả bus sau lệnh đọc ngay trên. Guard 1ms làm lệnh
+            // ghi hụt (timeout 0xE2, loop đứng 2s) khi thợ bấm ± liên tục — đo 07/10/2026.
+            delay(10);
+            uint8_t wr = nodeDrum.writeSingleRegister(DRUM_INV_FREQ_WRITE_REGISTER, drumHz);
+            delay(10);   // nhả bus trước khi hỏi biến tần gió (readUnder) — cùng lý do
+            drumHzTimer = 0;
+            if (wr == nodeDrum.ku8MBSuccess){
+                drumHzTiEn = 0;
+                STEP_DRUM_WRITE = "DONE";
+            }else{
+                // Ghi hụt: giữ drumHzTiEn để ~2s sau ghi lại, không bỏ im lặng như trước
+                errorCount++;
+                modbusNoteFailure(MB_DEV_DRUM, STT_MB_DRUM_ERROR);
+                if(enDebug){
+                    SerialComputer.print(" ERROR WRITE DRUM INV res=0x"); SerialComputer.println(wr, HEX);
+                }
+            }
         }
     }
     else{
@@ -1115,7 +1147,9 @@ void readUnder(){
         // Đọc Modbus thất bại → tăng bộ đếm lỗi và buzz báo hiệu
         errorCount++;
         modbusNoteFailure(MB_DEV_VACUUM, STT_MB_VACUUM_ERROR);
-        if(enDebug) SerialComputer.println(" ERROR READ UNDER");
+        if(enDebug){
+            SerialComputer.print(" ERROR READ UNDER res=0x"); SerialComputer.println(result, HEX);
+        }
         BUZZ_ON; delay(100); BUZZ_OFF; delay(100);
     }
     delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)

@@ -1658,6 +1658,59 @@ void updateRoastPhaseFlags() {
     nodeHMI.writeSingleRegister(showPointDEV_W      - 1, dev);  delay(1);
 }
 
+/* Max RoR (TP → FCs) + đánh dấu mốc Charge/TP/DE/FCs/Drop cho đồ thị HMI và web PC (07/10/2026, chủ máy).
+   CHỈ ĐỌC profileData (hồ sơ SD) — không ghi gì vào hồ sơ. Gọi trong loop(), không trong ISR; chỉ ghi bus khi đổi.
+   Max RoR chỉ tính khi BT đã qua đáy hiện tại (timeRoast > TIME_TP_DIP): RoR còn sót của preheat ngay sau Charge
+   không bị lấy nhầm; đáy dời sâu hơn thì tính lại. Dừng ở FCs. Giây = lúc đạt max − giây đáy TP thật. */
+void roastMarkTask() {
+    static uint16_t lastCh = 0, lastTp = 0, lastYe = 0, lastFc = 0, lastDr = 0;
+    static int16_t  maxRor = 0;
+    static uint16_t maxT = 0, dipAt = 0;
+    static int32_t  sentMax = -1, sentSec = -1;
+    static uint32_t markMs = 0;
+    static bool     markOn = false;
+
+    if (BT_CHARGE_SAVE == 0) {                       // mẻ mới (STP_DATA xoá hồ sơ) → xoá số cũ
+        maxRor = 0; maxT = 0; dipAt = 0;
+    } else if (timeRoastEn && TIME_FCS_SAVE == 0) {
+        if (TIME_TP_DIP != dipAt) { dipAt = TIME_TP_DIP; maxRor = 0; maxT = 0; }
+        if (timeRoast > TIME_TP_DIP && rorBT > maxRor) { maxRor = rorBT; maxT = timeRoast; }
+    }
+    // Chỉ đưa ra sau khi firmware đã CHỐT TP: trước đó đáy còn dời, số tạm (vd RoR sót của preheat ngay sau Charge)
+    // không được hiện lên HMI / web (đo 07/10: vừa Charge hiện 300 / 1 s).
+    bool daTP = (TIME_TP_SAVE != 0);
+    int16_t raMax = daTP ? maxRor : 0;
+    int32_t sec = (daTP && maxRor > 0 && maxT >= TIME_TP_DIP) ? (int32_t)(maxT - TIME_TP_DIP) : 0;
+    if (raMax != sentMax) { nodeHMI.writeSingleRegister(MAXROR_W - 1, raMax); sentMax = raMax; delay(1); }
+    if (sec != sentSec)    { nodeHMI.writeSingleRegister(MAXROR_SEC_W - 1, (uint16_t)sec); sentSec = sec; delay(1); }
+
+    uint8_t  code = 0;
+    uint16_t bt = 0, tm = 0;
+    if (lastCh == 0 && BT_CHARGE_SAVE != 0)   { code = 1; bt = BT_CHARGE_SAVE; tm = 0; }
+    if (lastTp == 0 && TIME_TP_SAVE != 0)     { code = 2; bt = BT_TP_SAVE;     tm = TIME_TP_SAVE; }
+    if (lastYe == 0 && TIME_YELLOW_SAVE != 0) { code = 3; bt = BT_YELLOW_SAVE; tm = TIME_YELLOW_SAVE; }
+    if (lastFc == 0 && TIME_FCS_SAVE != 0)    { code = 4; bt = BT_FCS_SAVE;    tm = TIME_FCS_SAVE; }
+    if (lastDr == 0 && TIME_DROP_SAVE != 0)   { code = 5; bt = BT_DROP_SAVE;   tm = TIME_DROP_SAVE; }
+    lastCh = BT_CHARGE_SAVE; lastTp = TIME_TP_SAVE; lastYe = TIME_YELLOW_SAVE;
+    lastFc = TIME_FCS_SAVE;  lastDr = TIME_DROP_SAVE;
+
+    if (code) {
+        nodeHMI.writeSingleRegister(MARK_BT_W - 1, bt);                       delay(1);
+        nodeHMI.writeSingleRegister(MARK_ROR_W - 1, (uint16_t)max<int16_t>(rorBT, 0)); delay(1);
+        nodeHMI.writeSingleRegister(MARK_T_W - 1, tm);                        delay(1);
+        nodeHMI.writeSingleRegister(MARK_CODE_W - 1, code);                   delay(1);   // mã ghi SAU CÙNG: PC thấy mã là các ô kia đã đủ
+        markMs = millis(); markOn = true;
+        if (enDebug) { SerialComputer.print("MARK "); SerialComputer.print(code);
+                       SerialComputer.print(" BT="); SerialComputer.println(bt / 10.0f, 1); }
+    } else if (markOn && millis() - markMs >= MARK_HOLD_MS) {
+        nodeHMI.writeSingleRegister(MARK_BT_W - 1, 0);   delay(1);
+        nodeHMI.writeSingleRegister(MARK_ROR_W - 1, 0);  delay(1);
+        nodeHMI.writeSingleRegister(MARK_CODE_W - 1, 0); delay(1);
+        nodeHMI.writeSingleRegister(MARK_T_W - 1, 0);    delay(1);
+        markOn = false;
+    }
+}
+
 /* $M53 autoEscape — MỘT CHỖ DUY NHẤT định nghĩa nghĩa của thanh ghi này.
    1 = máy TỰ mở cửa escape (kèm tách đá) sau khi làm mát xong — nếp cũ từ trước tới nay.
    0 = CHỈ LÀM MÁT: hết giờ tắt bồn nguội, không tách đá, không tự mở cửa; thợ xả tay.
@@ -1680,7 +1733,7 @@ void programScan(){
             DRUM_FAN_BTN_R = 1;
             DRUM_FAN_BTN_R_CP = 1;
             #if MACHINE_HAS_IO_RELAY_MODULE
-                nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(1); // Relay ngoài 1: drum/fan
+                nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
             #endif
             mbs.Hreg(DRUM_FAN_W, DRUM_FAN_BTN_R);
             if (enDebug) SerialComputer.println("BT/ET > 80C: DRUM/FAN forced ON");
@@ -1964,7 +2017,7 @@ void programScan(){
 
                     //Enable record airflow, drum, flame, gas signal
 
-                    nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 1);  //Turn on trend graph sample
+                    setTrendSample(1);  //Turn on trend graph sample
                     timeRoastEn = 1; //Start roaster time
                     setMachineStatus(STT_EVENT_ROAST_START);
                     sdChargeHappened = true;           // Bắt đầu ghi Time2 (timestamp lưu khi ghi)
@@ -2183,11 +2236,11 @@ void programScan(){
         }
 
         //Bật trend SỚM: sau khi bật lửa (gas on), BT tăng dần tới charge —
-        //khi còn cách charge TREND_PRECHARGE_BAND (10°C) thì bật sample để ghi cả đoạn tiến tới charge.
+        //khi còn cách charge TREND_PRECHARGE_BAND (Config.h, nay 30°C) thì bật sample để ghi cả đoạn tiến tới charge.
         //Chỉ khi có cài charge temp; mỗi mẻ 1 lần (trendPreStarted). Charge-press vẫn bật lại phòng hờ.
         if(chargeTemp_R_CV>0 && progStep>=STP_GAS && progStep<STP_TP && !trendPreStarted
            && Temperature_BT>=(chargeTemp_R_CV-TREND_PRECHARGE_BAND)){
-            nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 1);  //Turn on trend graph sample sớm
+            setTrendSample(1);  //Turn on trend graph sample sớm
             trendPreStarted = true;
             delay(1);
         }
@@ -2294,7 +2347,7 @@ void programScan(){
                  
                 timeRoastEn = 0;
 
-                nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
+                setTrendSample(0);  //Turn off trend graph sample
                 timeAbsoluteEn = 0; // Dừng đếm wall time
 
                 buzzerTimerEn = 1; //Call buzzer
@@ -2354,7 +2407,7 @@ void programScan(){
             nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, vacuumSetFlag_R);
 #endif
 
-            nodeHMI.writeSingleCoil(SAMPLE_COIL_W-1, 0);  //Turn off trend graph sample
+            setTrendSample(0);  //Turn off trend graph sample
             nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
             STEP_STRING = "NONE";
         }

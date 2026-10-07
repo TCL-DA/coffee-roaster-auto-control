@@ -383,6 +383,14 @@ uint32_t loaderDbgPrintMs = 0;  //Timestamp to print loader debug once/1s
 #define SCRNUM_CONTROL_W    50
 #define GENERAL_CONTROL_W   51
 #define CLEAR_HIS_CONTROL_W 54
+#define MAXROR_W            44      //40044 - RoR BT lớn nhất từ TP tới FCs, cùng thang rorBT (×100 °C/phút) — chỉ HMI/PC, KHÔNG ghi vào hồ sơ SD
+#define MAXROR_SEC_W        45      //40045 - số giây từ đáy TP tới lúc đạt RoR lớn nhất
+#define MARK_BT_W           46      //40046 - đánh dấu mốc trên đồ thị: BT ×10 tại mốc, giữ MARK_HOLD_MS rồi về 0
+#define MARK_ROR_W          47      //40047 - đánh dấu mốc: RoR BT ×100 tại mốc, giữ MARK_HOLD_MS rồi về 0
+#define MARK_CODE_W         48      //40048 - mã mốc 1 Charge · 2 TP · 3 DE · 4 FCs · 5 Drop, giữ MARK_HOLD_MS rồi về 0
+#define MARK_T_W            49      //40049 - giây của mốc theo đồng hồ rang (0 = Charge; TP = đáy thật), giữ MARK_HOLD_MS rồi về 0
+#define MARK_HOLD_MS        10000   // > chu kỳ History 9 s để bộ ghi HMI chắc chắn bắt được
+#define TREND_SAMPLE_W      58      //40058 - bản word của coil SAMPLE (B1): panel thật không đọc được coil Link2 cho điều kiện ghi History (07/10/2026)
 
 #define GAS_SIGNAL_HMI_W    60      //40060 - Gas signal
 #define BT_HMI_W            61      //40061 - Show BT
