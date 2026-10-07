@@ -1658,6 +1658,16 @@ void updateRoastPhaseFlags() {
     nodeHMI.writeSingleRegister(showPointDEV_W      - 1, dev);  delay(1);
 }
 
+/* Tắt ghi đồ thị TRỄ sau Drop (07/10/2026, đo trên panel thật): tắt ngay lúc Drop thì mốc Drop (giữ MARK_HOLD_MS) không kịp vào
+   mẫu History nào (chu kỳ 9 s) -> đồ thị thiếu vạch Drop. Drop chỉ hẹn tắt; roastMarkTask() tắt khi hết giữ mốc + 1,5 s.
+   Lối huỷ / reset vẫn tắt ngay (trendStopCancel). */
+#define TREND_STOP_DELAY_MS (MARK_HOLD_MS + 1500)
+static bool     trendStopPending = false;
+static uint32_t trendStopMs = 0;
+
+void trendStopLater() { trendStopPending = true; trendStopMs = millis(); }
+void trendStopCancel() { trendStopPending = false; }
+
 /* Max RoR (TP → FCs) + đánh dấu mốc Charge/TP/DE/FCs/Drop cho đồ thị HMI và web PC (07/10/2026, chủ máy).
    CHỈ ĐỌC profileData (hồ sơ SD) — không ghi gì vào hồ sơ. Gọi trong loop(), không trong ISR; chỉ ghi bus khi đổi.
    Max RoR chỉ tính khi BT đã qua đáy hiện tại (timeRoast > TIME_TP_DIP): RoR còn sót của preheat ngay sau Charge
@@ -1670,6 +1680,10 @@ void roastMarkTask() {
     static uint32_t markMs = 0;
     static bool     markOn = false;
 
+    if (trendStopPending && millis() - trendStopMs >= TREND_STOP_DELAY_MS) {
+        trendStopPending = false;
+        setTrendSample(0);                           // Turn off trend graph sample (trễ sau Drop — xem trendStopLater)
+    }
     if (BT_CHARGE_SAVE == 0) {                       // mẻ mới (STP_DATA xoá hồ sơ) → xoá số cũ
         maxRor = 0; maxT = 0; dipAt = 0;
     } else if (timeRoastEn && TIME_FCS_SAVE == 0) {
@@ -2017,7 +2031,7 @@ void programScan(){
 
                     //Enable record airflow, drum, flame, gas signal
 
-                    setTrendSample(1);  //Turn on trend graph sample
+                    trendStopCancel(); setTrendSample(1);  //Turn on trend graph sample
                     timeRoastEn = 1; //Start roaster time
                     setMachineStatus(STT_EVENT_ROAST_START);
                     sdChargeHappened = true;           // Bắt đầu ghi Time2 (timestamp lưu khi ghi)
@@ -2240,7 +2254,7 @@ void programScan(){
         //Chỉ khi có cài charge temp; mỗi mẻ 1 lần (trendPreStarted). Charge-press vẫn bật lại phòng hờ.
         if(chargeTemp_R_CV>0 && progStep>=STP_GAS && progStep<STP_TP && !trendPreStarted
            && Temperature_BT>=(chargeTemp_R_CV-TREND_PRECHARGE_BAND)){
-            setTrendSample(1);  //Turn on trend graph sample sớm
+            trendStopCancel(); setTrendSample(1);  //Turn on trend graph sample sớm
             trendPreStarted = true;
             delay(1);
         }
@@ -2347,7 +2361,7 @@ void programScan(){
                  
                 timeRoastEn = 0;
 
-                setTrendSample(0);  //Turn off trend graph sample
+                trendStopLater();   //Turn off trend graph sample sau khi mốc Drop vào đồ thị (roastMarkTask)
                 timeAbsoluteEn = 0; // Dừng đếm wall time
 
                 buzzerTimerEn = 1; //Call buzzer
@@ -2407,6 +2421,7 @@ void programScan(){
             nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, vacuumSetFlag_R);
 #endif
 
+            trendStopCancel();
             setTrendSample(0);  //Turn off trend graph sample
             nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
             STEP_STRING = "NONE";
