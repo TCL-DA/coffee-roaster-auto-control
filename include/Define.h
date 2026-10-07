@@ -389,7 +389,7 @@ uint32_t loaderDbgPrintMs = 0;  //Timestamp to print loader debug once/1s
 #define MARK_ROR_W          47      //40047 - đánh dấu mốc: RoR BT ×100 tại mốc, giữ MARK_HOLD_MS rồi về 0
 #define MARK_CODE_W         48      //40048 - mã mốc 1 Charge · 2 TP · 3 DE · 4 FCs · 5 Drop, giữ MARK_HOLD_MS rồi về 0
 #define MARK_T_W            49      //40049 - giây của mốc theo đồng hồ rang (0 = Charge; TP = đáy thật), giữ MARK_HOLD_MS rồi về 0
-#define MARK_HOLD_MS        10000   // > chu kỳ History 9 s để bộ ghi HMI chắc chắn bắt được
+#define MARK_HOLD_MS        15000   // > chu kỳ History 12,5 s (HMI T-B13: khung gốc 35 phút) để bộ ghi HMI chắc chắn bắt được
 #define TREND_SAMPLE_W      58      //40058 - bản word của coil SAMPLE (B1): panel thật không đọc được coil Link2 cho điều kiện ghi History (07/10/2026)
 
 #define GAS_SIGNAL_HMI_W    60      //40060 - Gas signal
