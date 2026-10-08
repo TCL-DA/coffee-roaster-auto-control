@@ -60,11 +60,25 @@ static const int PORT_HMI = 1, PORT_DEV = 2, PORT_SCALE = 3, PORT_DEBUG = 4;
 static LARGE_INTEGER g_freq, g_t0;
 // L47: OTL_SIM_TOC = hệ số chạy nhanh của board ảo (mặc định 1 = thời gian thực). HMIApp vẫn chạy thời gian thực.
 static double g_toc = 1.0;
+// 08/10/2026: đổi hệ số khi đang chạy ('set toc 5' lúc hâm nóng, 'set toc 1' trước nạp) — cộng dồn thời gian đã qua vào g_base_us
+// rồi đặt lại mốc g_t0, nên đồng hồ firmware vẫn liền mạch (không nhảy).
+static std::mutex g_t_mx;
+static uint64_t g_base_us = 0;
 static uint64_t now_us()
 {
     LARGE_INTEGER t;
     QueryPerformanceCounter(&t);
-    return (uint64_t)((double)(t.QuadPart - g_t0.QuadPart) * 1e6 * g_toc / (double)g_freq.QuadPart);
+    std::lock_guard<std::mutex> lk(g_t_mx);
+    return g_base_us + (uint64_t)((double)(t.QuadPart - g_t0.QuadPart) * 1e6 * g_toc / (double)g_freq.QuadPart);
+}
+static void doi_toc(double v)
+{
+    LARGE_INTEGER t;
+    QueryPerformanceCounter(&t);
+    std::lock_guard<std::mutex> lk(g_t_mx);
+    g_base_us += (uint64_t)((double)(t.QuadPart - g_t0.QuadPart) * 1e6 * g_toc / (double)g_freq.QuadPart);
+    g_t0 = t;
+    g_toc = v;
 }
 
 static void (*g_isr)() = nullptr;
@@ -209,6 +223,7 @@ struct Plant {
     double vac_pa = 0;
     bool relay_mod[8] = {false};         // module relay ngoài ID 7
     bool flame_fault = false;            // giả lập mất lửa
+    double ign_t = 0;                    // giây kể từ khi relay gas bật mà chưa có lửa (bếp premix mồi ~40 s)
     int bt_fault = 0, et_fault = 0;      // 1 = đồng hồ không trả lời
     uint16_t bt_sv = 0;
     uint16_t air_pid0800 = 0;
@@ -222,8 +237,25 @@ static double air_pct() { return P.air_dac * 100.0 / 4095.0; }
 static void plant_step(double dt)
 {
     std::lock_guard<std::mutex> lk(g_plant_mx);
+    // Bếp PREMIX (OTL-30A — chủ máy xác nhận 08/10/2026): quạt trộn sẵn gió + gas. Relay gas bật -> quạt xả buồng đốt + mồi,
+    // ~40 s sau mới có lửa và tín hiệu lửa (firmware PH_IGNITE_TMO_PREMIX = 65 s ghi "premix mồi chậm ~40 s"). Đã cháy thì
+    // không tắt khi % gas về 0: công suất chỉ xuống tới LỬA TỐI THIỂU; tắt hẳn là ngắt relay van gas.
+    const double IGN_DELAY = 40.0;
     bool gas_rl = g_pin_out[P_GAS_RL];
-    P.flame = gas_rl && gas_pct() > 2.0 && !P.flame_fault;
+    if (gas_rl && !P.flame_fault) {
+        if (!P.flame) {
+            P.ign_t += dt;
+            if (P.ign_t >= IGN_DELAY) {
+                P.flame = true;
+                log_line("[MAY]", "BEP PREMIX: CO LUA sau " + std::to_string((int)P.ign_t) + " s moi");
+            }
+        }
+    } else {
+        if (P.flame)
+            log_line("[MAY]", "BEP PREMIX: TAT LUA (relay gas tat hoac mat lua)");
+        P.flame = false;
+        P.ign_t = 0;
+    }
     // trống quay theo biến tần (ramp 20 Hz/s)
     double d = P.drum_hz_set - P.drum_hz;
     double stepv = 2000.0 * dt;
@@ -265,10 +297,22 @@ static void plant_step(double dt)
     //   BE  thất thoát khi lồng RỖNG (khí nóng đi thẳng ra ống khói; chọn để gas 50 % cân bằng ~320 °C)
     //   C   khí -> hạt   D   khí -> vách   E   vách nóng lên   K1/K2  hạt nhận từ khí / từ vách
     //   TAU trễ đầu dò khi có hạt (s)   W, TAU_E  lồng rỗng: đầu dò = W·ET + (1−W)·vách
-    const double A = 0.05371, B = 0.00479, BE = 0.0168, C = 0.02428, D = 0.00100, E = 0.00177;
-    const double K1 = 0.00010, K2 = 0.00532, TAU = 33.0, W = 0.20, TAU_E = 20.3;
+    // 08/10/2026 tối — KHỚP LẠI (fit_plant2.py; chủ máy: "ET giả trân", "tăng nhiệt trước charge quá chậm", "biết nguyên lý
+    // bếp premix không"): thêm khoảng ET−BT theo BT của mẻ 30 kg thật CÓ ET (30kg_auto_ThaiLan) + ràng buộc hâm theo đúng
+    // firmware. Bản 03/10: W chạm biên 0,2 -> đầu dò lồng rỗng gần như đọc vách -> hâm 4 °C/phút, ET suy ra lệch xa thực tế.
+    // 08/10/2026 23:4x — đầu đốt PREMIX, khớp lại (fit_plant2.py) trên ĐÚNG thang điều khiển: macro HMI ép $M28 ≤ 50 % khi
+    // $M29 = 1 (premix) -> lệnh gas 100 % = đầu ra van 50 % = lửa max. Công suất = QMAX·(PMIN + (1−PMIN)·u^NEXP), u = lệnh gas
+    // = đầu ra van × 2 (bản trước coi đầu ra 20 % là lửa nhỏ -> gas mồi lên nạp mất 3 phút). Đo trên mô hình: Preheat lệnh 40 %
+    // 15 phút -> BT 211 °C; START: gió làm nguội trong 40 s mồi lửa, từ lúc có lửa tới nạp 90 s, RoR 19,7 -> 13,1 °C/phút;
+    // có hạt: lệch mẻ 30 kg 1904/1 ≤ 1,5 °C sau TP; ET − BT 73…80 quanh TP, 63 ở 155 °C, 21 lúc xả (mẻ 30 kg có ET: 72/63/22).
+    // W, TAU_E chỉ lồng rỗng: cặp nhiệt nằm trong luồng khí nóng, trễ 10 s.
+    const double QMAX = 2.029248, PMIN = 0.230391, NEXP = 1.604767;
+    const double B = 0.001414, BE = 0.005626, C = 0.012668, D = 0.012869, E = 0.006247;
+    const double K1 = 0.000762, K2 = 0.00355, TAU = 33.79, W = 0.95, TAU_E = 10.0;
     double airf = 0.25 + 0.75 * air_pct() / 100.0;
-    double q_burner = P.flame ? gas_pct() * A : 0.0;
+    double u = gas_pct() * 2.0 / 100.0;                          // premix: đầu ra van 0…50 % = lệnh 0…100 %
+    if (u > 1.0) u = 1.0;
+    double q_burner = P.flame ? QMAX * (PMIN + (1.0 - PMIN) * pow(u, NEXP)) : 0.0;
     double beans = P.beans_kg / 30.0;                           // 1 = mẻ 30 kg
     bool loaded = P.beans_kg > 0;
     double q_loss = (P.et - P.amb) * (loaded ? B : BE) * airf;  // gió hút nhiệt ra ống khói
@@ -751,12 +795,16 @@ static std::string sim_command(const std::string &cmd)
         else if (key == "source_kg") P.source_kg = v;
         else if (key == "beans_kg") P.beans_kg = v;
         else if (key == "flame_fault") P.flame_fault = v != 0;
+        else if (key == "toc") {
+            if (v < 1.0 || v > 20.0) return "{\"loi\":\"toc 1..20\"}";
+            doi_toc(v);
+        }
         else if (key == "bt_fault") P.bt_fault = (int)v;
         else if (key == "et_fault") P.et_fault = (int)v;
         else return "{\"loi\":\"khoa la\"}";
         return "{\"ok\":1}";
     }
-    return "{\"loi\":\"lenh: status | set amb|et|bt|drum_wall|hopper_kg|beans_kg|flame_fault|bt_fault|et_fault <so>\"}";
+    return "{\"loi\":\"lenh: status | set amb|et|bt|drum_wall|hopper_kg|beans_kg|flame_fault|bt_fault|et_fault|toc <so>\"}";
 }
 
 static void ctl_thread()
