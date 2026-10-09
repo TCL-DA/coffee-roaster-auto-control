@@ -2,7 +2,13 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại (20/09/2026) — firmware v3.12.0: máy 30 kg tự động rang cacao,
+ * Cấu hình hiện tại (09/10/2026) — firmware v3.13.1 cho máy 30 kg cacao M06
+ *   (docs/config/config-30kg-M06.md), đi với HMI DOP-110CS. KHÔNG cân (feeder chạy
+ *   theo timer), CÓ vacuum (cảm biến áp đấu ACI biến tần DRUM slave 4), CÓ biến trở VR,
+ *   KHÔNG module IO relay ngoài. Nền v3.13.0-rc1 (ca36125) + sửa ghi Drum / SV BT chờ
+ *   10 ms nhả bus và thử lại (lấy từ 51eba14). KHÔNG có phần đồ thị/mốc W40044–49,
+ *   W40058 của bản HMI 110WS — HMI 110CS dùng W40047 vào việc khác.
+ * (Bản trước) Cấu hình (20/09/2026) — firmware v3.12.0: máy 30 kg tự động rang cacao,
  *   mã hồ sơ M03 (docs/config/config-30kg-cacao-M03.md). CÓ loader (đầu cân
  *   Bluetooth), CÓ vacuum (cảm biến áp đấu ACI biến tần GIÓ slave 5), CÓ biến tần
  *   drum, KHÔNG biến trở VR vật lý (setpoint drum/gió/gas lấy từ HMI), CÓ module IO
@@ -57,8 +63,8 @@
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần (slave 4)
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió nối RS485 Modbus (cần cho vacuum)
 #define MACHINE_HAS_VACUUM_SENSOR         1  // CÓ cảm biến áp hút — PID gió qua biến tần gió
-#define MACHINE_HAS_SCALE_FEEDER          1  // CÓ đầu cân Bluetooth cho auto-loader
-#define MACHINE_HAS_IO_RELAY_MODULE       1  // M03 CÓ module relay ngoài Modbus (ID 7): CH1 Trống/Quạt, CH2 Khuấy
+#define MACHINE_HAS_SCALE_FEEDER          0  // M06 KHÔNG lắp đầu cân — feeder chạy theo timer
+#define MACHINE_HAS_IO_RELAY_MODULE       0  // M06 KHÔNG có module relay ngoài
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
 #define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30 kg
@@ -120,7 +126,7 @@
 // Dùng khi cảm biến áp suất nối vào ngõ analog ACI của biến tần drum thay vì quạt
 // gió. Cùng địa chỉ thanh ghi (AIR_INV_ACI_RAW_REGISTER) vì 2 biến tần cùng model.
 // ---------------------------------------------------------------------------
-#define MACHINE_VACUUM_FROM_DRUM          0  // cảm biến áp đấu ACI biến tần GIÓ (slave 5)
+#define MACHINE_VACUUM_FROM_DRUM          1  // M06: cảm biến áp đấu ACI biến tần DRUM (slave 4)
 
 // ---------------------------------------------------------------------------
 // Địa chỉ thanh ghi Modbus của biến tần drum.
@@ -135,7 +141,7 @@
 // 0 = đọc VR vật lý trên chân analog của board.
 // 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
 // ---------------------------------------------------------------------------
-#define MACHINE_VR_SOURCE_FROM_HMI        1  // M03 KHÔNG có biến trở vật lý — setpoint lấy từ HMI
+#define MACHINE_VR_SOURCE_FROM_HMI        0  // M06 CÓ biến trở VR vật lý
 
 // ---------------------------------------------------------------------------
 // TREND bật SỚM trước charge.
@@ -615,7 +621,7 @@
 // Ghi đè lúc build mà không sửa file: PLATFORMIO_BUILD_FLAGS=-DMACHINE_HAS_AUTO_ESCAPE_SWITCH=1
 // → ra bản đi kèm HMI ĐÃ CÓ ô gạt $M53. Mặc định dưới đây = bản cho panel còn HMI đời cũ.
 #ifndef MACHINE_HAS_AUTO_ESCAPE_SWITCH
-#define MACHINE_HAS_AUTO_ESCAPE_SWITCH    0  // M03: HMI đời cũ chưa có ô gạt $M53 → luôn tự mở escape
+#define MACHINE_HAS_AUTO_ESCAPE_SWITCH    0  // M06: chưa chắc panel đang chạy HMI có ô $M53 → luôn tự mở escape như cũ
 #endif
 
 // ---------------------------------------------------------------------------
