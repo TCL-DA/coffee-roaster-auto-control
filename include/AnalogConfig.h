@@ -15,6 +15,7 @@ float smoothedGasAI = 0;
 #define AI_CAL_ZERO_MAX_PERCENT  3   // mốc 0% không bao giờ được nằm cao hơn 3% thang đo
 #define AI_CAL_HIGH_PERCENT      90
 #define AI_CAL_STABLE_MS         12000UL
+#define AI_CAL_RAISE_STABLE_MS   1000UL  // nâng mốc 100% (VR vượt đỉnh đang dùng) chỉ cần đứng yên 1 s
 #define AI_CAL_DELTA_RAW         8
 #define AI_CAL_MARGIN_RAW        5
 #define AI_CAL_SAVE_INTERVAL_MS  30000UL
@@ -48,6 +49,25 @@ static int16_t analogPercentFromRaw(uint16_t rawValue, float smoothedRaw, uint16
 
     float adjustedRaw = smoothedRaw - (float)minRaw;
     return constrain((int16_t)((adjustedRaw * 100.0f + ((float)span / 2.0f)) / (float)span), 0, 100);
+}
+
+// 09/10/2026 xưởng: lịch sử gas có gai tụt 1–2 mẫu (100→96→100) dù thợ không vặn — biên 100% chốt theo raw
+// tức thời, rời biên lại tính theo EMA -> nhiễu ADC lật qua lại. Thêm trễ: rời 100 phải lùi quá AI_PERCENT_EDGE_HYST,
+// ở giữa đổi < AI_PERCENT_HYST thì giữ số cũ.
+#define AI_PERCENT_HYST       1
+#define AI_PERCENT_EDGE_HYST  3
+static int16_t aiLastPercent[3] = {0, 0, 0};
+
+static int16_t analogPercentStable(uint8_t channel, uint16_t rawValue, float smoothedRaw, uint16_t minRaw, uint16_t maxRaw) {
+    int16_t pct = analogPercentFromRaw(rawValue, smoothedRaw, minRaw, maxRaw);
+    int16_t last = aiLastPercent[channel];
+
+    // Chỉ trễ ở biên 100% (nơi raw tức thời / EMA lật nhau). Không trễ biên 0% — sẽ thành vùng chết 1–3% gas.
+    if (last == 100 && pct >= 100 - AI_PERCENT_EDGE_HYST) pct = 100;
+    else if (pct != 0 && pct != 100 && abs(pct - last) <= AI_PERCENT_HYST) pct = last;
+
+    aiLastPercent[channel] = pct;
+    return pct;
 }
 
 void analogCalLoadFromSD() {
@@ -168,10 +188,13 @@ static void analogCalTrackRange(uint8_t channel, uint16_t rawValue, uint16_t *ma
         return;
     }
 
-    if (now - aiCalStableHighMillis[channel] < AI_CAL_STABLE_MS) return;
-
     uint16_t learnedMax = aiCalStableHighRaw[channel] + AI_CAL_MARGIN_RAW;
     if (learnedMax > AI_CAL_MAX_RAW) learnedMax = AI_CAL_MAX_RAW;
+
+    // 09/10/2026 xưởng: mặc định V400 = 650 thấp hơn đỉnh VR thật -> vặn tới ~số 7 đã 100%, phải giữ đỉnh 12 s mới
+    // tự nâng (bàn thử không thẻ SD thì mỗi lần bật lại về 650). NÂNG mốc chỉ cần đứng yên AI_CAL_RAISE_STABLE_MS.
+    uint32_t needMs = (learnedMax > *maxValue) ? AI_CAL_RAISE_STABLE_MS : AI_CAL_STABLE_MS;
+    if (now - aiCalStableHighMillis[channel] < needMs) return;
 
     // HẠ mốc 100% chỉ khi VR đứng yên ở mức màn ĐANG hiện 100% sẵn (≥ AI_PERCENT_FULL_PERCENT) — hạ lúc đó
     // không đổi số trên màn. Bản cũ hạ ở bất kỳ mức ≥ 90%: thợ đỗ 93% → 12 s sau tự nhảy 100%, thợ vặn
@@ -333,7 +356,7 @@ void analogIn() {
             int rawAirflowAI = analogRead(CH1_ANALOG);
             analogCalTrackRange(0, (uint16_t)rawAirflowAI, &CH1AInMax);
             smoothedAirflowAI = (alpha * rawAirflowAI) + (1 - alpha) * smoothedAirflowAI;
-            airflowPercent = analogPercentFromRaw((uint16_t)rawAirflowAI, smoothedAirflowAI, aiCalMinRaw[0], CH1AInMax);
+            airflowPercent = analogPercentStable(0, (uint16_t)rawAirflowAI, smoothedAirflowAI, aiCalMinRaw[0], CH1AInMax);
 #endif
         } else if (naviSourceAIR == SOURCE_AI_PC) {
             airflowPercent = airflowPC;
@@ -350,7 +373,7 @@ void analogIn() {
         int rawDrumAI = analogRead(CH2_ANALOG);
         analogCalTrackRange(1, (uint16_t)rawDrumAI, &CH2AInMax);
         smoothedDrumAI = (alpha * rawDrumAI) + (1 - alpha) * smoothedDrumAI;
-        drumPercent = analogPercentFromRaw((uint16_t)rawDrumAI, smoothedDrumAI, aiCalMinRaw[1], CH2AInMax);
+        drumPercent = analogPercentStable(1, (uint16_t)rawDrumAI, smoothedDrumAI, aiCalMinRaw[1], CH2AInMax);
 #endif
     } else if (naviSourceDRUM == SOURCE_AI_PC) {
         drumPercent = drumPC;
@@ -366,7 +389,7 @@ void analogIn() {
         int rawGasAI = analogRead(CH3_ANALOG);
         analogCalTrackRange(2, (uint16_t)rawGasAI, &CH3AInMax);
         smoothedGasAI = (alpha * rawGasAI) + (1 - alpha) * smoothedGasAI;
-        gasPercent = analogPercentFromRaw((uint16_t)rawGasAI, smoothedGasAI, aiCalMinRaw[2], CH3AInMax);
+        gasPercent = analogPercentStable(2, (uint16_t)rawGasAI, smoothedGasAI, aiCalMinRaw[2], CH3AInMax);
 #endif
     } else if (naviSourceGAS == SOURCE_AI_PC) {
         gasPercent = gasPC;
