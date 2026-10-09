@@ -253,6 +253,9 @@ void timerPoll_1000ms(){
    SD.open khi sdOK=false — thẻ lỗi làm thư viện chờ timeout, vòng quét khựng theo. */
 bool sdEnsure(){
     if(sdOK) return true;
+    // 09/10/2026 đo trên bàn thử (không có thẻ SD): SD.begin() chờ timeout ~2 s -> vòng quét khựng, giây rang đứng 2–3 s mỗi
+    // SD_RETRY_MS (10 s), HMI báo giả "mất kết nối board". Đang rang / làm nóng thì KHÔNG thử khởi tạo lại; máy rảnh mới thử.
+    if(START_BTN_R == 1 || timeRoastEn == 1 || WU_R == 1) return false;
     if(millis() - sdRetryMs < SD_RETRY_MS) return false;
     sdRetryMs = millis();
     sdOK = SD.begin(chipSelect);
@@ -1914,7 +1917,12 @@ void programScan(){
                     //Debug
                     STEP_STRING = "BT COOLS DOWN";
                     if(Temperature_BT<=(chargeTemp_R_CV-turnGasPoint_R_CV)){
-                        if(READ_CH1==HIGH){
+                        // 09/10/2026 (chủ máy, bàn thử): trước đây chỉ bật gas khi CH1 KHÔNG có lửa (READ_CH1==HIGH).
+                        // Cảm biến lửa báo "có lửa" sẵn (kẹt, hoặc bàn thử nối cứng) -> không bật relay mà vẫn sang
+                        // STP_GAS/STP_CHECK -> BT nguội mãi, mẻ treo không báo gì. Nay bật theo trạng thái RELAY gas.
+                        if(READ_CH1==LOW && START_GAS_BTN_R==0 && enDebug)
+                            SerialComputer.println("WARN: flame signal ON while gas relay OFF (sensor stuck?)");
+                        if(START_GAS_BTN_R==0){
                             naviSourceGAS = SOURCE_AI_AUTO; //Đổi source gas sang auto
                             gasPercent = 50;
                             nodeHMI.writeSingleRegister(START_GAS_BTN_W-1, 1);  //Turn on gas
@@ -2253,7 +2261,8 @@ void programScan(){
         //khi còn cách charge TREND_PRECHARGE_BAND (Config.h, nay 30°C) thì bật sample để ghi cả đoạn tiến tới charge.
         //Chỉ khi có cài charge temp; mỗi mẻ 1 lần (trendPreStarted). Charge-press vẫn bật lại phòng hờ.
         if(chargeTemp_R_CV>0 && progStep>=STP_GAS && progStep<STP_TP && !trendPreStarted
-           && Temperature_BT>=(chargeTemp_R_CV-TREND_PRECHARGE_BAND)){
+           && Temperature_BT>=(chargeTemp_R_CV-TREND_PRECHARGE_BAND)
+           && rorBT>=TREND_PRECHARGE_MIN_ROR){            // BT đang tăng về charge (không ghi đoạn mồi / tụt nhiệt)
             trendStopCancel(); setTrendSample(1);  //Turn on trend graph sample sớm
             trendPreStarted = true;
             delay(1);

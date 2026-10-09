@@ -144,6 +144,9 @@
 // Đơn vị 0.1°C: 100 = 10°C, 150 = 15°C.
 // ---------------------------------------------------------------------------
 #define TREND_PRECHARGE_BAND              300  // 07/10/2026 chủ máy: charge 180 thì bật đồ thị từ ~150 °C
+// 09/10/2026 chủ máy: "chỉ chạy đồ thị khi gần charge thôi" — máy đã nóng sẵn (BT > charge − band) thì điều kiện trên đúng
+// ngay lúc bật gas -> đồ thị ghi cả 40 s mồi premix + đoạn BT tụt. Thêm: chỉ bật khi BT ĐANG TĂNG (rorBT, ×100 °C/phút).
+#define TREND_PRECHARGE_MIN_ROR           300  // 3 °C/phút
 
 // ---------------------------------------------------------------------------
 // AUTO-DIF FEEDER — đóng feeder sớm, tính theo VẬT LÝ (tốc độ hút × lượng cà):
