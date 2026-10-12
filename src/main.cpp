@@ -37,14 +37,14 @@ void debug();
 // profMax giữ ĐỈNH kể từ lần in trước — bắt được cú timeout Modbus 2s hiếm gặp
 // mà số đo lần cuối không thấy. In gộp trong debug() mỗi ~2s (cổng debug
 // 9600 baud ≈ 1ms/ký tự, in thưa để chính phép đo không làm chậm vòng loop).
-#define PROF_N 13
+#define PROF_N 14
 enum { PF_ANA, PF_ET, PF_BT, PF_DRUM, PF_VAC, PF_PCL, PF_SLV,
-       PF_COIL, PF_MEM, PF_HMI1, PF_HMI2, PF_IO, PF_PRG };
+       PF_COIL, PF_MEM, PF_HMI1, PF_HMI2, PF_IO, PF_PRG, PF_FAST };
 static uint32_t profT0;
 static uint16_t profMs[PROF_N];    // số đo vòng mới nhất (ms)
 static uint16_t profMax[PROF_N];   // đỉnh kể từ lần in trước (ms)
 static const char* const profName[PROF_N] = {
-  "ANA","ET","BT","DRUM","VAC","PCL","SLV","COIL","MEM","HMI1","HMI2","IO","PRG"};
+  "ANA","ET","BT","DRUM","VAC","PCL","SLV","COIL","MEM","HMI1","HMI2","IO","PRG","FAST"};   // FAST = một lượt rwHMI_Fast()
 static inline void profTick(){ profT0 = millis(); }
 static inline void profTock(uint8_t i){
   uint16_t d = (uint16_t)(millis() - profT0);
@@ -96,6 +96,12 @@ void loop() {
   mbs.task();
   profTock(PF_BT);
 
+  // Đọc nhanh khối nút lệnh HMI + đổi relay ngay (10/10/2026, xem rwHMI_Fast trong Modbus_Master.h): 3 lượt rải giữa
+  // các giao dịch chậm + lượt đọc đủ của rwHMI_1 = nút được soi 4 lần / vòng -> bấm Burner / Charge / Drop / Escape…
+  // là relay nhảy gần như tức thì thay vì chờ hết vòng.
+  rwHMI_Fast();
+  profTock(PF_FAST);
+
   if (MACHINE_HAS_DRUM_SPEED_CONTROL && chDrumFlag) {
     readWriteDrumINV();
     mbs.task();
@@ -108,6 +114,9 @@ void loop() {
     mbs.task();
     profTock(PF_VAC);
   }
+
+  rwHMI_Fast();
+  profTock(PF_FAST);
 
   handle_PC_Link();       // cập nhật khối app OTL trước; mbs.task() cuối handle_Modbus_Slave phục vụ cả 2 map
   profTock(PF_PCL);
@@ -132,6 +141,9 @@ void loop() {
     rwIORelayCoil();
     profTock(PF_IO);
   }
+
+  rwHMI_Fast();           // trước programScan (đoạn dài nhất còn lại của vòng, có khi ghi SD)
+  profTock(PF_FAST);
 
   if(enLoadDateProfile) {
     loadAllProfileDates(); // Load lại ngày táng của tất cả hồ sơ từ SD card vào HMI (sau khi có lệnh từ HMI)

@@ -536,6 +536,131 @@ void rwHMICoil()
     }
 }
 
+// ── NÚT LỆNH -> RELAY: ĐỌC NHANH (10/10/2026) ───────────────────────────────────────────────────────────────
+// Chủ máy: "bật tắt burner, charge, drop, escape… bấm vô có 1 sự delay nhẹ rồi relay mới bật — fix cho mượt, nhạy nhất
+// có thể, và không lỗi".
+// TRƯỚC: nút chỉ được đọc MỘT lần mỗi vòng (rwHMI_1) và relay chỉ đổi ở cuối vòng (controlIO sau programScan)
+//   -> trễ = chờ tới lượt đọc (0..1 vòng) + rwHMI_2 + relay ngoài + programScan.
+// NAY:  (1) đọc được nút là đổi relay NGAY (hmiApplyOutputs);
+//       (2) rwHMI_Fast() đọc RIÊNG 12 word nút, chen giữa các giao dịch chậm của vòng (main.cpp) -> nút được soi
+//           4 lần / vòng thay vì 1.
+// AN TOÀN — giữ nguyên mọi chốt đang có:
+//   · relay vẫn đi qua enforceModbusGasCutoff() rồi mới controlIO(): đang chốt lỗi Modbus thì gas KHÔNG bật được;
+//   · programScan không gán thẳng biến nút (chỉ ghi lên HMI rồi chờ đọc lại) nên đổi relay sớm không sinh xung nào
+//     mà trước đây không có; lệnh tự động của board (tự nạp, tự xả…) nhờ đọc lại sớm nên cũng tới relay nhanh hơn;
+//   · lượt đọc nhanh hỏng thì ĐẾM như mọi giao dịch HMI khác (modbusNoteFailure): thời gian tới lúc cắt gas vẫn là
+//     5 lần chờ hết giờ liên tiếp × 2 s như trước. (Bản nháp đầu KHÔNG đếm -> soát mã chỉ ra: lúc HMI vừa rớt, lượt
+//     nhanh chờ 2 s vô ích rồi rwHMI_1 mới đếm phát đầu, cắt gas trễ thêm 2 s; lỗi chập chờn thì không ai báo.)
+//   · bộ đếm lỗi HMI > 0 -> BỎ lượt nhanh tới khi một giao dịch chính của HMI thành công đưa bộ đếm về 0: một giao
+//     dịch hỏng là chờ hết 2 s của thư viện, không chồng thêm lên vòng đang chậm; không còi trong lượt nhanh;
+//   · chỉ gọi trong loop(), KHÔNG gọi trong ISR.
+#define HMI_FAST_BTN_COUNT  12      // W40001 START … W40012 AFTERBURNER (mọi nút đổi relay nằm trong khối này)
+
+// Áp trạng thái nút vừa đọc về (dAddress_CP[1..14]) vào dAddress + gương Artisan / relay ngoài.
+// Dùng chung cho rwHMI_1() (đọc đủ 41 word) và rwHMI_Fast() — HÀNH VI từng nút giữ nguyên như đoạn cũ trong rwHMI_1.
+static void hmiApplyButtons(){
+    //Start
+    if(START_BTN_R != START_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        START_BTN_R = START_BTN_R_CP;
+    }
+
+    //Gas button
+    if(START_GAS_BTN_R != START_GAS_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        START_GAS_BTN_R = START_GAS_BTN_R_CP;
+        mbs.Hreg(IGNITION_artisan_W, START_GAS_BTN_R);  delay(1);
+    }
+
+    //Drum/fan button
+    if(DRUM_FAN_BTN_R != DRUM_FAN_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        DRUM_FAN_BTN_R = DRUM_FAN_BTN_R_CP;
+        mbs.Hreg(DRUM_FAN_W, DRUM_FAN_BTN_R);     delay(1);
+#if MACHINE_HAS_IO_RELAY_MODULE
+        nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
+#endif
+    }
+
+    //Mixer button
+    if(MIXER_BTN_R != MIXER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        MIXER_BTN_R = MIXER_BTN_R_CP;
+        mbs.Hreg(MIXER_W, MIXER_BTN_R);     delay(1);
+#if MACHINE_HAS_IO_RELAY_MODULE
+        nodeIORelay.writeSingleCoil(CH2_IO_RL_W, MIXER_BTN_R); delay(10); // Relay ngoài 2: mixer — chờ 10ms nhả bus (07/10/2026)
+#endif
+    }
+
+    //Cooling button
+    if(COOLING_BTN_R != COOLING_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        COOLING_BTN_R = COOLING_BTN_R_CP;
+        mbs.Hreg(MI_COOL_artisan_W, COOLING_BTN_R);     delay(1);
+    }
+
+    //Charge button
+    if(CHARGE_BTN_R != CHARGE_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        CHARGE_BTN_R = CHARGE_BTN_R_CP;
+        mbs.Hreg(CHARGE_artisan_W, CHARGE_BTN_R);       delay(1);
+    }
+
+    //Drop button
+    if(DROP_BTN_R != DROP_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        DROP_BTN_R = DROP_BTN_R_CP;
+        mbs.Hreg(DROP_artisan_W, DROP_BTN_R);
+    }
+
+    //Escape button
+    if(ESCAPE_BTN_R != ESCAPE_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        ESCAPE_BTN_R = ESCAPE_BTN_R_CP;
+        mbs.Hreg(ESCAPE_artisan_W, ESCAPE_BTN_R);       delay(1);
+    }
+
+    //AB button
+    if(AB_BTN_R != AB_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        AB_BTN_R = AB_BTN_R_CP;
+    }
+
+    //Destoner button
+    if(DESTONER_BTN_R != DESTONER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        DESTONER_BTN_R = DESTONER_BTN_R_CP;
+    }
+
+    //Feeder button
+    if(FEEDER_BTN_R != FEEDER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        FEEDER_BTN_R = FEEDER_BTN_R_CP;
+    }
+
+    //Save button
+    if(SAVE_BTN_R != SAVE_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        SAVE_BTN_R = SAVE_BTN_R_CP;
+    }
+
+    //PC control button
+    if(PC_CONTROL_BTN_R != PC_CONTROL_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
+        PC_CONTROL_BTN_R = PC_CONTROL_BTN_R_CP;
+    }
+}
+
+// Đổi relay theo nút vừa áp — cùng thứ tự với cuối loop(): chốt cắt gas trước, relay sau.
+static inline void hmiApplyOutputs(){
+    enforceModbusGasCutoff();
+    controlIO();
+}
+
+// Lượt đọc nhanh: chỉ khối nút W40001..W40012 (khung trả lời 29 byte ≈ 3 ms @115200), áp nút + relay ngay.
+void rwHMI_Fast(){
+    if(modbusFailCount[MB_DEV_HMI] != 0) return;
+    if(nodeHMI.readHoldingRegisters(0, HMI_FAST_BTN_COUNT) != nodeHMI.ku8MBSuccess){
+        errorCount++;
+        modbusNoteFailure(MB_DEV_HMI, STT_MB_HMI_ERROR);    // đếm + báo như giao dịch HMI khác; không còi ở lượt nhanh
+        if(enDebug) SerialComputer.println("ERRO HMI FAST BUTTON POLL");
+        return;
+    }
+    for(uint8_t i = 1; i <= HMI_FAST_BTN_COUNT; i++){
+        dAddress_CP[i] = nodeHMI.getResponseBuffer(i-1);
+    }
+    hmiApplyButtons();
+    hmiApplyOutputs();
+    delay(2);   // guard khung HMI @115200 (như rwHMI_1)
+}
+
 //Read 40000 to 40047 HMI
 void rwHMI_1(){
     uint8_t result = 0;
@@ -556,83 +681,10 @@ void rwHMI_1(){
         YEAR_R   = YEAR_R_CP;
         //---------------------------READ HMI
 
-        //Start
-        if(START_BTN_R != START_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            START_BTN_R = START_BTN_R_CP;
-        }
-
-        //Gas button
-        if(START_GAS_BTN_R != START_GAS_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            START_GAS_BTN_R = START_GAS_BTN_R_CP;
-            mbs.Hreg(IGNITION_artisan_W, START_GAS_BTN_R);  delay(1);
-        }
-
-        //Drum/fan button
-        if(DRUM_FAN_BTN_R != DRUM_FAN_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            DRUM_FAN_BTN_R = DRUM_FAN_BTN_R_CP;
-            mbs.Hreg(DRUM_FAN_W, DRUM_FAN_BTN_R);     delay(1);
-#if MACHINE_HAS_IO_RELAY_MODULE
-            nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
-#endif
-        }
-
-        //Mixer button
-        if(MIXER_BTN_R != MIXER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            MIXER_BTN_R = MIXER_BTN_R_CP;
-            mbs.Hreg(MIXER_W, MIXER_BTN_R);     delay(1);
-#if MACHINE_HAS_IO_RELAY_MODULE
-            nodeIORelay.writeSingleCoil(CH2_IO_RL_W, MIXER_BTN_R); delay(10); // Relay ngoài 2: mixer — chờ 10ms nhả bus (07/10/2026)
-#endif
-        }
-        
-        //Cooling button
-        if(COOLING_BTN_R != COOLING_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            COOLING_BTN_R = COOLING_BTN_R_CP;
-            mbs.Hreg(MI_COOL_artisan_W, COOLING_BTN_R);     delay(1);
-        }
-
-        //Charge button
-        if(CHARGE_BTN_R != CHARGE_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            CHARGE_BTN_R = CHARGE_BTN_R_CP;
-            mbs.Hreg(CHARGE_artisan_W, CHARGE_BTN_R);       delay(1);
-        }
-
-        //Drop button
-        if(DROP_BTN_R != DROP_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            DROP_BTN_R = DROP_BTN_R_CP;
-            mbs.Hreg(DROP_artisan_W, DROP_BTN_R);
-        }
-
-        //Escape button
-        if(ESCAPE_BTN_R != ESCAPE_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            ESCAPE_BTN_R = ESCAPE_BTN_R_CP;
-            mbs.Hreg(ESCAPE_artisan_W, ESCAPE_BTN_R);       delay(1);
-        }
-
-        //AB button
-        if(AB_BTN_R != AB_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            AB_BTN_R = AB_BTN_R_CP;
-        }
-
-        //Destoner button
-        if(DESTONER_BTN_R != DESTONER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            DESTONER_BTN_R = DESTONER_BTN_R_CP;
-        }
-
-        //Feeder button
-        if(FEEDER_BTN_R != FEEDER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            FEEDER_BTN_R = FEEDER_BTN_R_CP;
-        }
-
-        //Save button
-        if(SAVE_BTN_R != SAVE_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            SAVE_BTN_R = SAVE_BTN_R_CP;
-        }
-
-        //PC control button
-        if(PC_CONTROL_BTN_R != PC_CONTROL_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
-            PC_CONTROL_BTN_R = PC_CONTROL_BTN_R_CP;
-        }
+        // Khối nút lệnh W40001..W40014: áp vào dAddress rồi đổi relay NGAY (10/10/2026) — trước đây relay chỉ đổi ở
+        // cuối vòng, sau rwHMI_2 + relay ngoài + programScan (≈ 60..80 ms sau khi đã đọc được nút).
+        hmiApplyButtons();
+        hmiApplyOutputs();
 
         //Đọc slot file được chọn
         if(SELECT_FILE_R != SELECT_FILE_R_CP){//Kiểm tra thay đổi của biến HMI
