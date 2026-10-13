@@ -124,6 +124,20 @@ Nhiều tham số khi so sánh nhiệt được firmware nhân ×10 (`_CV`) vì 
 | 45 | `autoFill` | 0/1 | **Bật tự động fill** cà phê từ destoner → silo. |
 | 53 | `autoEscape` | 0/1 | **Tự động mở cửa xả**. `1` = chạy đủ làm mát → tách đá → escape. `0` = chỉ thổi mát đủ `coolTimer` rồi tắt bồn nguội, không tách đá, không tự mở cửa — thợ xả tay. ⛔ HMI đời cũ chưa có ô gạt sẽ đọc về 0 ⇒ máy đó phải build với `MACHINE_HAS_AUTO_ESCAPE_SWITCH 0` để firmware bỏ qua thanh ghi và luôn tự xả. |
 
+## 8. Ngưỡng an toàn & preheat (v3.10.0+, $M55–61)
+
+Ô nào để **0** thì firmware dùng hằng mặc định trong `Config.h` (hàm bọc ở `Define.h`, ví dụ `autoDropMinSec()`), trừ `manualEscapeExtra` (0 = không cộng thêm).
+
+| $M | Tên | Đơn vị | Ý nghĩa |
+|----|-----|--------|---------|
+| 55 | `preheatDeadline` | giây | Hạn để preheat đạt nhiệt; quá hạn → báo lỗi (mặc định `PH_DEADLINE_SEC`). |
+| 56 | `preheatHoldSettle` | giây | Chờ ổn định trước khi đánh giá giữ nhiệt (`PH_HOLD_SETTLE_SEC`). |
+| 57 | `preheatTargetBand` | 0.1 °C | Dải vào giữ nhiệt preheat (`PH_TARGET_BAND`). |
+| 58 | `developmentWarn` | ‰ | Ngưỡng cảnh báo % phát triển (`PER_DEV_SAVE ≥` ngưỡng → báo 1 lần/mẻ). |
+| 59 | `autoDropMin` | giây | Thời gian rang tối thiểu trước khi cho auto-drop — chặn xả mẻ ma/chưa nạp. |
+| 60 | `manualEscapeExtra` | giây | Cộng thêm vào `escapeDuration` khi đóng escape tay. |
+| 61 | `loopDoorStuck` | giây | Hạn chờ cửa drop đóng ở `STP_LOOP_2` trước khi coi là kẹt. |
+
 ---
 
 ## Ghi chú vận hành

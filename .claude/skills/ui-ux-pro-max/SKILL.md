@@ -1,6 +1,6 @@
 ---
 name: ui-ux-pro-max
-description: "UI/UX design intelligence for web and mobile. Searchable local database with 50+ styles, 161 color palettes, 57 font pairings, 161 product types, 99 UX guidelines, and 25 chart types across 10 stacks (React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui, and HTML/CSS). Use when designing, building, or reviewing UI: pages, components, color schemes, typography, layout, accessibility, animation, or data visualization."
+description: "UI/UX design intelligence for web, mobile and industrial HMI panels. Searchable local database with 50+ styles, 161 color palettes, 57 font pairings, 161 product types, 99 UX guidelines, 25 chart types across 10 stacks, plus 66 book-derived + OTL owner rules (Norman 'Design of Everyday Things', Hollifield 'High Performance HMI', Refactoring UI) for HMI/web/app: signifiers, mapping, feedback, mode errors, alarms by priority, trends, display hierarchy. Use when designing, building, or reviewing UI: pages, components, HMI screens, color schemes, typography, layout, accessibility, animation, or data visualization."
 ---
 
 # UI/UX Pro Max - Design Intelligence
@@ -44,6 +44,42 @@ This Skill is not needed in the following situations:
 - Non-visual scripts or automation tasks
 
 **Decision criteria**: If the task will change how a feature **looks, feels, moves, or is interacted with**, this Skill should be used.
+
+## Book Rules — HMI · Web · App (Norman · Hollifield · Refactoring UI)
+
+64 rules distilled from three sources read in full (11/10/2026) + OTL owner bans (rows 65–66). Search: `python scripts/search.py "<query>" --domain book`
+(Platform column = HMI / Web / App / All; each row has Do, Don't, OTL Note, Source chapter/page, Severity).
+Decision tables, alarm-priority tree, L1–L4 hierarchy, thresholds and smells: [references/books/cheatsheet.md](references/books/cheatsheet.md).
+Per-source notes + glossary: [references/books/README.md](references/books/README.md).
+
+**Conflict order:** owner's standards (OTL flat brand — no gradient/shadow, UI-LOCK, locked HMI rules) > Hollifield (for HMI) > Norman > Refactoring UI summary (low confidence: Bookey summary, not the book) > generic suggestions in this skill.
+
+### ⛔ OTL owner hard bans — apply to EVERY product (HMI, web, Roast Lab app, mockups, manuals)
+
+| Ban | Since | Use instead |
+|---|---|---|
+| **Colored accent stripe/bar on the EDGE of a button or card** — red/brand bar on the top edge, colored underline, left-side color stripe (`border-top/left/bottom` in accent color, inset-shadow stripes, `::before` edge bars, PIL rectangles hugging a tile edge). Owner: "cực ghét, cấm tuyệt đối" | 11/10/2026 | Separate groups with **whole-tile fill**, **icon/text color**, **spacing + a divider between groups**; show state with a **state word** ("CHẠY", "ĐANG MỞ") or whole-tile inversion. Rule `no-edge-accent-stripe` |
+| **Active nav item marked by underline** (overrides `nav-state-active` "color/underline") | 11/10/2026 | Invert the whole tile (filled tile, white text). Rule `active-state-fill-not-underline` |
+| **Black / matte-black surfaces** (dock, ± buttons, primary button, status bar) | 11/10/2026 | Palette: **gray + red dominant, blue little but present**; text = warm charcoal `#44403C`, never pure black |
+| Gradients, shadows, glow, LED-style lamps, glass/blur | 10/10/2026 | Flat fills, 1 px borders ≥ 3:1 |
+
+When a generic rule in this skill (accent borders, underline tabs, card left-stripes, dark OLED style) conflicts with this table, **this table wins** — say so in the report.
+
+Must-apply (review every screen against these):
+- `discoverability-first` / `signifier-not-sign` — every action visible and looks actionable; a taped-on note = design failure
+- `natural-mapping` — control on or beside the value/equipment it changes; same spatial layout as the machine
+- `feedback-immediate` — pressed state ≤100 ms; long action shows progress; feedback says WHAT happened (text + value)
+- `seven-questions` — user can answer: options? what can I do now? how? what happened? is it OK?
+- `information-not-data` — key values shown against normal range / target / embedded trend, not as bare numbers
+- `color-for-abnormal-only` + `color-not-sole` — saturated/alarm colors only for abnormal; always add shape/text
+- `run-state-brightness` — on = brighter than background + "RUNNING"; off = darker + "STOPPED"; never green/red for normal state
+- `alarm-priority-symbols` — P1 red square · P2 yellow triangle · P3 orange inverted triangle · P4 pink diamond; blink until acknowledged
+- `motion-only-for-alarm` (HMI) — no spinning fans/flames; motion means "needs attention"
+- `mode-error` + `degraded-mode-loud` — current mode and stale/lost-sensor states large and unmistakable
+- `undo-over-confirm` + `sensibility-check` + `deliberately-difficult` — undo for routine; check unusual values; make only the dangerous step hard (hold / PIN), showing the affected object
+- `description-similarity` + `capture-slip` — controls with different purposes look different and sit apart; rare procedures differ from step one
+- `display-hierarchy-l1-l4` + `consistent-nav-bar` — overview / unit control / detail / support; same nav bar everywhere
+- `no-user-error` — repeated mistakes are design bugs: fix the screen, not the operator
 
 ## Rule Categories by Priority
 
@@ -446,6 +482,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <domain> [-n
 | Landing structure | `landing` | `--domain landing "hero social-proof"` |
 | React Native perf | `react` | `--domain react "rerender memo list"` |
 | App interface a11y | `web` | `--domain web "accessibilityLabel touch safe-areas"` |
+| HMI / book-derived rules (Norman, Hollifield) | `book` | `--domain book "alarm priority operator"` |
 | AI prompt / CSS keywords | `prompt` | `--domain prompt "minimalism"` |
 
 ### Step 4: Stack Guidelines (match your framework)

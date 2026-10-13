@@ -16,6 +16,8 @@ Nguồn: `OTL Roast Lab.html`, hàm `newProfile()` (~dòng 2926). Hồ sơ là *
 | `date` | dd/mm/yyyy | Ngày tạo | hôm nay |
 | `color` | hex | Màu nhãn UI | xoay vòng palette |
 
+> ⚠ **Mâu thuẫn cần kiểm:** chốt chủ máy là *hồ sơ = CSV, không blob json* (xem [app-roast-flow.md](app-roast-flow.md)), nhưng soát 16/09/2026 `tools/roast_lab_hmi.py` và app vẫn còn tham chiếu `profiles.json`. Đọc code hiện hành trước khi nói kho chính là file nào.
+
 ## 2. Xuất file ra thư mục — mỗi hồ sơ 3 tệp (ĐÃ code)
 
 **Nguồn thật (canonical) vẫn là `profiles.json`** (ghi tạm→thay, `roast_lab_hmi.py:874`). Ngoài json, mỗi lần lưu app **xuất kèm** các tệp dễ đọc vào **gốc `prof_dir`** (thư mục hồ sơ người dùng chọn) qua `prof_write_files()` ([roast_lab_hmi.py:787](../../../tools/roast_lab_hmi.py)) + `prof_export_pdf()`. Hàm sinh nội dung nằm ở [OTL Roast Lab.html](../../../OTL%20Roast%20Lab.html) `profDiskWrite()`.

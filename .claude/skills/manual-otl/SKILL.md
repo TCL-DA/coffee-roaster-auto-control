@@ -73,11 +73,25 @@ Kết quả in ra:
 ```
 == content.jsx
   OK pages=15
+  bookmark=20 (soat lai tren file: 20)
   khong co trang thua chu
 ```
 
 `OK pages=N | thieu anh: ...` — dòng "thiếu ảnh" liệt kê file chưa có, engine tự vẽ ô nét đứt
 thay chỗ nên vẫn dựng được khi ảnh chưa đủ.
+
+⛔ **PDF giao khách BẮT BUỘC có bookmark.** Illustrator xuất PDF từ artboard nên
+**không bao giờ tự sinh bookmark** — không gắn thì người đọc phải kéo 17 trang để tìm mục 3.3.
+`make.py` tự gọi [`assets/bookmark.py`](assets/bookmark.py) ngay sau khi lưu PDF: nó đọc lại
+chính file PDF, lọc chữ **Arial Bold 19 pt** làm mục 1 (H1) và **12,5 pt** làm mục 2 (H2),
+đánh số 3.1 / 3.2 … đúng như huy hiệu tròn engine vẽ. Chạy riêng được cho PDF cũ:
+
+```bash
+python assets/bookmark.py tai-lieu.pdf
+```
+
+Dòng `bookmark=0` hoặc `! KHONG gan duoc bookmark` là **chưa xong**, không được giao.
+Số trong ngoặc là lần đọc lại **trên chính file PDF** — hai số lệch nhau là có chuyện.
 
 ⚠ Máy rà chỉ bắt trang **thưa chữ**. Chồng chữ, tràn khung, logo chạm tiêu đề thì nó không
 thấy — vẫn phải **soi PNG bằng mắt** trước khi giao.
@@ -117,8 +131,12 @@ python -c "import fitz; d=fitz.open('ten.pdf');
 | `STEPIMG(n, chữ, file, chữ_sau, rộng)` | Bước có ảnh nút bấm bên dưới |
 | `IMG(file, rộng, chú_thích)` | Ảnh căn giữa |
 | `IMGC(file, rộng, chú_thích, marks, legend)` | Ảnh + khung đỏ đánh số; `marks=[[x,y,w,h,"1"],...]` theo **tỉ lệ 0–1** của ảnh |
-| `TABLE(cols, rows, widths)` | Bảng (tổng `widths` = 435.28); tự lặp lại hàng tiêu đề khi sang trang |
-| `SAFETY(loại, tiêu_đề, thân)` | Hộp cảnh báo; loại: `nguyhiem` đỏ / `canhbao` cam / `thantrong` vàng / `luuy` xanh |
+| `IMG2(fileA, fileB, cao_max, chú_thích_A, chú_thích_B)` | Hai ảnh cạnh nhau, mỗi ảnh nửa cột, **cùng chiều cao** (mép trên/dưới thẳng hàng) — dùng cho ảnh dọc, so sánh V1/V2, trước/sau. Ảnh chụp đi đôi nên cắt cùng tỉ lệ trước (vd 4:3) để hai ảnh bằng nhau. Ảnh dọc đặt một mình là phí nửa trang |
+| `H3TAG("V2", chữ)` | Tiêu đề nhỏ có nhãn màu phía trước — đánh dấu bước chỉ áp cho một bản/tuỳ chọn máy |
+| `**chữ**` trong mọi chuỗi | In đậm đúng mấy chữ đó (P, STEP, BUL, ô bảng, hộp cảnh báo). Chỉ nhấn số liệu, hành động then chốt và chữ "không" — đậm cả câu là mất tác dụng |
+| `TABLE(cols, rows, widths, [opts])` | Bảng (tổng `widths` = 435.28); tự lặp lại hàng tiêu đề khi sang trang. `opts = {grid: true, minRow: 30}` cho phiếu in ra ký tay (kẻ đủ ô, hàng cao tối thiểu) |
+| `SAFETY(loại, tiêu_đề, thân, [biển])` | Hộp cảnh báo; loại: `nguyhiem` đỏ / `canhbao` cam / `thantrong` vàng / `luuy` xanh. `luuy` = hỏng máy/thông tin, **không có tam giác** (ISO 3864-2). `biển` = mảng file ISO 7010 trong IMGDIR, vd `["iso-w017.png"]` (bộ W001/W012/W017/W021 vẽ sẵn ở `ve-sinh-3kg-vi\images\`) — đặt dọc bên trái thân hộp |
+| `ICONROW([[file, chú_thích], ...])` | Hàng biển cảnh báo có chú thích — dùng ở mục giải thích ký hiệu chương 1 |
 | `STATEFLOW([[tên, mô_tả, thời_gian], ...])` | Sơ đồ các bước nối bằng mũi tên |
 | `RULE()` / `GAPV(h)` | Đường kẻ ngang / chừa khoảng trắng |
 
@@ -142,6 +160,29 @@ Kỹ thuật thì như sau:
   bìa cũ vẫn có thể mang dấu nhận OEM dập trên tôn máy mà script đọc mã nguồn không thấy.
 - Bề ngang logo trên bìa phụ thuộc độ dài tiêu đề. Dựng xong **đo khe hở giữa tiêu đề và logo**;
   dưới ~25 pt là chật, phải thu logo. Đoạn đo có trong `BAN-OEM-DOI-TAC.md`.
+
+## Xuống dòng thông minh và trình bày — chủ máy yêu cầu 07/10/2026
+
+`mkText()` tự gọi `sapDong()`: dựng chữ xong thì **đọc lại từng dòng Illustrator đã ngắt**, gặp
+chỗ xấu thì chèn xuống dòng mềm (ký tự 3) trước chữ cuối của dòng trên, lặp tới khi hết. Bốn chỗ xấu:
+chữ mồ côi ở dòng cuối đoạn ("chương | 3."), số tách khỏi đơn vị ("90 | °C", "4–6 | mẻ"), tiền tố tách
+khỏi số ("Hình | 4.1", "mục | 2.1"), dòng mới bắt đầu bằng "–". Chỉ áp khi khung rộng > 150 pt
+(ô bảng hẹp để nguyên). Tắt bằng `SMARTBREAK = false`.
+
+⛔ **Đừng quay lại cách dùng U+00A0 hay `noBreak`** — đo thật 07/10/2026: Illustrator VẪN ngắt ở U+00A0;
+còn `characterAttributes.noBreak = true` thì giữ được nhưng để chữ **tràn ra ngoài lề phải** thay vì
+đẩy xuống dòng.
+
+Quy tắc trình bày rút ra từ đợt so với manual Probat:
+- **Có một hình tổng thể đánh số bộ phận** ở chương 1, rồi dùng đúng số đó trong mọi bảng, bước, ảnh
+  (khung đỏ `IMGC` mang cùng số). Bảng lịch có cột "Số" và cột "Mục" để người đọc nhảy thẳng tới.
+- **Máy có nhiều bản/tuỳ chọn thì viết MỘT quy trình**, chỉ tách bước khác nhau bằng `H3TAG("V1"/"V2")`
+  và một bảng so sánh ngắn ở chương 1 — không viết thành hai máy (chủ máy sửa 07/10/2026: "V1 và V2
+  là một, khác option thôi").
+- Ảnh dọc → `IMG2` ghép đôi; ảnh chụp lấy về ≤ 1100 px và đặt `PDFSaveOptions` downsample 200 dpi
+  + JPEGHIGH ở cuối content (manual 3kg: 38 MB → 2 MB, gửi được qua Zalo).
+- Trước khi viết manual cho một cỡ máy: **grep `112_Quanly\135_TaiLieu_Rang_VanHanh_AnToan\_md\`** —
+  ở đó có manual cũ của từng máy (vd `OTL_OTL-03__...` cho 3kg) và phiếu bảo dưỡng có thời gian từng việc.
 
 ## Bẫy đã trả giá — đọc trước khi sửa engine
 
@@ -168,6 +209,9 @@ Kỹ thuật thì như sau:
   ngay trên **bìa**. Sửa các chuỗi này bằng **script Python ghi ra file** rồi chạy (KHÔNG dùng
   heredoc — hỏng chữ Việt có dấu). Trước khi giao, quét `(?<=[^\s"])(\\u2013)` trên mọi
   `content*.jsx` để bắt hết chỗ thiếu dấu cách.
+- **PDF không bookmark là chưa xong.** Illustrator không tự sinh; `make.py` gắn hộ,
+  nhưng phải nhìn dòng `bookmark=N` mới biết nó ăn. Tài liệu dùng tiêu đề tự vẽ bằng
+  `mkText` thay vì `H1()`/`H2()` thì máy không thấy để làm bookmark.
 - **Đừng tin dòng `OK pages=N`.** Nó không báo lỗi trình bày. Bắt buộc render PNG và **soi bằng mắt**;
   thêm bước rà bằng máy (đếm ký tự mỗi trang, cờ trang < 420 ký tự mà không có ảnh) để tìm nhanh
   trang thưa trước khi soi.
@@ -189,6 +233,23 @@ Kỹ thuật thì như sau:
   `F:\Project\112_Quanly\122_Manual_AI\preheat-vi\images\_tu-manual-cu\`
 - Bộ manual gốc để đối chiếu style: `F:\Project\112_Quanly\122_Manual_AI\*.pdf`
   (2 file này KHÔNG có lớp chữ — phải render trang ra ảnh mới đọc được).
+- ⛔ **KHO MANUAL CHÍNH (bản Dr.Explain `.gui` + PDF từng phiên bản): `F:\File-Manual\`** — chủ máy chỉ
+  12/10/2026 sau khi AI tìm sót và báo nhầm "không có manual 1kg". Mỗi máy một thư mục đánh số:
+  `8-User-manual-1kg` (User-manual-01 v1.0.x VIE/ENG + `1kgEU_manual_*.gui`), `9-User-manual-3kg`,
+  `13_User-manual-60kg`, `14_Assembly-guide-60kg`, `18_User_manual_120`, `19/22/23_Manual_destoner…`,
+  `21_Afterburner`, `24_OTL_06_12`, `25_OTL0_30`, `26_OTL_30`, `28_OTL_03v2`, `30_OTL-120-0925`, `31_Silo`,
+  `37_OTL_120_SIE`, `41_OTL-06-Installation`, `42_User_manual_silo_120_FR_Sang`, `44_Cyclone_clean_guide`…
+  **Làm lại manual một cỡ máy: liệt kê `F:\File-Manual` TRƯỚC, lấy bản số phiên bản cao nhất làm nguồn.**
+  Tìm toàn ổ thì nhớ gồm `F:\File-Manual`, đừng chỉ tìm trong `F:\Project`.
+- **Kho manual CŨ (2022–2024, Word/PDF/AI):** `F:\Vat-tu-Otesla\22_User_manual\`.
+  - `Manual\OTL_USER_MANUAL.docx` (05/2024) + `_03_ENG.docx` = manual máy thường **OTL-03 (3kg)** — khung
+    chương dùng chung cho máy nhỏ; còn địa chỉ Bình Dương + email `otesla.vn@gmail.com` CŨ, đừng chép lại.
+  - `Manual\` còn: `LẮP RÁP 1KG.pdf`, `lắp ráp 2kg.pdf` (bản vẽ lắp tách rời, không có thông số),
+    `3kg roi.pdf`, `30KG BALAN.pdf`, `5kg-overview.ai`, `panel-eu-otesla*.ai` (panel EU máy nhỏ) và ảnh
+    minh hoạ thao tác (cong-tac-nguon, bat-gas, mix-cool, gap-drum, ve-sinh-cyclone…).
+  - `Auto\` + gốc thư mục: manual Auto 2022 (EN/VI) — đã thay bằng `122_Manual_AI\auto-en`.
+  - Manual 1kg thật nằm ở `F:\File-Manual\8-User-manual-1kg` (xem dòng trên), KHÔNG ở đây.
+- Bản chép đã gom: `112_Quanly\135_TaiLieu_Rang_VanHanh_AnToan\01_Huong-dan-su-dung-OTL\` (grep `_md\`).
 
 ## Phiên bản và tài liệu song ngữ
 

@@ -1,6 +1,6 @@
 ---
 name: pid-analysis
-description: Bộ điều khiển AIRFLOW theo áp hút (vacuum) của máy rang OTL — module include/PID_Airflow.h. Gồm 3 lớp chạy chồng nhau: step controller có cooldown động, bảng feed-forward tự học lưu SD (/pid_ff.txt), và factory auto-tune quét 0→100%. Skill giữ kiến trúc, bảng hằng số thật, quy trình chẩn đoán và danh sách rủi ro đã phát hiện. Dùng bất cứ khi nào nói tới "PID airflow", "PID_Airflow.h", "áp hút", "vacuum", "Diff_Air", "gió không ổn định", "airflow dao động", "quạt hút giật", "bảng FF", "pid_ff.txt", "factory tune", "auto tune gió", "snap buffer", "deadband gió", "vacuumSetpoint", "tunePercent", hay khi cần chỉnh/đọc/gỡ lỗi bất kỳ thứ gì liên quan tới điều khiển gió theo áp hút — kể cả khi không nhắc chữ "PID".
+description: "Bộ điều khiển AIRFLOW theo áp hút (vacuum) của máy rang OTL — module include/PID_Airflow.h. Gồm 3 lớp chạy chồng nhau: step controller có cooldown động, bảng feed-forward tự học lưu SD (/pid_ff.txt), và factory auto-tune quét 0→100%. Skill giữ kiến trúc, bảng hằng số thật, quy trình chẩn đoán và danh sách rủi ro đã phát hiện. Dùng bất cứ khi nào nói tới \"PID airflow\", \"PID_Airflow.h\", \"áp hút\", \"vacuum\", \"Diff_Air\", \"gió không ổn định\", \"airflow dao động\", \"quạt hút giật\", \"bảng FF\", \"pid_ff.txt\", \"factory tune\", \"auto tune gió\", \"snap buffer\", \"deadband gió\", \"vacuumSetpoint\", \"tunePercent\", hay khi cần chỉnh/đọc/gỡ lỗi bất kỳ thứ gì liên quan tới điều khiển gió theo áp hút — kể cả khi không nhắc chữ \"PID\"."
 allowed-tools: Read, Grep, Bash
 ---
 

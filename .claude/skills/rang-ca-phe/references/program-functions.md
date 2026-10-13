@@ -1,6 +1,14 @@
 # Program.h — bộ não firmware (19 hàm)
 
-Nguồn: `include/Program.h` (~2467 dòng). File điều khiển toàn bộ logic rang: đọc/ghi SD, gas AUTO, auto-loader tự học, và máy trạng thái mẻ rang.
+Nguồn: `include/Program.h` (~3000 dòng, soát 16/09/2026). File điều khiển toàn bộ logic rang: đọc/ghi SD, gas AUTO, auto-loader tự học, và máy trạng thái mẻ rang.
+
+> ⚠ Số dòng trong file này là của bản cũ (~2467 dòng) — **tra theo tên hàm**, đừng tin số dòng.
+> Hàm mới từ v3.10.0 chưa có mục riêng bên dưới:
+> - `sdEnsure()` — gắn lại thẻ SD trước khi đọc/ghi.
+> - `calibGasByProfile(btTarget)` + `calibClampStep()` — lõi bù gas theo sai lệch BT so với `sdBT[]`, tách ra khỏi `calibProgram()`.
+> - `dropTempTarget()` — nhiệt xả ĐỘNG: `DROP_PRO_R ± dropTrim` ($M54) khi lệch giờ xả mẫu > `ADAPT_DROP_DEV_SEC`, chỉ khi DEV đã > `ADAPT_DROP_MIN_DEV`.
+> - `endBatchRescue()` + `endRescueReset/Eta/Step` — chốt cứu đoạn cuối: BT đứng gần nhiệt xả → bơm gas từng bậc 5%, tối đa 3 bậc, hết trần thì chuông + báo mã, **không tự xả**.
+> - `autoEscapeEnabled()` — đọc ô gạt $M53 (tuỳ `MACHINE_HAS_AUTO_ESCAPE_SWITCH`).
 
 ## Tổng quan 6 nhóm
 

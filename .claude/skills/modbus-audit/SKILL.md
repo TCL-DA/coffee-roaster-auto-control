@@ -1,6 +1,6 @@
 ---
 name: modbus-audit
-description: Kiểm tra toàn bộ Modbus calls trong dự án: địa chỉ register, error handling, timeout, node ID. Phát hiện địa chỉ sai, thiếu xử lý lỗi, ghi đè không cần thiết.
+description: "Kiểm tra toàn bộ Modbus calls trong dự án: địa chỉ register, error handling, timeout, node ID. Phát hiện địa chỉ sai, thiếu xử lý lỗi, ghi đè không cần thiết."
 allowed-tools: Read, Grep
 ---
 

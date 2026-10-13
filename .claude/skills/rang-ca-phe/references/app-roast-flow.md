@@ -32,7 +32,7 @@ Hệ quả cần biết khi vận hành:
   [quy-trinh-dieu-khien-may-rang/references/rui-ro-va-de-xuat.md](../../quy-trinh-dieu-khien-may-rang/references/rui-ro-va-de-xuat.md))
   đều lan sang app.
 
-**Chờ chủ máy chốt:** cập nhật spec thành "máy chủ nhịp", hay code tiếp phần app-lái?
+**Chủ máy đã chốt APP LÁI TOÀN BỘ** (hướng A, xem memory `feedback_app_full_control`), nhưng soát lại 16/09/2026 code app vẫn ghi `pclink — MÁY chủ` (`OTL Roast Lab.html`, khối `applyMachine`). Coi phần dưới là đích; kiểm code trước khi khẳng định app đang tự lái.
 
 ## Luồng rang trên app (spec đích)
 1. **Đăng nhập** (thợ/khách) → **chọn hồ sơ**.

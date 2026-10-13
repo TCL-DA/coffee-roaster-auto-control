@@ -21,10 +21,37 @@ Chuỗi làm mát sau khi xả. Kích từ 2 nơi: pre-cool (`BT ≥ DROP_PRO �
 - Mixer: bản có `SOURCE_AI_VR_FROM_HMI` (tách dây) phải ghi `MIXER_BTN_W = 1` riêng; bản đấu dây cũ mixer chung mạch với cooling nên không cần ghi.
 - `coolTimer = 0`, `coolTimerEn = 1` → `COOL_STEP_ESCAPE_ON`.
 
-### COOL_STEP_ESCAPE_ON — đếm thời gian nguội · `"WAESCAPE"` / `"WAESDES"`
+### COOL_STEP_ESCAPE_ON — đếm thời gian nguội · `"WAESCAPE"` / `"WAESDES"` / `"ONLYCOOL"`
 - `coolTimer ≥ coolTimer_R − 5` → `buzzerTimerEn = 1` (báo trước 5 giây cho thợ tránh xa cửa escape).
-- `destonerSet_R > 0` && `coolTimer ≥ coolTimer_R − destonerPre_R` → bật `destonerTimerEn = 1` + `DESTONER_BTN_W = 1` (`STT_DESTONER_ON`). Bật **trước** escape để quạt tách đá kịp đạt tốc độ khi hạt bắt đầu chảy.
-- `coolTimer ≥ coolTimer_R` → `STT_ROAST_ESCAPE`, `ESCAPE_BTN_W = 1`, `escapeTimerEn = 1`, `STT_EVENT_ESCAPE_OPENED` → `COOL_STEP_ESCAPE_OFF`.
+- `autoEscapeEnabled()` && `destonerSet_R > 0` && `coolTimer ≥ coolTimer_R − destonerPre_R` → bật `destonerTimerEn = 1` + `DESTONER_BTN_W = 1` (`STT_DESTONER_ON`). Bật **trước** escape để quạt tách đá kịp đạt tốc độ khi hạt bắt đầu chảy.
+- `coolTimer ≥ coolTimer_R` → rẽ theo `autoEscapeEnabled()`:
+  - **true** ($M53 = 1, như từ trước tới nay): `STT_ROAST_ESCAPE`, `ESCAPE_BTN_W = 1`, `escapeTimerEn = 1`, `STT_EVENT_ESCAPE_OPENED` → `COOL_STEP_ESCAPE_OFF`.
+  - **false** ($M53 = 0, **chỉ làm mát**): tắt `COOLING_BTN_W` (+ `MIXER_BTN_W` nếu bản tách dây), `STT_ACT_COOLING_OFF`, reset `coolTimer/En`, còi báo thợ ra xả tay, `coolStep = 0`. **Không** mở escape, **không** bật destoner.
+
+### Ô gạt `autoEscape_R` ($M53) — "TỰ ĐỘNG MỞ CỬA XẢ"
+Khách chỉ cần thổi mát rồi tự xả tay (không có bồn tách đá, hoặc muốn tự quyết lúc mở cửa).
+
+- `1` = chạy đủ chuỗi làm mát → destoner → escape. `0` = dừng sau khi thổi mát.
+- **Nghĩa của thanh ghi nằm ở MỘT hàm duy nhất `autoEscapeEnabled()`** trong `Program.h`. Đừng đọc thẳng `autoEscape_R` ở chỗ khác.
+- ⛔ **HMI đời cũ chưa có ô gạt đọc về 0** ⇒ máy đó phải build với `MACHINE_HAS_AUTO_ESCAPE_SWITCH 0` (Config.h), firmware sẽ bỏ qua $M53 và luôn tự xả. Để cờ 1 trên máy chưa có ô gạt là **máy ngừng tự xả mà không báo lỗi gì** — cà phê nằm lì trong khay nguội.
+- Quy ước từng ngược lại (0 = như cũ) trong bản sáng 08/09; chủ máy chốt đảo về thuận nghĩa tên chiều 08/09 vì nhãn ô gạt trên HMI đọc ngược là thợ hiểu sai.
+- **Bẫy `rwMemHMI()`**: khung Modbus đọc 53 thanh ghi (2001..2053 = $M1..$M53) nhưng vòng lặp nạp cũ chạy `i < Numaddress` ⇒ **$M cuối cùng luôn đọc về mà không bao giờ được nạp**, giá trị trong RAM đứng ở 0. Đã sửa thành `i <= Numaddress` (2026-09-08). Đừng "sửa" bằng cách tăng `Numaddress` — nới khung đọc là hỏi HMI thêm một thanh ghi có thể không tồn tại, HMI trả exception là **cả khối $M không cập nhật** kèm buzzer báo lỗi mỗi vòng.
+- **Destoner gạt chung một nút là CỐ Ý** (chốt với chủ máy 2026-09-08): máy có bồn tách đá thật, nhưng `$M53 = 1` thì bỏ cả destoner lẫn escape — thợ muốn tách đá thì bấm nút destoner tay.
+- **Escape mở TAY tự đóng** — đã code 2026-09-08, xem mục dưới.
+
+### Escape mở tay tự đóng (chỉ khi `autoEscape_R != 0`)
+
+Chuỗi cooling không mở escape nữa nên không ai bật `escapeTimerEn` ⇒ cửa xy-lanh nằm mở tới khi thợ nhớ ra. Khối mới trong `programScan()` (ngay trên khối escape của PC control):
+
+- Gác: `!autoEscapeEnabled()` && `PC_CONTROL_BTN_R == 0` && `coolStep != COOL_STEP_ESCAPE_OFF`. Bỏ gác nào cũng thành hai nơi cùng đụng `escapeTimer` — đúng cái bẫy R6.
+- Thấy `ESCAPE_BTN_R == 1` && `escapeTimerEn == 0` && chưa `escManualDone` → `escapeTimer = 0`, `escapeTimerEn = 1`.
+- Tự đóng sau `escapeDuration_R + ESCAPE_MANUAL_EXTRA_SEC` giây (`Config.h`, mặc định **15**) — xả tay chậm hơn xả tự động. Còi báo trước 5 giây vì tay thợ có thể còn trong cửa.
+- Thợ tự đóng trước thì **thợ thắng máy**: nhánh huỷ xét TRƯỚC nhánh hết giờ.
+- `escManualDone` là latch: sau khi tự đóng phải chờ `ESCAPE_BTN_R` về 0 mới cho đếm lại. Không có nó thì HMI chưa kịp hạ cờ là firmware thấy `R == 1` → bật timer lại → cứ mỗi chu kỳ lại bắn một lệnh đóng.
+- `escManualArmed` đánh dấu **timer escape đang do khối này giữ**. Rời chế độ giữa chừng (thợ gạt $M53, bật PC control, chuỗi tự động giành escape) thì phải **nhả `escapeTimerEn/escapeTimer` về 0**. Để treo là hỏng **mẻ SAU**: lần mở escape kế tiếp vừa mở đã thấy quá giờ và đóng ngay, cà phê không kịp thoát. Kèm theo, nhánh mở escape tự động giờ luôn `escapeTimer = 0` trước khi bật cờ.
+
+### Ai được đổi $M53
+HMI **và** app/PC_Link (chốt 2026-09-08). `protocol/pc_link.json` nâng `count` 52 → 53, sinh lại bằng `gen_pc_link.py`; `PCL_CFG_MIN/MAX` trong `PC_Link.h` thêm phần tử thứ 53 dải **0–1**. Thiếu phần tử đó thì mảng lấy 0 cho cả min lẫn max ⇒ app chỉ ghi được số 0, bật không lên mà chẳng báo lỗi gì.
 
 ### COOL_STEP_ESCAPE_OFF — chờ xả hết rồi đóng · `"WAESCOFF"` / `"OFFESC"`
 - `escapeTimer ≥ escapeDuration_R − 5` → buzzer báo trước.
@@ -104,6 +131,7 @@ Tất cả đếm bằng giây trong `timerPoll_1000ms()` (ISR — chỉ tăng b
 | Afterburner | `abTimerEn` / `abTimer` | `≥ afterburnerNext_R` | `AB_BTN_W = 0`, `abStep = 0` | `AB_BTN_R == 0 && abTimer ≥ 1` |
 | Destoner | `destonerTimerEn` / `destonerTimer` | `≥ destonerSet_R` | `DESTONER_BTN_W = 0`; nếu `autoFill_R == 1` → bật `AUTO_FS_BTN_W = 1` | `DESTONER_BTN_R == 0 && destonerTimer ≥ 1` |
 | Escape | `escapeTimerEn` / `escapeTimer` | `≥ escapeDuration_R` | `ESCAPE_BTN_W = 0`, reset `Escape_btn_PC`, `STT_EVENT_ESCAPE_CLOSED`, buzzer | `ESCAPE_BTN_R == 0 && escapeTimer ≥ 1` |
+| Escape mở tay ($M53≠0) | `escapeTimerEn` / `escapeTimer` | `≥ escapeDuration_R + ESCAPE_MANUAL_EXTRA_SEC` | `ESCAPE_BTN_W = 0`, `STT_EVENT_ESCAPE_CLOSED`, buzzer, latch `escManualDone` | `ESCAPE_BTN_R == 0 && escapeTimer ≥ 1` (xét trước nhánh hết giờ) |
 | Feeder | `feederTimerEn` / `feederTimer` | `≥ feederSet_R` (>0) | `FEEDER_BTN_W = 0`; nếu đang `STP_WAIT_LOADER` → `STT_LOADER_FAIL` + `STP_FAIL_LOADER` | `FEEDER_BTN_R == 0 && feederTimer ≥ 1` |
 | Auto-fill silo | `fillerTiEn` / `fillerTi` | `≥ autoFill_Time_R` | `AUTO_FS_BTN_W = 0` | `AUTO_FS_BTN_R == 0 && fillerTi ≥ 1` |
 | Dọn sạch feeder | `cleanFeederTiEn` / `cleanFeederTi` | `≥ 10` | `FEEDER_BTN_W = 0`; nếu `STP_WAIT_LOADER` → `STT_LOADER_OK` + `STP_OK_LOADER` | — (tự reset khi đóng) |
@@ -128,3 +156,6 @@ Tất cả đếm bằng giây trong `timerPoll_1000ms()` (ISR — chỉ tăng b
 | Ngày | Sửa gì | Lý do |
 |------|--------|-------|
 | 2026-07-30 | Lập spec đầu tiên từ code hiện có | Tách quy trình ra khỏi code |
+| 2026-09-08 | **ĐẢO quy ước $M53**: `1` = tự động escape (như cũ), `0` = chỉ làm mát; thêm cờ build `MACHINE_HAS_AUTO_ESCAPE_SWITCH` cho HMI chưa có ô gạt. Vá timer escape treo khi rời chế độ giữa chừng | Nhãn ô gạt trên HMI đọc theo tên biến, quy ước cũ (0 = như cũ) làm thợ hiểu ngược |
+| 2026-09-08 | Escape mở TAY tự đóng sau `escapeDuration_R + ESCAPE_MANUAL_EXTRA_SEC` (15 s) khi `$M53 ≠ 0`; mở $M53 cho app ghi (pc_link count 53, dải 0–1). **ĐÃ BUILD + NẠP STM32**, chưa chạy mẻ thật | Chế độ chỉ làm mát biến escape tay thành đường dùng chính, cửa xy-lanh không được là ngoại lệ duy nhất không có timer tự đóng |
+| 2026-09-08 | Thêm nút gạt `autoEscape_R` ($M53): `1` = chỉ làm mát, bỏ qua destoner + escape tự động. Sửa vòng lặp nạp trong `rwMemHMI()` (`i < Numaddress` → `i <= Numaddress`) để $M cuối cùng thật sự vào RAM | Khách không dùng bồn tách đá / muốn tự quyết lúc mở cửa xả; quy ước 0 = như cũ để HMI đời cũ không đổi hành vi |

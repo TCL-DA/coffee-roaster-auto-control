@@ -1,6 +1,6 @@
 # Luồng rang 11 bước — máy trạng thái programScan()
 
-Nguồn: `include/Program.h`, hàm `programScan()` (dòng 1388→2409). Máy **tự bắt mốc theo nhiệt BT**; người vận hành chỉ cài ngưỡng qua thanh ghi `$M` (xem [registers-M.md](registers-M.md)), máy tự chuyển bước + tự chỉnh gas AUTO.
+Nguồn: `include/Program.h`, hàm `programScan()` (soát 16/09/2026). **Cột "Dòng" là của bản cũ — tra theo `case STP_*`.** Đặc tả gốc và nơi sửa quy trình: skill `quy-trinh-dieu-khien-may-rang`. Máy **tự bắt mốc theo nhiệt BT**; người vận hành chỉ cài ngưỡng qua thanh ghi `$M` (xem [registers-M.md](registers-M.md)), máy tự chuyển bước + tự chỉnh gas AUTO.
 
 ```
 [CHUẨN BỊ]  DATA → COOL_DOWN → GAS → CHECK
@@ -35,9 +35,15 @@ Nguồn: `include/Program.h`, hàm `programScan()` (dòng 1388→2409). Máy **t
 | **STP_LOOP_1** | LOOP / NONE | 1679 | Xét `loop_R` (số mẻ): **>1** → auto cân/nạp mẻ tiếp (chỉ khi phễu còn liệu `netW ≥ LOADER_MIN_NETW` & `scaleDataValid`); **≤1** → dừng, mở khoá select, về DATA. Lỗi feeder → huỷ |
 | **STP_LOOP_2** | WCANCEL | 1715 | Chờ cửa xả (drop) đóng lại rồi rang tiếp mẻ mới |
 
-## Auto drop & pre-cool (chạy khi progStep ≥ YELLOW, dòng 1771)
-- Rang AUTO: `BT ≥ DROP_PRO` → tự bật DROP.
-- `BT ≥ DROP_PRO − preCool` (nếu `preCool>0`) → bật sớm cooling+mixer trước khi xả.
+## Auto drop & pre-cool (chạy khi progStep ≥ YELLOW)
+- Rang AUTO: `BT ≥ dropTempTarget()` → tự bật DROP. Từ v3.10.0 nhiệt xả là **động** (`DROP_PRO_R ± dropTrim` $M54), và chỉ cho xả khi `timeRoast > autoDropMin` ($M59) — chặn mở cửa xả lúc chưa nạp.
+- `BT ≥ nhiệt xả đã chỉnh − preCool` (nếu `preCool>0`) → bật sớm cooling+mixer.
+- `STP_DEV` không có điều kiện thoát theo giờ: nếu BT đứng sát nhiệt xả, `endBatchRescue()` bơm gas từng bậc; hết trần thì báo, **không tự xả**.
+- `PER_DEV_SAVE ≥ developmentWarn` ($M58) → cảnh báo phát triển 1 lần/mẻ.
+
+## Mã bước (Define.h)
+`DATA 0 · COOL_DOWN 1 · GAS 3 · CHECK 4 · CHARGE 5 · TP 6 · YELLOW 7 · FCS 8 · DEV 9 · DROP 10 · COOLING 11 · ESCAPE 12 · LOOP_1 13 · LOOP_2 14`.
+`COOLING/ESCAPE` hiện chỉ là nhãn (debug, guard PC_Link) — chuỗi làm nguội/escape thật chạy ở máy phụ `coolStep`. `LOOP_2` chờ cửa drop đóng tối đa `loopDoorStuck` ($M61). Máy phụ khác: `aLoaderStep` (ON/WAIT/FAIL/OK), `abStep` (ON/WAIT/DELAY).
 
 ## Chạy song song (theo timer giây, xem `timerPoll_1000ms`)
 Cooling + mixer, afterburner (đốt khói), destoner (tách đá), auto-fill silo, vacuum PID — bật/tắt theo mốc rang và thanh ghi `$M`.

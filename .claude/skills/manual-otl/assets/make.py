@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Dung manual OTL bang MOT lenh: noi engine + chay Illustrator + render PNG + ra loi trinh bay.
+"""Dung manual OTL bang MOT lenh: noi engine + chay Illustrator + GAN BOOKMARK + render PNG
++ ra loi trinh bay.
 
     python make.py content.jsx
     python make.py content.jsx content-vi.jsx     # nhieu ban — CHUNG mot phien PowerShell
@@ -16,6 +17,7 @@ File content phai tu goi doc.saveAs(...) o cuoi nhu cac ban mau.
     ve 15 trang                       ~4 s
     luu .ai                           ~1,2 s  <- --nhanh bo duoc
     luu .pdf                          ~1,0 s
+    gan bookmark (bookmark.py)        ~0,3 s  <- BAT BUOC, Illustrator khong tu sinh
     render PNG + ra soat              ~0,5 s
 Ba viec script nay lam de nhanh hon:
   1. dong tai lieu NGAY trong lan chay do, khong de don sang lan sau
@@ -115,6 +117,29 @@ def chay_illustrator(danh_sach_jsx):
     return kq
 
 
+def gan_bookmark(pdf):
+    """BAT BUOC: tai lieu giao khach phai co bookmark. Illustrator khong tu sinh."""
+    try:
+        import bookmark
+    except ImportError:
+        sys.path.insert(0, HERE)
+        try:
+            import bookmark
+        except ImportError:
+            print("  ! KHONG gan duoc bookmark: thieu bookmark.py canh engine")
+            return
+    try:
+        n = bookmark.dat_bookmark(pdf)
+    except Exception as e:                      # loi la bao, khong nuot
+        print("  ! KHONG gan duoc bookmark: %s" % e)
+        return
+    if n == 0:
+        print("  ! KHONG tim thay tieu de nao de lam bookmark — xem lai tai lieu co "
+              "dung H1()/H2() khong")
+    else:
+        print("  bookmark=%d (soat lai tren file: %d)" % (n, bookmark.kiem(pdf)))
+
+
 def ra_soat(pdf, ve_anh, dpi):
     try:
         import fitz
@@ -175,6 +200,7 @@ def main():
         print("  " + kq)
         pdf = tim_pdf(jsx)
         if pdf and os.path.exists(pdf):
+            gan_bookmark(pdf)          # truoc khi ra soat: PDF cuoi cung phai co bookmark
             ra_soat(pdf, ve_anh, dpi)
         else:
             print("  (khong doc duoc duong dan PDF tu content, bo qua ra soat)")

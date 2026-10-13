@@ -1,6 +1,6 @@
 ---
 name: quy-trinh-dieu-khien-may-rang
-description: Bản đặc tả (spec) TRÌNH TỰ ĐIỀU KHIỂN máy rang OTL — máy trạng thái progStep trong programScan() cùng 3 máy phụ coolStep/abStep/aLoaderStep và toàn bộ timer tự đóng. Đây là NƠI SỬA QUY TRÌNH: sửa spec trong references/ trước, rồi mới áp vào include/Program.h. Dùng skill này bất cứ khi nào người dùng nói "sửa quy trình rang", "đổi trình tự", "thêm bước", "bỏ bước", "thêm timeout", "máy kẹt ở bước nào", "tại sao chưa tự xả", "đổi điều kiện chuyển bước", "auto charge/auto drop/cooling/escape/destoner/afterburner/auto-loader chạy thế nào", hay hỏi bất kỳ điều gì về thứ tự hành động của máy rang tự động — kể cả khi họ không nhắc chữ "state machine" hay "progStep".
+description: "Bản đặc tả (spec) TRÌNH TỰ ĐIỀU KHIỂN máy rang OTL — máy trạng thái progStep trong programScan() cùng 3 máy phụ coolStep/abStep/aLoaderStep và toàn bộ timer tự đóng. Đây là NƠI SỬA QUY TRÌNH: sửa spec trong references/ trước, rồi mới áp vào include/Program.h. Dùng skill này bất cứ khi nào người dùng nói \"sửa quy trình rang\", \"đổi trình tự\", \"thêm bước\", \"bỏ bước\", \"thêm timeout\", \"máy kẹt ở bước nào\", \"tại sao chưa tự xả\", \"đổi điều kiện chuyển bước\", \"auto charge/auto drop/cooling/escape/destoner/afterburner/auto-loader chạy thế nào\", hay hỏi bất kỳ điều gì về thứ tự hành động của máy rang tự động — kể cả khi họ không nhắc chữ \"state machine\" hay \"progStep\"."
 allowed-tools: Read, Grep, Edit, Write
 ---
 

@@ -70,6 +70,11 @@ CSV_CONFIG = {
         "search_cols": ["Category", "Issue", "Keywords", "Description"],
         "output_cols": ["Category", "Issue", "Platform", "Description", "Do", "Don't", "Code Example Good", "Code Example Bad", "Severity"]
     },
+    "book": {
+        "file": "design-books.csv",
+        "search_cols": ["Rule ID", "Category", "Platform", "Keywords", "Description"],
+        "output_cols": ["Rule ID", "Category", "Platform", "Description", "Do", "Don't", "OTL Note", "Source", "Severity"]
+    },
     "google-fonts": {
         "file": "google-fonts.csv",
         "search_cols": ["Family", "Category", "Stroke", "Classifications", "Keywords", "Subsets", "Designers"],
@@ -222,7 +227,8 @@ def detect_domain(query):
         "icons": ["icon", "icons", "lucide", "heroicons", "symbol", "glyph", "pictogram", "svg icon"],
         "gsap": ["gsap", "quickto", "scrolltrigger", "stagger", "magnetic cursor", "parallax", "page transition", "scroll reveal", "scroll-triggered", "scrollytelling", "flip plugin", "splittext", "shimmer", "skeleton loader"],
         "react": ["react", "next.js", "nextjs", "suspense", "memo", "usecallback", "useeffect", "rerender", "bundle", "waterfall", "barrel", "dynamic import", "rsc", "server component"],
-        "web": ["aria", "focus", "outline", "semantic", "virtualize", "autocomplete", "form", "input type", "preconnect"]
+        "web": ["aria", "focus", "outline", "semantic", "virtualize", "autocomplete", "form", "input type", "preconnect"],
+        "book": ["hmi", "operator", "alarm", "alarms", "interlock", "signifier", "affordance", "mapping", "mode error", "slip", "feedback", "conceptual model", "norman", "hollifield", "isa-18", "isa-101", "scada", "panel", "running stopped", "forcing function", "undo", "human error", "stripe", "accent bar", "accent stripe", "border-top", "underline", "edge bar"]
     }
 
     scores = {domain: sum(1 for kw in keywords if re.search(r'\b' + re.escape(kw) + r'\b', query_lower)) for domain, keywords in domain_keywords.items()}
