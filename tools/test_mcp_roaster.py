@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Kiểm MCP server tầng đọc — nói chuyện qua stdio đúng như Claude sẽ gọi.
+"""Kiểm MCP server — nói chuyện qua stdio đúng như Claude sẽ gọi.
+
+Kiểm hai chế độ:
+  · mặc định        — chỉ ĐỌC, không có công cụ lái nào xuất hiện
+  · OTL_MCP_CONTROL — có công cụ lái, nhưng mỗi lệnh vẫn phải qua lượt lái
 
 Cần app đang chạy (:8555). Không chạy thì báo bỏ qua.
 Chạy: python tools/test_mcp_roaster.py
 
-Tự tạo khoá 'read' rồi TỰ XOÁ.
+Tự tạo khoá rồi TỰ XOÁ.
 """
 import io
 import json
@@ -19,9 +23,11 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from otl_apikey import ApiKeyStore                    # noqa: E402
+from otl_testdata import tim_thu_muc                  # noqa: E402
 
 SERVER = os.path.join(HERE, "mcp_roaster", "server.py")
-DATA = os.path.join(HERE, "appdata")
+BASE = "http://127.0.0.1:8555"
+DATA = os.path.join(HERE, "appdata")   # chỉ còn để tương thích, xem tim_thu_muc()
 FAIL = []
 
 
@@ -35,9 +41,10 @@ def ok(ten, dieu_kien, chi_tiet=""):
 class Mcp:
     """Bọc tiến trình MCP: gửi JSON-RPC một dòng, đọc một dòng."""
 
-    def __init__(self, key):
+    def __init__(self, key, lai=False):
         env = dict(os.environ, OTL_API_KEY=key or "",
                    OTL_API_BASE="http://127.0.0.1:8555",
+                   OTL_MCP_CONTROL="1" if lai else "",
                    PYTHONIOENCODING="utf-8")
         self.p = subprocess.Popen(
             [sys.executable, SERVER], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -81,7 +88,14 @@ def main():
         print("App chưa chạy trên :8555 — BỎ QUA (không tính là hỏng).")
         return 0
 
-    st = ApiKeyStore(DATA)
+    # Xem chú thích cùng vấn đề ở test_api_scope.py: thư mục dữ liệu phải DÒ,
+    # vì bản EXE đóng gói để dữ liệu cạnh exe chứ không ở tools/appdata.
+    thu_muc, st = tim_thu_muc(BASE)
+    if not st:
+        print("Không tìm được thư mục dữ liệu của app đang chạy — BỎ QUA.")
+        return 0
+    print("Thư mục dữ liệu app đang dùng: %s" % thu_muc)
+    print()
     for k in st.list():
         if k["name"].startswith("test-mcp-"):
             st.delete(k["id"])
@@ -138,10 +152,51 @@ def main():
     finally:
         m2.dong()
 
-    print("\n6) KHÔNG có đường nào lái máy")
-    src = io.open(SERVER, encoding="utf-8").read()
-    ok("không dùng POST", "POST" not in src and "method=" not in src.replace("method\", ", ""))
-    ok("không có /api/v1/write trong danh sách cho phép", "/api/v1/write" not in src)
+    print("\n6) Tầng lái TẮT thì không có đường nào lái máy")
+    m3 = Mcp(key)                       # khoá chỉ 'read', không bật OTL_MCP_CONTROL
+    try:
+        ten = [t["name"] for t in
+               ((m3.goi("tools/list").get("result") or {}).get("tools") or [])]
+        ok("không công cụ lái nào hiện ra", not [t for t in ten if t.startswith("roaster_lai")],
+           ten)
+        txt, loi = m3.cong_cu("roaster_lai_gas", {"muc": 50})
+        ok("gọi thẳng công cụ lái → từ chối", loi, txt[:70])
+    finally:
+        m3.dong()
+
+    print("\n7) Tầng lái BẬT — công cụ hiện ra nhưng vẫn phải xin quyền")
+    kc = st.add("test-mcp-lai", ["read", "control"])["key"]
+    kcid = [k["id"] for k in st.list() if k["name"] == "test-mcp-lai"][0]
+    time.sleep(2.5)                                    # chờ app nạp lại khoá
+    m4 = Mcp(kc, lai=True)
+    try:
+        ten = [t["name"] for t in
+               ((m4.goi("tools/list").get("result") or {}).get("tools") or [])]
+        ok("có công cụ lái", "roaster_lai_gas" in ten and "roaster_lai_lua" in ten, ten[-4:])
+        ok("có công cụ xin/trả quyền",
+           "roaster_lai_xin_quyen" in ten and "roaster_lai_tra_quyen" in ten)
+
+        txt, loi = m4.cong_cu("roaster_lai_gas", {"muc": 50})
+        ok("chưa xin quyền mà ra lệnh → từ chối", loi)
+        ok("nói rõ vì sao (lượt lái / PC control)",
+           ("lượt lái" in txt or "PC control" in txt or "nối được máy" in txt), txt[:110])
+
+        txt, loi = m4.cong_cu("roaster_lai_lenh", {"ten": "hb", "gia_tri": 1})
+        ok("chặn ghi vào dây chuyền an toàn (hb)", loi, txt[:80])
+
+        txt, loi = m4.cong_cu("roaster_lai_xin_quyen", {"so_phut": 5})
+        # Máy thật chưa nối / PC control tắt thì PHẢI từ chối, và nói rõ lý do.
+        if loi:
+            ok("xin quyền bị từ chối thì nói rõ lý do",
+               ("PC control" in txt or "nối được máy" in txt), txt[:110])
+        else:
+            ok("xin quyền được (máy đang nối + PC control bật)", True, txt[:80])
+            txt, loi = m4.cong_cu("roaster_lai_trang_thai")
+            ok("thấy lượt lái đang mở", '"dang_lai": true' in txt.lower(), txt[:80])
+            m4.cong_cu("roaster_lai_tra_quyen", {"ly_do": "kiểm thử"})
+    finally:
+        m4.dong()
+        st.delete(kcid)
 
     st.delete(kid)
     print("(đã xoá khoá thử)")

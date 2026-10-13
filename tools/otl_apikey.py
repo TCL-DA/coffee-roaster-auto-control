@@ -25,6 +25,10 @@ import time
 SCOPES = ("read", "config", "control")
 KEY_PREFIX = "otl_"
 _FILE = "apikeys.json"
+# Khoảng cách tối thiểu giữa 2 lần GHI ĐĨA mốc "dùng lần cuối". Mốc này chỉ để
+# thợ nhìn khoá nào còn sống, không phải dữ liệu an toàn — không đáng một lần
+# ghi đĩa mỗi request.
+_LAST_USED_MIN_S = 300
 
 
 def _hash(key: str) -> str:
@@ -146,11 +150,20 @@ class ApiKeyStore:
                 if not k.get("enabled", True):
                     continue
                 if hmac.compare_digest(k.get("hash", ""), h):
-                    k["last_used"] = time.time()
-                    try:
-                        self._save()
-                    except Exception:
-                        pass
+                    # last_used cập nhật trong BỘ NHỚ mọi lần, nhưng chỉ GHI ĐĨA
+                    # hoạ hoằn. Trước 2026-09-09 mỗi request hợp lệ là một lần
+                    # ghi lại toàn bộ apikeys.json + os.replace: agent poll 1 Hz
+                    # thành 86.400 lần ghi/ngày ngay trên máy đang bơm Modbus,
+                    # và trong cửa sổ hãm 2 giây của _reload_if_changed thì bản
+                    # ghi đè này có thể nuốt mất khoá vừa tạo ở tiến trình khác.
+                    now = time.time()
+                    cu = k.get("last_used") or 0
+                    k["last_used"] = now
+                    if now - cu >= _LAST_USED_MIN_S:
+                        try:
+                            self._save()
+                        except Exception:
+                            pass
                     return {"id": k["id"], "name": k.get("name", ""),
                             "scopes": list(k.get("scopes", []))}
         return None

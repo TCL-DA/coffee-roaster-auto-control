@@ -877,7 +877,9 @@
     "_flame_note": [
       "Chốt cứng chống xả gas sống: app bật ignition mà quá ngần này giây vẫn không có",
       "gasSignal → firmware tự đóng gas + báo cờ flame_fail. Bếp premix mồi chậm ~40s",
-      "(PH_IGNITE_TMO_PREMIX 65s) nên để rộng hơn một nhịp."
+      "(PH_IGNITE_TMO_PREMIX 65s) nên để rộng hơn một nhịp.",
+      "Từ commit f43afea (12/10/2026, đo bàn thử panel + board thật): chạy MỌI lần bật gas (cờ xoá khi relay đọc",
+      "lại = 0), đóng gas thì báo mã trạng thái 414 và đang có mẻ thì tắt START. Bản trước chỉ canh lần đầu."
     ],
     "agent_timeout_s": 3,
     "_agent_note": [

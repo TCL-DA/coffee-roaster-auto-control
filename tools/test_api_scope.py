@@ -18,6 +18,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from otl_apikey import ApiKeyStore                      # noqa: E402
+from otl_testdata import tim_thu_muc                    # noqa: E402
 
 BASE = "http://127.0.0.1:8555"
 DATA = os.path.join(HERE, "appdata")
@@ -51,7 +52,16 @@ def main():
         print("App chưa chạy trên :8555 — BỎ QUA (không tính là hỏng).")
         return 0
 
-    st = ApiKeyStore(DATA)
+    # Thư mục dữ liệu KHÔNG được ghim cứng: chạy dev thì app đọc tools/appdata,
+    # còn bản EXE đóng gói đọc thư mục cạnh exe. Ghim cứng appdata làm khoá tạo
+    # ra nằm chỗ máy chủ không đọc → mọi khoá hợp lệ bị 401 và bộ kiểm báo sai
+    # hàng loạt trong khi phần quyền của app vẫn đúng.
+    thu_muc, st = tim_thu_muc(BASE)
+    if not st:
+        print("Không tìm được thư mục dữ liệu của app đang chạy — BỎ QUA.")
+        return 0
+    print("Thư mục dữ liệu app đang dùng: %s" % thu_muc)
+    print()
     for k in st.list():                      # dọn khoá thử sót từ lần trước
         if k["name"].startswith("test-scope-"):
             st.delete(k["id"])

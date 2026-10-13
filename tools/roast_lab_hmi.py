@@ -16,6 +16,7 @@ import http.server
 import json
 import logging
 import logging.handlers
+import math
 import os
 import secrets
 import shutil
@@ -33,6 +34,7 @@ import auth_otl                                  # noqa: E402  (GĐ2: kiểm PIN
 import otl_apikey                                # noqa: E402  (GĐ B: khoá API có phạm vi cho script/AI)
 import audit_otl                                 # noqa: E402  (GĐ2: nhật ký hash-chain)
 import license_otl                               # noqa: E402  (GĐ2: license Ed25519 khoá theo máy)
+import roast_assistant                           # noqa: E402  (trợ lý, công cụ và quyền thực thi)
 
 # Console của exe (PyInstaller) mặc định codec cp1252 → print tiếng Việt là
 # UnicodeEncodeError chết app ngay lúc mở. Ép UTF-8, lỗi thì thay ? — không chết.
@@ -160,6 +162,14 @@ def setup_logging():
         exc_info=(a.exc_type, a.exc_value, a.exc_traceback))
 
 
+def asset_path(name):
+    """File kèm theo app (icon PWA…): đóng exe thì nằm trong bundle, chạy dev thì nằm cạnh file này."""
+    base = getattr(sys, "_MEIPASS", None)
+    if base:
+        return os.path.join(base, name)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
+
+
 def html_path():
     """Đường dẫn file HTML: khi đóng exe lấy từ bundle (_MEIPASS), khi dev lấy ở gốc repo."""
     base = getattr(sys, "_MEIPASS", None)
@@ -218,12 +228,16 @@ class Api:
         # nên mọi máy giao khách đều mở sẵn cùng một PIN ai cũng đoán được.
         self.web_cfg = {"bat": True, "cong": 8555, "pin": ""}   # [WebServer] trong settings.ini
         self.web_tokens = {}     # token → thời điểm cấp (điện thoại đã nhập đúng PIN web)
+        # Token cấp cho MÁY (script/MCP/AI) khi ĐĂNG NHẬP bằng tài khoản app
+        # (Master/thợ + PIN) thay vì phải tạo khoá API. token → hồ sơ phiên.
+        self.api_sessions = {}
         # Kho mẻ SQLite (không mất mẻ) — DB hỏng cũng KHÔNG được chặn app mở
         self._db = None          # RoastDb — None nếu mở thất bại (app vẫn chạy)
         self._inv = None         # GĐ4 InventoryDb (kho/đơn/cupping) — chung DB với _db
         self._db_bid = None      # id mẻ đang RUNNING trong DB
         self._db_t0 = 0.0        # lúc mở mẻ — chặn begin_batch gọi đúp (app + web)
         self._db_meta = {}       # meta hồ sơ mẻ đang mở (prof_no… — để trừ kho/đơn khi chốt)
+        self._lease_gian = None  # lúc bắt đầu đứt liên lạc trong khi có tác nhân lái
         # Khoá API cho MÁY (script/MCP/AI) — khác PIN web vốn dành cho NGƯỜI.
         # Xem docs/plan/plan-mcp-api-extension.md §5 (ba tầng quyền).
         self._apikeys = otl_apikey.ApiKeyStore(app_data_dir(), log=log.info)
@@ -247,6 +261,25 @@ class Api:
         except Exception:
             self._audit = None
         self._session = None      # user đã đăng nhập ở tiến trình Python (nguồn quyền thật)
+        self._lease = None        # lượt lái T2 đang mở của tác nhân tự động (None = không có)
+        # Mốc mở lượt lái ĐẦU TIÊN của phiên PC control hiện tại. Gia hạn không
+        # xoá mốc này — nếu không, "trần 15 phút" chỉ là trần cho MỘT lượt, còn
+        # tác nhân cứ xin lại là lái vô tận mà không ai phải đụng vào máy.
+        self._lease_phien_t0 = None
+        self._control_lock = threading.RLock()
+        self._assistant = None
+
+    def _assistant_instance(self):
+        with self._control_lock:
+            if self._assistant is None:
+                self._assistant = roast_assistant.Assistant(self, app_data_dir())
+            return self._assistant
+
+    def assistant_action(self, action, payload=None):
+        """Cầu desktop; quyền lấy từ phiên Python, không lấy vai trò do JS gửi."""
+        if not self._is_master():
+            return {"ok": False, "err": "Đăng nhập Master để dùng trợ lý trên máy chủ."}
+        return self._assistant_instance().dispatch(action, payload or {}, "desktop", trusted=True)
 
     # ── chỉ những method dưới đây mới phơi sang JS ──────────────────────────
     def toggle_fullscreen(self):
@@ -255,6 +288,8 @@ class Api:
 
     def app_exit(self):
         """Nút Thoát trong menu người dùng — kiosk cảm ứng không có Alt+F4."""
+        if self._assistant:
+            self._assistant.pause_all("Ứng dụng đang đóng.")
         log.info("[APP] thoát theo lệnh người dùng")
         if self._window:
             self._window.destroy()
@@ -331,9 +366,267 @@ class Api:
     def link_ports(self):
         return otl_link.list_serial_ports()
 
-    def link_write(self, name, value):
-        """Ghi setpoint / nút ảo. Máy chỉ nhận khi PC control đang BẬT."""
-        return self._link.write(name, value)
+    def link_write(self, name, value, ctx=None):
+        """Tuần tự hóa lệnh máy; thao tác người vận hành tạm dừng agent trước khi ghi."""
+        lock = getattr(self, "_control_lock", None)
+        if lock is None:
+            # Một số bộ kiểm tạo Api bằng __new__, không mở phần cứng.
+            lock = self._control_lock = threading.RLock()
+        with lock:
+            assistant = getattr(self, "_assistant", None)
+            if assistant and (not ctx or ctx.get("kind") != "may"):
+                assistant.pause_all("Bạn vừa điều khiển máy; AI tạm dừng. Bấm Tiếp tục khi muốn giao lại.")
+            return self._link_write_guarded(name, value, ctx)
+
+    def _link_write_guarded(self, name, value, ctx=None):
+        """Ghi setpoint / nút ảo. Máy chỉ nhận khi PC control đang BẬT.
+
+        ctx=None hoặc ctx[kind]==nguoi → THỢ lái (app hoặc web đã nhập PIN):
+        giữ nguyên hành vi cũ, không thêm luật nào.
+        ctx[kind]==may → TÁC NHÂN TỰ ĐỘNG: phải có lượt lái T2 đang mở."""
+        if ctx and ctx.get("kind") == "may":
+            # API dùng đơn vị kỹ thuật; không kẹp âm thầm lệnh của tác nhân.
+            if not isinstance(name, str) or name not in otl_link.W_INDEX:
+                return {"ok": False, "err": "lenh", "msg": "tên lệnh không hợp lệ"}
+            scale = otl_link.W_SCALE[name]
+            lo, hi = otl_link.W_RANGE[name]
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or not lo <= value * scale <= hi):
+                return {"ok": False, "err": "gia_tri",
+                        "msg": "%s cần số hữu hạn trong khoảng %g..%g" % (name, lo / scale, hi / scale)}
+            tu_choi = self._lease_guard(ctx, name, value)
+            if tu_choi:
+                return tu_choi
+        r = self._link.write(name, value)
+        if ctx and ctx.get("kind") == "may" and r.get("ok"):
+            self._lease_ghi_so(ctx, name, r)
+        return r
+
+    # ── LƯỢT LÁI T2 — tác nhân tự động (AI/script) cầm lái ──────────────────
+    #
+    # Luật nằm ở ĐÂY, không nằm trong MCP server. Ai viết MCP server khác, hay
+    # gọi thẳng bằng curl, thì vẫn phải đi qua đúng bấy nhiêu luật. Luật đặt ở
+    # tầng AI là luật tự nguyện — vô nghĩa (§4 kế hoạch).
+
+    # Mặc định ở TẦNG LỚP, không chỉ trong __init__: bộ kiểm dựng Api bằng
+    # __new__ để khỏi mở DB/auth/serial, nên thiếu cái này là gãy ngay.
+    _lease_phien_t0 = None
+    _lease_gian = None            # đồng hồ ân hạn khi đứt liên lạc (xem _lease_guard)
+    api_sessions = {}             # phiên đăng nhập API — __init__ thay bằng dict riêng
+
+    def lease_state(self):
+        """Trạng thái lượt lái. Cũng là chỗ dọn lượt lái đã rụng ở tầng dưới."""
+        ag = self._link.agent_state()
+        # Thợ tắt PC control = kết thúc phiên → xoá đồng hồ tổng, lần sau tính lại
+        # từ đầu. Đây chính là hành động của CON NGƯỜI mà trần tổng đòi hỏi.
+        # Phải thấy cờ pc_control ĐÚNG BẰNG False mới xoá: mất kết nối thoáng qua
+        # trả về None/thiếu dữ liệu, mà coi đó là "thợ đã tắt" thì chỉ cần rớt
+        # cáp một nhịp là tác nhân được tặng thêm một phiên 60 phút.
+        _fl = ((self._link.snapshot().get("data") or {}).get("flags") or {})
+        if _fl.get("pc_control") is False:
+            self._lease_phien_t0 = None
+        L = self._lease
+        if L and not ag.get("dang_lai"):
+            # tầng link đã tự cắt (hết hạn / im lặng / máy đã về HMI)
+            self._lease = None
+            log.warning("[LAI] lượt lái của %s đã rụng — %s", L.get("ten"),
+                        ag.get("ly_do") or "máy về HMI")
+            self.op_log("warn", "LAI", "lượt lái %s rụng: %s"
+                        % (L.get("ten"), ag.get("ly_do") or "máy về HMI"))
+            L = None
+        if not L:
+            return {"dang_lai": False, "luat": self._lease_luat()}
+        return {"dang_lai": True, "ten": L["ten"], "khoa_id": L["id"],
+                "mo_luc": L["t0"], "con_lai_s": ag.get("con_lai_s"),
+                "im_lang_s": ag.get("im_lang_s"), "so_lenh": L["n"],
+                "luat": self._lease_luat()}
+
+    def _lease_luat(self):
+        """Nói RÕ luật cho tác nhân biết đường mà lái, khỏi phải đoán."""
+        con = None
+        if self._lease_phien_t0 is not None:
+            con = max(0, int(LEASE_PHIEN_MAX_S - (time.time() - self._lease_phien_t0)))
+        return {"tran_phut": LEASE_MAX_S // 60, "im_lang_toi_da_s": LEASE_STALE_S,
+                "lenh_moi_phut": LEASE_RATE_N, "buoc_nhay_toi_da": dict(LEASE_STEP),
+                "cam_ghi": list(LEASE_CAM),
+                "tran_phien_phut": LEASE_PHIEN_MAX_S // 60,
+                "phien_con_lai_s": con,
+                "nhip_tinh_tu": "lệnh GHI hoặc lease_beat — ĐỌC trạng thái KHÔNG "
+                                "còn tính là nhịp tim (vá 2026-09-09). Đang nghĩ "
+                                "lâu thì gọi lease_beat, đừng dựa vào vòng lặp đọc."}
+
+    def _may_san_sang(self):
+        """Máy có đang ở thế nhận lệnh từ PC không? Trả (ok, lý do đọc được)."""
+        snap = self._link.snapshot()
+        if snap.get("state") != "connected":
+            return False, ("app chưa nối được máy rang (%s)"
+                           % (snap.get("err") or snap.get("state") or "không rõ"))
+        d = snap.get("data") or {}
+        if not (d.get("flags") or {}).get("pc_control"):
+            return False, ("nút PC control trên HMI đang TẮT — thợ phải tự bật "
+                           "bằng tay ngay tại tủ máy, không bật được từ xa")
+        return True, ""
+
+    def lease_open(self, ctx=None, phut=None):
+        """Xin lượt lái. ĐK1 của §5: thợ phải bật PC control BẰNG TAY trên HMI —
+        nút đó nằm trên tủ, không có đường bật từ xa, nên chính nó là công tắc
+        cho phép tác nhân tự động lái."""
+        if not ctx or ctx.get("kind") != "may":
+            return {"ok": False, "err": "khong_can",
+                    "msg": "lượt lái chỉ dành cho tác nhân tự động; thợ lái app "
+                           "thì ghi thẳng, không cần xin"}
+        cu = self.lease_state()
+        if cu.get("dang_lai") and cu.get("khoa_id") != ctx.get("id"):
+            return {"ok": False, "err": "ban",
+                    "msg": "đang có tác nhân khác cầm lái: %s" % cu.get("ten")}
+        ok, vi_sao = self._may_san_sang()
+        if not ok:
+            return {"ok": False, "err": "may_chua_san_sang", "msg": vi_sao}
+        # TRẦN TỔNG CỦA PHIÊN. Trần 15 phút cũ chỉ chặn MỘT lượt: khoá đang giữ
+        # lái gọi lại lease_open là được cấp 15 phút mới ngay, nên tổng thời gian
+        # tác nhân tự động cầm máy là vô hạn mà không ai phải có mặt. Nay hết
+        # trần phiên thì phải có NGƯỜI tắt/bật lại PC control tại tủ.
+        now = time.time()
+        if self._lease_phien_t0 is None:
+            self._lease_phien_t0 = now
+        elif now - self._lease_phien_t0 > LEASE_PHIEN_MAX_S:
+            da = int((now - self._lease_phien_t0) // 60)
+            return {"ok": False, "err": "het_phien",
+                    "msg": "tác nhân tự động đã cầm lái %d phút trong phiên này "
+                           "(trần %d phút). Thợ phải tắt rồi bật lại PC control "
+                           "trên HMI thì mới xin lái tiếp được."
+                           % (da, LEASE_PHIEN_MAX_S // 60)}
+        try:
+            giay = int(float(phut) * 60) if phut else LEASE_MAX_S
+        except (TypeError, ValueError):
+            giay = LEASE_MAX_S
+        giay = max(60, min(LEASE_MAX_S, giay))
+        self._link.agent_open(giay, LEASE_STALE_S)
+        self._lease = {"id": ctx.get("id"), "ten": ctx.get("name") or "?",
+                       "t0": time.time(), "n": 0, "moc": time.time(),
+                       "dem": 0, "cuoi": {}}
+        log.warning("[LAI] %s mở lượt lái %d giây — TÁC NHÂN TỰ ĐỘNG CẦM LÁI",
+                    ctx.get("name"), giay)
+        self.op_log("warn", "LAI", "tác nhân tự động %s bắt đầu lái (%d phút)"
+                    % (ctx.get("name"), giay // 60))
+        self.audit_add("api:" + str(ctx.get("name")), "lease_open", "", "", str(giay))
+        return {"ok": True, **self.lease_state()}
+
+    def lease_touch(self, key_id):
+        """Khoá này vừa gọi một đường API bất kỳ = tác nhân còn sống. Gọi từ
+        _ctx() nên MỌI request đều tính, khỏi bắt AI nhấp nhịp riêng."""
+        if self._lease and self._lease.get("id") == key_id:
+            self._link.agent_beat()
+
+    def lease_close(self, ctx=None, ly_do=""):
+        """Trả quyền. Thợ (token web) cắt được lượt lái của bất kỳ tác nhân nào."""
+        L = self._lease
+        if not L:
+            return {"ok": True, "msg": "không có lượt lái nào đang mở"}
+        if ctx and ctx.get("kind") == "may" and ctx.get("id") != L.get("id"):
+            return {"ok": False, "err": "khong_phai_cua_ban",
+                    "msg": "lượt lái này của %s" % L.get("ten")}
+        self._link.agent_close(ly_do or "trả quyền")
+        self._lease = None
+        ai = (ctx or {}).get("name") or "hệ thống"
+        log.warning("[LAI] %s đóng lượt lái của %s — %s", ai, L.get("ten"),
+                    ly_do or "trả quyền")
+        self.op_log("info", "LAI", "kết thúc lượt lái %s (%s)"
+                    % (L.get("ten"), ly_do or "trả quyền"))
+        self.audit_add("api:" + str(ai), "lease_close", "", str(L.get("ten")), ly_do)
+        return {"ok": True, "msg": "đã trả quyền về thợ"}
+
+    def _lease_guard(self, ctx, name, value):
+        """Tác nhân tự động ghi 1 lệnh — soát đủ điều kiện. Trả None nếu cho đi,
+        hoặc dict lỗi CÓ LÝ DO ĐỌC ĐƯỢC (AI đọc mã số thì nó đoán, đọc được lý
+        do thì nó xử đúng — xem _cfg_reason trong otl_link.py)."""
+        if name in LEASE_CAM:
+            return {"ok": False, "err": "cam",
+                    "msg": "%s thuộc dây chuyền an toàn — app giữ, tác nhân tự "
+                           "động không được ghi" % name}
+        st = self.lease_state()
+        if not st.get("dang_lai"):
+            return {"ok": False, "err": "chua_xin_quyen",
+                    "msg": "chưa có lượt lái. Gọi lease_open trước; và thợ phải "
+                           "bật PC control trên HMI bằng tay."}
+        if st.get("khoa_id") != ctx.get("id"):
+            return {"ok": False, "err": "ban",
+                    "msg": "tác nhân khác đang cầm lái: %s" % st.get("ten")}
+        ok, vi_sao = self._may_san_sang()
+        if not ok:
+            # ÂN HẠN 3 GIÂY cho đứt liên lạc thoáng qua. Con số 3 không tuỳ tiện:
+            # đúng bằng watchdog PC control trong firmware. Nối lại kịp trong đó
+            # thì firmware cũng chưa hề nhả quyền, nên giữ lượt lái là đúng sự
+            # thật chứ không phải nới lỏng. Quá 3 giây thì firmware đã tự trả
+            # quyền về HMI kèm còi — lúc đó đóng hẳn, tác nhân phải xin lại.
+            # Thợ TẮT PC control là ý chí con người → đóng ngay, không ân hạn.
+            hong_link = "PC control" not in vi_sao
+            now = time.time()
+            if hong_link:
+                if self._lease_gian is None:
+                    self._lease_gian = now
+                if now - self._lease_gian <= LEASE_AN_HAN_S:
+                    return {"ok": False, "err": "link_gian_doan",
+                            "msg": "đứt liên lạc với máy %0.1fs — VẪN GIỮ lượt lái, "
+                                   "thử lại lệnh này sau một nhịp. Quá %gs mới mất "
+                                   "quyền." % (now - self._lease_gian, LEASE_AN_HAN_S)}
+            self._lease_gian = None
+            self.lease_close(None, vi_sao)
+            return {"ok": False, "err": "may_chua_san_sang", "msg": vi_sao}
+        self._lease_gian = None            # nối lại rồi → xoá đồng hồ ân hạn
+
+        L = self._lease
+        now = time.time()
+        if now - L["moc"] >= 60:           # cửa sổ trượt 1 phút
+            L["moc"], L["dem"] = now, 0
+
+        buoc = LEASE_STEP.get(name)
+        giam = False                       # lệnh này có kéo mức XUỐNG không?
+        if buoc is not None:
+            try:
+                moi = float(value)
+            except (TypeError, ValueError):
+                return {"ok": False, "err": "gia_tri", "msg": "giá trị không phải số"}
+            cu = L["cuoi"].get(name)
+            if cu is None:                 # chưa ra lệnh lần nào → lấy mức máy đang chạy
+                cu = (self._link.snapshot().get("data") or {}).get(name)
+            giam = cu is not None and moi <= float(cu)
+
+        # Chốt tần suất KHÔNG áp cho lệnh kéo mức xuống. Bắt được 12/09/2026:
+        # bắn dồn tới hạn quota rồi thì đến gas = 0 cũng bị từ chối — tác nhân
+        # tự nhốt mình ngoài cửa đúng lúc cần rút gas nhất. Chốt này sinh ra để
+        # chặn tác nhân quậy, không phải để chặn tác nhân dọn dẹp.
+        if not giam and L["dem"] >= LEASE_RATE_N:
+            return {"ok": False, "err": "qua_nhanh",
+                    "msg": "quá %d lệnh trong 1 phút — chờ chút rồi ghi tiếp "
+                           "(lệnh GIẢM mức thì không bị chặn)" % LEASE_RATE_N}
+
+        if buoc is not None:
+            # CHỈ hãm chiều TĂNG. Trước 12/09/2026 hãm cả hai chiều, nên hạ gas
+            # 80 → 0 hay rút gió gấp đều bị từ chối, bắt tác nhân chia 3 lệnh —
+            # đúng lúc cần rút nhanh nhất. Chốt này sinh ra để chặn "AI đòi gas 0
+            # lên 100 lúc FCs", tức chặn NHIỆT VÀO tăng vọt; chiều giảm là chiều
+            # an toàn, chặn nó là quay súng vào chính mình.
+            if cu is not None and (moi - float(cu)) > buoc:
+                return {"ok": False, "err": "buoc_qua_lon",
+                        "msg": "%s đang %g, đòi tăng lên %g — mỗi lệnh chỉ TĂNG "
+                               "tối đa %g. Chia nhỏ ra nhiều bước (giảm thì không "
+                               "giới hạn)." % (name, float(cu), moi, buoc)}
+        return None
+
+    def _lease_ghi_so(self, ctx, name, r):
+        """Lệnh đã xuống máy — đếm, nhớ mức, ghi nhật ký (tra khi mẻ hỏng)."""
+        L = self._lease
+        if not L:
+            return
+        L["n"] += 1
+        L["dem"] += 1
+        # Link trả giá trị thanh ghi, còn giới hạn bước dùng °C/kg/%/Pa.
+        L["cuoi"][name] = r.get("value") / otl_link.W_SCALE.get(name, 1)
+        self.op_log("info", "LAI", "%s = %s (tác nhân %s)"
+                    % (name, r.get("value"), ctx.get("name")))
+        self.audit_add("api:" + str(ctx.get("name")), "lai_may", name, "",
+                       str(r.get("value")))
 
     def link_new_batch(self):
         """Về mẻ trống — xoá đồng hồ/mốc bên Python. Mẻ DB chưa chốt (bấm Mẻ mới
@@ -396,19 +689,37 @@ class Api:
             return
         try:
             cfg = self._inv.cost_config()
-            batch_kg = float(cfg.get("me_kg_dinh_muc") or 6.0) or 6.0
             charge = summary.get("charge_kg")
-            kg_in = float(charge) if charge not in (None, "") else batch_kg
+            kg_in = float(charge) if charge not in (None, "") else self._machine_batch_kg()
             if self._inv.hopper_lot(1):              # chỉ trừ khi đã gán lô đang mở
                 self._inv.consume_batch(bid, kg_in, user=self._session_name())
-            # tiến độ đơn: sản lượng ước lượng = kg vào × (1 − hao hụt định mức)
+            # tiến độ đơn: sản lượng ước lượng = kg vào × (1 − hao hụt định mức).
+            # Mẻ GIÁN ĐOẠN (mất kết nối, máy chưa xác nhận xả) không biết ra được bao
+            # nhiêu thành phẩm → không cộng đơn; hạt thì đã vào trống nên kho vẫn trừ.
             pno = int(self._db_meta.get("no") or 0)
-            if pno > 0:
-                shrink = float(cfg.get("hao_hut_dinh_muc_pct") or 15.0)
-                kg_out = round(kg_in * (1.0 - shrink / 100.0), 2)
-                self._inv.order_progress(pno, kg_out)
+            if pno > 0 and not summary.get("interrupted"):
+                self._inv.order_progress(pno, self._kg_out_uoc(kg_in, cfg), batch_id=bid)
         except Exception:
             log.error("[KHO] móc trừ kho/đơn lúc chốt mẻ lỗi (mẻ vẫn chốt)", exc_info=True)
+
+    @staticmethod
+    def _kg_out_uoc(kg_in, cfg):
+        """Thành phẩm ước lượng = kg vào × (1 − hao hụt định mức)."""
+        shrink = float(cfg.get("hao_hut_dinh_muc_pct") or 15.0)
+        return round(kg_in * (1.0 - shrink / 100.0), 2)
+
+    def _inv_rebase(self, bid, kg):
+        """Thợ sửa kg sau mẻ → chỉnh kho + đơn theo số thật (review 14/09 RF-05).
+        Xoá số (kg=None) = quay về định mức, đúng con số lúc chốt mẻ đã dùng.
+        Lỗi kho không được làm hỏng việc ghi kg — chỉ ghi log."""
+        if not self._inv:
+            return
+        try:
+            kg_in = float(kg) if kg is not None else self._machine_batch_kg()
+            self._inv.rebase_batch(bid, kg_in, self._kg_out_uoc(kg_in, self._inv.cost_config()),
+                                   user=self._session_name())
+        except Exception:
+            log.error("[KHO] chỉnh kho/đơn theo kg mẻ #%s lỗi (kg vẫn ghi)", bid, exc_info=True)
 
     def _session_name(self):
         return (self._session or {}).get("name", "") if self._session else ""
@@ -497,7 +808,7 @@ class Api:
         """GĐ5 — báo cáo điều hành xưởng N ngày (sản lượng/tồn/lô sắp hết/đơn/lãi)."""
         return self._inv.workshop_report(days) if self._inv else None
 
-    # ── CÀI ĐẶT MÁY (tham số firmware $M1..$M52) ─────────────────────────────
+    # ── CÀI ĐẶT MÁY (tham số firmware $M1..$M<CFG_MAXIDX>) ───────────────────
     # Lưu/mở FILE cấu hình chạy độc lập (backup/khôi phục/chuyển máy). Đọc/ghi
     # THẲNG xuống máy cần firmware mở khối cấu hình trong PC_Link (nay chỉ chở
     # dữ liệu live) — chưa có thì báo rõ để UI biết, giống cách xử firmware cũ.
@@ -527,10 +838,14 @@ class Api:
         except Exception as e:
             return {"ok": False, "err": str(e)}
 
-    def mc_read(self, items):
+    def mc_read(self, items=None):
         """Đọc tham số $M TỪ MÁY qua handshake PC_Link.
         items = [[key, idx], ...] (idx = số $M). Trả {ok, cfg:{key:val}, failed:[key]}.
-        App mở tab Cài đặt máy gọi 1 lần cho cả 52 tham số (mỗi cái 1 vòng hỏi-đáp)."""
+        App mở tab Cài đặt máy gọi 1 lần cho CẢ KHỐI $M (1..CFG_MAXIDX, mỗi cái 1
+        vòng hỏi-đáp). Số lượng lấy từ bản đồ PC_Link sinh sẵn, không ghi cứng —
+        firmware mở thêm $M là chỗ này tự theo."""
+        if items is None:
+            items = [["M%d" % idx, idx] for idx in range(1, otl_link.CFG_MAXIDX + 1)]
         if not isinstance(items, list):
             return {"ok": False, "err": "thiếu danh sách tham số"}
         cfg, failed = {}, []
@@ -549,29 +864,75 @@ class Api:
         return {"ok": bool(cfg), "cfg": cfg, "failed": failed,
                 "err": "" if cfg else "không đọc được tham số nào"}
 
-    def mc_write(self, items):
+    # $M lái TRỰC TIẾP lửa, nhiệt hoặc cơ cấu. Khối cấu hình chạy ĐỘC LẬP PC
+    # control (PC_Link.h), nên trước 2026-09-09 một khoá chỉ có phạm vi `config`
+    # đổi được trần gas tuyệt đối ($M28), gas mồi ($M8) hay nhiệt nạp ($M23) mà
+    # không cần thợ bật PC control, không cần lượt lái, không ai đứng cạnh máy —
+    # rồi mẻ sau thợ rang tay theo tham số đã bị đổi. Đó là leo quyền thật sự:
+    # ảnh hưởng vật lý mà không đi qua cổng nào của tầng điều khiển.
+    # Nay nhóm này đòi thêm phạm vi `control`. Nhóm còn lại (ID slave, thang đo
+    # cảm biến, ngưỡng cân, kho…) vẫn chỉ cần `config` như cũ.
+    M_CAN_CONTROL = {
+        1, 2, 3,        # xi-lanh nạp / xả / thoát
+        4, 5, 31,       # trần bậc tăng gas AUTO (trước DE, DE→FCs, sau FCs)
+        7,              # nhiệt vận hành afterburner (đầu đốt thứ hai)
+        8,              # gas mồi lúc charge
+        9,              # nhiệt bật gas chính
+        10, 23,         # nhiệt nạp mẻ + dung sai
+        20, 21,         # mốc DE / FCs — đổi là đổi cả đường gas AUTO
+        24,             # SV BT ghi xuống bộ điều khiển nhiệt
+        28,             # TRẦN GAS TUYỆT ĐỐI — hệ số nhân của DAC gas
+        29,             # loại đầu đốt (đổi cả tham số preheat)
+        34, 35,         # tốc độ trống / gió chế độ tay
+        36,             # đặt gas thủ công
+        37,             # tự cắt lửa khi kết thúc
+        51, 52,         # preheat: thời gian + nhiệt đích
+        54, 55, 56,     # preheat PID: thời hạn, ổn định, dải mục tiêu
+        58, 59, 60,     # auto-drop tối thiểu, Escape bổ sung, timeout cửa Drop
+    }
+
+    def mc_write(self, items, ctx=None):
         """Ghi tham số $M XUỐNG MÁY qua handshake PC_Link.
         items = [[key, idx, val], ...]. Ghi bị CHẶN phía firmware khi đang rang.
         Trả {ok, count, failed:[key]}. Dùng cho 'Ghi tất cả' và auto-ghi từng ô."""
-        if not isinstance(items, list):
-            return {"ok": False, "err": "thiếu danh sách tham số"}
-        count, failed = 0, []
+        # Kiểm toàn bộ yêu cầu trước khi ghi để không áp dụng nửa danh sách lỗi.
+        if not isinstance(items, list) or not 1 <= len(items) <= otl_link.CFG_MAXIDX:
+            return {"ok": False, "err": "cần danh sách từ 1 đến %d tham số" % otl_link.CFG_MAXIDX}
+        seen = set()
         for it in items:
-            try:
-                key, idx, val = it[0], int(it[1]), int(round(float(it[2])))
-            except Exception:
-                continue
-            r = self._link.cfg_op(2, idx, val)     # 2 = ghi
+            if (not isinstance(it, (list, tuple)) or len(it) != 3
+                    or not isinstance(it[0], str) or not it[0]
+                    or type(it[1]) is not int or not 1 <= it[1] <= otl_link.CFG_MAXIDX
+                    or type(it[2]) is not int or not 0 <= it[2] <= 65535
+                    or it[1] in seen):
+                return {"ok": False, "err": "tham số không hợp lệ: cần [tên, số $M, số nguyên 0..65535], không lặp $M"}
+            lo, hi = otl_link.CFG_RANGE[it[1]]
+            if lo > hi or not lo <= it[2] <= hi:
+                return {"ok": False, "err": "M%d cần số nguyên thô trong khoảng %d..%d" % (it[1], lo, hi)}
+            seen.add(it[1])
+        if ctx is not None and ctx.get("kind") == "may":
+            nguy = sorted({it[1] for it in items if it[1] in self.M_CAN_CONTROL})
+            if nguy and "control" not in (ctx.get("scopes") or []):
+                return {"ok": False, "err": "pham_vi",
+                        "msg": "M%s lái trực tiếp lửa/nhiệt/cơ cấu nên cần thêm "
+                               "phạm vi 'control', không chỉ 'config'."
+                               % ", M".join(str(x) for x in nguy)}
+        count, failed, errors = 0, [], {}
+        for key, idx, val in items:
+            r = self._link.cfg_op(2, idx, val)
+            if ctx is not None:
+                self.audit_add("api:" + str(ctx.get("name", "")), "mc_write",
+                               "M%d" % idx, "", json.dumps({"value": val, "result": r}, ensure_ascii=False))
             if r.get("ok"):
                 count += 1
             else:
                 failed.append(key)
-                if r.get("err", "").startswith("máy chưa nạp"):
-                    return {"ok": False, "err": r["err"]}
-        if count:
-            log.info("[MÁY] ghi %d tham số $M xuống máy (%d lỗi)", count, len(failed))
-        return {"ok": count > 0, "count": count, "failed": failed,
-                "err": "" if count else "không ghi được (có thể đang rang → firmware khoá)"}
+                errors[key] = r.get("err") or "firmware từ chối"
+                # Dừng khi máy từ chối; không tiếp tục các lệnh còn lại.
+                break
+        return {"ok": count == len(items), "count": count, "failed": failed,
+                "errors": errors, "not_attempted": [it[0] for it in items[count + len(failed):]],
+                "err": next(iter(errors.values()), "")}
 
     def db_batch_list(self, n=50, query="", date_from="", date_to="", offset=0):
         """Danh sách mẻ mới nhất cho tab Lịch sử (app + web đọc chung)."""
@@ -582,6 +943,34 @@ class Api:
         except Exception:
             log.error("[DB] đọc lịch sử thất bại", exc_info=True)
             return None
+
+    def db_batch_count(self, query="", date_from="", date_to=""):
+        """Tổng số mẻ khớp bộ lọc — giao diện cần để ghi \"N mẻ đã lưu\"."""
+        if not self._db:
+            return None
+        try:
+            return self._db.count(query, date_from, date_to)
+        except Exception:
+            log.error("[DB] đếm mẻ thất bại", exc_info=True)
+            return None
+
+    def db_batch_set_weight(self, bid, kg):
+        """Ghi khối lượng nạp (kg) do thợ nhập cho một mẻ. kg rỗng = xoá.
+        Ghi xong thì chỉnh luôn kho + tiến độ đơn cho khớp số thật — trước đây chỉ
+        sửa cột batches.charge_kg nên lịch sử ghi 3 kg mà kho vẫn trừ 6 kg."""
+        if not self._db:
+            return False
+        try:
+            kg_so = None if kg in ("", None) else float(kg)
+            ok = self._db.set_weight(bid, kg_so)
+        except ValueError:
+            return False
+        except Exception:
+            log.error("[DB] ghi khối lượng thất bại", exc_info=True)
+            return False
+        if ok:
+            self._inv_rebase(bid, kg_so)
+        return ok
 
     def db_batch_curve(self, bid):
         """Curve 1 mẻ (mảng cột như p.curve) — xem lại / xuất."""
@@ -679,7 +1068,38 @@ class Api:
             self.audit_add(name, "Đăng nhập (web)", "Phiên", "", str(name))
         return r
 
+    # ── mở khoá MÀN HÌNH APP từ xa (API/MCP) ────────────────────────────────
+    # Hai phiên khác nhau: token API là cửa cho script, còn màn khoá trong cửa sổ
+    # app là phiên của NGƯỜI. Trước 12/09/2026 hai thứ đó không nối nhau, nên
+    # đăng nhập bằng API xong nhìn lên màn hình vẫn thấy màn khoá — đúng về mặt
+    # kỹ thuật nhưng vô lý với người đứng ở máy. Nay đăng nhập API mở khoá luôn
+    # màn hình, vì PIN dùng để mở màn hình CHÍNH LÀ PIN vừa nhập.
+    def ui_mo_khoa(self, user):
+        w = getattr(self, "_window", None)
+        if not w:
+            return False
+        try:
+            r = w.evaluate_js("window.otlRemoteLogin&&otlRemoteLogin(%s)"
+                              % json.dumps(user, ensure_ascii=False))
+            return bool(r)
+        except Exception:
+            log.warning("[API] không đẩy được lệnh mở khoá xuống cửa sổ app",
+                        exc_info=True)
+            return False
+
+    def ui_khoa(self):
+        """Khoá màn hình app lại — dùng khi trả phiên từ xa."""
+        w = getattr(self, "_window", None)
+        if not w:
+            return False
+        try:
+            return bool(w.evaluate_js("window.otlRemoteLogout&&otlRemoteLogout()"))
+        except Exception:
+            return False
+
     def auth_logout(self):
+        if getattr(self, "_assistant", None):
+            self._assistant.pause_all("Đã đăng xuất người vận hành.")
         if self._session:
             self.audit_add(self._session["name"], "Đăng xuất", "Phiên", "", self._session["name"])
         self._session = None
@@ -795,6 +1215,42 @@ class Api:
         log.info("[WEB] BẬT web LAN theo lệnh người dùng%s",
                  "" if ok else " — MỞ CỔNG THẤT BẠI")
         return {"on": ok, "err": "" if ok else "không mở được cổng — xem Log kỹ thuật"}
+
+    def web_pin_get(self):
+        """Chỉ cầu desktop của Master được đọc PIN; không mở đường HTTP."""
+        if not self._is_master():
+            return {"ok": False, "err": "Chỉ Master được xem hoặc sửa PIN web."}
+        return {"ok": True, "pin": str(self.web_cfg.get("pin") or "")}
+
+    def web_pin_set(self, pin):
+        """Lưu nguyên chuỗi để giữ số 0 đầu; chỉ đổi PIN chạy sau khi ghi bền."""
+        if not self._is_master():
+            return {"ok": False, "err": "Chỉ Master được xem hoặc sửa PIN web."}
+        if not isinstance(pin, str) or not 6 <= len(pin) <= 12 or not pin.isascii() or not pin.isdigit():
+            return {"ok": False, "err": "PIN web cần từ 6 đến 12 chữ số."}
+        if pin in {"123456", "000000"}:
+            return {"ok": False, "err": "PIN này quá dễ đoán. Hãy chọn PIN khác để giữ nguyên sau khi khởi động lại."}
+        path = self._ini_path()
+        tmp = path + ".web-pin.tmp"
+        try:
+            c = configparser.ConfigParser()
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as f:
+                    c.read_file(f)
+            if not c.has_section("WebServer"):
+                c.add_section("WebServer")
+            c.set("WebServer", "pin_dieu_khien", pin)
+            with open(tmp, "w", encoding="utf-8") as f:
+                c.write(f)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
+        except Exception:
+            return {"ok": False, "err": "Không lưu được settings.ini. PIN cũ vẫn giữ nguyên."}
+        self.web_cfg["pin"] = pin
+        # Đổi PIN có hiệu lực ngay cả với tablet đã đăng nhập bằng PIN cũ.
+        self.web_tokens.clear()
+        return {"ok": True}
 
     def web_info(self):
         """IP LAN + cổng web server — app hiện trên thanh trên, chạm để copy."""
@@ -941,6 +1397,59 @@ class Api:
         except Exception:
             log.error("[UI] Style export failed", exc_info=True)
             return {"ok": False, "err": "không ghi được tệp phong cách"}
+
+    # ── File cài đặt app (CSV chữ) — chủ máy 14/09: xuất/nhập được, Excel/Notepad sửa được ──
+    # JS dựng/đọc nội dung (nó biết khoá nào hợp lệ, dải nào đúng); Python chỉ lo HỘP
+    # CHỌN FILE của Windows + đọc/ghi đĩa. utf-8-sig để Excel mở không vỡ dấu tiếng Việt.
+    _SETTINGS_MAX = 1_000_000
+
+    def settings_export(self, text, filename="OTL-cai-dat.csv"):
+        """Hỏi chỗ lưu rồi ghi file cài đặt. Trả {ok, path} / {ok:False, cancelled|err}."""
+        if not self._window:
+            return {"ok": False, "err": "không có cửa sổ ứng dụng"}
+        if not isinstance(text, str) or len(text.encode("utf-8")) > self._SETTINGS_MAX:
+            return {"ok": False, "err": "nội dung cài đặt không hợp lệ"}
+        name = "".join("-" if ch in '\\/:*?"<>|' else ch for ch in str(filename or ""))[:80] \
+            or "OTL-cai-dat.csv"
+        try:
+            selected = self._window.create_file_dialog(
+                webview.SAVE_DIALOG, save_filename=name,
+                file_types=("CSV (*.csv)", "Văn bản (*.txt)"))
+            if not selected:
+                return {"ok": False, "cancelled": True}
+            path = selected[0] if isinstance(selected, (list, tuple)) else selected
+            with open(path, "w", encoding="utf-8-sig", newline="") as stream:
+                stream.write(text)
+            log.info("[CÀI ĐẶT] xuất file cài đặt → %s", path)
+            return {"ok": True, "path": path}
+        except Exception:
+            log.error("[UI] Settings export failed", exc_info=True)
+            return {"ok": False, "err": "không ghi được file cài đặt"}
+
+    def settings_import(self):
+        """Hỏi file rồi TRẢ NỘI DUNG cho JS kiểm — Python không tự áp dụng gì."""
+        if not self._window:
+            return {"ok": False, "err": "không có cửa sổ ứng dụng"}
+        try:
+            selected = self._window.create_file_dialog(
+                webview.OPEN_DIALOG, allow_multiple=False,
+                file_types=("File cài đặt (*.csv;*.txt)", "Mọi tệp (*.*)"))
+            if not selected:
+                return {"ok": False, "cancelled": True}
+            path = selected[0] if isinstance(selected, (list, tuple)) else selected
+            if os.path.getsize(path) > self._SETTINGS_MAX:
+                return {"ok": False, "err": "file quá lớn — không phải file cài đặt"}
+            with open(path, "rb") as stream:
+                raw = stream.read()
+            try:
+                text = raw.decode("utf-8-sig")
+            except UnicodeDecodeError:          # Excel lưu "CSV" kiểu ANSI tiếng Việt
+                text = raw.decode("cp1258", errors="replace")
+            log.info("[CÀI ĐẶT] đọc file cài đặt ← %s", path)
+            return {"ok": True, "text": text, "name": os.path.basename(path)}
+        except Exception:
+            log.error("[UI] Settings import failed", exc_info=True)
+            return {"ok": False, "err": "không đọc được file cài đặt"}
 
     def prof_dir_pick(self):
         """Mở hộp chọn thư mục Windows → lưu lựa chọn, trả về đường dẫn."""
@@ -1213,6 +1722,29 @@ class Api:
 # settings.ini) → cấp token 12 giờ. Stdlib thuần, không thêm thư viện.
 # ════════════════════════════════════════════════════════════════════════════
 WEB_TOKEN_TTL = 12 * 3600
+# Phiên ĐĂNG NHẬP API (tài khoản app + PIN, dùng cho CLI/MCP). Ngắn hơn token web
+# 12 giờ vì đây là cửa cho MÁY: không ai ngồi cạnh để thấy phiên còn mở.
+API_SESS_TTL = 8 * 3600
+
+
+def _scopes_cho(role, perms):
+    """Tài khoản app → phạm vi khoá API. Master đủ ba tầng; thợ KHÔNG bao giờ có
+    'control' qua đường này — lái máy từ xa vẫn phải là khoá cấp riêng hoặc Master.
+    'config' chỉ mở cho thợ đã được giao quyền chỉnh calib/model nhiệt."""
+    if role == "master":
+        return list(otl_apikey.SCOPES)
+    p = perms or {}
+    sc = ["read"]
+    if p.get("calib_gas") or p.get("model_nhiet"):
+        sc.append("config")
+    return sc
+
+
+def _prune_sessions(api):
+    now = time.time()
+    for t, v in list(api.api_sessions.items()):
+        if now - v.get("t", 0) >= API_SESS_TTL:
+            api.api_sessions.pop(t, None)
 # Đếm số lần sai PIN web theo IP: {ip: (số_lần, khoá_tới_lúc)}. Phải có khoá
 # luồng vì ThreadingHTTPServer xử nhiều yêu cầu cùng lúc.
 _LOGIN_FAIL = {}
@@ -1255,10 +1787,40 @@ SCOPE_POST = {
     "/api/write":        "control",   # gas · gió · trống · nạp · xả · mồi lửa
     "/api/new_batch":    "control",
     "/api/begin_batch":  "control",
+    "/api/lease_open":   "control",   # xin lượt lái cho tác nhân tự động (T2)
+    "/api/lease_beat":   "control",
+    "/api/lease_close":  "control",
     "/api/uievent":      "read",      # chỉ soi gương thao tác UI, không đụng máy
     "/api/oplog":        "read",      # ghi nhật ký vận hành
 }
 SCOPE_GET = "read"
+
+# Đường nào tính là NHỊP TIM của tác nhân tự động. Chỉ hành động LÁI mới tính:
+# đọc trạng thái không chứng minh được tác nhân còn tỉnh, chỉ chứng minh tiến
+# trình còn chạy. Tác nhân nghĩ lâu thì gọi /api/lease_beat cho tường minh.
+NHIP_POST = {"/api/write", "/api/lease_open", "/api/lease_beat",
+             "/api/new_batch", "/api/begin_batch"}
+
+# ── LUẬT LÁI T2 (§5 docs/plan/plan-mcp-api-extension.md) ────────────────────
+# Chỉ áp cho TÁC NHÂN TỰ ĐỘNG (khoá API). Thợ lái app bằng tay KHÔNG dính luật
+# nào ở đây — thợ đứng cạnh máy, thấy khói nghe tiếng nổ hạt; AI thì không.
+LEASE_MAX_S = 900        # trần 15 phút một lượt. Hết là rụng, muốn nữa phải xin lại.
+# Trần TỔNG cho cả phiên PC control. Không có nó thì trần 15 phút ở trên vô
+# nghĩa: khoá đang giữ lái xin lại được ngay, lái vô tận không cần ai có mặt.
+# Hết trần này thì phải có NGƯỜI tắt/bật lại PC control ở tủ mới lái tiếp.
+LEASE_PHIEN_MAX_S = 3600
+LEASE_STALE_S = 20       # tác nhân im quá ngần này giây = coi như đã mất
+# Ân hạn khi ĐỨT LIÊN LẠC với máy: giữ lượt lái ngần này giây rồi mới đóng. Bằng
+# đúng watchdog PC control của firmware — trong cửa sổ đó firmware cũng chưa nhả
+# quyền, nên giữ lượt lái là đúng sự thật. Xem _lease_guard.
+LEASE_AN_HAN_S = 3.0
+LEASE_RATE_N = 60        # trần số lệnh ghi mỗi phút của một lượt lái
+# Trần BƯỚC NHẢY mỗi lệnh — chốt chặn "AI đòi gas 0 lên 100 lúc FCs". Firmware
+# còn một lớp slew rate riêng (AnalogConfig.h); đây là lớp thứ hai, không thay.
+LEASE_STEP = {"gas": 25, "air": 40, "drum": 40, "sv": 30, "vac": 60}
+# Hai ô này thuộc DÂY CHUYỀN AN TOÀN, tác nhân tự động không được đụng: hb là
+# nhịp tim do app giữ (xem otl_link._hb_cho_phep), agent là cờ khai chính nó.
+LEASE_CAM = ("hb", "agent")
 
 SOUL_PUBLIC = {"otl_theme", "otl_accent", "otl_hue", "otl_lang",
                "otl_accent_hex", "otl_wallpaper"}
@@ -1276,6 +1838,14 @@ def start_webserver(api):
             body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
             self.send_response(code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _blob(self, body, ctype, cache="no-store"):
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Cache-Control", cache)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -1314,9 +1884,28 @@ def start_webserver(api):
             raw = self._tok_any(body_tok)
             if self._tok_ok(raw):
                 return {"kind": "nguoi", "scopes": list(otl_apikey.SCOPES), "name": "web"}
+            # Phiên đăng nhập bằng TÀI KHOẢN APP (/api/v1/login). Cố ý mang kind
+            # "may" chứ không phải "nguoi": lệnh tới qua mạng bằng một mật khẩu
+            # dùng lại được, không ai chứng minh có người đứng cạnh máy — nên vẫn
+            # phải đi trọn dây an toàn của tác nhân tự động (lượt lái, hãm bước,
+            # hãm tần suất). Mật khẩu tiện hơn khoá API, KHÔNG lỏng hơn.
+            se = api.api_sessions.get(raw or "")
+            if se:
+                if time.time() - se.get("t", 0) < API_SESS_TTL:
+                    return {"kind": "may", "scopes": list(se.get("scopes", [])),
+                            "name": "login:" + se.get("name", "?"),
+                            "id": se.get("id", "")}
+                api.api_sessions.pop(raw, None)
             k = api._apikeys.verify(raw or "")
             if k:
-                return {"kind": "may", "scopes": k["scopes"], "name": k["name"]}
+                # KHÔNG nhấp nhịp ở đây. Trước 2026-09-09 mọi request đều tính là
+                # "tác nhân còn sống", kể cả GET đọc telemetry — nên một vòng lặp
+                # poll còn chạy là đủ giữ lượt lái, dù phần suy nghĩ của AI đã
+                # treo hoặc hết quota. Nhịp đo "tiến trình còn chạy" chứ không đo
+                # "tác nhân còn tỉnh", đúng cái mà chốt 20 giây sinh ra để bắt.
+                # Nay chỉ HÀNH ĐỘNG LÁI mới là nhịp — xem NHIP_POST bên dưới.
+                return {"kind": "may", "scopes": k["scopes"], "name": k["name"],
+                        "id": k["id"]}
             return None
 
         def _need(self, scope, body_tok=None):
@@ -1324,11 +1913,12 @@ def start_webserver(api):
             c = self._ctx(body_tok)
             if c is None:
                 self._json({"ok": False, "err": "pin",
-                            "msg": "cần PIN web hoặc khoá API hợp lệ"}, 401)
+                            "msg": "chưa đăng nhập — cần PIN web, tài khoản app "
+                                   "(/api/v1/login) hoặc khoá API hợp lệ"}, 401)
                 return None
             if scope not in c["scopes"]:
                 self._json({"ok": False, "err": "pham_vi",
-                            "msg": "khoá API này không có phạm vi '%s'" % scope,
+                            "msg": "tài khoản/khoá này không có phạm vi '%s'" % scope,
                             "co": c["scopes"]}, 403)
                 log.info("[API] từ chối '%s' — khoá '%s' thiếu phạm vi %s",
                          self.path, c["name"], scope)
@@ -1344,18 +1934,60 @@ def start_webserver(api):
 
         def do_GET(self):
             self._v1()
-            if self.path in ("/", "/index.html"):
+            if self.path == "/assistant.js":
+                path = os.path.join(os.path.dirname(__file__), "roast_assistant_ui.js")
+                with open(path, "rb") as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/javascript; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/manifest.webmanifest":
+                # Trang trí thuần — không dữ liệu người dùng nên không đòi token, giống /api/state.
+                body = json.dumps({
+                    "name": "OTL Roast Lab", "short_name": "Roast Lab",
+                    "start_url": "/", "scope": "/", "display": "standalone",
+                    "orientation": "landscape", "background_color": "#0b0e13",
+                    "theme_color": "#0b0e13", "lang": "vi",
+                    "icons": [{"src": "/pwa-192.png", "sizes": "192x192", "type": "image/png"},
+                              {"src": "/pwa-512.png", "sizes": "512x512", "type": "image/png"},
+                              {"src": "/pwa-512.png", "sizes": "512x512", "type": "image/png",
+                               "purpose": "maskable"}],
+                }, ensure_ascii=False).encode("utf-8")
+                self._blob(body, "application/manifest+json; charset=utf-8")
+            elif self.path in ("/pwa-180.png", "/pwa-192.png", "/pwa-512.png"):
+                try:
+                    with open(asset_path(self.path.lstrip("/")), "rb") as f:
+                        body = f.read()
+                except Exception as e:
+                    self._json({"err": str(e)}, 404); return
+                self._blob(body, "image/png", "public, max-age=86400")
+            elif self.path in ("/", "/index.html"):
                 try:
                     with open(html_path(), "rb") as f:
                         body = f.read()
                     # ĐÓNG DẤU web clone — shim trong HTML chỉ bật khi có dấu này
+                    # Thêm ở bản WEB thôi — file HTML gốc không đổi. iPhone/iPad mở
+                    # http://<ip-máy>:8555 rồi "Thêm vào Màn hình chính" sẽ có biểu tượng
+                    # riêng, mở TOÀN MÀN (không thanh Safari) — nhìn như app cài thật.
                     body = body.replace(
                         b"<head>",
-                        b"<head><script>window._OTL_WEBCLONE=1</script>", 1)
+                        b"<head><script>window._OTL_WEBCLONE=1</script>"
+                        b'<link rel="manifest" href="/manifest.webmanifest">'
+                        b'<link rel="apple-touch-icon" href="/pwa-180.png">'
+                        b'<meta name="apple-mobile-web-app-capable" content="yes">'
+                        b'<meta name="mobile-web-app-capable" content="yes">'
+                        b'<meta name="apple-mobile-web-app-title" content="Roast Lab">'
+                        b'<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
+                        b'<meta name="theme-color" content="#0b0e13">', 1)
+                    body = body.replace(b"</body>", b'<script src="/assistant.js"></script></body>', 1)
                 except Exception as e:
                     self._json({"err": str(e)}, 500); return
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -1370,6 +2002,19 @@ def start_webserver(api):
         def _do_get_api(self):
             if False:
                 pass
+            elif self.path == "/api/assistant_skills":
+                self._json({"skills": roast_assistant.skills()})
+            elif self.path.startswith("/api/assistant_skill?"):
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    name = parse_qs(urlparse(self.path).query).get("name", [""])[0]
+                    self._json({"name": name, "instructions": roast_assistant.read_skill(name)})
+                except ValueError as e:
+                    self._json({"ok": False, "err": str(e)}, 404)
+            elif self.path == "/api/assistant_capabilities":
+                self._json({"modes": roast_assistant.MODES, "tools": roast_assistant.TOOLS,
+                            "grant_location": "desktop_master", "lan_chat": "read_only",
+                            "plan_max_seconds": 840, "pause_on_manual": True})
             elif self.path == "/api/snapshot":
                 self._json(api.link_snapshot())
             elif self.path == "/api/config":
@@ -1404,6 +2049,20 @@ def start_webserver(api):
                     q.get("n", [50])[0], q.get("q", [""])[0],
                     q.get("from", [""])[0], q.get("to", [""])[0],
                     q.get("offset", [0])[0])})
+            elif self.path.split("?", 1)[0] == "/api/batches_count":
+                # TỔNG số mẻ khớp bộ lọc — CÙNG bộ lọc với /api/batches, chỉ khác
+                # là không phân trang. Trước đây chỉ app desktop gọi được qua cầu
+                # pywebview, nên bản web và client ngoài (MCP, script) phải lấy số
+                # dòng của MỘT TRANG làm tổng: kho 900 mẻ mà màn hình ghi "50 mẻ
+                # đã lưu" và không bao giờ nhúc nhích.
+                # count = null nghĩa là CHƯA ĐẾM ĐƯỢC (kho chưa mở hoặc lỗi đọc);
+                # count = 0 nghĩa là đếm được và bộ lọc không khớp mẻ nào. Hai
+                # chuyện khác hẳn nhau nên không gộp về 0.
+                from urllib.parse import parse_qs, urlsplit
+                q = parse_qs(urlsplit(self.path).query)
+                self._json({"count": api.db_batch_count(
+                    q.get("q", [""])[0], q.get("from", [""])[0],
+                    q.get("to", [""])[0])})
             elif self.path == "/api/auth_state":
                 # màn đăng nhập web: danh sách user (KHÔNG kèm hash) — xem tự do
                 self._json(api.auth_state())
@@ -1425,6 +2084,8 @@ def start_webserver(api):
                 except ValueError:
                     dd = 7
                 self._json({"report": api.inv_report(dd)})
+            elif self.path == "/api/lease":
+                self._json(api.lease_state())
             elif self.path == "/api/machine_cfg":
                 self._json(api.machine_cfg_load())
             elif self.path == "/api/mc_read":
@@ -1503,11 +2164,29 @@ def start_webserver(api):
             self._v1()
             try:
                 n = int(self.headers.get("Content-Length") or 0)
+                if self.path == "/api/assistant" and not 0 <= n <= 24000:
+                    self._json({"ok": False, "err": "Yêu cầu trợ lý quá lớn."}, 413); return
                 req = json.loads(self.rfile.read(n) or b"{}")
+                if not isinstance(req, dict):
+                    self._json({"ok": False, "err": "Cần đối tượng JSON."}, 400); return
             except Exception:
                 self._json({"ok": False, "err": "bad json"}, 400); return
 
             _ip = self.client_address[0]
+            if self.path == "/api/assistant":
+                ctx = self._need("read", req.get("token"))
+                if ctx is None:
+                    return
+                if ctx.get("kind") != "nguoi":
+                    self._json({"ok": False, "err": "Chat chỉ dành cho người đã đăng nhập PIN web."}, 403); return
+                if req.get("action") not in ("state", "chat", "pause", "resume", "clear"):
+                    self._json({"ok": False, "err": "Cấu hình và duyệt lệnh tại app máy chủ bằng Master."}, 403); return
+                if req.get("action") == "chat" and not _rate_ok("assistant-chat", _ip, 10):
+                    self._json({"ok": False, "err": "Tối đa 10 câu hỏi/phút."}, 429); return
+                import hashlib
+                actor = "web:" + hashlib.sha256(self._tok_any(req.get("token")).encode()).hexdigest()[:24]
+                self._json(api._assistant_instance().dispatch(req.get("action"), req.get("payload", {}), actor))
+                return
             if self.path == "/api/auth_login":
                 # đăng nhập từ web — lockout tính ở Python, KHÔNG chiếm phiên kiosk;
                 # đứng TRƯỚC cổng token vì đây chính là bước để có quyền.
@@ -1518,6 +2197,59 @@ def start_webserver(api):
                                 "msg": "thử quá nhiều — chờ một phút"}, 429)
                     return
                 self._json(api.auth_verify(req.get("name"), req.get("pin")))
+                return
+            if self.path == "/api/login":
+                # ĐĂNG NHẬP CHO MÁY bằng tài khoản app (Master/thợ + PIN) — để
+                # script/MCP khỏi phải tạo khoá API. Đứng TRƯỚC cổng token vì đây
+                # chính là bước để có quyền. Lockout theo TÊN nằm ở auth_otl; hãm
+                # theo IP ở đây vì kẻ dò xoay vòng tên là né được lockout tên.
+                if not _rate_ok("apilogin", _ip, 20):
+                    self._json({"ok": False, "err": "khoa",
+                                "msg": "thử quá nhiều — chờ một phút"}, 429)
+                    return
+                if not api._auth:
+                    self._json({"ok": False, "err": "auth Python chưa sẵn sàng"}, 503)
+                    return
+                r = api._auth.login(str(req.get("name") or ""), str(req.get("pin") or ""))
+                if not r.get("ok"):
+                    log.info("[API] %s đăng nhập hỏng cho '%s' (%s)", _ip,
+                             req.get("name"), r.get("err"))
+                    self._json(r, 401)
+                    return
+                u = r["user"]
+                sc = _scopes_cho(u.get("role"), u.get("perms"))
+                _prune_sessions(api)
+                tok = secrets.token_hex(24)
+                api.api_sessions[tok] = {"t": time.time(), "name": u["name"],
+                                         "role": u.get("role", "slave"), "scopes": sc,
+                                         "id": "login-" + secrets.token_hex(3)}
+                log.info("[API] %s đăng nhập '%s' (%s) — phạm vi %s", _ip, u["name"],
+                         u.get("role"), ",".join(sc))
+                # Mở khoá luôn màn hình app đang mở. Mặc định BẬT: PIN vừa nhập
+                # chính là PIN mở màn hình đó, nên giữ màn khoá lại không chặn
+                # thêm được ai, chỉ làm người đứng ở máy khó hiểu. Muốn tắt thì
+                # gửi {"mo_khoa_app": false} — script chạy nền nên gửi cờ này.
+                mo = req.get("mo_khoa_app")
+                da_mo = False
+                if mo is None or mo:
+                    da_mo = api.ui_mo_khoa({"name": u["name"], "role": u.get("role"),
+                                            "perms": u.get("perms") or {}})
+                    if da_mo:
+                        log.warning("[API] MỞ KHOÁ MÀN HÌNH APP từ xa cho '%s' (%s)",
+                                    u["name"], _ip)
+                        api.op_log("warn", "API", "mở khoá màn hình từ xa: %s" % u["name"])
+                self._json({"ok": True, "token": tok, "name": u["name"],
+                            "role": u.get("role"), "scopes": sc,
+                            "het_han_s": API_SESS_TTL, "mo_khoa_app": da_mo})
+                return
+            if self.path == "/api/logout":
+                # Trả lại phiên. Không cần quyền gì: chỉ xoá đúng token đang cầm.
+                tok = self._tok_any(req.get("token"))
+                co = api.api_sessions.pop(tok or "", None) is not None
+                # Khoá luôn màn hình app — KHÔNG mặc định: thợ có thể đang đứng
+                # dùng màn hình đó, khoá ngang là cướp việc của người thật.
+                da_khoa = bool(co and req.get("khoa_app") and api.ui_khoa())
+                self._json({"ok": co, "khoa_app": da_khoa})
                 return
             if self.path == "/api/auth_setup_master":
                 if not _rate_ok("setup", _ip, 5):
@@ -1578,8 +2310,11 @@ def start_webserver(api):
             # Các lệnh dưới đây GHI — cần đúng phạm vi. Token web (người) có đủ;
             # khoá API chỉ được làm phần đã cấp. Mặc định "config" cho đường lạ.
             _scope = SCOPE_POST.get(self.path, "config")
-            if self._need(_scope, req.get("token")) is None:
+            _ctx = self._need(_scope, req.get("token"))
+            if _ctx is None:
                 return
+            if _ctx.get("kind") == "may" and self.path in NHIP_POST:
+                api.lease_touch(_ctx.get("id"))     # nhịp tim = hành động lái
             if self.path == "/api/oplog":
                 self._json({"ok": api.op_log(req.get("level"), req.get("tag") or "WEB",
                                              req.get("msg") or "")})
@@ -1593,7 +2328,16 @@ def start_webserver(api):
                 # web đổi cổng/baud/slave từ xa (token) — áp thẳng vào cầu Modbus
                 self._json({"cfg": api.link_set_config(req.get("cfg") or {})})
             elif self.path == "/api/write":
-                self._json(api.link_write(req.get("name"), req.get("value")))
+                # ctx đi kèm: NGƯỜI (token web) ghi thẳng như cũ, MÁY (khoá API)
+                # phải có lượt lái T2 đang mở — luật ở Api._lease_guard.
+                self._json(api.link_write(req.get("name"), req.get("value"), _ctx))
+            elif self.path == "/api/lease_open":
+                self._json(api.lease_open(_ctx, req.get("phut")))
+            elif self.path == "/api/lease_beat":
+                api.lease_touch(_ctx.get("id"))
+                self._json(api.lease_state())
+            elif self.path == "/api/lease_close":
+                self._json(api.lease_close(_ctx, req.get("ly_do") or ""))
             elif self.path == "/api/new_batch":
                 self._json(api.link_new_batch())
             elif self.path == "/api/begin_batch":
@@ -1618,7 +2362,7 @@ def start_webserver(api):
             elif self.path == "/api/machine_cfg_save":
                 self._json(api.machine_cfg_save(req.get("cfg") or {}))
             elif self.path == "/api/mc_write":
-                self._json(api.mc_write(req.get("cfg") or {}))
+                self._json(api.mc_write(req.get("items", req.get("cfg")), _ctx))
             else:
                 self._json({"err": "not found"}, 404)
 
@@ -1645,8 +2389,21 @@ def main():
     # Phần HTML tự co khung 2560×1440 vừa khít mọi phân giải (fit()).
     # CHỐNG CACHE: WebView2 nhận cờ Chromium qua biến môi trường — tắt hẳn
     # http/disk cache (?v= trên file:// KHÔNG dùng được: ERR_FILE_NOT_FOUND).
+    # --lang=vi-VN: ô <input type="date"> của Chromium lấy ĐỊNH DẠNG NGÀY CỦA
+    # WINDOWS, không phải của trang. Máy xưởng đang đặt sShortDate = "dd-MMM-yy"
+    # nên hai ô lọc ngày ở màn Lịch sử hiện gợi ý "dd-----yyyy" — thợ đọc không
+    # ra phải điền kiểu gì. Ghi chú cũ trong OTL Roast Lab.html bảo đây chỉ là
+    # chuyện của Chromium headless lúc chạy test: SAI, tái lập được trong Edge
+    # thật (cùng nhân WebView2) và có ảnh chụp app thật ngày 12/09/2026.
+    # PHẢI là vi-VN. Đã thử en-GB: Chromium vẫn rơi về định dạng Windows và vẫn
+    # ra "dd-----yyyy" — chỉ locale KHÁC hệ mới ép được nó dùng định dạng riêng.
+    # vi-VN cho gợi ý "nn/mm/yyyy" (ngày/tháng/năm), đúng thứ tự ta quen.
+    # Nhãn cạnh ô vì vậy viết bằng CHỮ ("ngày/tháng/năm") chứ không viết mã chữ
+    # cái, để máy khách đặt Windows kiểu nào nhãn cũng không nói sai.
+    # Không đụng gì tới nút VI/EN của app: app tự dịch bằng localStorage otl_lang,
+    # không đọc navigator.language chỗ nào (đã grep).
     os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = \
-        "--disable-http-cache --disk-cache-size=1"
+        "--disable-http-cache --disk-cache-size=1 --lang=vi-VN"
     window = webview.create_window(
         APP_TITLE,
         url=html_path(),
@@ -1686,6 +2443,11 @@ def main():
                 except Exception:
                     pass                      # cửa sổ đang đóng — bỏ qua
     def _start_push():
+        try:
+            with open(os.path.join(os.path.dirname(__file__), "roast_assistant_ui.js"), encoding="utf-8") as f:
+                window.evaluate_js(f.read())
+        except Exception:
+            log.exception("[ASSISTANT] Could not load assistant panel")
         if not _push_started:
             _push_started.append(1)
             threading.Thread(target=_app_push, name="otl-apppush", daemon=True).start()
@@ -1697,7 +2459,10 @@ def main():
     # WebView2 (private_mode=False) hay giữ CACHE trang cũ → sửa HTML xong mở app
     # vẫn thấy giao diện cũ. Dọn cache render mỗi lần mở; GIỮ Local Storage
     # (PIN/tài khoản/config nằm ở "Local Storage"/"IndexedDB", không đụng).
-    for sub in ("Cache", "Code Cache", "GPUCache", "Service Worker"):
+    # GPUCache KHÔNG xoá nữa (14/09/2026): đó là bộ đệm SHADER của card đồ hoạ, không chứa
+    # trang cũ nào. Xoá nó thì mỗi lần mở app GPU phải biên dịch lại shader từ đầu — góp phần
+    # làm vài giây đầu khung hình giật (chủ máy báo "mở app lên là con trỏ chuột lag").
+    for sub in ("Cache", "Code Cache", "Service Worker"):
         shutil.rmtree(os.path.join(storage, "EBWebView", "Default", sub),
                       ignore_errors=True)
     webview.start(private_mode=False, storage_path=storage)

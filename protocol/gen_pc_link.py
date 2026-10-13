@@ -103,6 +103,9 @@ def gen_h(s: dict) -> str:
     cfg = s.get("config")
     if cfg:
         n = len(cfg["regs"])
+        mins, maxs = cfg.get("min", []), cfg.get("max", [])
+        if len(mins) != cfg["count"] or len(maxs) != cfg["count"]:
+            raise ValueError("config.min/max phải có đúng config.count phần tử")
         L += [f"// ── Khối CẤU HÌNH $M (handshake app↔máy) — {cfg['base']}..{cfg['base'] + n - 1} ──",
               f"// {cfg['comment']}",
               f"#define PCL_CFG_BASE   {cfg['base']}"]
@@ -118,7 +121,14 @@ def gen_h(s: dict) -> str:
               f"#define PCL_CFG_ST_OK  {cfg['status_ok']}",
               f"#define PCL_CFG_ST_ERR {cfg['status_err']}",
               f"#define PCL_CFG_ST_LOCKED {cfg['status_locked']}   // máy bận → từ chối ghi",
-              f"#define PCL_CFG_ST_RANGE  {cfg['status_range']}   // giá trị ngoài dải → từ chối ghi", ""]
+              f"#define PCL_CFG_ST_RANGE  {cfg['status_range']}   // giá trị ngoài dải → từ chối ghi",
+              f"#define PCL_CFG_ST_HMI    {cfg['status_hmi']}   // HMI từ chối/không phản hồi lệnh ghi",
+              "",
+              "// Dải từng $M lấy từ source-of-truth; chỉ số mảng 0 ứng với $M1.",
+              "static const uint16_t PCL_CFG_MIN[PCL_CFG_MAXIDX] = {"
+              + ", ".join(str(v) for v in mins) + "};",
+              "static const uint16_t PCL_CFG_MAX[PCL_CFG_MAXIDX] = {"
+              + ", ".join(str(v) for v in maxs) + "};", ""]
 
     fs = s["failsafe"]
     L += ["// ── Chốt an toàn khi APP là bộ điều khiển ──────────────────────────────",
@@ -156,6 +166,11 @@ def gen_py(s: dict) -> str:
          "",
          f"R_BASE, R_COUNT = {rd['base']}, {len(rd['fields'])}",
          f"W_BASE, W_COUNT = {wr['base']}, {len(wr['fields'])}",
+         "",
+         "# Khối ĐỌC theo ĐÚNG thứ tự offset. Máy chạy firmware cũ có ít ô hơn,",
+         "# app lùi số ô rồi lấy R_KEYS[số_ô_đọc_được:] làm danh sách trường",
+         "# 'máy chưa có' — khỏi phải nhớ sửa tay mỗi lần thêm ô mới (otl_link).",
+         "R_KEYS = [" + ", ".join(f'"{f["key"]}"' for f in rd["fields"]) + "]",
          "",
          "# tên → chỉ số trong khối GHI (offset từ W_BASE)",
          "W_INDEX = {"]
@@ -234,6 +249,7 @@ def gen_py(s: dict) -> str:
 
     cfg = s.get("config")
     if cfg:
+        mins, maxs = cfg.get("min", []), cfg.get("max", [])
         L += ["# Handshake cấu hình $M — đọc/ghi 1 tham số (idx = số $M 1..MAXIDX)",
               f"CFG_BASE = {cfg['base']}",
               "CFG_REG = {"]
@@ -243,7 +259,11 @@ def gen_py(s: dict) -> str:
               f"CFG_MAXIDX = {cfg['count']}",
               f"CFG_CMD = {{'idle': {cfg['cmd_idle']}, 'read': {cfg['cmd_read']}, 'write': {cfg['cmd_write']}}}",
               f"CFG_STATUS = {{'busy': {cfg['status_busy']}, 'ok': {cfg['status_ok']}, 'err': {cfg['status_err']},"
-              f" 'locked': {cfg['status_locked']}, 'range': {cfg['status_range']}}}",
+              f" 'locked': {cfg['status_locked']}, 'range': {cfg['status_range']}, 'hmi': {cfg['status_hmi']}}}",
+              "CFG_RANGE = {",
+              *[f"    {i + 1}: ({lo}, {hi})," for i, (lo, hi) in enumerate(zip(mins, maxs))],
+              "}",
+              "CFG_META = " + repr({int(k): v for k, v in cfg.get("params", {}).items()}),
               ""]
 
     fs = s["failsafe"]
@@ -334,6 +354,8 @@ def html_with(block: str) -> str:
 def main():
     ap = argparse.ArgumentParser(description="Sinh bản đồ PC_Link cho firmware + tool + giao diện")
     ap.add_argument("--check", action="store_true", help="chỉ kiểm tra đồng bộ, không ghi")
+    ap.add_argument("--no-html", action="store_true",
+                    help="không đọc/ghi file giao diện khi bên thiết kế đang giữ khoá UI")
     a = ap.parse_args()
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -341,8 +363,9 @@ def main():
         pass
 
     s = load()
-    targets = [(OUT_H, gen_h(s)), (OUT_PY, gen_py(s)), (OUT_HTML, html_with(gen_js(s))),
-               (OUT_OAS, gen_openapi(s))]
+    targets = [(OUT_H, gen_h(s)), (OUT_PY, gen_py(s)), (OUT_OAS, gen_openapi(s))]
+    if not a.no_html:
+        targets.insert(2, (OUT_HTML, html_with(gen_js(s))))
 
     # đối chiếu progStep với Define.h — bắt ca đổi quy trình firmware mà quên giao thức
     problems = []
