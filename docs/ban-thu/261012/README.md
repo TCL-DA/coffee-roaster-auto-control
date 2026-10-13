@@ -1,7 +1,11 @@
 # Rang thử trên panel + board THẬT — 12/10/2026
 
-Bàn thử: panel Delta DOP-110WS (bản LO83) + board STM32 firmware `f43afea`, mạch giả lập
-ESP32 + lò ảo `lo_nhiet.py` thay cho trống thật. Người bấm nút lửa tay (chân CH1) mỗi lần board mở gas.
+Bàn thử dùng **HMI thật và board thật, không nối tải**:
+
+- HMI: panel Delta DOP-110WS thật, chạy bản LO83.
+- Board: STM32 thật, chạy firmware `f43afea`. Relay và đầu ra không nối động cơ, van hay đầu đốt.
+- Nhiệt độ BT/ET: mạch ESP32 giả lập cùng lò ảo `lo_nhiet.py`, vì không có trống rang.
+- Lửa: người bấm nút tay vào chân CH1 mỗi lần board mở gas.
 
 Kết quả: **10/10 mẻ đạt** — 5 hồ sơ, mỗi hồ sơ một mẻ rang thường (lưu hồ sơ) và một mẻ AUTO chạy lại hồ sơ đó.
 
