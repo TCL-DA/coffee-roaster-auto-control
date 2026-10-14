@@ -164,6 +164,19 @@
 #define DRUM_INV_FREQ_WRITE_REGISTER      8193
 
 // ---------------------------------------------------------------------------
+// Biến tần GIÓ lái tần số qua RS485 khi máy KHÔNG có vacuum (máy điện, chủ máy 14/10: "airflow và drum đều qua rs485,
+// airflow 45-60 Hz, drum như cũ"). 'Gió %' 0..100 -> 45,00..60,00 Hz. Cùng model biến tần trống (đọc 8451 / ghi 8193).
+// Máy có vacuum vẫn đi readWriteAirINV_PID như cũ. Mặc định 0 (máy gas lái gió bằng analog DAC).
+// ---------------------------------------------------------------------------
+#ifndef MACHINE_AIR_HZ_RS485
+#define MACHINE_AIR_HZ_RS485              0
+#endif
+#define AIR_INV_FREQ_WRITE_REGISTER       8193
+#define AIR_HZ_MIN_X100                   4500  // 'Gió' 0 %   -> 45,00 Hz
+#define AIR_HZ_MAX_X100                   6000  // 'Gió' 100 % -> 60,00 Hz
+#define AIR_HZ_GHI_LAI_MS                 5000  // ghi lại định kỳ (biến tần khởi động lại vẫn nhận)
+
+// ---------------------------------------------------------------------------
 // Nguồn điều khiển khi chọn SOURCE_AI_VR: KHÔNG còn chọn lúc dựng (bỏ MACHINE_VR_SOURCE_FROM_HMI
 // 13/10/2026). Có núm vặn gas + gió / trống hay không chọn ở $M62 bit 0–1, xem include/MachineOpt.h.
 // ---------------------------------------------------------------------------

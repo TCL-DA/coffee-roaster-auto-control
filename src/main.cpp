@@ -116,6 +116,13 @@ void loop() {
     mbs.task();
     profTock(PF_VAC);
   }
+#if MACHINE_AIR_HZ_RS485
+  else if (!optVacuum()) {         // máy điện: gió qua RS485 45..60 Hz, không vacuum
+    readWriteAirHz();
+    mbs.task();
+    profTock(PF_VAC);
+  }
+#endif
 
   rwHMI_Fast();
   profTock(PF_FAST);

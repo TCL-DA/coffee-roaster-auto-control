@@ -1134,6 +1134,38 @@ void readWriteDrumINV(){
     delay(1);   // guard khung RS485 — siết từ 5ms (2026-07-23)
 }
 
+#if MACHINE_AIR_HZ_RS485
+// Máy KHÔNG vacuum, biến tần gió nối RS485 (máy điện): đọc tần số thực + ghi tần số đặt từ 'Gió %' (45..60 Hz).
+void readWriteAirHz(){
+    static int32_t  hzDaGhi = -1;
+    static uint32_t tGhi = 0;
+    uint8_t result = nodeAir.readHoldingRegisters(AIR_INV_FREQ_READ_REGISTER, 1);
+    delay(1);
+    if (result != nodeAir.ku8MBSuccess) {
+        errorCount++;
+        modbusNoteFailure(MB_DEV_AIR, STT_MB_AIR_ERROR);
+        if (enDebug) { SerialComputer.print(" ERROR READ AIR INV res=0x"); SerialComputer.println(result, HEX); }
+        delay(10);
+        return;
+    }
+    modbusNoteSuccess(MB_DEV_AIR);
+    Airflow_Freq_CP = nodeAir.getResponseBuffer(0);
+    const int32_t hz = map(constrain(airflowPercent, 0, 100), 0, 100, AIR_HZ_MIN_X100, AIR_HZ_MAX_X100);
+    if (hz == hzDaGhi && millis() - tGhi < AIR_HZ_GHI_LAI_MS) return;
+    delay(10);                                   // biến tần nhả bus sau lệnh đọc (như trống, đo 07/10/2026)
+    const uint8_t wr = nodeAir.writeSingleRegister(AIR_INV_FREQ_WRITE_REGISTER, (uint16_t)hz);
+    delay(10);
+    if (wr == nodeAir.ku8MBSuccess) {
+        hzDaGhi = hz;
+        tGhi = millis();
+    } else {
+        errorCount++;
+        modbusNoteFailure(MB_DEV_AIR, STT_MB_AIR_ERROR);
+        if (enDebug) { SerialComputer.print(" ERROR WRITE AIR INV res=0x"); SerialComputer.println(wr, HEX); }
+    }
+}
+#endif
+
 void readWriteAirINV_PID(){
     uint8_t   result = 0;
     result = nodeAir.readHoldingRegisters(AIR_INV_PID_0800_REGISTER, 1);// Data trỏ địa chỉ ở đây theo parem (Địa Chỉ, Chiều Dài)
@@ -1367,8 +1399,8 @@ void checkError() {
     nodeVX4.writeSingleRegister(VX4_REG_SV, VX4_SV_TAT_X10); delay(10);
 #endif
 
-    // Airflow inverter
-    if (chAirFlag) {
+    // Airflow inverter (máy vacuum — hoặc máy điện lái gió qua RS485 không cần vacuum)
+    if (chAirFlag || (MACHINE_AIR_HZ_RS485 && !optVacuum())) {
         sendSTT(STT_STARTUP_CHECK_AIR);
         checkMB(nodeAir, AIR_INV_FREQ_READ_REGISTER, 4, false, "AIRFLOW INV", STT_STARTUP_AIR_FAIL, MB_DEV_AIR, STT_MB_AIR_ERROR);
         sendSTT(STT_STARTUP_AIR_OK);

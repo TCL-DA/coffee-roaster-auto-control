@@ -47,6 +47,8 @@ Env `dien` (platformio.ini) đặt `MACHINE_HEAT_ELECTRIC_VX4=1` và `MACHINE_RS
 | Bật / tắt bếp | relay **CH1** như máy gas (`Lệnh nhiệt` = `Lệnh gas` cũ) |
 | Tín hiệu lửa | bếp điện **KHÔNG có**: bật `Lệnh nhiệt` đủ **3 s** (`ELEC_HEAT_ON_DELAY_MS`) thì firmware coi là "bếp chạy" → dock hiện **Đang nung**, chuỗi mẻ / làm nóng không chờ lửa 75 s |
 | Nạp liệu / xả trống | relay **charge / drop** như cũ |
+| Gió | biến tần ID 5 qua **RS485**, không vacuum: `Gió %` 0..100 → **45..60 Hz** (`MACHINE_AIR_HZ_RS485`, ghi thanh ghi 8193) |
+| Trống | biến tần ID 4 qua RS485 như cũ |
 
 Lắp máy: đi dây contactor điện trở qua relay CH1 thì tắt lệnh nhiệt / lỗi VX4 sẽ cắt hẳn nguồn điện trở.
 
