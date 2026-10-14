@@ -121,7 +121,12 @@
 #ifndef MACHINE_RS485_ON_SCALE_PORT
 #define MACHINE_RS485_ON_SCALE_PORT       0     // 1 = bus RS485 nối vào cổng cân (USART3) — máy điện (env 'dien'), Define.h
 #endif
+#ifndef VX4_MODBUS_ID
 #define VX4_MODBUS_ID                     6     // đồng hồ VX4 trên RS485 (bản 1 kg: nodeChamber.begin(6, …))
+#endif
+#ifndef VX4_SERIAL_BAUD
+#define VX4_SERIAL_BAUD                   38400UL  // chỉ dùng khi VX4 nằm cổng riêng (MACHINE_RS485_ON_SCALE_PORT)
+#endif
 #define VX4_REG_PV                        0     // thanh ghi đọc nhiệt buồng (×10 °C — VX4 đặt 1 số lẻ)
 #define VX4_REG_SV                        103   // thanh ghi ghi SV (×10 °C)
 #define VX4_SV_MIN_X10                    1300  // 'Nhiệt' 0 %   -> SV 130,0 °C  (chủ máy chốt 14/10: 130..350)

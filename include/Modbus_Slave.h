@@ -47,9 +47,18 @@ uint8_t artisanModbusID(){
     return (modbusID_R > 0) ? (uint8_t)modbusID_R : ARTISAN_MODBUS_SLAVE_ID_DEFAULT;
 }
 
+// Máy điện tách bus (MACHINE_RS485_ON_SCALE_PORT): cổng Bluetooth/cân đã thành cổng RIÊNG của VX4 -> Artisan chỉ qua
+// cổng máy tính, không bao giờ mở / đặt lại baud cổng đó (đặt lại = VX4 mất kết nối).
+static inline bool slaveQuaCongCan() { return !MACHINE_RS485_ON_SCALE_PORT && swSignal == 0; }
+static inline void moLaiCongCan() {
+#if !MACHINE_RS485_ON_SCALE_PORT
+    SerialBluetooth.begin(SCALE_SERIAL_BAUD);
+#endif
+}
+
 void ModbusSlaveConfig(){
     uint32_t baud = artisanModbusBaud();
-    if(swSignal==0){
+    if(slaveQuaCongCan()){
         SerialBluetooth.begin(baud);
         mbs.begin(&SerialBluetooth);
     }else{
@@ -97,13 +106,13 @@ void handle_Modbus_Slave() {
     // ── Khởi tạo lại Modbus Slave khi baudrate/ID thay đổi ──────
     if (idBaudSetEn) {
         uint32_t baud = artisanModbusBaud();
-        if(swSignal==0){
+        if(slaveQuaCongCan()){
             SerialBluetooth.begin(baud);
             mbs.begin(&SerialBluetooth);
             SerialComputer.println("Switched to Serial Bluetooth for Modbus");
         }else{
             SerialComputer.begin(baud);
-            SerialBluetooth.begin(SCALE_SERIAL_BAUD);
+            moLaiCongCan();
             mbs.begin(&SerialComputer);
             SerialComputer.println("Switched to Serial Computer for Modbus");
         }
@@ -112,7 +121,8 @@ void handle_Modbus_Slave() {
         idBaudSetEn = 0;
     }
 
-    if(swSignalFallingEdge()){
+    const bool canhXuong = swSignalFallingEdge();      // gọi MỖI vòng để giữ trạng thái cạnh
+    if(canhXuong && !MACHINE_RS485_ON_SCALE_PORT){
         uint32_t baud = artisanModbusBaud();
         SerialBluetooth.begin(baud);
         mbs.begin(&SerialBluetooth);
@@ -120,9 +130,10 @@ void handle_Modbus_Slave() {
         SerialComputer.println("Switched to Serial Bluetooth for Modbus");
     }
 
-    if(swSignalRisingEdge()){
+    const bool canhLen = swSignalRisingEdge();
+    if(canhLen && !MACHINE_RS485_ON_SCALE_PORT){
         SerialComputer.begin(artisanModbusBaud());
-        SerialBluetooth.begin(SCALE_SERIAL_BAUD);
+        moLaiCongCan();
         mbs.begin(&SerialComputer);
         SerialComputer.println("Switched to Serial Computer for Modbus");
     }

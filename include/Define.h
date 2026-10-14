@@ -29,17 +29,21 @@ HardwareSerial Serial4(UART4);
 #define SerialComputer  Serial4
 #endif
 
-// Máy điện VX4 (chủ máy 14/10): bus RS485 (BT / ET / VX4 / biến tần) đi dây vào CỔNG CÂN -> đổi chỗ hai cổng:
-// Modbus master = USART3 (cổng cân), cân / Artisan slave = cổng Modbus cũ. Không đổi thì hai bên tranh USART3.
+// Máy điện VX4 (chủ máy 14/10): BT / ET / biến tần gió / trống đi dây vào CỔNG LOADER-CÂN (USART3); VX4 đọc RIÊNG qua
+// cổng Modbus cũ. Máy này không cân -> không còn cổng cho cân / Artisan-Bluetooth: Artisan chỉ qua cổng máy tính
+// (Modbus_Slave.h), SerialBluetooth chỉ để mã cân biên dịch (optScale() = 0 nên không đọc — $M62 bit 4 phải = 0).
 #if MACHINE_RS485_ON_SCALE_PORT
 #undef SerialBluetooth
 #undef SerialModbus
 #define SerialModbus    Serial3
 #if defined(V400)
-#define SerialBluetooth Serial2
+#define SerialVX4       Serial2
 #else
-#define SerialBluetooth Serial4
+#define SerialVX4       Serial4
 #endif
+#define SerialBluetooth SerialVX4
+#else
+#define SerialVX4       SerialModbus
 #endif
 
 ModbusMaster nodeBT; //BT
@@ -1354,7 +1358,11 @@ void ModbusRS485Config(){
     SerialHmi.begin(HMI_SERIAL_BAUD);
     SerialModbus.begin(MACHINE_RS485_BAUD);
     SerialComputer.begin(DEBUG_SERIAL_BAUD);
+#if MACHINE_RS485_ON_SCALE_PORT
+    SerialVX4.begin(VX4_SERIAL_BAUD);               // cổng Modbus cũ: chỉ VX4 (máy không cân)
+#else
     SerialBluetooth.begin(SCALE_SERIAL_BAUD);
+#endif
 
     nodeHMI.begin(HMI_MODBUS_ID, SerialHmi);        // HMI
 #if MACHINE_HAS_ET_TEMP_CONTROLLER
@@ -1373,7 +1381,7 @@ void ModbusRS485Config(){
     nodeIORelay.begin(IO_RELAY_MODBUS_ID, SerialModbus); // I/O Relay
 #endif
 #if MACHINE_HEAT_ELECTRIC_VX4
-    nodeVX4.begin(VX4_MODBUS_ID, SerialModbus);          // đồng hồ nhiệt buồng VX4 (máy điện)
+    nodeVX4.begin(VX4_MODBUS_ID, SerialVX4);             // đồng hồ nhiệt buồng VX4 (máy điện) — cổng riêng nếu tách bus
 #endif
 
     SerialComputer.println("=> Modbus Master RTU OK");
