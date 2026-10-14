@@ -78,7 +78,8 @@ int main() {
     {
         int lech = 0;
         for (uint16_t c = 0; c <= 1000; c++) {
-            bool mo = (c >= 48 && c <= 50) || (c >= 401 && c <= 430);
+            // 96 (14/10/2026): mẻ đang lưu quá giới hạn hồ sơ — mở có chủ đích
+            bool mo = (c >= 48 && c <= 50) || (c >= 401 && c <= 430) || c == 96;
             bool mong = sttOldVisible(c) || mo;
             if (sttIsOperatorVisible(c) != mong) { if (lech < 20) printf("      lech ma %u\n", c); lech++; }
         }

@@ -2438,6 +2438,16 @@ void programScan(){
             nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
             STEP_STRING = "NONE";
         }
+        // 14/10/2026: mẻ ĐANG LƯU hồ sơ vượt PROFILE_MAX_SECONDS mà chưa xả -> báo 1 lần / mẻ. File SD vẫn ghi đủ, nhưng lúc
+        // nạp lại để rang AUTO phần sau giới hạn bị bỏ, điểm Xả mất -> AUTO không tự xả theo hồ sơ này (thợ xả tay).
+        {
+            static bool daBaoQuaDai = false;
+            if(progStep < STP_CHARGE) daBaoQuaDai = false;
+            else if(!daBaoQuaDai && progStatus == STT_PROGRAM_SAVE && progStep < STP_DROP && timeRoast >= PROFILE_MAX_SECONDS){
+                daBaoQuaDai = true;
+                setMachineStatus(STT_ROAST_PROFILE_TOO_LONG);
+            }
+        }
         //Tự động bật afterburner — chỉ máy CÓ buồng đốt khói ($M62 bit 9)
         if(optAfterburner() && afterburnerSet_R_CV>0 && timeRoast>60 && progStep>=STP_TP && progStep<STP_LOOP_1){
             STEP_AB_STRING = "WABHU"; //Wait AB heatup

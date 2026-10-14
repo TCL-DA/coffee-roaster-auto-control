@@ -109,6 +109,7 @@
 #define STT_EVENT_ROR_CTRL_ON       93  // Bộ điều khiển tốc độ tăng nhiệt đang điều chỉnh lửa
 #define STT_EVENT_ROAST_START       94  // Đồng hồ rang bắt đầu đếm giờ
 #define STT_EVENT_ROAST_END         95  // Kết thúc quá trình rang
+#define STT_ROAST_PROFILE_TOO_LONG  96  // Mẻ đang lưu quá 50 phút: hồ sơ chỉ giữ 50 phút đầu, AUTO sẽ không tự xả theo hồ sơ này
 
 // [101-120] Thẻ nhớ SD / hồ sơ rang
 #define STT_SD_LOADING_PROFILE      101 // Đang tải hồ sơ rang từ thẻ nhớ SD
@@ -393,7 +394,7 @@ inline bool sttIsOperatorVisible(uint16_t code) {
             code == 64 || code == 65) return false;
         return true;
     }
-    if (code >= 81 && code <= 95) {
+    if (code >= 81 && code <= 96) {             // 96 (14/10/2026): mẻ đang lưu quá giới hạn hồ sơ
         if (code == 92 || code == 93) return false;
         return true;
     }

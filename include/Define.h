@@ -1097,7 +1097,9 @@ boolean sDataStr = false;
 
 char sdCsvPendingEvent[8] = "";  // Event pending CSV write (set by programScan, consumed by sdLogWrite)
 
-#define PROFILE_MAX_SECONDS 2520  // Store up to 42 min profile, each element = 1 second
+// 14/10/2026 chủ máy duyệt: 42 -> 50 phút (cacao rang dài). Mỗi giây ~12 byte RAM (8 mảng dưới) -> +5,8 KB.
+// Đếm từ CHARGE tới DROP; vượt thì AUTO không tự xả theo hồ sơ — Program.h báo mã 96 khi mẻ đang lưu vượt giới hạn.
+#define PROFILE_MAX_SECONDS 3000  // Store up to 50 min profile, each element = 1 second
 
 uint16_t sdTempData[20];
 uint16_t sdTiRoast[PROFILE_MAX_SECONDS];
