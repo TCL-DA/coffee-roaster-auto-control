@@ -21,11 +21,15 @@ window.pywebview = { api: {
       data:{bt:180.0, et:37.9, ror_bt:0, ror_et:0, ror_pro:0, gas:0, air:0, drum:82, sv:0, vac:0,
         step:4, t_roast:t, phase:{dry:false,mai:false,dev:false},
         mile: c?{CHARGE:0}:{}, mile_bt: c?{CHARGE:180.0}:{},
-        flags:{auto:false,gas:false,charge:false,drop:false,escape:false,cool:false,
+        // drop = ĐỌC LẠI thanh ghi lệnh (reg 15) như máy thật: app ghi 1 thì lần
+        // poll sau đọc về 1. Từ 14/09 app chờ đúng tín hiệu này mới chốt mẻ.
+        flags:{auto:false,gas:false,charge:false,drop:!!window.__dropReg,escape:false,cool:false,
                pc_control:false,flame:null,pc_lost:false,flame_fail:false},
         hb:0, derived:['ror_bt','step','t_roast','mile']}};
   },
-  link_write: async (name, value) => { window.__sent.push(name); return {ok:true, name, value}; },
+  link_write: async (name, value) => { window.__sent.push(name);
+    if (name === 'drop') window.__dropReg = value;
+    return {ok:true, status:'queued', name, value}; },
   link_begin_batch: async () => { window.__begun = Date.now(); window.__dropped = 0;
                                   return {ok:true}; },
   link_new_batch: async () => { window.__begun = 0; window.__dropped = 0; return {ok:true}; },
@@ -59,9 +63,14 @@ with sync_playwright() as p:
     n0 = pg.evaluate("loadHist().length")
 
     print("1) Chưa bấm Bắt đầu rang — nút thanh công cụ KHÔNG được dựng mẻ")
-    for label in ("Đánh lửa", "Nạp hạt", "Xả liệu"):
-        pg.locator(f"#pane-rang .toolbar button:has-text('{label}')").first.click()
+    for control in ("btnIgnite", "btnCharge"):
+        pg.locator("#" + control).click()
         pg.wait_for_timeout(250)
+    # Xả liệu là lệnh HỆ TRỌNG — chạm không đủ, phải giữ 1 giây (đợt PD 08/09).
+    _e = pg.locator("#btnEscape").bounding_box()
+    pg.mouse.move(_e["x"] + _e["width"] / 2, _e["y"] + _e["height"] / 2)
+    pg.mouse.down(); pg.wait_for_timeout(1250); pg.mouse.up()
+    pg.wait_for_timeout(250)
     pg.wait_for_timeout(2000)
     chk("có gửi đủ 3 lệnh", pg.evaluate("window.__sent") == ["ignite", "charge", "escape"],
         pg.evaluate("window.__sent"))
@@ -83,8 +92,12 @@ with sync_playwright() as p:
     chk("ở lại trong mẻ dù step vẫn 4", pg.evaluate("R.phase") == "RUNNING")
 
     print("3) Đang rang mới chốt được mẻ bằng Xả mẻ")
-    pg.locator("#pane-rang .toolbar button:has-text('Xả mẻ')").first.click()
-    pg.wait_for_timeout(1200)
+    # Kết thúc mẻ nay là lệnh HỆ TRỌNG: phải GIỮ đủ 1 giây (đợt PD 08/09).
+    _d = pg.locator("#btnDrop").bounding_box()
+    pg.mouse.move(_d["x"] + _d["width"] / 2, _d["y"] + _d["height"] / 2)
+    pg.mouse.down(); pg.wait_for_timeout(1250); pg.mouse.up()
+    # 'queued' chưa phải máy đã xả: đợi đủ 2 nhịp poll để app đọc lại cờ drop rồi mới chốt.
+    pg.wait_for_timeout(2600)
     chk("có gửi lệnh drop", "drop" in pg.evaluate("window.__sent"), pg.evaluate("window.__sent"))
     chk("phase DONE", pg.evaluate("R.phase") == "DONE", pg.evaluate("R.phase"))
     chk("mẻ vào lịch sử", pg.evaluate("loadHist().length") == n0 + 1,

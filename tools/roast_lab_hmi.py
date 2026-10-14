@@ -295,9 +295,34 @@ class Api:
             self._window.destroy()
         return True
 
+    def _mc_opt(self, s):
+        """Cấu hình máy $M62 (firmware include/MachineOpt.h) cho JS ẩn / hiện thiết bị. Đọc qua handshake $M ở LUỒNG NỀN — handshake
+        chặn tới 2,5 s, không được nằm trong lượt link_snapshot JS gọi mỗi giây. Đọc lại 60 s / lần (Chuyên gia đổi trên HMI);
+        mất nối / không PC_Link -> None (JS giữ cách cũ theo ô tích)."""
+        import threading
+        if s.get("state") != "connected" or s.get("mode") != "pclink":
+            self._mc_opt_val = None
+            return None
+        now = time.monotonic()
+        if not getattr(self, "_mc_opt_busy", False) and now - getattr(self, "_mc_opt_ts", -1e9) >= 60:
+            self._mc_opt_busy, self._mc_opt_ts = True, now
+
+            def doc():
+                try:
+                    r = self._link.cfg_op(1, 62)
+                    if r.get("ok") and isinstance(r.get("val"), int):
+                        self._mc_opt_val = r["val"] & 0xFFFF
+                except Exception as e:                      # noqa: BLE001 — luồng nền không được chết im
+                    log.warning("[LINK] đọc $M62 hỏng: %s", e)
+                finally:
+                    self._mc_opt_busy = False
+            threading.Thread(target=doc, daemon=True, name="doc-M62").start()
+        return getattr(self, "_mc_opt_val", None)
+
     def link_snapshot(self):
         """Gói dữ liệu mới nhất + trạng thái kết nối. JS gọi mỗi giây."""
         s = self._link.snapshot()
+        s["mc_opt"] = self._mc_opt(s)
         st = s.get("state")
         if st != self._lk_state:              # chỉ ghi lúc CHUYỂN trạng thái
             log.log(logging.WARNING if st in ("error", "stalled") else logging.INFO,

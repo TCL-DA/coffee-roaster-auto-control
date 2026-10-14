@@ -5,7 +5,117 @@
 
 ## Trạng thái
 
-**CLAUDE ĐANG GIỮ — TẠM DỪNG** từ 11/09/2026 tối (đợt 9: chuyển động mượt).
+**RẢNH — CLAUDE ĐÃ NHẢ — 13/10/2026** (gói R0 "một bản cho mọi máy"): nút thiết bị màn Rang + thẻ áp hút ẩn / hiện theo cấu
+hình máy `$M62` firmware (snapshot `mc_opt`, `setMcOpt`), ô tích "Thiết bị máy có" khoá khi máy đã cấu hình (trừ Làm nguội).
+Sửa JS `applyDevVisibility` / `vacOn` / `dsApply` / ô tích `#devEnRow` + CSS `.permchk.locked` + `tools/roast_lab_hmi.py`
+`_mc_opt` (đọc $M62 ở luồng nền 60 s / lần). Kiểm: `test_ui_mc_opt` 8/8 (mới), `test_ui_live`, `test_ui_compat_roast`,
+`test_ui_caidat_tuluu`, `test_ui_overview_history` ĐẠT. CHƯA build EXE, CHƯA commit.
+
+**RẢNH — CLAUDE ĐÃ NHẢ — 11/10/2026**. Chỉ gỡ vạch màu mép trái `.nsfav` (6 px accent) và `.profcard` (7 px gas / 4 px)
+— chủ máy cấm tuyệt đối vạch / dải màu ở mép nút hay thẻ. Sao lưu: `docs/ui/backup/OTL Roast Lab.pre-bo-vach-mep-20261011.html`.
+Kiểm: `test_ui_overview_history`, `test_ui_workflow` ĐẠT. ĐÃ BUILD EXE (md5 HTML nhúng `2078f9f1…` khớp đĩa; bản trước:
+`tools/dist/_cu/OTL Roast Lab HMI.before-ao-v7-20261011.exe`). CHƯA commit.
+
+**RẢNH — Codex đã nhả — 29/09/2026**. Đợt tối ưu canvas live và lưu phong cách tài khoản hoàn tất; bộ kiểm và EXE end-to-end đã đạt. HTML sao lưu: `docs/ui/backup/OTL Roast Lab.pre-performance2-20260929-090308.html`. EXE cũ sao lưu: `tools/dist/OTL Roast Lab HMI.before-performance2-20260929.exe`.
+
+**TRỐNG — CLAUDE ĐÃ NHẢ** (19/09/2026). Đợt 16, chủ máy: "sửa tiếp đi… build trên cả app PC lẫn iOS".
+**KHÔNG đụng `OTL Roast Lab.html`** (md5 vẫn `19eadc94…`). Đã làm:
+1. **Tìm ra gốc lỗi ĐỎ NGẪU NHIÊN đeo bám từ 11/09** ở `test_ui_hold_confirm` (#btnEscape/#btnDrop, "giữ đủ mốc mà
+   lệnh không đi") — là **lỗi bộ kiểm, không phải lỗi app**: `dsStart()` chạy `setInterval(dsTick,1000)` giữ tham
+   chiếu GỐC nên stub `window.dsTick=()=>{}` không tắt được nhịp; nhịp gốc gọi `pywebview.api.link_snapshot()` (stub
+   không có) → `DS.state='error'` → `_chuaNoiMay()` chặn `start()` im lặng. Vá stub ở 3 bộ kiểm dính cùng gốc
+   (`hold_confirm`, `step_accel`, `touch_hold`). Kiểm lại: 4/4 xanh, và 4/4 xanh cả khi ép CPU chậm 8× (trước đó
+   ép 8× là đỏ).
+2. **Đường cài lên iPhone**: web server LAN thêm `/manifest.webmanifest` + 3 icon `pwa-*.png`, và bơm thẻ
+   `apple-touch-icon` / `apple-mobile-web-app-*` vào **bản web** (file HTML gốc không đổi). Bộ kiểm mới
+   `tools/test_web_pwa.py` chạy chính EXE. ĐÃ BUILD EXE, bản trước giữ ở
+   `tools/dist/OTL Roast Lab HMI.before-pwa-20260919.exe`. **CHƯA commit.**
+
+Trước đó — **TRỐNG — CLAUDE ĐÃ NHẢ, CODEX TIẾP TỤC ĐƯỢC** (14/09/2026 tối). Xong đợt 15 (chủ máy: "sửa đi, và build… sửa
+cho xong luôn đi"): làm hết kế hoạch `docs/ui/2026-09-14-tho-rang-tablet-tiep-codex.md` — Đợt A an toàn cảm
+ứng, Đợt B mật độ tablet, Đợt C chuột/phím. **33/33 bộ kiểm UI ĐẠT** (có bộ mới `tools/test_ui_touch_real.py`
+dùng cảm ứng CDP thật; chạy trên bản cũ thì ĐỎ đúng các lỗi). **ĐÃ BUILD EXE tên chuẩn** (md5 HTML nhúng
+`19eadc94…` khớp bản trên đĩa; bản trước giữ ở `tools/dist/OTL Roast Lab HMI.before-tablet-dot-a-20260914.exe`).
+**CHƯA commit, CHƯA thử tablet thật.** Sao lưu HTML: `docs/ui/backup/OTL Roast Lab.pre-tablet-dot-a-0914.html`
+(md5 `6daf7758…`). Codex nhận file thì ghi đè dòng này.
+
+Trước đó — TRỐNG — CLAUDE ĐÃ NHẢ, CODEX TIẾP TỤC (chủ máy 14/09/2026 chiều muộn: "build xong thì để codex
+tiếp tục công việc"). Xong đợt 14: **32/32 bộ kiểm UI ĐẠT + `test_settings_file.py` ĐẠT, ĐÃ BUILD
+EXE tên chuẩn** (md5 HTML nhúng `6daf7758…` khớp bản trên đĩa; bản trước giữ ở
+`tools/dist/OTL Roast Lab HMI.before-caidat-tuluu-20260914.exe`). **CHƯA commit, CHƯA chạy máy thật.**
+Codex nhận file thì ghi đè dòng này. Báo cáo đợt 14: `docs/ui/2026-09-14-caidat-tuluu-va-lag.md`.
+
+**14/09 ~14:30 — Claude làm tiếp phần review tablet của Codex** (Codex hết hạn mức lúc 14:02). CHỈ ĐỌC + ĐO bằng
+Chromium nền + cảm ứng thật (CDP), **KHÔNG sửa file nào trong khoá** — khoá vẫn TRỐNG. Báo cáo + kế hoạch:
+`docs/ui/2026-09-14-tho-rang-tablet-tiep-codex.md`. ⛔ **P0 CHƯA SỬA:** giữ "Kết thúc mẻ"/"Xả liệu" bằng NGÓN rồi
+trượt ra khỏi nút vẫn phát `drop=1`/`escape=1` (chuột thì huỷ đúng); cùng gốc, ± gas trượt ra vẫn ghi xuống máy.
+Chờ chủ máy duyệt Đợt A.
+(Đợt 14: trục khung "Đường rang dự kiến" theo Cài đặt; Cài đặt tự lưu + Hoàn tác + xuất/nhập CSV;
+bỏ `backdrop-filter` ở lớp phủ/hộp đăng nhập vì làm lag con trỏ.) Sao lưu
+`docs/ui/backup/OTL Roast Lab.pre-caidat-tuluu-0914.html` (bung từ EXE, md5 `4b866211…`).
+
+Trước đó — TẠM DỪNG từ 14/09/2026 chiều — xong đợt 13, **31/31 bộ kiểm ĐẠT, ĐÃ BUILD
+EXE tên chuẩn** (md5 HTML nhúng `4b866211…` khớp bản trên đĩa; bản trước giữ ở
+`tools/dist/OTL Roast Lab HMI.before-hoso-dev-20260914.exe`). **CHƯA commit, CHƯA chạy máy thật.**
+Codex cần file trước khi Claude quay lại thì cứ lấy — ghi đè dòng này là được.
+(Đợt 13: **hộp "Sửa hồ sơ"** — đóng băng vùng
+"Đường rang dự kiến", chỉ ô nhập cuộn; gọn phần thông tin dưới đồ thị; pha phát triển chỉnh theo
+cả % lẫn thời gian). Chủ máy giao. Sao lưu `docs/ui/backup/OTL Roast Lab.pre-hoso-dev-0914.html`.
+
+Trước đó — TẠM DỪNG từ 14/09/2026 12:00. Xong đợt 11 + 12, **31/31 bộ kiểm ĐẠT, ĐÃ
+BUILD EXE tên chuẩn** (md5 HTML nhúng `558b2ab9…` khớp bản trên đĩa; bản cũ giữ ở
+`tools/dist/OTL Roast Lab HMI.before-review-ux-20260914.exe`). **CHƯA chạy máy rang thật, CHƯA
+commit.** Codex cần file trước khi Claude quay lại thì cứ lấy — ghi đè dòng này là được.
+
+Đợt 12 (14/09 trưa): **thợ rang dùng thử + đối chiếu bản thiết kế Claude Design**, chủ máy giao. Phạm vi: nút "Kết thúc mẻ" khi cửa xả đang mở, trạng thái
+tự xả trên chip DROP, chip DEV, chú giải đồ thị, dải pha lúc chờ, panel làm nóng, bảng Lịch sử,
+thẻ hồ sơ, vị trí toast. Sao lưu: `docs/ui/backup/OTL Roast Lab.pre-ux-thorang-0914.html`.
+
+Đợt 11 cùng ngày (xong, chờ build): **vá 11 phát hiện review của Codex**
+`docs/ui/2026-09-14-otl-roast-lab-review.md`). Phạm vi: `finishRoast`/`roastTick`/`cmdDrop`/
+`autoDrop`/`checkMileSets`/`applyMachine` (xác nhận xả + mất kết nối giữa mẻ), `loadProfile`/
+`chkChargeReady` (chờ tự nạp), `openBatch`/`uxRoastAgain`/`uxDone*`, ngữ nghĩa hộp thoại +
+nhãn ô hồ sơ, màu `.bp-bt`; phía Python `roast_db.finish`, `db_batch_set_weight`,
+`inventory_db` (điều chỉnh kho/đơn theo kg). Sao lưu:
+`docs/ui/backup/OTL Roast Lab.pre-codex-review-0914.html`.
+
+Trạng thái trước đó — **CLAUDE ĐANG GIỮ — TẠM DỪNG** từ 13/09/2026 (đợt 10: **đường rang dự kiến**).
+Chỉ đụng hộp "Sửa hồ sơ" + `buildTarget()`/`curveAt()`/`loadProfile()`/`finishRoast()`
+— không chạm màn Rang, không chạm tầng chuyển động của đợt 9.
+Vá **ba lỗi im lặng** Codex soát ra tối 12/09: (1) nạp hồ sơ không đẩy `deT`/`fcsT`
+sang `R.mileSet` nên preview và máy chấm mốc theo hai ngưỡng khác nhau; (2)
+`finishRoast()` ghi đè `p.temp`/`p.time` làm **mục tiêu trôi qua từng mẻ**; (3) RoR
+xem trước dùng cửa sổ ±15s riêng, lệch với RoR màn rang. Nâng cấp: ô **giờ mốc**
+`deTime`/`fcsTime`, **mẻ nền thật** vẽ mờ dưới đường kế hoạch, **RoR tại từng mốc**,
+thang RoR tính từ đáy TP (±65 → ±25), và **bộ soi kế hoạch** `peAudit()` 9 nhóm luật.
+**Soi lại theo bản thiết kế Claude Design** (mirror trên đĩa — `DesignSync` đòi
+`/design-login` nên phiên nền không kéo bản mới được): lấy khuôn **dải 3 pha** và
+**chú giải đường** của màn Rang áp sang; mẻ nền đổi thành **xám đứt** để không có hai
+đường cam cạnh nhau; thẻ mốc thêm đơn vị `°/′`.
+**Đợt trải nghiệm (chủ máy chốt 13/09): chỉnh được bằng NGÓN TAY.** Nút ± hai bên
+**cả 10 ô số**, dùng lại `.fpm` 72×72 của Cài đặt + đúng luật tăng tốc của nút ± màn
+Rang (chạm 1 bậc · giữ thì tự lặp bậc lớn dần · ngón đầu làm chủ). Ô tuỳ chọn đang
+trống thì chạm ± lần đầu **lấy chính số app đang ước** làm điểm xuất phát. Tiêu đề và
+hàng "Huỷ / Lưu" ra NGOÀI vùng cuộn (chỉ `.pe2col` cuộn) — khỏi vuốt hai lần cho mỗi
+con số. ⚠ Đã thử `position:sticky` cho hàng nút rồi GỠ: nội dung trôi *dưới* hàng nút
+và `test_ui_overlap` bắt đúng chỗ đó.
+Kèm 2 bẫy của BỘ KIỂM (không phải lỗi app): bộ kiểm không đóng màn đăng nhập thì mọi
+cú chạm rơi vào phím PIN trong khi đọc DOM vẫn xanh; và `test_ui_overlap` chưa biết
+bỏ phần tử **bị khung cuộn cắt** — đã thêm `catBoiCha()`.
+**Đợt "xuất sắc":** **kéo mốc DE · FCs · DROP ngay trên hình** (DROP cố ý chỉ kéo dọc
+— nó dính mép phải; bán kính bắt 34px; hiện ô số cạnh ngón), nút **⤓ Lấy mốc theo mẻ
+nền** (chép giờ/nhiệt xả + mốc DE/FCs từ `mile` trong kho + charge/gas/kg, hỏi lại
+trước khi ghi đè), và **chạm thẻ cảnh báo là nhảy tới đúng ô** đang sai.
+Bộ kiểm mới `tools/test_ui_profile_target.py` — **80/80 ĐẠT**; cả 29 bộ `test_ui_*`
+chạy lại đều ĐẠT, chỉ còn `test_ui_overview_history` đỏ y như trên bản cũ. **ĐÃ BUILD VÀ THAY BẢN CHÍNH** `tools/dist/OTL Roast Lab HMI.exe` (md5 `73344ade…`,
+HTML nhúng khớp bản trên đĩa; bản cũ giữ ở `.before-duongrang-20260913.exe`).
+Smoke-test 9 giây không thoát; lối tắt Start trỏ đúng bản mới và Windows trả về
+"Unpin from Start" — **đang ghim thật**. **CHƯA chạy với máy rang thật.**
+⚠ `test_ui_hold_confirm` chập chờn **sẵn từ trước** (bản cũ 2/5, bản mới 1/5, dựng lại
+trình tự thì hai bản hỏng y hệt) — đừng đổ cho đợt này. Chi tiết:
+`docs/ui/2026-09-13-duong-rang-du-kien-nang-cap.md`.
+
+**Đợt 9 — chuyển động mượt** (11/09/2026 tối).
 Dựng tầng chuyển động mới bằng `@starting-style` + `transition-behavior:allow-discrete`
 nên **không sửa một dòng JS đóng/mở nào** — hơn 20 hàm rải khắp file giữ nguyên.
 Gốc của cảm giác giật KHÔNG phải đường cong mà là `.pane`/`.overlay` bật tắt bằng
@@ -81,6 +191,11 @@ HTML nhúng khớp, app đã mở lại. CHƯA chạy với máy rang thật.
 
 | Thời điểm | Ai | Phạm vi | Kết quả |
 |---|---|---|---|
+| 14/09/2026 tối (15) | Claude | **An toàn cảm ứng + tablet + chuột/phím** (tiếp review tablet của Codex) | Chủ máy duyệt "sửa cho xong luôn". ⛔ **TB-01/02:** cảm ứng có *implicit pointer capture* nên `pointerleave` chỉ tới sau khi nhấc ngón → giữ "Kết thúc mẻ"/"Xả liệu" rồi trượt đi VẪN gửi lệnh, ± gas trượt đi vẫn ghi xuống máy. Vá bằng `holdGuard()` (nhả capture + so toạ độ pointermove, dung sai 12px) cho holdBind, ± Rang, ± Sửa hồ sơ. **TB-03:** Tạm dừng khi nối máy không làm gì → nay không đổi trạng thái/không ghi nhật ký, toast + dòng phụ "máy đang lái mẻ". **TB-04:** `finishRoast()` chấm DROP khi mẻ chốt theo cờ cửa xả. **TB-05–07:** `fit()` gắn `data-density="tablet"` + `--read-floor`/`--hit-min`; sàn chữ `max(cỡ thiết kế, 12px thật)` chỉ kiểu Chi tiết; vùng chạm `::after` trong suốt; thanh đầu cắt "…"; toast DONE nửa trái; tổng kết tablet 5 ô mốc một hàng + bỏ đường cong mini. **TB-08:** lăn chuột/↑↓ ô gas-gió-trống (≤1 lệnh/giây), Esc lúc RUNNING/DONE không thu toàn màn, phím M = Ghi mốc. BẪY: `test_ui_overlap` bỏ qua phần tử bị khung cuộn cắt — nút "Mẻ mới" khuất vẫn xanh, soi ảnh mới thấy. Bộ kiểm mới `test_ui_touch_real.py`. 33/33 ĐẠT, EXE md5 `19eadc94`. |
+| 14/09/2026 chiều muộn (14) | Claude | **Cài đặt tự lưu + file CSV · trục khung dự kiến theo Cài đặt · con trỏ lag** | Chủ máy giao. (1) `peDrawPreview` dùng đúng luật trục màn Rang (`ch_auto/ch_tmin/ch_tmax/ch_rmin/ch_rmax`). (2) **Lag:** JS nhàn rỗi; đo khoảng cách rAF + trễ pointermove trên Chromium vẽ phần mềm → màn đăng nhập 100/100 khung >34ms do `backdrop-filter` (lớp phủ 12px + hộp đăng nhập 26px đè đường cong vẽ dần 17s). Bỏ blur ở `.overlay`/`.loginbox`/`#personalDialog::backdrop` → 0/436. Python thôi xoá `GPUCache`. (3) **Tự lưu** 0,6s, bỏ Hủy/Áp dụng/Lưu → Hoàn tác + Nhập/Xuất file; đang rang/làm nóng chặn đổi cổng/baud; cổng/baud chỉ đẩy cầu nối khi đổi đúng 2 ô. (4) **CSV** `nhom,khoa,gia_tri,mo_ta` UTF-8 BOM, nhập nhận `;` + thập phân phẩy + ANSI (NFC), kẹp dải, KHÔNG nhập COM/baud, $M chỉ điền form. API `settings_export`/`settings_import`. Bộ kiểm mới `test_ui_caidat_tuluu.py`, `test_settings_file.py`. 32/32 UI ĐẠT, build EXE md5 `6daf7758`. |
+| 14/09/2026 chiều (13) | Claude | **Hộp "Sửa hồ sơ": đóng băng xem trước · gọn thông tin · phát triển theo %/thời gian** | Chủ máy giao. (1) **Đóng băng:** `.pe2col` thành cột flex KHÔNG cuộn, chỉ `.pe-fields` cuộn (không sticky). (2) **Gọn:** đầu khung 1 hàng (tên · gợi ý · chú giải), đồ thị 300px, thẻ mốc 3 dòng, thẻ soi 1 hàng vuốt ngang → khung ~800→~430px, ô nhập ~230→~400px (đo ở 1920×1080). (3) **Ô PHÁT TRIỂN** thay thẻ DEV (chấm DEV giữa FCs→DROP bỏ khỏi hình — nó không phải sự kiện): hai hàng ± thời lượng + %, cả hai GIỮ tổng thời gian; chỉnh giờ → `fcsTime`=tổng−thời lượng, chỉnh % → `devTarget` và BỎ `fcsTime` (nhãn neo "theo giờ nổ"/"theo %"). Markup cố định để nút đang giữ không bị dựng lại. **Bộ kiểm bắt 2 lỗi thật do đóng băng:** khung cao/thấp theo số thẻ soi → lưới ô nhập bị đẩy → nút ± trôi khỏi ngón (khoá chiều cao khung); ở cửa sổ 1024 nút "+" lòi 9px (container query xếp chồng hai hàng). Bộ kiểm `test_ui_profile_target` thêm mục 18, sửa `tap()` luôn cuộn tới nút (nút có thể nằm trong cửa sổ mà bị khung cuộn con che). **Trọn bộ 31/31 ĐẠT.** |
+| 14/09/2026 trưa (12) | Claude | **Thợ rang dùng thử + đối chiếu Claude Design** | Đóng vai thợ đi trọn mẻ trên máy ảo, chụp từng bước, so 4 màn thiết kế. ⛔ **Lỗi nguy hiểm:** tự xả vừa chạy, thợ giữ "Kết thúc mẻ" → app ghi drop=0 ĐÓNG cửa xả giữa lúc trút hạt (HOLD_JOBS.drop không chặn theo pha, cmdDrop là toggle) → nay nút ghi "● Cửa xả đang mở" + phải xác nhận. Sửa thêm: chip DROP "tự xả" + báo trước 3°C; DEV = thời lượng phát triển (chip + tổng kết); chú giải Tăng nhiệt/Gas; dải pha "dự kiến" + % theo thời gian mẻ tới giờ; panel làm nóng "còn khoảng N phút", ẩn ô thời gian + nút trùng; Lịch sử thead thiếu `.hsel` → lệch cả hàng; toast che nút tổng kết; nút xoá hồ sơ; số BT viên trạng thái nền tối cố định. Báo cáo `docs/ui/2026-09-14-tho-rang-dung-thu.md` (có 4 việc chờ chủ máy quyết). |
+| 14/09/2026 sáng (11) | Claude | **Vá 11 phát hiện review Codex** | Soát lại từng bằng chứng trên code, khớp cả 11. Lệnh xả `queued` → chờ máy báo cờ drop (10s, hẹn giờ riêng); mất kết nối giữa mẻ không tự đếm/chốt, đóng tay = INTERRUPTED; chặn **mẻ ma** pclink (`_machHoldoff`); chờ tự nạp gắn hồ sơ; tự xả thử lại có trần; kho/đơn theo kg thật (`rebase_batch` + `order_credits`); chống phản hồi cũ đè hộp chi tiết mẻ; ngữ nghĩa hộp thoại + tên ô. Bộ kiểm mới `test_ui_review_0914.py`, `test_inventory_rebase.py`. Bẫy: `page.evaluate()` trả promise đang chờ hộp hỏi → headless "Target crashed" (bản sao lưu cũng sập). Phản hồi `docs/ui/2026-09-14-phan-hoi-review-codex.md`. |
 | 11/09/2026 tối (10) | Claude | **HỒNG — bong bóng trợ lý AI · hộp Sửa hồ sơ dựng lại · hiệu ứng đợt 2** | (1) **Trợ lý "Hồng".** Tên lấy từ *than hồng* — chính là tên màu chủ đạo của bản thiết kế, và là tên người Việt thật. Logo là ANH EM với dấu OTL trên thanh đầu: cùng ô bo góc đỏ `#D93A32`, ruột đổi thành ngọn lửa + đốm than. **KHÔNG dựng lại khung chat** — `#ra-panel` là của Codex ở `tools/roast_assistant_ui.js` (Python nạp vào lúc chạy, xem `roast_lab_hmi.py:1739,2152`); bong bóng chỉ là NÚT MỞ, gọi `window.otlAssistantOpen()`. Hạng AssistiveTouch: kéo khắp màn, thả thì hít về mép gần nhất, nhớ chỗ trong localStorage, tự kẹp vào trong màn khi cửa sổ nhỏ lại, mờ .62 lúc rảnh cho khỏi tranh mắt với mẻ đang rang. **Giữ để NÓI** (`SpeechRecognition`, vi-VN) — chữ rơi vào `#ra-input` chứ KHÔNG tự gửi, vì nhận dạng tiếng Việt trong xưởng ồn sai là chuyện thường và đây là trợ lý của một cái máy đang cháy. Khung chat nở ra từ đúng vị trí bong bóng (gốc phóng tính bằng JS theo toạ độ thật). **BẪY ĐÃ DÍNH:** đặt bong bóng trong `#stage` thì `position:fixed` bị `transform` của sân khấu NHỐT LẠI và nút teo theo tỉ lệ — đo được 47px thay vì 62px, mắt thường rất khó thấy. Phải đưa ra làm con trực tiếp của `body`. Bộ kiểm mới `tools/test_ui_buddy.py`, đã chứng minh không vô dụng (đặt lại vào `#stage` là B1 đỏ ngay). (2) **Hộp Sửa hồ sơ dựng lại theo ý chủ máy:** đường cong lên trên chiếm trọn bề ngang, thông số xuống dưới xếp hai cột, nhãn nằm trên ô. Đường cong hết nhoè — canvas khai cứng `880×600` rồi bị CSS ép về `100%×300px`, **sai tỉ lệ VÀ không theo tỉ lệ điểm ảnh màn hình**; đó mới là gốc của cảm giác "thô", không phải thiếu trang trí. Nay đo đúng ô, nhân `dpr` vào ma trận vẽ (`setTransform`) và giữ toạ độ theo pixel CSS nên không phải sửa một dòng vẽ nào. Ba chỗ mở hộp đều phải `requestAnimationFrame(peDrawPreview)` vì `refreshPE()` chạy TRƯỚC khi hộp hiện, lúc đó bề rộng bằng 0. Khối bố cục mới phải gắn tiền tố `#profedit` vì có ba luật `.pe2col`/`.pefield` nằm SAU trong file vẫn ép hai cột. (3) **Hiệu ứng đợt 2:** menu Cài đặt nhanh nở ra từ nút tài khoản + dòng hiện xếp tầng; viên thuốc tab thêm 3 nếp iOS (bóp theo trục, chữ tụt lại, lún khi nhấn); chuyển tab có HƯỚNG (trượt từ phải khi đi tới, từ trái khi lùi) — hoà tan trơn không có hướng chính là chỗ làm nó trông thô; 7 trang con Cài đặt có lượt vào; danh sách trong hộp thoại hiện xếp tầng. (4) **Lỗi thật đã vá:** băng `#faultBanner` ghim cứng `top:118px` nên đè lên chip lọc hồ sơ, ô "Tên" của hộp Sửa hồ sơ và tiêu đề trang Cài đặt — nó `pointer-events:none` nên vẫn bấm xuyên qua được nhưng KHÔNG ĐỌC ĐƯỢC, tức cảnh báo che mất thông tin, hỏng đúng việc nó sinh ra để làm; dời xuống đáy. (5) **Sửa lại bản vá khoá-khi-mất-kết-nối của đợt trước:** bản đầu đặt `btn.disabled` trong vòng vẽ mỗi nhịp — vòng đó tắc là nút KẸT KHOÁ vĩnh viễn và thợ mất quyền điều khiển máy; nay chỉ làm mờ, còn chặn thật chuyển sang `job.blocked` hỏi ngay lúc bấm, không để lại trạng thái dính. |
 | 11/09/2026 tối (9) | Claude | **Tầng chuyển động mượt** | Chủ máy xin "đổi tab, mở hộp thoại, báo lỗi, hồ sơ có curve, thu phóng — tất cả siêu mượt". **Chẩn đoán khác với yêu cầu:** gốc của cảm giác giật KHÔNG nằm ở đường cong mà ở chỗ `.pane` và `.overlay` bật tắt bằng `display`, thứ **không nội suy được**, nên chưa từng có **lượt RA** — màn cũ biến mất tức thì rồi màn mới mới trượt vào; thêm đường cong đẹp cỡ nào cũng vô ích. Dựng bằng `@starting-style` + `transition-behavior:allow-discrete`, nhờ đó **không phải sửa một dòng JS nào** trong hơn 20 hàm đóng/mở rải khắp file. Thêm: bộ đường cong `--ease-out`/`--ease-in`/`--spring` (lò xo thật viết bằng `linear()`, cubic-bezier không tả được vượt đà); đường cong hồ sơ **tự vẽ ra** nhờ `pathLength="1"` chuẩn hoá mọi đường về cùng chiều dài; thu phóng chi tiết mẻ **nở ra từ chính dòng vừa bấm** (matched-geometry qua View Transitions). ⛔ **ĐÃ THỬ VÀ GỠ — đừng thử lại:** gói `gotoTab` trong `startViewTransition`. Mượt thật, nhưng nó gọi hàm đổi DOM ở KHUNG HÌNH SAU nên `gotoTab()` hoá **bất đồng bộ** — mọi chỗ gọi rồi đọc DOM ngay đọc phải trạng thái cũ (`test_ui_consistency` đỏ ngay); và đổi tab nhanh tay làm promise từ chối `"Transition was skipped"` nổi thành lỗi JS, đỏ thêm 3 bộ nữa. Đổi hợp đồng một hàm điều hướng trong app điều khiển máy để lấy hiệu ứng là đổi sai giá. **Ba lỗi tự gây, đều do bộ kiểm bắt:** (a) chốt "đang rang thì đừng đóng băng" viết `window.R` — mà `R` khai bằng `const` nên **không nằm trên window**, chốt chưa bao giờ chạy; (b) `.pane` chạy `transform:scale()` → tạo containing block mới cho mọi con `position:fixed`, đủ để lệch hộp thoại, nay chỉ hoà tan bằng opacity; (c) ép `flex-wrap:nowrap` ở MỌI bề rộng làm cửa sổ 1024 nhồi đến mức chip kết nối tràn 52px, nay chặn dưới 1180px. Bộ kiểm mới `tools/test_ui_smooth.py` (6 mục, có 2 chốt an toàn). **27/27 ĐẠT.** |
 | 11/09/2026 chiều (8) | Claude | **Thống nhất thanh đầu — hướng A** | Chủ máy chốt hướng A sau khi tự chụp hai thanh đầu cạnh nhau. Xoá **24 luật** `html:has(#pane-rang.on)` vốn nuôi một "thanh đầu thứ hai" chỉ dựng khi màn Rang mở; đưa thông số của màn Rang (đã đúng thiết kế) lên thành thanh dùng chung. **Phát hiện ngoài kế hoạch, nặng hơn cả mục tiêu ban đầu:** một trong 24 luật đó đổi `--f-ui`/`--f-num`/`--f-mono` cho **cả sân khấu**, nghĩa là **màn Rang chạy IBM Plex còn 5 tab kia chạy Segoe UI** — đổi tab là đổi cả bộ chữ toàn màn, không riêng thanh đầu; kế hoạch cũ chỉ đo thanh đầu nên không thấy. Chỉ xoá luật thì Rang tụt ngược về Segoe, nên phải nâng IBM Plex lên dùng chung. **Hai bẫy nằm dưới:** (1) nền viên thuốc trượt là `--panel`, trùng đúng màu thanh đầu — gỡ khung bọc ra là nó **tàng hình**, mất luôn dấu báo tab đang mở; đổi sang `--card`. (2) `@media(max-width:1700px)` đo **cửa sổ** chứ không đo sân khấu (rộng cứng 2560px rồi mới thu nhỏ) nên cửa sổ 1366 vẫn ăn và đẩy cụm tab xuống hàng; trước đây chỉ Rang thoát nhờ 4 luật `!important`. Đo lại: cao thanh, cỡ chữ tab, cỡ đồng hồ, bộ chữ và mốc bắt đầu nội dung **bằng nhau tuyệt đối ở cả 6 tab** — hết cú nhảy 8px. `test_ui_nav_drag` mục D8 đang giữ luật đời cũ ("màn Rang không được hiện viên thuốc") nên đã sửa bài kiểm theo luật mới, không sửa app theo bài kiểm. Sao lưu `docs/ui/backup/OTL Roast Lab.pre-header-unify.html`. |

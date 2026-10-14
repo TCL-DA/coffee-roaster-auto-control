@@ -3,8 +3,9 @@ import sys, pathlib
 sys.stdout.reconfigure(encoding="utf-8")
 from playwright.sync_api import sync_playwright
 
-HTML = pathlib.Path(r"f:\Project\100_OTL_06ALS - CMS - Cacao\OTL Roast Lab.html")
-SHOT = pathlib.Path(__file__).parent
+HTML = pathlib.Path(__file__).resolve().parent.parent / "OTL Roast Lab.html"
+SHOT = HTML.parent / "_codex_temp" / "ui-tests"
+SHOT.mkdir(parents=True, exist_ok=True)
 
 PORTS = """[
  {"port":"COM9","desc":"Prolific PL2303GT USB Serial COM Port","maker":"Prolific",
@@ -102,7 +103,8 @@ with sync_playwright() as p:
 
     print("4) Chọn cổng đúng → nối được, lưu lại, tự đóng")
     pg.locator(".pprow", has_text="COM9").first.click()
-    pg.wait_for_timeout(1800)
+    # Chờ trạng thái thật: poll kết nối và nhịp đóng hộp thoại là hai bộ hẹn giờ riêng.
+    pg.wait_for_function("!PP.open", timeout=6000)
     chk("đã lưu cổng chọn", pg.evaluate("window.__setCalls") == ["COM9"],
         pg.evaluate("window.__setCalls"))
     chk("báo nối được", "nối được" in pg.evaluate(

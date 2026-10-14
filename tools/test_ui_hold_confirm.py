@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 """Kiểm cơ chế GIỮ 1 GIÂY cho lệnh hệ trọng (đợt PD, theo bản thiết kế Claude Design).
 
-Luật phải giữ được: lệnh CHỈ đi khi giữ đủ HOLD_MS (chủ máy chốt 0,5 giây 08/09/2026). Nhả sớm, kéo ngón ra khỏi nút,
-hay tắt chuyển động đều không được làm lệnh thoát ra sớm.
+Luật phải giữ được: lệnh CHỈ đi khi giữ đủ HOLD_MS (chủ máy chốt 0,5 giây
+08/09/2026). Nhả sớm, kéo ngón ra khỏi nút, hay tắt chuyển động đều không được
+làm lệnh thoát ra sớm.
+
+GIỮ 1100ms chứ không phải 800 (sửa 11/09/2026): 800 chỉ hơn mốc 500 có 300ms.
+Chạy liên tiếp 28 trình duyệt là CPU nghẽn, setTimeout trong trang bắn trễ quá
+mốc và bài kiểm ĐỎ OAN — đã dính hai lần, mà chạy riêng thì luôn ĐẠT. 1100ms
+vẫn chứng minh đúng luật (giữ quá 500 thì lệnh phải đi) và có đủ biên an toàn.
 """
 from pathlib import Path
 import sys
@@ -21,11 +27,25 @@ SPY = """() => {
   window.dsTick = () => {};
   window.pywebview = window.pywebview || { api: {} };
   window.dsBridge = () => true;
+  // ⛔ ĐỎ OAN NGẪU NHIÊN (tìm ra 19/09/2026). `dsStart()` chạy `setInterval(dsTick,1000)`
+  // nên nhịp đó giữ THAM CHIẾU GỐC: gán `window.dsTick` ở trên chỉ đổi tên toàn cục,
+  // nhịp cũ vẫn gọi `pywebview.api.link_snapshot()` — stub không có hàm này nên ném lỗi
+  // → `DS.state='error'` → `_chuaNoiMay()` chặn `start()` IM LẶNG. Nhịp rơi trúng lúc
+  // đang giữ thì bài kiểm đỏ, rơi lệch thì xanh. Bịt bằng cách cho nhịp gốc chạy vô hại.
+  window.pywebview.api.link_snapshot = async () => ({ state: 'connected', data: null });
+  window.dsApply = () => {};
   // Giả lập cầu nối thì phải giả lập ĐỦ: từ 11/09/2026 các nút lệnh máy tự khoá
   // khi CÓ cầu mà CHƯA nối được máy (thợ khỏi giữ đủ 0,5 giây rồi mới bị từ
   // chối). Chỉ bật dsBridge mà bỏ quên DS.state là dựng đúng cái trạng thái bị
   // khoá đó, rồi bài kiểm tưởng cử chỉ giữ hỏng. Nói rõ là đã nối.
   try { if (typeof DS !== 'undefined' && DS) DS.state = 'connected'; } catch (e) {}
+  // Từ 14/09/2026 (review RF-02) giữ đủ "Kết thúc mẻ" lúc đang rang là vào CHỜ máy báo
+  // cửa xả mở, và trong lúc chờ nút cố ý KHÔNG gửi lại. Mỗi kịch bản ở đây là một lần
+  // giữ ĐỘC LẬP nên xoá lời chờ của kịch bản trước — luật giữ-đủ-mốc giữ nguyên.
+  try { if (typeof R !== 'undefined' && R) R._dropPending = null; } catch (e) {}
+  // Cờ LẠC QUAN của lần giữ trước (sáng 3 giây) làm lần giữ sau tưởng cửa xả đang mở →
+  // từ 14/09 nhánh đó HỎI LẠI trước khi đóng cửa. Kịch bản độc lập thì xoá cờ đó đi.
+  try { if (typeof BTN_HOLD !== 'undefined') delete BTN_HOLD.drop; } catch (e) {}
   window.toast = () => {};
   window.opLog = () => {};
 }"""
@@ -89,7 +109,7 @@ def main():
 
             # 2) giữ ĐỦ mốc → gửi ĐÚNG MỘT lần
             page.evaluate(SPY)
-            press(page, sel, 800)
+            press(page, sel, 1100)
             got = page.evaluate('window.__cmds')
             if len(got) != 1 or got[0][0] != name:
                 fails.append(f'{sel}: giữ đủ mốc phải gửi đúng 1 lệnh {name}, thực tế {got}')
@@ -120,7 +140,7 @@ def main():
         if page.evaluate('window.__cmds'):
             fails.append('Giảm chuyển động: nhả sau 0,22s mà vẫn gửi lệnh')
         page.evaluate(SPY)
-        press(page, '#btnDrop', 800)
+        press(page, '#btnDrop', 1100)
         if len(page.evaluate('window.__cmds')) != 1:
             fails.append('Giảm chuyển động: giữ đủ mốc mà lệnh không đi')
         page.evaluate("document.documentElement.setAttribute('data-motion','full')")

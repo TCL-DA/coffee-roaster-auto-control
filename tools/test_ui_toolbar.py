@@ -3,8 +3,9 @@ import sys, json, pathlib
 sys.stdout.reconfigure(encoding="utf-8")
 from playwright.sync_api import sync_playwright
 
-HTML = pathlib.Path(r"f:\Project\100_OTL_06ALS - CMS - Cacao\OTL Roast Lab.html")
-SHOT = pathlib.Path(__file__).parent
+HTML = pathlib.Path(__file__).resolve().parent.parent / "OTL Roast Lab.html"
+SHOT = HTML.parent / "_codex_temp" / "ui-tests"
+SHOT.mkdir(parents=True, exist_ok=True)
 
 STUB = """
 window.__sent = [];
@@ -49,9 +50,10 @@ with sync_playwright() as p:
         "getComputedStyle(document.querySelector('.roast-nosel')).display") == "flex")
 
     print("2) nút thanh công cụ KHÔNG bị overlay che")
-    for label, fn in [("Đánh lửa", "cmdIgnite"), ("Nạp hạt", "cmdCharge"),
-                      ("Xả liệu", "cmdEscape"), ("Xả mẻ", "cmdDrop")]:
-        el = pg.locator(f"#pane-rang .toolbar button:has-text('{label}')").first
+    # Dùng ID ổn định: nút đánh lửa đã chuyển lên hàng gas, nhãn xả đã đổi.
+    for label, control in [("Đánh lửa", "btnIgnite"), ("Nạp hạt", "btnCharge"),
+                           ("Xả liệu", "btnEscape"), ("Kết thúc mẻ", "btnDrop")]:
+        el = pg.locator("#" + control)
         box = el.bounding_box()
         top = pg.evaluate("([x,y])=>{const e=document.elementFromPoint(x,y);"
                           "return e? (e.closest('button')? 'button':e.className||e.tagName):'null'}",
@@ -59,15 +61,28 @@ with sync_playwright() as p:
         chk(f"'{label}' nhận được cú chạm", top == "button", top)
 
     print("3) bấm thật → có gửi lệnh xuống máy")
-    pg.locator("#pane-rang .toolbar button:has-text('Xả liệu')").first.click()
+    # Xả liệu nay là lệnh HỆ TRỌNG: chạm KHÔNG gửi, phải giữ đủ 1 giây (đợt PD).
+    esc = pg.locator("#btnEscape").bounding_box()
+    ecx, ecy = esc["x"] + esc["width"] / 2, esc["y"] + esc["height"] / 2
+    pg.mouse.move(ecx, ecy)
+    pg.mouse.down(); pg.wait_for_timeout(300); pg.mouse.up()
+    pg.wait_for_timeout(200)
+    chk("chạm nhanh KHÔNG xả liệu", len(pg.evaluate("window.__sent")) == 0,
+        pg.evaluate("window.__sent"))
+    pg.mouse.move(ecx, ecy)
+    pg.mouse.down(); pg.wait_for_timeout(1250); pg.mouse.up()
     pg.wait_for_timeout(300)
-    pg.locator("#pane-rang .toolbar button:has-text('Đánh lửa')").first.click()
+    pg.locator("#btnIgnite").click()
     pg.wait_for_timeout(300)
     sent = pg.evaluate("window.__sent")
     chk("gửi escape + ignite", [s[0] for s in sent] == ["escape", "ignite"], sent)
-    chk("có báo cho thợ biết", pg.evaluate(
-        "document.getElementById('toast').className").startswith("show"),
-        pg.evaluate("document.getElementById('toast').textContent"))
+    # 12/09/2026: lệnh gửi được KHÔNG còn toast nữa — băng trạng thái trên thanh
+    # đầu đã nói việc đó và nói kỹ hơn (có cả chặng máy xác nhận), toast chỉ là
+    # cái loa thứ hai nói cùng một câu mà lại nổi che thân màn Rang. Ý của phép
+    # kiểm giữ nguyên: THỢ PHẢI ĐƯỢC BÁO là lệnh đã đi.
+    chk("có báo cho thợ biết (băng trạng thái trên thanh đầu)",
+        bool(pg.evaluate("document.getElementById('uxCommand').textContent.trim()")),
+        pg.evaluate("document.getElementById('uxCommand').textContent"))
 
     print("4) số live hiện số MÁY dù chưa rang")
     chk("BT to = 180.0", pg.evaluate("document.getElementById('liveBT').textContent") == "180.0",
@@ -78,7 +93,7 @@ with sync_playwright() as p:
         pg.evaluate("document.getElementById('liveVac').textContent"))
 
     print("5) Nap hat CHI gui lenh, KHONG tu dung me")
-    pg.locator("#pane-rang .toolbar button:has-text('Nạp hạt')").first.click()
+    pg.locator("#btnCharge").click()
     pg.wait_for_timeout(500)
     chk("co gui lenh charge", "charge" in [s[0] for s in pg.evaluate("window.__sent")],
         pg.evaluate("window.__sent"))

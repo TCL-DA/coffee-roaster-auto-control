@@ -19,6 +19,13 @@ SPY = """() => {
   window.dsTick = () => {};
   window.pywebview = window.pywebview || { api: {} };
   window.dsBridge = () => true;
+  // ⛔ ĐỎ OAN NGẪU NHIÊN (tìm ra 19/09/2026). `dsStart()` chạy `setInterval(dsTick,1000)`
+  // nên nhịp đó giữ THAM CHIẾU GỐC: gán `window.dsTick` ở trên chỉ đổi tên toàn cục,
+  // nhịp cũ vẫn gọi `pywebview.api.link_snapshot()` — stub không có hàm này nên ném lỗi
+  // → `DS.state='error'` → `_chuaNoiMay()` chặn `start()` IM LẶNG. Nhịp rơi trúng lúc
+  // đang giữ thì bài kiểm đỏ, rơi lệch thì xanh. Bịt bằng cách cho nhịp gốc chạy vô hại.
+  window.pywebview.api.link_snapshot = async () => ({ state: 'connected', data: null });
+  window.dsApply = () => {};
   // Giả lập cầu nối thì phải giả lập ĐỦ. Từ 11/09/2026 lệnh máy bị chặn NGAY lúc
   // đặt ngón xuống nếu CÓ cầu mà CHƯA nối được máy — để thợ khỏi giữ đủ 0,5 giây
   // rồi mới bị từ chối. Bật dsBridge mà bỏ quên DS.state là dựng đúng trạng thái

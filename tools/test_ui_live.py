@@ -6,8 +6,9 @@ import sys, json, pathlib
 sys.stdout.reconfigure(encoding="utf-8")
 from playwright.sync_api import sync_playwright
 
-HTML = pathlib.Path(r"f:\Project\100_OTL_06ALS - CMS - Cacao\OTL Roast Lab.html")
-SHOT = pathlib.Path(__file__).parent
+HTML = pathlib.Path(__file__).resolve().parent.parent / "OTL Roast Lab.html"
+SHOT = HTML.parent / "_codex_temp" / "ui-tests"
+SHOT.mkdir(parents=True, exist_ok=True)
 
 # Kịch bản 1 mẻ: (giây, step, BT, ET, ror) — mốc theo progStep: TP6 DE7 FCs8 DEV9 DROP10
 SCRIPT_JS = """
@@ -16,7 +17,7 @@ window.__frames = FRAMES;
 window.pywebview = { api: {
   link_snapshot: async () => {
     const f = window.__frames[Math.min(window.__t, window.__frames.length-1)];
-    return {state:'connected', err:'', port:'COM-TEST', age_ms:10, data:{
+    return {state:'connected', mode:'pclink', err:'', port:'COM-TEST', age_ms:10, data:{
       bt:f.bt, et:f.et, ror_bt:f.ror, ror_et:f.ror+2, ror_pro:f.ror,
       gas:f.gas, air:60, drum:55, sv:200.0, vac:-120,
       step:f.step, t_roast:f.t, phase:{dry:f.step>=6,mai:f.step>=8,dev:f.step>=9},
@@ -76,16 +77,18 @@ def main():
         pg.wait_for_timeout(300)
 
         print("1) chip kết nối")
-        pg.evaluate("dsTick()")
+        pg.evaluate("async () => dsApply(await pywebview.api.link_snapshot())")
         pg.wait_for_timeout(300)
         chk("state = connected", pg.evaluate("DS.state") == "connected", pg.evaluate("DS.state"))
         chk("chip đổi màu/nhãn", pg.evaluate("document.getElementById('linkLbl').textContent")
             == "Máy rang · trực tiếp", pg.evaluate("document.getElementById('linkLbl').textContent"))
-        chk("BT topbar theo máy", pg.evaluate("document.getElementById('ltBT').textContent") != "198.4°",
-            pg.evaluate("document.getElementById('ltBT').textContent"))
+        # Thanh đầu không còn BT/ET (đợt PD) — đo ở ô BT lớn của màn Rang.
+        chk("BT màn Rang theo máy", pg.evaluate("document.getElementById('liveBT').textContent") not in ("—",""),
+            pg.evaluate("document.getElementById('liveBT').textContent"))
 
         print("2) máy CHARGE → app tự vào RUNNING")
-        pg.evaluate("window.__t=20; dsTick()")     # t=100s, step 6
+        # Đẩy snapshot trực tiếp như kênh push; poll tự bỏ lượt nếu vừa có dữ liệu mới.
+        pg.evaluate("async () => {window.__t=20; dsApply(await pywebview.api.link_snapshot());}")     # t=100s, step 6
         pg.wait_for_timeout(200)
         chk("phase RUNNING", pg.evaluate("R.phase") == "RUNNING", pg.evaluate("R.phase"))
         chk("đồng hồ lấy theo máy", pg.evaluate("R.elapsed") == fr[20]["t"], pg.evaluate("R.elapsed"))
@@ -94,7 +97,7 @@ def main():
 
         print("3) chạy hết mẻ (mốc theo progStep)")
         for i in range(21, 119):
-            pg.evaluate(f"window.__t={i}; dsTick()")
+            pg.evaluate(f"async () => {{window.__t={i}; dsApply(await pywebview.api.link_snapshot());}}")
         pg.wait_for_timeout(300)
         mt = pg.evaluate("R.mileT")
         chk("có đủ TP/DE/FCs/DEV", all(k in mt for k in ("TP", "DE", "FCs", "DEV")), mt)
@@ -106,7 +109,8 @@ def main():
             pg.evaluate("SERIES.t.length"))
         chk("số live = số máy", pg.evaluate("document.getElementById('liveBT').textContent")
             == str(fr[118]["bt"]), pg.evaluate("document.getElementById('liveBT').textContent"))
-        chk("ABT để trống (máy không có)", pg.evaluate("document.getElementById('liveABT').textContent") == "—")
+        chk("không hiện số ABT giả khi máy không có cảm biến",
+            pg.locator("#liveABT").count() == 0)
         chk("chip mốc hiện giờ thật",
             pg.evaluate("document.querySelectorAll('.milestrip .mchip')[0].querySelector('.tm').textContent") != "—",
             pg.evaluate("document.querySelectorAll('.milestrip .mchip')[0].querySelector('.tm').textContent"))
@@ -114,7 +118,7 @@ def main():
 
         print("4) máy DROP → app chốt mẻ + ghi lịch sử")
         n0 = pg.evaluate("loadHist().length")
-        pg.evaluate(f"window.__t={len(fr)-1}; dsTick()")
+        pg.evaluate(f"async () => {{window.__t={len(fr)-1}; dsApply(await pywebview.api.link_snapshot());}}")
         pg.wait_for_timeout(300)
         chk("phase DONE", pg.evaluate("R.phase") == "DONE", pg.evaluate("R.phase"))
         chk("mẻ đã vào lịch sử", pg.evaluate("loadHist().length") == n0 + 1)
