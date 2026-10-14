@@ -107,7 +107,9 @@
 // hàm readWriteChamber). Máy "auto như máy gas nhưng bếp điện": VX4 đọc nhiệt BUỒNG và tự PID đóng cắt điện trở; firmware
 // chỉ GHI SV. Ô 'Nhiệt %' 0..100 trên HMI (= gasPercent của máy gas, hồ sơ / AUTO / Artisan giữ nguyên) đổi ra SV.
 //   Dựng: pio run -e dien  (env [env:dien] trong platformio.ini đặt cờ dưới = 1). Bản gas: cờ = 0, mã KHÔNG đổi.
-//   Máy điện KHÔNG có tín hiệu lửa: gasSignal = đang bật 'Lệnh nhiệt' (IOConfig.h) -> các chốt mồi lửa / 75 s không cắt nhầm.
+//   Relay CH1 = 'Lệnh nhiệt' (bật / tắt bếp như gas); chân phản hồi CH1 = "bếp chạy", về ~3 s sau khi bật (chủ máy 14/10)
+//   -> đọc y như tín hiệu lửa, các chốt mồi hụt / 75 s giữ nguyên. Máy này KHÔNG có module relay ngoài (ID 7):
+//   $M62 bit 5 = 0 -> không điều khiển riêng drum/fan, mixer (xem docs/config/config-dien-vx4.md).
 //   An toàn: tắt 'Lệnh nhiệt' -> ghi SV = VX4_SV_TAT_X10 (bản 1 kg cũ để 130 °C: VX4 vẫn nung khi đã tắt). Mất kết nối VX4
 //   5 lần liền -> cắt relay lệnh nhiệt (CH1) như lỗi Modbus của máy gas, báo mã 298.
 // ---------------------------------------------------------------------------
