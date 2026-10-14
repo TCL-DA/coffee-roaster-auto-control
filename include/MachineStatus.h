@@ -273,6 +273,7 @@
 #define STT_MB_HMI_RESET_FAIL       295 // Lệnh khởi động lại màn hình HMI không thành công
 #define STT_MB_DRUM_WRITE_FAIL      296 // Ghi tốc độ trống vào biến tần thất bại
 #define STT_MB_AIR_WRITE_FAIL       297 // Ghi tốc độ gió vào biến tần thất bại
+#define STT_MB_VX4_ERROR            298 // Lỗi kết nối Modbus với đồng hồ nhiệt buồng VX4 (máy điện)
 
 // [301-320] Kết quả kiểm tra khi khởi động máy
 #define STT_STARTUP_CHECK_HMI       301 // Đang kiểm tra kết nối màn hình HMI
@@ -437,6 +438,7 @@ inline bool sttIsOperatorVisible(uint16_t code) {
         if (code >= 288) return false;
         return true;
     }
+    if (code == 298) return true;               // 14/10/2026: mất kết nối VX4 (máy điện) — chỉ bản 'dien' phát
     if (code >= 301 && code <= 320) {
         if (code == 301 || code == 304 || code == 307 || code == 310 ||
             code == 313 || code == 316 || code == 319) return false;

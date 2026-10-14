@@ -17,7 +17,13 @@ bool swSignalFallingEdge() {
 }
 
 void controlIO(){
+#if MACHINE_HEAT_ELECTRIC_VX4
+    // Máy điện không có tín hiệu lửa: "có nhiệt" = đang bật 'Lệnh nhiệt' (Config.h). Không vậy thì chốt mồi hụt 75 s (PC_Link),
+    // bước chờ lửa của chuỗi mẻ / làm nóng tưởng mồi hụt và cắt điện trở ngay đầu mẻ.
+    gasSignal = (START_GAS_BTN_R == 1) ? 1 : 0;
+#else
     gasSignal = !READ_CH1;
+#endif
     swSignal  = !READ_SWITCH_1;
 
     // Edge detection for status push (static vars track previous state)

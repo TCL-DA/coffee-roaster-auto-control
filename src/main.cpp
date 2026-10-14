@@ -144,6 +144,9 @@ void loop() {
     rwIORelayCoil();
     profTock(PF_IO);
   }
+#if MACHINE_HEAT_ELECTRIC_VX4
+  readWriteVX4();         // máy điện: nhiệt buồng + SV đồng hồ VX4 (Config.h)
+#endif
 
   rwHMI_Fast();           // trước programScan (đoạn dài nhất còn lại của vòng, có khi ghi SD)
   profTock(PF_FAST);

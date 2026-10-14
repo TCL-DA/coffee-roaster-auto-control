@@ -35,6 +35,10 @@ ModbusMaster nodeHMI; //HMI
 ModbusMaster nodeAir; //Airflow
 ModbusMaster nodeDrum; //Drum
 ModbusMaster nodeIORelay; //Modbus relay
+#if MACHINE_HEAT_ELECTRIC_VX4
+ModbusMaster nodeVX4;     // đồng hồ VX4 máy điện: đọc nhiệt buồng, ghi SV (Config.h)
+uint16_t Temperature_Chamber = 0;
+#endif
 
 //Variables storing values read from temperature controllers and inverters
 uint16_t Temperature_BT, Temperature_ET;
@@ -397,6 +401,7 @@ uint32_t loaderDbgPrintMs = 0;  //Timestamp to print loader debug once/1s
 #define ET_HMI_W            62      //40062 - Show ET
 #define ROR_BT_HMI_W        63      //40063 - Show ror BT
 #define ROR_ET_HMI_W        64      //40064 - Show ror ET
+#define CHAMBER_HMI_W       97      //40097 - Nhiệt buồng VX4 (máy điện) — ô trống ở firmware + HMI (đo 14/10/2026)
 #define AIRFLOW_HMI_W       65      //40065 - Show % Airflow
 #define DRUM_HMI_W          66      //40066 - Show % Drum
 #define GAS_HMI_W           67      //40067 - Show % Gas
@@ -1353,6 +1358,9 @@ void ModbusRS485Config(){
 #endif
 #if MACHINE_HAS_IO_RELAY_MODULE
     nodeIORelay.begin(IO_RELAY_MODBUS_ID, SerialModbus); // I/O Relay
+#endif
+#if MACHINE_HEAT_ELECTRIC_VX4
+    nodeVX4.begin(VX4_MODBUS_ID, SerialModbus);          // đồng hồ nhiệt buồng VX4 (máy điện)
 #endif
 
     SerialComputer.println("=> Modbus Master RTU OK");

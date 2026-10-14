@@ -20,6 +20,9 @@ enum ModbusFaultDevice {
     MB_DEV_DRUM,
     MB_DEV_RELAY,
     MB_DEV_VACUUM,
+#if MACHINE_HEAT_ELECTRIC_VX4
+    MB_DEV_VX4,          // máy điện: mất VX4 5 lần liền -> cắt relay lệnh nhiệt như lỗi Modbus của máy gas
+#endif
     MB_DEV_COUNT
 };
 
@@ -1039,6 +1042,43 @@ void readTempET(){
                 // nhanh hơn nên các guard 1-2ms chỗ khác vẫn giữ.
 }
 
+#if MACHINE_HEAT_ELECTRIC_VX4
+// Máy điện (14/10/2026, từ readWriteChamber của firmware 1 kg): đọc nhiệt BUỒNG ở VX4, ghi SV theo 'Nhiệt %' (gasPercent).
+// VX4 tự PID đóng cắt điện trở. Tắt 'Lệnh nhiệt' (START_GAS_BTN_R = 0) -> SV = VX4_SV_TAT_X10 để VX4 không nung.
+// SV ghi khi đổi hoặc định kỳ VX4_SV_GHI_LAI_MS (VX4 khởi động lại / lỡ một gói vẫn nhận lại). Lỗi đọc / ghi -> đếm như
+// mọi thiết bị Modbus (5 lần liền: forceGasOffForModbusFault cắt relay lệnh nhiệt, mã 298).
+void readWriteVX4(){
+    static int32_t  svDaGhi = -1;
+    static uint32_t tGhi = 0;
+    static uint16_t pvDaGui = 0xFFFF;
+    uint8_t result = nodeVX4.readHoldingRegisters(VX4_REG_PV, 1);
+    if (result != nodeVX4.ku8MBSuccess) {
+        errorCount++;
+        modbusNoteFailure(MB_DEV_VX4, STT_MB_VX4_ERROR);
+        if (enDebug) { SerialComputer.print(" ERROR READ VX4 res=0x"); SerialComputer.println(result, HEX); }
+        delay(10);
+        return;
+    }
+    modbusNoteSuccess(MB_DEV_VX4);
+    Temperature_Chamber = nodeVX4.getResponseBuffer(0);
+    delay(10);                                   // đồng hồ nhiệt cần ~10 ms nhả bus (như ET / BT)
+
+    const int32_t sv = (START_GAS_BTN_R == 1)
+        ? map(constrain((int32_t)gasPercent, 0, 100), 0, 100, VX4_SV_MIN_X10, VX4_SV_MAX_X10)
+        : VX4_SV_TAT_X10;
+    SV_Chamber = (uint16_t)sv;
+    if (sv != svDaGhi || (uint32_t)(millis() - tGhi) >= VX4_SV_GHI_LAI_MS) {
+        result = nodeVX4.writeSingleRegister(VX4_REG_SV, (uint16_t)sv);
+        if (result == nodeVX4.ku8MBSuccess) { svDaGhi = sv; tGhi = millis(); }
+        else { errorCount++; modbusNoteFailure(MB_DEV_VX4, STT_MB_VX4_ERROR); }
+        delay(10);
+    }
+    if (Temperature_Chamber != pvDaGui) {        // nhiệt buồng lên HMI W40097 — chỉ khi đổi (không dội bus HMI)
+        if (nodeHMI.writeSingleRegister(CHAMBER_HMI_W - 1, Temperature_Chamber) == nodeHMI.ku8MBSuccess) pvDaGui = Temperature_Chamber;
+    }
+}
+#endif
+
 void readAirflowINV(){
     uint8_t   result = 0;
     result = nodeAir.readHoldingRegisters(AIR_INV_FREQ_READ_REGISTER, 1);// Data trỏ địa chỉ ở đây theo parem (Địa Chỉ, Chiều Dài)
@@ -1320,6 +1360,12 @@ void checkError() {
         checkMB(nodeET, tempRegister_R, 3, false, "ET", STT_STARTUP_ET_FAIL, MB_DEV_ET, STT_MB_ET_ERROR);
         sendSTT(STT_STARTUP_ET_OK); delay(50);
     }
+
+#if MACHINE_HEAT_ELECTRIC_VX4
+    // Đồng hồ nhiệt buồng VX4 (máy điện): chờ tới khi trả lời như cảm biến BT / ET; trả lời được thì ghi ngay SV tắt
+    checkMB(nodeVX4, VX4_REG_PV, 4, false, "VX4", STT_MB_VX4_ERROR, MB_DEV_VX4, STT_MB_VX4_ERROR);
+    nodeVX4.writeSingleRegister(VX4_REG_SV, VX4_SV_TAT_X10); delay(10);
+#endif
 
     // Airflow inverter
     if (chAirFlag) {

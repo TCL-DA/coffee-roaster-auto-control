@@ -134,6 +134,9 @@ void handle_Modbus_Slave() {
     mbs.Hreg(GAS_show_artisan, gasPercent);
     mbs.Hreg(DRUM_show_artisan,drumPercent);
     mbs.Hreg(SV_show_artisan,  SV_BT);
+#if MACHINE_HEAT_ELECTRIC_VX4
+    mbs.Hreg(CHAMBER_show_artisan, Temperature_Chamber);   // máy điện: nhiệt buồng VX4 cho Artisan (như bản 1 kg)
+#endif
     mbs.Hreg(START_artisan_W,  START_BTN_R);
     mbs.Hreg(UNDER_show_artisan, Diff_Air);   // Áp suất âm (underpressure)
     

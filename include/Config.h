@@ -103,6 +103,26 @@
 #define ARTISAN_MODBUS_SLAVE_ID_DEFAULT   1  // ID slave để Artisan/PC đọc Arduino
 
 // ---------------------------------------------------------------------------
+// NGUỒN NHIỆT ĐIỆN — đồng hồ Hanyoung VX4 (14/10/2026, lấy từ firmware 1 kg F:\Project\96_Auto_1kg_2025 - Copilot,
+// hàm readWriteChamber). Máy "auto như máy gas nhưng bếp điện": VX4 đọc nhiệt BUỒNG và tự PID đóng cắt điện trở; firmware
+// chỉ GHI SV. Ô 'Nhiệt %' 0..100 trên HMI (= gasPercent của máy gas, hồ sơ / AUTO / Artisan giữ nguyên) đổi ra SV.
+//   Dựng: pio run -e dien  (env [env:dien] trong platformio.ini đặt cờ dưới = 1). Bản gas: cờ = 0, mã KHÔNG đổi.
+//   Máy điện KHÔNG có tín hiệu lửa: gasSignal = đang bật 'Lệnh nhiệt' (IOConfig.h) -> các chốt mồi lửa / 75 s không cắt nhầm.
+//   An toàn: tắt 'Lệnh nhiệt' -> ghi SV = VX4_SV_TAT_X10 (bản 1 kg cũ để 130 °C: VX4 vẫn nung khi đã tắt). Mất kết nối VX4
+//   5 lần liền -> cắt relay lệnh nhiệt (CH1) như lỗi Modbus của máy gas, báo mã 298.
+// ---------------------------------------------------------------------------
+#ifndef MACHINE_HEAT_ELECTRIC_VX4
+#define MACHINE_HEAT_ELECTRIC_VX4         0     // 1 = máy điện VX4 (đặt bằng build_flags của env 'dien')
+#endif
+#define VX4_MODBUS_ID                     6     // đồng hồ VX4 trên RS485 (bản 1 kg: nodeChamber.begin(6, …))
+#define VX4_REG_PV                        0     // thanh ghi đọc nhiệt buồng (×10 °C — VX4 đặt 1 số lẻ)
+#define VX4_REG_SV                        103   // thanh ghi ghi SV (×10 °C)
+#define VX4_SV_MIN_X10                    1300  // 'Nhiệt' 0 %   -> SV 130,0 °C  (chủ máy chốt 14/10: 130..350)
+#define VX4_SV_MAX_X10                    3500  // 'Nhiệt' 100 % -> SV 350,0 °C
+#define VX4_SV_TAT_X10                    0     // SV khi TẮT lệnh nhiệt — VX4 không nung
+#define VX4_SV_GHI_LAI_MS                 5000  // ghi lại SV định kỳ (VX4 khởi động lại / mất 1 gói vẫn nhận lại)
+
+// ---------------------------------------------------------------------------
 // Địa chỉ thanh ghi Modbus của biến tần quạt gió.
 // AIR_INV_FREQ_READ_REGISTER: đọc tần số hiện tại của biến tần gió.
 // AIR_INV_PID_0800_REGISTER: đọc thanh ghi PID/parameter 0800 của biến tần gió.
