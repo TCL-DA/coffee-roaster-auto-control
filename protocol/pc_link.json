@@ -626,7 +626,7 @@
   },
   "config": {
     "base": 170,
-    "count": 61,
+    "count": 62,
     "comment": "Handshake ĐỌC/GHI 1 tham số $M — KHÔNG stream 60 reg mỗi vòng (tránh lag + tiết kiệm RAM). idx = SỐ $M (1..61) = chính chỉ số iMemHMI[]; firmware chỉ cập nhật iMemHMI[idx] và báo OK sau khi HMI xác nhận ghi nodeHMI(idx+2000). GHI bị CHẶN khi máy bận (rang·mồi lửa·làm nóng·còn lửa), bị TỪ CHỐI khi giá trị ngoài dải hoặc HMI không nhận.",
     "regs": [
       {
@@ -637,7 +637,7 @@
       {
         "key": "idx",
         "c": "IDX",
-        "desc": "số $M cần đọc/ghi (1..60)"
+        "desc": "số $M cần đọc/ghi (1..62)"
       },
       {
         "key": "val",
@@ -720,7 +720,8 @@
       100,
       120,
       0,
-      5
+      5,
+      1
     ],
     "max": [
       60,
@@ -783,7 +784,8 @@
       300,
       600,
       30,
-      60
+      60,
+      0
     ],
     "params": {
       "23": {
@@ -862,6 +864,14 @@
         "default": 60,
         "zero_uses_default": true,
         "desc": "thời gian chờ cửa drop đóng ở vòng lặp trước khi báo kẹt"
+      },
+      "62": {
+        "name": "machineOptions",
+        "unit": "bitmask",
+        "scale": 1,
+        "default": 0,
+        "zero_uses_default": false,
+        "desc": "CẤU HÌNH MÁY, CHỈ ĐỌC qua PC_Link (min>max ⇒ mọi lệnh ghi bị từ chối) — chỉ Master đổi trên màn Cấu hình máy của HMI. Bit 0 VR gas+gió · 1 VR trống · 2 vacuum · 3 loader · 4 cân · 5 relay ngoài ID 7 · 6–8 cỡ máy (0=6, 1=12, 2=15, 3=30 kg) · 9 đốt khói · 10 tách đá · 11 khuấy/quạt khay nguội relay riêng · 15 đã cấu hình (0 = chưa cấu hình ⇒ firmware chặn rang)"
       }
     }
   },

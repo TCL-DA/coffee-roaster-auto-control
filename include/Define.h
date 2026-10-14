@@ -52,7 +52,7 @@ uint16_t errorCount = 0;
 bool modbusGasCutoffLatched = false;
 
 //Array
-int16_t iMemHMI[62], iMemHMI_CP[62]; //$M0..$M61; chỉ số 0 để trống cho khớp số $M
+int16_t iMemHMI[64], iMemHMI_CP[64]; //$M0..$M63; chỉ số 0 để trống cho khớp số $M ($M62 cấu hình máy, $M63 núm → HMI — MachineOpt.h)
 uint16_t dAddress[500], dAddress_CP[500]; //40xxx HMI
 uint8_t cAddress[50], cAddress_CP[50]; //Coils
 uint8_t progStatus = 1;
@@ -1236,10 +1236,10 @@ uint16_t tunePercent = 0;  // shared progress bar -- only rwHMI_2() writes to HM
 #define chBTFlag        MACHINE_HAS_BT_TEMP_CONTROLLER
 #define chETFlag        MACHINE_HAS_ET_TEMP_CONTROLLER
 #define chHMIFlag       true
-#define chAirFlag       MACHINE_HAS_AIR_INVERTER
+#define chAirFlag       optAirInverter()      // lúc chạy: chỉ máy có vacuum mới nối biến tần gió vào RS485 (MachineOpt.h)
 #define chChamberFlag   false
 #define chDrumFlag      MACHINE_HAS_DRUM_SPEED_CONTROL
-#define chIORelayFlag   MACHINE_HAS_IO_RELAY_MODULE
+#define chIORelayFlag   optRelayExt()         // lúc chạy: bit 5 của $M62 (MachineOpt.h)
 #define chSDFlag        1
 
 #define READ_CH1    digitalRead(CH1_INPUT)

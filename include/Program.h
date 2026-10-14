@@ -1096,7 +1096,8 @@ void calibProgram(){
         lastTimeSD = timeRoast;
     }
 #if MACHINE_HAS_VACUUM_SENSOR
-    if (sdVacuumSetFlag[lastTimeSD] == 1) {
+    // Hồ sơ có điểm đặt áp hút nhưng máy KHÔNG có vacuum ($M62 bit 2 = 0) ⇒ chạy gió theo % của hồ sơ.
+    if (optVacuum() && sdVacuumSetFlag[lastTimeSD] == 1) {
         int16_t newSP = (int16_t)sdVacuumSetpoint[lastTimeSD];
         bool changed = (newSP != vacuumSetpoint_R) || (vacuumSetFlag_R != 1);
         vacuumSetFlag_R  = 1;
@@ -1119,8 +1120,10 @@ void calibProgram(){
 
 #if MACHINE_HAS_VACUUM_SENSOR
     // Cập nhật HMI hiển thị vacuum flag và setpoint trong AUTO mode
-    nodeHMI.writeSingleRegister(vacuumSetFlag_W+2000,  vacuumSetFlag_R);
-    nodeHMI.writeSingleRegister(vacuumSetpoint_W+2000, vacuumSetpoint_R);
+    if (optVacuum()) {
+        nodeHMI.writeSingleRegister(vacuumSetFlag_W+2000,  vacuumSetFlag_R);
+        nodeHMI.writeSingleRegister(vacuumSetpoint_W+2000, vacuumSetpoint_R);
+    }
 #endif
 
 
@@ -1749,9 +1752,7 @@ void programScan(){
             nodeHMI.writeSingleRegister(DRUM_FAN_BTN_W - 1, 1);
             DRUM_FAN_BTN_R = 1;
             DRUM_FAN_BTN_R_CP = 1;
-            #if MACHINE_HAS_IO_RELAY_MODULE
-                nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
-            #endif
+            if (optRelayExt()) { nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); } // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
             mbs.Hreg(DRUM_FAN_W, DRUM_FAN_BTN_R);
             if (enDebug) SerialComputer.println("BT/ET > 80C: DRUM/FAN forced ON");
         }
@@ -2273,9 +2274,19 @@ void programScan(){
         if(progStep==STP_FCS){
             //Xử lí các tình huống trong khi rang auto
             if(progStatus == STT_PROGRAM_AUTO){
-#if MACHINE_HAS_SCALE_FEEDER
-                if(autoLoader_R == 1 && aLoaderStep == 0 && loop_R>1){
-                    //Chỉ cho auto cân khi phễu nguồn còn ≥ LOADER_MIN_BATCH_PCT% của 1 mẻ (LOADER_MIN_NETW ×10 kg)
+                // Máy KHÔNG có loader ($M62 bit 3 = 0): bỏ qua $M33 — HMI đời cũ đọc ra 1 cũng không vào nhánh
+                // loader, không bắn STT_LOADER_FAIL rồi huỷ mẻ trên một máy không có bộ hút liệu nào.
+                if(optLoader() && autoLoader_R == 1 && aLoaderStep == 0 && loop_R>1){
+                    if(!optScale()){
+                        // Loader KHÔNG cân: hút đúng feederSet_R giây (đồng hồ "Auto close feeder" bên dưới
+                        // tắt và báo xong). Chưa cài số giây thì không biết hút bao lâu ⇒ báo lỗi, không hút mù.
+                        if(feederSet_R > 0){
+                            setMachineStatus(STT_LOADER_RUNNING); aLoaderStep = STP_ON_LOADER;
+                        }else{
+                            setMachineStatus(STT_LOADER_FAIL); aLoaderStep = STP_FAIL_LOADER;
+                        }
+                    }else
+                    //Loader CÓ cân: chỉ cho auto cân khi phễu nguồn còn ≥ LOADER_MIN_BATCH_PCT% của 1 mẻ (LOADER_MIN_NETW ×10 kg)
                     //Nếu không sẽ auto tắt start
                     if(!scaleDataValid){
                         setMachineStatus(STT_SCALE_DATA_INVALID);
@@ -2290,14 +2301,6 @@ void programScan(){
                     } 
                     
                 }
-#else
-                /* Máy KHÔNG có auto-loader (không cân): khối trên không được biên dịch.
-                   Nếu để nguyên, thanh ghi HMI 33 đọc ra 1 (HMI đời cũ không có ô này)
-                   là máy vào nhánh loader, thấy scaleDataValid=false rồi bắn
-                   STT_SCALE_DATA_INVALID + STT_LOADER_FAIL — báo lỗi và huỷ mẻ ở
-                   STP_LOOP_1, trên một cái máy vốn không có bộ hút liệu nào. */
-                (void)autoLoader_R;
-#endif
             }
         }
 
@@ -2435,8 +2438,8 @@ void programScan(){
             nodeHMI.writeSingleCoil(LOCK_BUTTON_W-1, 0);  //Mở khoá select
             STEP_STRING = "NONE";
         }
-        //Tự động bật afterburner
-        if(afterburnerSet_R_CV>0 && timeRoast>60 && progStep>=STP_TP && progStep<STP_LOOP_1){
+        //Tự động bật afterburner — chỉ máy CÓ buồng đốt khói ($M62 bit 9)
+        if(optAfterburner() && afterburnerSet_R_CV>0 && timeRoast>60 && progStep>=STP_TP && progStep<STP_LOOP_1){
             STEP_AB_STRING = "WABHU"; //Wait AB heatup
             //Người dùng tự bật AB lên lại bằng tay → bỏ chốt, nhận lại quyền tự đóng lúc drop
             if(abUserOff && AB_BTN_R == 1){
@@ -2477,11 +2480,12 @@ void programScan(){
     }
 
 #if (MACHINE_HAS_SCALE_FEEDER && FEEDER_ADAPT_EN)
-    loaderAdapt();   // Vòng tự học dif: chờ cân ổn định sau cắt → chỉnh feederTkg
+    if (optScale()) loaderAdapt();   // Vòng tự học dif: chờ cân ổn định sau cắt → chỉnh feederTkg
 #endif
 
-    // Tự động cập nhật cân sau 10 giây nếu không có dữ liệu từ Bluetooth
-    if (updateNetWTi >= 5 && SerialBluetooth.available() == 0) {
+    // Tự động cập nhật cân sau 10 giây nếu không có dữ liệu từ Bluetooth (chỉ máy CÓ cân — máy không cân
+    // thì không bao giờ có dữ liệu, nhánh này sẽ đánh hỏng mọi lần hút theo giây)
+    if (optScale() && updateNetWTi >= 5 && SerialBluetooth.available() == 0) {
         scaleDataValid = false;
         if(aLoaderStep == STP_WAIT_LOADER){
             nodeHMI.writeSingleRegister(FEEDER_BTN_W-1, 0); // Tắt FEEDER khi mất dữ liệu cân
@@ -2553,7 +2557,7 @@ void programScan(){
     dif = (int16_t)(dif100 / 10); // bản ×10 để tham chiếu/hiển thị
 
     // Tự động tắt feeder dựa trên trọng lượng và trạng thái nút FEEDER
-    if (FEEDER_BTN_R == 1 && netWTG_R > 0 && scaleDataValid) { // Nếu nút FEEDER đang bật và có trọng lượng mục tiêu
+    if (optScale() && FEEDER_BTN_R == 1 && netWTG_R > 0 && scaleDataValid) { // Nếu nút FEEDER đang bật và có trọng lượng mục tiêu
         // So sánh ở ×100: netW100 vs (đích còn lại ×10 + dif100 + offset). Mượt tới 0.01kg.
         // Cộng suctionOffset100 vào ngưỡng = trừ offset khỏi netW100 (cân đang bị lực hút thổi cao).
         if (netW100 <= ((int32_t)difNetW * 10 + dif100 + suctionOffset100)) { // Đạt ngưỡng cắt
@@ -2663,10 +2667,16 @@ void programScan(){
         feederTimer = 0;
         nodeHMI.writeSingleRegister(FEEDER_BTN_W-1, 0);  //Turn off Feeder
         delay(1);
-        //Báo lỗi nếu trong chương trình auto
+        // Trong chương trình auto: máy CÓ cân mà hết giờ chưa đạt khối lượng = LỖI;
+        // máy KHÔNG cân thì hết giờ chính là NẠP XONG (nạp theo thời gian).
         if(aLoaderStep==STP_WAIT_LOADER){
-            setMachineStatus(STT_LOADER_FAIL);
-            aLoaderStep = STP_FAIL_LOADER;
+            if(optScale()){
+                setMachineStatus(STT_LOADER_FAIL);
+                aLoaderStep = STP_FAIL_LOADER;
+            }else{
+                setMachineStatus(STT_LOADER_OK);
+                aLoaderStep = STP_OK_LOADER;
+            }
         }
     }
     //Huỷ auto close feeder
@@ -2740,10 +2750,8 @@ void programScan(){
 
     //Huỷ quy trình cooling
     if(coolStep>=1 && COOLING_BTN_R==0 && coolTimer>=1){
-#ifdef SOURCE_AI_VR_FROM_HMI
-        // Bản tách dây mixer riêng: nếu người dùng hủy cooling thì tắt mixer theo.
-        nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 0);
-#endif
+        // Máy khuấy chạy relay riêng ($M62 bit 11): hủy cooling thì tắt mixer theo.
+        if (optCoolSplit()) nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 0);
         coolStep = 0; //Reset quy trình
         coolTimer = 0; //Resetncounter
         coolTimerEn = 0; //Resetncounter
@@ -2945,12 +2953,8 @@ void programScan(){
             STEP_COOLING_STRING = "ONCO";
             setMachineStatus(STT_ROAST_COOLING);
             setMachineStatus(STT_ACT_COOLING_ON); nodeHMI.writeSingleRegister(COOLING_BTN_W-1, 1);  // Bật cooling
-#ifdef SOURCE_AI_VR_FROM_HMI
-            // Bản SOURCE_AI_VR_FROM_HMI tách dây mixer riêng, không đấu chung với cooling.
-            nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 1);  // Bật mixer riêng
-#else
-            // Bản đấu dây cũ: mixer đấu chung với cooling nên cooling bật thì mixer cũng bật.
-#endif
+            // Khuấy relay riêng ($M62 bit 11) thì bật mixer riêng; đấu chung thì cooling bật là mixer bật theo.
+            if (optCoolSplit()) nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 1);
             coolTimer = 0;
             coolTimerEn = 1; //Enable drop timer auto close count;
             coolStep = COOL_STEP_ESCAPE_ON; //Next to check escape on
@@ -2970,8 +2974,8 @@ void programScan(){
             if(coolTimer>=(coolTimer_R-5)){
                 buzzerTimerEn = 1; //Call buzzer
             }
-            //Bật trước destoner — bỏ qua khi thợ chọn chỉ làm mát
-            if(!coolOnly && destonerSet_R>0){
+            //Bật trước destoner — bỏ qua khi thợ chọn chỉ làm mát, hoặc máy KHÔNG có tách đá ($M62 bit 10)
+            if(!coolOnly && optDestoner() && destonerSet_R>0){
                 STEP_COOLING_STRING = "WAESDES";
                 if(coolTimer>=(coolTimer_R-destonerPre_R)){
                     destonerTimerEn = 1; //Turn on destoner timer
@@ -2985,10 +2989,7 @@ void programScan(){
                     //Chỉ làm mát: hết giờ thì tắt bồn nguội, KHÔNG mở escape
                     STEP_COOLING_STRING = "OFFCO";
                     nodeHMI.writeSingleRegister(COOLING_BTN_W-1, 0);  // Tắt cooling
-#ifdef SOURCE_AI_VR_FROM_HMI
-                    // Bản SOURCE_AI_VR_FROM_HMI tách dây mixer riêng, không đấu chung với cooling.
-                    nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 0);  // Tắt mixer riêng
-#endif
+                    if (optCoolSplit()) nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 0);  // Tắt mixer riêng
                     setMachineStatus(STT_ACT_COOLING_OFF);
                     coolTimerEn = 0; //Turn off cool timer
                     coolTimer = 0;
@@ -3037,12 +3038,7 @@ void programScan(){
                 STEP_COOLING_STRING = "OFFESC";
                 nodeHMI.writeSingleRegister(ESCAPE_BTN_W-1, 0);  //Turn off escape
                 nodeHMI.writeSingleRegister(COOLING_BTN_W-1, 0);  // Tắt cooling
-#ifdef SOURCE_AI_VR_FROM_HMI
-                // Bản SOURCE_AI_VR_FROM_HMI tách dây mixer riêng, không đấu chung với cooling.
-                nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 0);  // Tắt mixer riêng
-#else
-                // Bản đấu dây cũ: mixer đấu chung với cooling nên cooling tắt thì mixer cũng tắt.
-#endif
+                if (optCoolSplit()) nodeHMI.writeSingleRegister(MIXER_BTN_W-1, 0);  // Tắt mixer riêng (đấu chung: tắt theo cooling)
                 setMachineStatus(STT_EVENT_ESCAPE_CLOSED);
                 setMachineStatus(STT_ACT_COOLING_OFF);
                 escapeTimerEn = 0; //Turn off escape timer

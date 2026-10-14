@@ -32,7 +32,8 @@ void controlIO(){
     }
 
     //Gas relay
-    if(MACHINE_HAS_GAS_CONTROL && START_GAS_BTN_R == 1){
+    // mcConfigured(): máy CHƯA cấu hình ($M62 bit 15 = 0) thì relay gas KHÔNG đóng — chốt cứng tầng IO.
+    if(MACHINE_HAS_GAS_CONTROL && START_GAS_BTN_R == 1 && mcConfigured()){
         CH1_RL_ON;
     }else{
         CH1_RL_OFF;

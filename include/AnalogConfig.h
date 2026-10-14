@@ -341,23 +341,23 @@ void analogIn() {
         // vacuumSetFlag_R=1 → PID điều khiển airflow theo setpoint từ SD profile
         // vacuumSetFlag_R=0 → airflowPercent đã được calibProgram() gán trực tiếp từ SD
 #if MACHINE_HAS_VACUUM_SENSOR
-        if (vacuumSetFlag_R == 1) {
+        if (optVacuum() && vacuumSetFlag_R == 1) {
             pidAirflowUpdate((float)vacuumSetpoint_R, (float)Diff_Air);
         }
 #endif
     } else {
         // Chế độ thủ công (VR hoặc PC): vacuumSetFlag_R từ HMI quyết định
-        if (MACHINE_HAS_VACUUM_SENSOR && vacuumSetFlag_R == 1) {
+        if (optVacuum() && vacuumSetFlag_R == 1) {
             pidAirflowUpdate(vacuumSetpoint_R, Diff_Air);
         } else if (naviSourceAIR == SOURCE_AI_VR) {
-#ifdef SOURCE_AI_VR_FROM_HMI
+          if (!vrKnobGasAir()) {          // không có núm gió (hoặc thợ chuyển sang HMI): số từ nút +/−
             airflowPercent = constrain(airSpeed_R, 0, 100);
-#else
+          } else {
             int rawAirflowAI = analogRead(CH1_ANALOG);
             analogCalTrackRange(0, (uint16_t)rawAirflowAI, &CH1AInMax);
             smoothedAirflowAI = (alpha * rawAirflowAI) + (1 - alpha) * smoothedAirflowAI;
             airflowPercent = analogPercentStable(0, (uint16_t)rawAirflowAI, smoothedAirflowAI, aiCalMinRaw[0], CH1AInMax);
-#endif
+          }
         } else if (naviSourceAIR == SOURCE_AI_PC) {
             airflowPercent = airflowPC;
         }
@@ -367,14 +367,14 @@ void analogIn() {
     if (!MACHINE_HAS_DRUM_SPEED_CONTROL) {
         drumPercent = 0;
     } else if (naviSourceDRUM == SOURCE_AI_VR) {
-#ifdef SOURCE_AI_VR_FROM_HMI
+      if (!vrKnobDrum()) {                // VR 2 / không VR: trống theo nút +/− trên HMI
         drumPercent = constrain(drumSpeed_R, 0, 100);
-#else
+      } else {
         int rawDrumAI = analogRead(CH2_ANALOG);
         analogCalTrackRange(1, (uint16_t)rawDrumAI, &CH2AInMax);
         smoothedDrumAI = (alpha * rawDrumAI) + (1 - alpha) * smoothedDrumAI;
         drumPercent = analogPercentStable(1, (uint16_t)rawDrumAI, smoothedDrumAI, aiCalMinRaw[1], CH2AInMax);
-#endif
+      }
     } else if (naviSourceDRUM == SOURCE_AI_PC) {
         drumPercent = drumPC;
     }
@@ -383,14 +383,14 @@ void analogIn() {
     if (!MACHINE_HAS_GAS_CONTROL) {
         gasPercent = 0;
     } else if (naviSourceGAS == SOURCE_AI_VR) {
-#ifdef SOURCE_AI_VR_FROM_HMI
+      if (!vrKnobGasAir()) {
         gasPercent = constrain(burnerValue_R, 0, 100);
-#else
+      } else {
         int rawGasAI = analogRead(CH3_ANALOG);
         analogCalTrackRange(2, (uint16_t)rawGasAI, &CH3AInMax);
         smoothedGasAI = (alpha * rawGasAI) + (1 - alpha) * smoothedGasAI;
         gasPercent = analogPercentStable(2, (uint16_t)rawGasAI, smoothedGasAI, aiCalMinRaw[2], CH3AInMax);
-#endif
+      }
     } else if (naviSourceGAS == SOURCE_AI_PC) {
         gasPercent = gasPC;
     }

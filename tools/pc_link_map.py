@@ -187,11 +187,11 @@ DERIVE = {
 CFG_BASE = 170
 CFG_REG = {
     "cmd": 170,   # 0=rảnh · 1=đọc 1 tham số · 2=ghi 1 tham số (firmware set về 0 khi xong)
-    "idx": 171,   # số $M cần đọc/ghi (1..60)
+    "idx": 171,   # số $M cần đọc/ghi (1..62)
     "val": 172,   # giá trị HMI thô (app ghi khi cmd=2 · firmware điền khi cmd=1)
     "status": 173,   # 0=đang xử/chưa · 1=OK · 2=lỗi (idx sai/cmd lạ) · 3=máy đang bận (rang·mồi lửa·làm nóng·còn lửa → khoá ghi) · 4=giá trị ngoài dải · 5=HMI từ chối hoặc không phản hồi lệnh ghi
 }
-CFG_MAXIDX = 61
+CFG_MAXIDX = 62
 CFG_CMD = {'idle': 0, 'read': 1, 'write': 2}
 CFG_STATUS = {'busy': 0, 'ok': 1, 'err': 2, 'locked': 3, 'range': 4, 'hmi': 5}
 CFG_RANGE = {
@@ -256,8 +256,9 @@ CFG_RANGE = {
     59: (120, 600),
     60: (0, 30),
     61: (5, 60),
+    62: (1, 0),
 }
-CFG_META = {23: {'name': 'chargeTemp10', 'unit': '°C', 'scale': 10, 'default': 1800, 'desc': 'nhiệt độ nạp, số thô ×10 (1800 = 180,0°C)'}, 53: {'name': 'autoEscape', 'unit': 'bool', 'scale': 1, 'default': 1, 'desc': '1 = tự động mở cửa xả sau làm mát; 0 = chỉ làm mát'}, 54: {'name': 'dropTrim10', 'unit': '°C', 'scale': 10, 'default': 3, 'desc': 'Biên chỉnh nhiệt xả theo sai lệch thời gian, ×10 (0 = TẮT, xả đúng nhiệt hồ sơ; 10 = ±1.0 °C). Chỉ tác dụng khi DEV đã quá 3 phút.'}, 55: {'name': 'preheatDeadlineSec', 'unit': 's', 'scale': 1, 'default': 180, 'zero_uses_default': True, 'desc': 'thời hạn PID preheat đạt nhiệt mục tiêu'}, 56: {'name': 'preheatHoldSettleSec', 'unit': 's', 'scale': 1, 'default': 45, 'zero_uses_default': True, 'desc': 'thời gian bỏ qua chuyển tiếp trước khi đánh giá giữ nhiệt'}, 57: {'name': 'preheatTargetBand10', 'unit': '°C', 'scale': 10, 'default': 30, 'zero_uses_default': True, 'desc': 'dải vào trạng thái giữ nhiệt, số thô ×10 (30 = 3,0°C)'}, 58: {'name': 'developmentWarnPermil', 'unit': '‰', 'scale': 1, 'default': 300, 'zero_uses_default': True, 'desc': 'ngưỡng cảnh báo tỷ lệ phát triển, phần nghìn (300 = 30,0%)'}, 59: {'name': 'autoDropMinSec', 'unit': 's', 'scale': 1, 'default': 120, 'zero_uses_default': True, 'desc': 'thời gian tối thiểu sau charge mới cho phép auto-drop'}, 60: {'name': 'manualEscapeExtraSec', 'unit': 's', 'scale': 1, 'default': 15, 'zero_uses_default': False, 'desc': 'số giây cộng thêm khi tự đóng escape mở tay; 0 là giá trị hợp lệ. HMI mới phải khởi tạo 15 nếu muốn mặc định; firmware không thể phân biệt số 0 cố ý với HMI cũ chưa có ô này'}, 61: {'name': 'loopDoorStuckSec', 'unit': 's', 'scale': 1, 'default': 60, 'zero_uses_default': True, 'desc': 'thời gian chờ cửa drop đóng ở vòng lặp trước khi báo kẹt'}}
+CFG_META = {23: {'name': 'chargeTemp10', 'unit': '°C', 'scale': 10, 'default': 1800, 'desc': 'nhiệt độ nạp, số thô ×10 (1800 = 180,0°C)'}, 53: {'name': 'autoEscape', 'unit': 'bool', 'scale': 1, 'default': 1, 'desc': '1 = tự động mở cửa xả sau làm mát; 0 = chỉ làm mát'}, 54: {'name': 'dropTrim10', 'unit': '°C', 'scale': 10, 'default': 3, 'desc': 'Biên chỉnh nhiệt xả theo sai lệch thời gian, ×10 (0 = TẮT, xả đúng nhiệt hồ sơ; 10 = ±1.0 °C). Chỉ tác dụng khi DEV đã quá 3 phút.'}, 55: {'name': 'preheatDeadlineSec', 'unit': 's', 'scale': 1, 'default': 180, 'zero_uses_default': True, 'desc': 'thời hạn PID preheat đạt nhiệt mục tiêu'}, 56: {'name': 'preheatHoldSettleSec', 'unit': 's', 'scale': 1, 'default': 45, 'zero_uses_default': True, 'desc': 'thời gian bỏ qua chuyển tiếp trước khi đánh giá giữ nhiệt'}, 57: {'name': 'preheatTargetBand10', 'unit': '°C', 'scale': 10, 'default': 30, 'zero_uses_default': True, 'desc': 'dải vào trạng thái giữ nhiệt, số thô ×10 (30 = 3,0°C)'}, 58: {'name': 'developmentWarnPermil', 'unit': '‰', 'scale': 1, 'default': 300, 'zero_uses_default': True, 'desc': 'ngưỡng cảnh báo tỷ lệ phát triển, phần nghìn (300 = 30,0%)'}, 59: {'name': 'autoDropMinSec', 'unit': 's', 'scale': 1, 'default': 120, 'zero_uses_default': True, 'desc': 'thời gian tối thiểu sau charge mới cho phép auto-drop'}, 60: {'name': 'manualEscapeExtraSec', 'unit': 's', 'scale': 1, 'default': 15, 'zero_uses_default': False, 'desc': 'số giây cộng thêm khi tự đóng escape mở tay; 0 là giá trị hợp lệ. HMI mới phải khởi tạo 15 nếu muốn mặc định; firmware không thể phân biệt số 0 cố ý với HMI cũ chưa có ô này'}, 61: {'name': 'loopDoorStuckSec', 'unit': 's', 'scale': 1, 'default': 60, 'zero_uses_default': True, 'desc': 'thời gian chờ cửa drop đóng ở vòng lặp trước khi báo kẹt'}, 62: {'name': 'machineOptions', 'unit': 'bitmask', 'scale': 1, 'default': 0, 'zero_uses_default': False, 'desc': 'CẤU HÌNH MÁY, CHỈ ĐỌC qua PC_Link (min>max ⇒ mọi lệnh ghi bị từ chối) — chỉ Master đổi trên màn Cấu hình máy của HMI. Bit 0 VR gas+gió · 1 VR trống · 2 vacuum · 3 loader · 4 cân · 5 relay ngoài ID 7 · 6–8 cỡ máy (0=6, 1=12, 2=15, 3=30 kg) · 9 đốt khói · 10 tách đá · 11 khuấy/quạt khay nguội relay riêng · 15 đã cấu hình (0 = chưa cấu hình ⇒ firmware chặn rang)'}}
 
 # Chốt an toàn khi app là bộ điều khiển
 FAILSAFE = {

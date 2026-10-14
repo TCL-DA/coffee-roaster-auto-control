@@ -131,11 +131,9 @@
 #define DRUM_INV_FREQ_WRITE_REGISTER      8193
 
 // ---------------------------------------------------------------------------
-// Nguồn điều khiển khi chọn SOURCE_AI_VR.
-// 0 = đọc VR vật lý trên chân analog của board.
-// 1 = lấy setpoint từ HMI: airSpeed_R, drumSpeed_R, burnerValue_R.
+// Nguồn điều khiển khi chọn SOURCE_AI_VR: KHÔNG còn chọn lúc dựng (bỏ MACHINE_VR_SOURCE_FROM_HMI
+// 13/10/2026). Có núm vặn gas + gió / trống hay không chọn ở $M62 bit 0–1, xem include/MachineOpt.h.
 // ---------------------------------------------------------------------------
-#define MACHINE_VR_SOURCE_FROM_HMI        1  // M03 KHÔNG có biến trở vật lý — setpoint lấy từ HMI
 
 // ---------------------------------------------------------------------------
 // TREND bật SỚM trước charge.
@@ -642,9 +640,8 @@
 #define ROR_SMOOTHING                     12  // = ô Smoothing (UI)
 #define ROR_CURVE_SMOOTH                  2   // = ô Smooth Curves (UI)
 
-#if MACHINE_VR_SOURCE_FROM_HMI
-#define SOURCE_AI_VR_FROM_HMI true
-#endif
+// (SOURCE_AI_VR_FROM_HMI cũ đã bỏ 13/10/2026: có núm vặn hay không, và khuấy chạy relay riêng hay không,
+//  nay chọn LÚC CHẠY ở $M62 — xem include/MachineOpt.h.)
 
 // ---------------------------------------------------------------------------
 // PCL_APP_WATCHDOG_EN: watchdog PC control (PC_Link) — THEO TẦNG, từ 2026-09-06.

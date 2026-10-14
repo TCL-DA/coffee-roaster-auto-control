@@ -47,7 +47,7 @@ TwoWire Wire;
 SPIClass SPI;
 
 // biến firmware (Define.h) mà mô hình cần đọc
-extern int16_t iMemHMI[62];
+extern int16_t iMemHMI[64];
 
 // ------------------------------------------------------------------ cấu hình board V400
 // (Define.h: V400) — số chân theo stub/Arduino.h: PA0=0, PB0=16, PC0=32, PD0=48
@@ -554,11 +554,14 @@ static uint8_t hmi_transact(uint8_t fc, uint16_t addr, uint16_t qty, const uint1
 }
 
 // ------------------------------------------------------------------ thiết bị RS485 (mô hình)
+// Đếm lượt firmware hỏi từng ID RS485 — kiểm "tuỳ chọn tắt thì không hỏi thiết bị" ($M62, MachineOpt.h).
+static unsigned g_dev_hits[8] = {0};
 static uint8_t dev_transact(uint8_t slave, uint8_t fc, uint16_t addr, uint16_t qty, const uint16_t *tx,
                             uint16_t *rx, uint16_t cap)
 {
     std::lock_guard<std::mutex> lk(g_plant_mx);
     Sleep(4);  // RS485 @38400
+    if (slave < 8) g_dev_hits[slave]++;
     switch (slave) {
     case 1:  // đồng hồ nhiệt BT (Delta DTx): đọc PV ×10
     case 2:  // ET
@@ -764,17 +767,19 @@ static void mbs_server_start()
 static std::string sim_status()
 {
     std::lock_guard<std::mutex> lk(g_plant_mx);
-    char b[900];
+    char b[1000];
     snprintf(b, sizeof(b),
              "{\"t_ms\":%u,\"bt\":%.1f,\"et\":%.1f,\"drum_wall\":%.1f,\"gas_pct\":%.1f,\"air_pct\":%.1f,"
              "\"flame\":%d,\"beans_kg\":%.1f,\"hopper_kg\":%.1f,\"drum_hz\":%.0f,\"drum_hz_set\":%.0f,"
              "\"vac_pa\":%.1f,\"rl\":{\"gas\":%d,\"cool\":%d,\"charge\":%d,\"drop\":%d,\"escape\":%d,\"ab\":%d},"
-             "\"relay_ngoai\":[%d,%d,%d,%d],\"hmi_ok\":%d,\"bt_sv\":%u,\"source_kg\":%.1f,\"feeder\":%d,\"toc\":%.1f}",
+             "\"relay_ngoai\":[%d,%d,%d,%d],\"hmi_ok\":%d,\"bt_sv\":%u,\"source_kg\":%.1f,\"feeder\":%d,\"toc\":%.1f,"
+             "\"hoi_rs485\":{\"1\":%u,\"2\":%u,\"4\":%u,\"5\":%u,\"7\":%u}}",
              (unsigned)(now_us() / 1000), P.probe, P.et, P.drum_wall, gas_pct(), air_pct(), P.flame ? 1 : 0,
              P.beans_kg, P.hopper_kg, P.drum_hz, P.drum_hz_set, P.vac_pa, g_pin_out[P_GAS_RL],
              g_pin_out[P_COOL_RL], g_pin_out[P_CHARGE_RL], g_pin_out[P_DROP_RL], g_pin_out[P_ESCAPE_RL],
              g_pin_out[P_AB_RL], P.relay_mod[0], P.relay_mod[1], P.relay_mod[2], P.relay_mod[3], g_hmi_ok,
-             P.bt_sv, P.source_kg, P.feeder ? 1 : 0, g_toc);
+             P.bt_sv, P.source_kg, P.feeder ? 1 : 0, g_toc,
+             g_dev_hits[1], g_dev_hits[2], g_dev_hits[4], g_dev_hits[5], g_dev_hits[7]);
     return b;
 }
 

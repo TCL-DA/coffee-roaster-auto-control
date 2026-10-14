@@ -19,6 +19,7 @@
 
 // Định nghĩa các file header
 #include "Define.h"
+#include "MachineOpt.h"         // cấu hình máy lúc chạy ($M62) — trước mọi tệp hỏi optXxx()
 #include "IOConfig.h"
 #include "PID_Airflow.h"
 #include "AnalogConfig.h"
@@ -27,6 +28,7 @@
 #include "PC_Link.h"
 #include "Modbus_Master.h"
 #include "MachineStatus.h"
+#include "MachineOptService.h"  // thi hành cấu hình: chốt khi đứng yên, chặn rang khi chưa cấu hình
 #include "Program.h"
 
 void debug();
@@ -108,7 +110,7 @@ void loop() {
     profTock(PF_DRUM);
   }
 
-  if (MACHINE_HAS_VACUUM_SENSOR && chAirFlag) {
+  if (optAirInverter()) {          // máy có vacuum: đọc áp hút + lái biến tần gió qua RS485
     readUnder();
     readWriteAirINV_PID();
     mbs.task();
@@ -122,13 +124,14 @@ void loop() {
   profTock(PF_PCL);
   handle_Modbus_Slave();
   profTock(PF_SLV);
-  if (MACHINE_HAS_SCALE_FEEDER) {
+  if (optScale()) {
     readScale();
   }
   rwHMICoil();
   mbs.task();
   profTock(PF_COIL);
   rwMemHMI();
+  mcOptService();          // chốt $M62 khi máy đứng yên; chưa cấu hình thì chặn gas / Start / làm nóng
   mbs.task();
   profTock(PF_MEM);
   rwHMI_1();          // đã có mbs.task() bên trong (Modbus_Master.h)

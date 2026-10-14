@@ -89,12 +89,10 @@ void handle_Modbus_Slave() {
         (naviSourceGAS  == SOURCE_AI_AUTO) ||
         (naviSourceAIR  == SOURCE_AI_AUTO) ||
         (naviSourceDRUM == SOURCE_AI_AUTO);
-#ifdef SOURCE_AI_VR_FROM_HMI
+    // Đồng bộ setpoint hai chiều HMI ↔ Artisan chỉ khi số lấy từ nút +/− trên HMI (không có núm vặn).
+    // Máy có núm vặn: số do núm quyết định, Artisan chỉ hiển thị.
     bool manualSetpointTwoWay =
-        !autoSourceActive;
-#else
-    bool manualSetpointTwoWay = false;
-#endif
+        !autoSourceActive && !vrKnobGasAir();
 
     // ── Khởi tạo lại Modbus Slave khi baudrate/ID thay đổi ──────
     if (idBaudSetEn) {
@@ -169,8 +167,7 @@ void handle_Modbus_Slave() {
         if(underSV_PC < 90) underSV_PC = 90;   // Giới hạn áp suất âm tối thiểu -80 Pa
     }
 
-#ifdef SOURCE_AI_VR_FROM_HMI
-    // ── SOURCE_AI_VR_FROM_HMI, không AUTO: sync setpoint hai chiều HMI ↔ Artisan
+    // ── Số từ HMI (không núm vặn), không AUTO: sync setpoint hai chiều HMI ↔ Artisan
     // Nếu hai bên cùng đổi trong một vòng lặp, PC_CONTROL quyết định bên ưu tiên.
     static bool setpointSyncInit = false;
     static int16_t lastHmiAir = 0, lastHmiGas = 0, lastHmiDrum = 0, lastHmiVac = 0;
@@ -236,7 +233,7 @@ void handle_Modbus_Slave() {
             }
         }
 
-        if (MACHINE_HAS_VACUUM_SENSOR) {
+        if (optVacuum()) {
             if (hmiVacChanged && (!pcVacChanged || PC_CONTROL_BTN_R == 0)) {
                 underSV_PC = vacuumSetpoint_R;
                 if (underSV_PC > 250) underSV_PC = 250;
@@ -259,7 +256,6 @@ void handle_Modbus_Slave() {
     lastPcGas   = gasPC;
     lastPcDrum  = drumPC;
     lastPcVac   = underSV_PC;
-#endif
 
     // ── Chế độ PC_CONTROL: Artisan điều khiển HMI ───────────────
     if (PC_CONTROL_BTN_R == 1) {
@@ -297,7 +293,7 @@ void handle_Modbus_Slave() {
 
 
         // Đồng bộ underSV từ Artisan sang HMI
-        if (!manualSetpointTwoWay && !autoSourceActive && MACHINE_HAS_VACUUM_SENSOR && underSV_PC != vacuumSetpoint_R)
+        if (!manualSetpointTwoWay && !autoSourceActive && optVacuum() && underSV_PC != vacuumSetpoint_R)
             nodeHMI.writeSingleRegister(vacuumSetpoint_W + 2000, underSV_PC);
 
         // Macro đồng bộ nút nhấn: chỉ ghi HMI khi trạng thái thay đổi

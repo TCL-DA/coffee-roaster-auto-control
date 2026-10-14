@@ -141,12 +141,12 @@ void upgradeGraphData(){
 void rwMemHMI(){
     uint8_t result = 0;
     uint16_t fst_address = 2001;
-    const uint8_t Numaddress = 61;  // $M1..$M61; nhỏ hơn buffer 64 thanh ghi của ModbusMaster
+    const uint8_t Numaddress = 63;  // $M1..$M63; vừa buffer 64 thanh ghi của ModbusMaster (còn 1 ô)
     result = nodeHMI.readHoldingRegisters(fst_address, Numaddress); //160ms
     if(result == nodeHMI.ku8MBSuccess){
         modbusNoteSuccess(MB_DEV_HMI);
         for(uint8_t i = 0; i < Numaddress; i++) {
-            iMemHMI_CP[i + 1] = nodeHMI.getResponseBuffer(i); // M1 ở buffer 0; M61 ở buffer 60
+            iMemHMI_CP[i + 1] = nodeHMI.getResponseBuffer(i); // M1 ở buffer 0; M63 ở buffer 62
         }
 
          //Charge duration
@@ -406,7 +406,7 @@ void rwMemHMI(){
             autoFill_Time_R = autoFill_Time_R_CP;    
         }
 
-        if(MACHINE_HAS_VACUUM_SENSOR && vacuumSetFlag_R != vacuumSetFlag_R_CP){
+        if(optVacuum() && vacuumSetFlag_R != vacuumSetFlag_R_CP){
             if (phVacTaken) {
                 // Đang sấy lồng: preheat giữ quyền airflowPercent. Cất lệnh mới lại,
                 // phVacRelease() sẽ áp khi preheat xong — đừng để vacuum PID tranh gió.
@@ -416,7 +416,7 @@ void rwMemHMI(){
             }
         }
 
-        if (MACHINE_HAS_VACUUM_SENSOR && vacuumSetpoint_R != vacuumSetpoint_R_CP) {
+        if (optVacuum() && vacuumSetpoint_R != vacuumSetpoint_R_CP) {
             vacuumSetpoint_R = vacuumSetpoint_R_CP;
             pidAirflowReset(); // Reset PID khi setpoint thay đổi
         }
@@ -450,6 +450,11 @@ void rwMemHMI(){
         if(autoDropMin_R != autoDropMin_R_CP) autoDropMin_R = autoDropMin_R_CP;
         if(manualEscapeExtra_R != manualEscapeExtra_R_CP) manualEscapeExtra_R = manualEscapeExtra_R_CP;
         if(loopDoorStuck_R != loopDoorStuck_R_CP) loopDoorStuck_R = loopDoorStuck_R_CP;
+        // $M62 cấu hình máy: chỉ chép số HMI vào iMemHMI — CHỐT vào mcOpt do mcOptLatch() lúc máy đứng yên
+        if(mcOpt_R != mcOpt_R_CP) mcOpt_R = mcOpt_R_CP;
+        // $M63 thợ bấm "Điều khiển trên HMI" (núm vặn hỏng): áp NGAY, kể cả giữa mẻ — không chờ máy đứng yên
+        if(vrHmi_R != vrHmi_R_CP) vrHmi_R = vrHmi_R_CP;
+        vrUseHmi = (vrHmi_R != 0);
 
     }else{
         errorCount++;
@@ -574,18 +579,14 @@ static void hmiApplyButtons(){
     if(DRUM_FAN_BTN_R != DRUM_FAN_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
         DRUM_FAN_BTN_R = DRUM_FAN_BTN_R_CP;
         mbs.Hreg(DRUM_FAN_W, DRUM_FAN_BTN_R);     delay(1);
-#if MACHINE_HAS_IO_RELAY_MODULE
-        nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
-#endif
+        if (optRelayExt()) { nodeIORelay.writeSingleCoil(CH1_IO_RL_W, DRUM_FAN_BTN_R); delay(10); } // Relay ngoài 1: drum/fan — chờ 10ms nhả bus (07/10/2026)
     }
 
     //Mixer button
     if(MIXER_BTN_R != MIXER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
         MIXER_BTN_R = MIXER_BTN_R_CP;
         mbs.Hreg(MIXER_W, MIXER_BTN_R);     delay(1);
-#if MACHINE_HAS_IO_RELAY_MODULE
-        nodeIORelay.writeSingleCoil(CH2_IO_RL_W, MIXER_BTN_R); delay(10); // Relay ngoài 2: mixer — chờ 10ms nhả bus (07/10/2026)
-#endif
+        if (optRelayExt()) { nodeIORelay.writeSingleCoil(CH2_IO_RL_W, MIXER_BTN_R); delay(10); } // Relay ngoài 2: mixer — chờ 10ms nhả bus (07/10/2026)
     }
 
     //Cooling button
@@ -1304,6 +1305,7 @@ void checkError() {
     }
 
     rwMemHMI();  // read $M registers
+    mcOptLatch(true);  // khởi động = máy đứng yên: chốt cấu hình $M62 TRƯỚC khi dò thiết bị (bỏ dò thiết bị không lắp)
 
     // BT sensor
     if (chBTFlag) {

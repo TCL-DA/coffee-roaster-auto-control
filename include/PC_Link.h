@@ -407,7 +407,7 @@ void handle_PC_Link(){
         mbs.Hreg(SV_artisan_W, (uint16_t)v);
         nodeHMI.writeSingleRegister(btSV_W + 2000, v / 10);
     }
-    if (pclChanged(4, v) && MACHINE_HAS_VACUUM_SENSOR) {
+    if (pclChanged(4, v) && optVacuum()) {
         vacuumSetpoint_R = v; vacuumSetpoint_R_CP = v;
         mbs.Hreg(vacuumC_artisan_W, (uint16_t)v);
         nodeHMI.writeSingleRegister(vacuumSetpoint_W + 2000, v);
@@ -505,7 +505,7 @@ void handle_PC_Link(){
        thẳng $M reg 47 qua đường cấu hình HMI — chậm và không dùng được lúc đang rang.
        Bật thì gọi pidAirflowReset() để snap tới mức gió đã học cho setpoint hiện hành,
        giống hệt nhánh setpoint ở pclChanged(4). */
-    if (pclChanged(21, v) && MACHINE_HAS_VACUUM_SENSOR) {
+    if (pclChanged(21, v) && optVacuum()) {
         nodeHMI.writeSingleRegister(vacuumSetFlag_W + 2000, v);
         if (phVacTaken) {
             // Đang sấy lồng: preheat ưu tiên. Nhận lệnh nhưng để dành, preheat
