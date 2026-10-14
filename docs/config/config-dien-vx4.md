@@ -18,16 +18,16 @@ Cùng một mã nguồn với máy gas — chỉ khác **một cờ lúc dựng*
 Env `dien` (platformio.ini) đặt `MACHINE_HEAT_ELECTRIC_VX4=1` và `MACHINE_RS485_ON_SCALE_PORT=1`. Bản gas
 (`genericSTM32F103RC`) không có code VX4.
 
-**Bus RS485 (BT / ET / VX4 / biến tần) của máy điện đi dây vào CỔNG CÂN** (USART3, chủ máy 14/10). Env `dien` đổi chỗ:
-Modbus master = USART3, cân / Artisan slave = cổng Modbus cũ (USART2 trên board V400). Đã nạp thử trên máy: BT OK, ET OK
-qua cổng cân ở 38400.
+**Dây RS485 máy điện (chủ máy 14/10):** BT / ET / biến tần gió / trống vào **cổng loader-cân** (USART3, 38400);
+**VX4 RIÊNG cổng Modbus cũ** (USART2 trên board V400, **9600**, ID 6). Máy không cân → Artisan chỉ qua cổng máy tính.
+Đo trên máy: VX4 ở 38400 báo 0xE0 (sai ID) — đồng hồ đặt 9600. Khởi động: BT OK · ET OK · VX4 OK · DRUM INV OK · SD OK.
 
 ## Cài đặt đồng hồ VX4 (phải khớp firmware)
 
 | Mục | Giá trị | Hằng trong `include/Config.h` |
 |---|---|---|
 | Địa chỉ RS485 | **6** | `VX4_MODBUS_ID` |
-| Tốc độ | **38400**, 8N1 (chung đường RS485 với BT / ET / biến tần) | `MACHINE_RS485_BAUD` |
+| Tốc độ | **9600**, 8N1 — cổng RIÊNG (cổng Modbus cũ) | `VX4_SERIAL_BAUD` (env `dien`) |
 | Số lẻ | **1 số lẻ** (0,1 °C) — PV và SV đều ×10 | |
 | Thanh ghi PV (đọc) | **0** | `VX4_REG_PV` |
 | Thanh ghi SV (ghi) | **103** | `VX4_REG_SV` |
@@ -45,10 +45,10 @@ qua cổng cân ở 38400.
 | Khởi động | chờ VX4 trả lời như BT / ET, rồi ghi SV tắt |
 | Mất VX4 | đếm lỗi như thiết bị Modbus khác; **5 lần liền → cắt relay CH1 (lệnh nhiệt)**, mã **298** |
 | Bật / tắt bếp | relay **CH1** như máy gas (`Lệnh nhiệt` = `Lệnh gas` cũ) |
-| Phản hồi "bếp chạy" | chân phản hồi CH1, như tín hiệu lửa của máy gas: bật bếp **~3 s** sau là có → dock hiện **Đang nung**. Chốt mồi hụt / chờ lửa 75 s giữ nguyên (mất phản hồi = cắt lệnh như mất lửa) |
+| Tín hiệu lửa | bếp điện **KHÔNG có**: bật `Lệnh nhiệt` đủ **3 s** (`ELEC_HEAT_ON_DELAY_MS`) thì firmware coi là "bếp chạy" → dock hiện **Đang nung**, chuỗi mẻ / làm nóng không chờ lửa 75 s |
 | Nạp liệu / xả trống | relay **charge / drop** như cũ |
 
-Lắp máy: đi dây contactor điện trở qua relay CH1 thì tắt lệnh nhiệt / lỗi VX4 / mất phản hồi sẽ cắt hẳn nguồn điện trở.
+Lắp máy: đi dây contactor điện trở qua relay CH1 thì tắt lệnh nhiệt / lỗi VX4 sẽ cắt hẳn nguồn điện trở.
 
 ## Cấu hình máy `$M62` (màn Cấu hình máy, Master chọn)
 

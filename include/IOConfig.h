@@ -17,8 +17,20 @@ bool swSignalFallingEdge() {
 }
 
 void controlIO(){
-    // Máy điện (VX4) cũng nối chân này: bật 'Lệnh nhiệt' ~3 s sau có phản hồi "bếp chạy" (chủ máy 14/10) — đọc như tín hiệu lửa.
+#if MACHINE_HEAT_ELECTRIC_VX4
+    // Bếp điện KHÔNG có tín hiệu lửa (chủ máy 14/10): bật 'Lệnh nhiệt' đủ ELEC_HEAT_ON_DELAY_MS thì coi là "bếp chạy".
+    // Không vậy thì chuỗi mẻ / làm nóng chờ lửa 75 s rồi tưởng mồi hụt, cắt bếp.
+    static uint32_t tBatNhiet = 0;             // 0 = đang tắt
+    if (START_GAS_BTN_R == 1 && mcConfigured()) {
+        if (tBatNhiet == 0) tBatNhiet = millis() | 1;
+        gasSignal = (millis() - tBatNhiet >= ELEC_HEAT_ON_DELAY_MS) ? 1 : 0;
+    } else {
+        tBatNhiet = 0;
+        gasSignal = 0;
+    }
+#else
     gasSignal = !READ_CH1;
+#endif
     swSignal  = !READ_SWITCH_1;
 
     // Edge detection for status push (static vars track previous state)

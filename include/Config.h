@@ -109,8 +109,8 @@
 // hàm readWriteChamber). Máy "auto như máy gas nhưng bếp điện": VX4 đọc nhiệt BUỒNG và tự PID đóng cắt điện trở; firmware
 // chỉ GHI SV. Ô 'Nhiệt %' 0..100 trên HMI (= gasPercent của máy gas, hồ sơ / AUTO / Artisan giữ nguyên) đổi ra SV.
 //   Dựng: pio run -e dien  (env [env:dien] trong platformio.ini đặt cờ dưới = 1). Bản gas: cờ = 0, mã KHÔNG đổi.
-//   Relay CH1 = 'Lệnh nhiệt' (bật / tắt bếp như gas); chân phản hồi CH1 = "bếp chạy", về ~3 s sau khi bật (chủ máy 14/10)
-//   -> đọc y như tín hiệu lửa, các chốt mồi hụt / 75 s giữ nguyên. Máy này KHÔNG có module relay ngoài (ID 7):
+//   Relay CH1 = 'Lệnh nhiệt' (bật / tắt bếp như gas). Bếp điện KHÔNG có tín hiệu lửa (chủ máy 14/10): bật lệnh đủ
+//   ELEC_HEAT_ON_DELAY_MS thì gasSignal = 1 (IOConfig.h) -> không chờ lửa 75 s. Máy này KHÔNG có module relay ngoài (ID 7):
 //   $M62 bit 5 = 0 -> không điều khiển riêng drum/fan, mixer (xem docs/config/config-dien-vx4.md).
 //   An toàn: tắt 'Lệnh nhiệt' -> ghi SV = VX4_SV_TAT_X10 (bản 1 kg cũ để 130 °C: VX4 vẫn nung khi đã tắt). Mất kết nối VX4
 //   5 lần liền -> cắt relay lệnh nhiệt (CH1) như lỗi Modbus của máy gas, báo mã 298.
@@ -133,6 +133,7 @@
 #define VX4_SV_MAX_X10                    3500  // 'Nhiệt' 100 % -> SV 350,0 °C
 #define VX4_SV_TAT_X10                    0     // SV khi TẮT lệnh nhiệt — VX4 không nung
 #define VX4_SV_GHI_LAI_MS                 5000  // ghi lại SV định kỳ (VX4 khởi động lại / mất 1 gói vẫn nhận lại)
+#define ELEC_HEAT_ON_DELAY_MS             3000  // bật 'Lệnh nhiệt' 3 s -> coi là bếp chạy (thay tín hiệu lửa, chủ máy 14/10)
 
 // ---------------------------------------------------------------------------
 // Địa chỉ thanh ghi Modbus của biến tần quạt gió.
