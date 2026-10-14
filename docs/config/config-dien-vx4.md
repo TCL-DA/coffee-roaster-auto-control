@@ -15,7 +15,12 @@ Cùng một mã nguồn với máy gas — chỉ khác **một cờ lúc dựng*
 | HMI DOP-110CS | `113_HMI\…\AP4\R0-1014-ZOOM99-DIEN-110CS.dpa` |
 | Sinh lại HMI từ bản chung mới | `python _script\ui_bien_the_dien.py <bản ZOOM chung>.dpa <thư mục ra>` |
 
-Env `dien` (platformio.ini) đặt `MACHINE_HEAT_ELECTRIC_VX4=1`. Bản gas (`genericSTM32F103RC`) không có code VX4.
+Env `dien` (platformio.ini) đặt `MACHINE_HEAT_ELECTRIC_VX4=1` và `MACHINE_RS485_ON_SCALE_PORT=1`. Bản gas
+(`genericSTM32F103RC`) không có code VX4.
+
+**Bus RS485 (BT / ET / VX4 / biến tần) của máy điện đi dây vào CỔNG CÂN** (USART3, chủ máy 14/10). Env `dien` đổi chỗ:
+Modbus master = USART3, cân / Artisan slave = cổng Modbus cũ (USART2 trên board V400). Đã nạp thử trên máy: BT OK, ET OK
+qua cổng cân ở 38400.
 
 ## Cài đặt đồng hồ VX4 (phải khớp firmware)
 

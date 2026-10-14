@@ -85,7 +85,9 @@
 //                              khi HMI chưa cài modbusBaud_R.
 // ---------------------------------------------------------------------------
 #define HMI_SERIAL_BAUD                   115200UL
-#define MACHINE_RS485_BAUD                38400UL
+#ifndef MACHINE_RS485_BAUD
+#define MACHINE_RS485_BAUD                38400UL   // env có thể ghi đè bằng build_flags (máy điện kiểu 1 kg: 9600)
+#endif
 #define DEBUG_SERIAL_BAUD                 9600UL
 #define SCALE_SERIAL_BAUD                 2400UL
 #define ARTISAN_MODBUS_BAUD_DEFAULT       9600UL    // CMS 12kg Auto — CHƯA XÁC NHẬN (bản 6kg dùng 38400); HMI cài modbusBaud_R vẫn ghi đè được
@@ -115,6 +117,9 @@
 // ---------------------------------------------------------------------------
 #ifndef MACHINE_HEAT_ELECTRIC_VX4
 #define MACHINE_HEAT_ELECTRIC_VX4         0     // 1 = máy điện VX4 (đặt bằng build_flags của env 'dien')
+#endif
+#ifndef MACHINE_RS485_ON_SCALE_PORT
+#define MACHINE_RS485_ON_SCALE_PORT       0     // 1 = bus RS485 nối vào cổng cân (USART3) — máy điện (env 'dien'), Define.h
 #endif
 #define VX4_MODBUS_ID                     6     // đồng hồ VX4 trên RS485 (bản 1 kg: nodeChamber.begin(6, …))
 #define VX4_REG_PV                        0     // thanh ghi đọc nhiệt buồng (×10 °C — VX4 đặt 1 số lẻ)

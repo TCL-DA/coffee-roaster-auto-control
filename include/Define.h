@@ -23,10 +23,23 @@ HardwareSerial Serial4(UART4);
 #define SerialHmi       Serial1
 #define SerialComputer  Serial2
 #elif defined(V400)
-#define SerialBluetooth Serial3 
+#define SerialBluetooth Serial3
 #define SerialModbus    Serial2
 #define SerialHmi       Serial1
 #define SerialComputer  Serial4
+#endif
+
+// Máy điện VX4 (chủ máy 14/10): bus RS485 (BT / ET / VX4 / biến tần) đi dây vào CỔNG CÂN -> đổi chỗ hai cổng:
+// Modbus master = USART3 (cổng cân), cân / Artisan slave = cổng Modbus cũ. Không đổi thì hai bên tranh USART3.
+#if MACHINE_RS485_ON_SCALE_PORT
+#undef SerialBluetooth
+#undef SerialModbus
+#define SerialModbus    Serial3
+#if defined(V400)
+#define SerialBluetooth Serial2
+#else
+#define SerialBluetooth Serial4
+#endif
 #endif
 
 ModbusMaster nodeBT; //BT
