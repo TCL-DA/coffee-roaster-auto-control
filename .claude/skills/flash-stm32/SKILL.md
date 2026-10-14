@@ -11,6 +11,33 @@ Build rồi **NẠP (upload)** firmware lên STM32F103RC thật cho dự án OTL
 > trong phiên này và đang nạp lên máy đang dùng thật, NHẮC họ cân nhắc chạy
 > `/release-check` trước (không bắt buộc khi test bench).
 
+## Chọn ENV đúng máy (14/10/2026)
+
+| Máy | Env | Ghi chú |
+|---|---|---|
+| Gas (mặc định) | `genericSTM32F103RC` | |
+| Điện — đồng hồ buồng VX4 | `dien` | BT/ET/biến tần qua cổng loader-cân, VX4 riêng cổng Modbus cũ 9600, gió RS485 45–60 Hz, không tín hiệu lửa — `docs/config/config-dien-vx4.md` |
+
+Biến thể máy MỚI: trả lời hết [bảng hỏi phần cứng](../../../docs/config/CHECKLIST-bien-the-may.md) TRƯỚC khi sửa code.
+
+## Sau khi nạp: ĐỌC COM khởi động (bắt buộc, 15 s)
+
+Cổng debug USB-serial (Prolific, hiện là COM13) 9600: board in `=> BT OK`, `=> ET OK`, … `=> SD OK`. Treo ở dòng lặp:
+
+| Dòng | Nghĩa | Kiểm |
+|---|---|---|
+| `LOI X \| 0xe2 - Qua thoi gian cho` | KHÔNG ai trả lời | thiết bị có điện? nối đúng CỔNG serial nào? địa chỉ ID? |
+| `LOI X \| 0xe0 - Sai ID slave` | CÓ trả lời nhưng khung sai | thường lệch BAUD (VX4 máy điện: 38400 → 0xe0, 9600 → OK) |
+| `LOI SD - waiting for card` | thẻ SD | cắm lại thẻ (SD bắt buộc lúc khởi động) |
+
+```
+python -c "import serial,time;s=serial.Serial('COM13',9600,timeout=0.5);t=time.time();b=b''
+while time.time()-t<15: b+=s.read(4096)
+print(b.decode('ascii','ignore')[:1500])"
+```
+Thử baud / ID khác KHÔNG cần sửa file: `PLATFORMIO_BUILD_FLAGS="-DVX4_SERIAL_BAUD=9600UL" pio run -e dien -t upload`
+(các hằng `MACHINE_RS485_BAUD`, `VX4_SERIAL_BAUD`, `VX4_MODBUS_ID` đều `#ifndef`). Tìm ra rồi thì ghi vào env + commit, nạp lại bản chuẩn.
+
 ## Đường dẫn PlatformIO (QUAN TRỌNG)
 
 `pio`/`platformio` KHÔNG có trong PATH của shell này. Luôn gọi qua đường dẫn đầy đủ:
@@ -67,6 +94,7 @@ STM32F103RC ở dự án này: **RAM 48KB (49152)**, Flash 256KB. Ngưỡng:
   | treo ở `Programming` | reset/nguồn chập chờn | thử lại, giữ nguồn ổn định |
 
   Nếu upload lỗi vì cổng/ST-Link, KHÔNG tự đổi `upload_protocol` — báo user kiểm phần cứng.
+  | `jtag status contains invalid mode value` / `** Verify Failed **` | đứt giữa chừng (dây SWD / nguồn chập chờn) | ⛔ board có thể đang NẠP DỞ — nạp lại NGAY; vẫn lỗi thì báo user |
 
 ## Bước 3 — Tổng kết
 
