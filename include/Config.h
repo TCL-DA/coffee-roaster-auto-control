@@ -197,7 +197,11 @@
 //   KHÔNG treo máy — mất log còn hơn mất cả ngày rang. (Trước đây while(!SD.begin())
 //   quay vô hạn kèm còi → thẻ chết là máy không vào nổi chương trình.)
 // SD_RETRY_MS: lúc chạy, thẻ hỏng thì cứ chừng này ms thử khởi tạo lại một lần.
+// SD_REQUIRED_AT_BOOT (14/10/2026, chủ máy: "SD phải ok thì mới khởi động board thành công"):
+//   1 = lúc boot CHỜ tới khi đọc được thẻ (báo mã 11 + còi mỗi lượt, máy chưa sẵn sàng) — SD_INIT_RETRY bỏ qua;
+//   0 = cách cũ ở trên: thử SD_INIT_RETRY lần rồi chạy tiếp không thẻ.
 #define LOADER_SD_LOG_EN                  0
+#define SD_REQUIRED_AT_BOOT               1
 #define SD_INIT_RETRY                     5
 #define SD_RETRY_MS                       10000UL
 

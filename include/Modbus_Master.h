@@ -1345,9 +1345,20 @@ void checkError() {
     // SD card
     if (chSDFlag) {
         sendSTT(STT_STARTUP_CHECK_SD);
-        // KHÔNG treo ở đây: thử SD_INIT_RETRY lần, hết lượt thì báo lỗi rồi chạy tiếp.
-        // Máy rang được mà không có log còn hơn đứng im cả ngày vì một cái thẻ hỏng.
         sdOK = false;
+#if SD_REQUIRED_AT_BOOT
+        // 14/10/2026 chủ máy: "SD phải ok thì mới khởi động board thành công" (bàn thử: thẻ không đọc được -> lưu hồ sơ 106,
+        // tải hồ sơ 120, mẻ AUTO không chạy mà board vẫn báo sẵn sàng). Giống kiểm thiết bị Modbus ở trên: CHỜ tới khi đọc được
+        // thẻ, mỗi lượt báo mã 11 + còi; STATUS_MC giữ 0 (chưa sẵn sàng). Relay chưa bật gì ở bước này -> đứng chờ là an toàn.
+        while (!SD.begin(chipSelect)) {
+            sendSTT(STT_SD_INIT_FAIL);
+            SerialComputer.println(" LOI SD - waiting for card");
+            buzzN(1, 500);
+            delay(buzzer_delay);
+        }
+        sdOK = true;
+#else
+        // Không bắt buộc thẻ: thử SD_INIT_RETRY lần, hết lượt thì báo lỗi rồi chạy tiếp (rang được, không có log / hồ sơ SD).
         for (uint8_t i = 0; i < SD_INIT_RETRY; i++) {
             if (SD.begin(chipSelect)) { sdOK = true; break; }
             sendSTT(STT_SD_INIT_FAIL);
@@ -1355,6 +1366,7 @@ void checkError() {
             buzzN(1, 500);
             delay(buzzer_delay);
         }
+#endif
         if (sdOK) {
             SerialComputer.println("=> SD OK");
             sendSTT(STT_STARTUP_SD_OK);
