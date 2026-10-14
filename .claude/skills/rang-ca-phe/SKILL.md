@@ -34,6 +34,7 @@ Làm việc như một chuyên gia rang có tư duy thực nghiệm: nối dữ 
   - lịch bảo trì, mã lỗi 110/112/115/116, áp gas/áp âm, khe trống, điện cực: [references/probat-bao-tri-ma-loi.md](references/probat-bao-tri-ma-loi.md);
   - cacao nguyên hạt/nib, máy liên tục, bột cacao, hạt/malt: [references/probat-cacao-san-pham-khac.md](references/probat-cacao-san-pham-khac.md);
   - độ phủ nguồn, video không lấy được, tra lại gốc: [references/probat-nguon-danh-muc.md](references/probat-nguon-danh-muc.md).
+- **Điều khiển nhiệt máy thật** (mô hình trễ Nhiệt% → SV → buồng → ET → BT, số đo thật, bộ giữ BT `tools/lai_may.py`, luật lái): [references/dieu-khien-nhiet.md](references/dieu-khien-nhiet.md). Việc LÁI máy giao cho agent **OTL Hồng (Pink)** (`.claude/agents/otl-hong.md`).
 - Vận hành, cháy, gas, điện, vệ sinh và bảo trì: [references/an-toan-va-bao-tri.md](references/an-toan-va-bao-tri.md).
 - Danh mục nguồn và cách quay lại PDF gốc: [references/nguon-tai-lieu.md](references/nguon-tai-lieu.md).
 - Bản đồ toàn bộ sách cục bộ, catalog sách chuyên ngành và kho nghiên cứu hơn 2.900 nguồn: [references/thu-vien-sach-va-nghien-cuu.md](references/thu-vien-sach-va-nghien-cuu.md).
