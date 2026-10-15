@@ -1362,6 +1362,352 @@ def an_toan(gio=100, den=60.0, duong_csv=None, toi_da_phut=60):
     return d
 
 
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# BÀI GIÓ (chủ máy 15/10 11:37, sửa 11:51: 65 → 75 %): Nhiệt KHOÁ 75 %, CHỈ lái gió 50–100 %, trống giữ nguyên; BT về 200 và GIỮ.
+# Mỗi lượt 5 phút tính từ START Artisan, tối đa 3 lượt. ĐẠT = BT trong 200 ± 1,5 liên tục tới hết 5 phút, ≥ 60 s cuối, không lố > 1,5.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+GIO_BAI = (50, 100)
+NHIET_BAI, DICH_BAI, DAI_BAI, GIU_CUOI_BAI, LUOT_BAI_GIAY = 75, 200.0, 1.5, 60.0, 300.0  # 11:51 chủ máy sửa đề 65 → 75 %
+
+
+def cham_gio_bt(t, bt, dich=DICH_BAI, dai=DAI_BAI, giu_cuoi=GIU_CUOI_BAI, dai_bai=LUOT_BAI_GIAY):
+    """Chấm bài gió từ (t, BT) của giản đồ, chỉ xét t ≤ 5 phút từ START. Lố theo CHIỀU ĐANG ĐI: từ dưới lên ⇒ lố lên = max(BT) − đích
+    cả lượt; lố xuống = max(đích − BT) SAU lần đầu BT CHẠM đích. ĐẠT cần cả hai ≤ dai (luật chặt)."""
+    t = np.asarray(t, float) - t[0]
+    bt = np.asarray(bt, float)
+    m = t <= dai_bai + 0.5
+    t, bt = t[m], bt[m]
+    trong = np.abs(bt - dich) <= dai + 1e-9
+    vao = np.flatnonzero(trong)
+    t_vao_dau = float(t[vao[0]]) if len(vao) else None
+    t_vao_cuoi = None
+    if trong[-1]:
+        j = len(trong) - 1
+        while j > 0 and trong[j - 1]:
+            j -= 1
+        t_vao_cuoi = float(t[j])
+    hg = 1.0 if bt[0] < dich else -1.0
+    lo_di = float(max(0.0, (hg * (bt - dich)).max()))
+    cham = np.flatnonzero(hg * (bt - dich) >= 0)                  # lần đầu CHẠM đích (theo chiều đang đi)
+    lo_nguoc = float(max(0.0, (-hg * (bt[cham[0]:] - dich)).max())) if len(cham) else 0.0
+    giu = float(t[-1] - t_vao_cuoi) if t_vao_cuoi is not None else 0.0
+    cuoi = t >= t[-1] - 60
+    du_gio = t[-1] >= dai_bai - 2
+    dat = bool(du_gio and giu >= giu_cuoi - 1e-9 and lo_di <= dai + 1e-9 and lo_nguoc <= dai + 1e-9)
+    return {"dat": dat, "dai_giay": round(float(t[-1]), 1), "bt_dau": round(float(bt[0]), 1),
+            "t_vao_dau": t_vao_dau, "t_vao_cuoi": t_vao_cuoi, "giu_cuoi": round(giu, 1),
+            "lo_len": round(lo_di if hg > 0 else lo_nguoc, 2), "lo_xuong": round(lo_nguoc if hg > 0 else lo_di, 2),
+            "sai_tb_60": round(float(np.abs(bt[cuoi] - dich).mean()), 2), "bt_cuoi": round(float(bt[-1]), 1),
+            "bt_max": round(float(bt.max()), 1), "bt_min_sau_vao": round(float(bt[vao[0]:].min()), 1) if len(vao) else None}
+
+
+def cham_gio_alog(duong, dich=DICH_BAI):
+    ts, bts, _, d = doc_alog(duong)
+    if len(ts) < 2:
+        return {"dat": False, "loi": "giản đồ không có số liệu (%d mẫu)" % len(ts), "file": duong}
+    kq = cham_gio_bt(ts, bts, dich=dich)
+    kq.update(file=duong, so_mau=len(ts), bat_dau=d.get("roastisodate", "") + " " + d.get("roasttime", ""))
+    return kq
+
+
+def in_cham_gio(kq):
+    if kq.get("loi"):
+        return "CHAM %s: %s" % (os.path.basename(kq.get("file", "")), kq["loi"])
+    f = lambda v: "%.0f s" % v if v is not None else "—"  # noqa: E731
+    return ("CHAM %s · %s · %s · %d mau %.0f s · BT dau %.1f · vao ±1,5 lan dau %s · doan cuoi tu %s (giu %.0f s) · "
+            "lo len %.2f / xuong %.2f · sai TB 60 s cuoi %.2f · BT cuoi %.1f max %.1f") % (
+        os.path.basename(kq["file"]), kq.get("bat_dau", ""), "DAT" if kq["dat"] else "CHUA DAT", kq["so_mau"], kq["dai_giay"],
+        kq["bt_dau"], f(kq["t_vao_dau"]), f(kq["t_vao_cuoi"]), kq["giu_cuoi"], kq["lo_len"], kq["lo_xuong"], kq["sai_tb_60"],
+        kq["bt_cuoi"], kq["bt_max"])
+
+
+class GiuBTGio:
+    """Nhiệt KHOÁ; chỉ lái gió trong GIO_BAI. Mô hình RoR (đo trong ngấm 15/10: gió 100 → 50 ở BT 166 làm RoR tụt ~5 °C/ph, trễ
+    ~10 s; thân lồng còn ngấm ⇒ BT trôi lên kể cả ở gió 50): RoR = r50 + kg·(g_eff − 50), g_eff = gió thật qua trễ bậc 1 `tg` s,
+    r50 = độ trôi ở gió 50 (bộ quan sát sống ⇒ tác dụng tích phân). Mỗi `chu_ky` s: BT dự báo trước `tre` s, RoR mong muốn
+    = (đích(t) − BT dự báo)/tc ⇒ gió = 50 + (RoR mong muốn − r50)/kg, kẹp [50, 100], bước ≤ buoc.
+    Gió 50 vẫn trôi lên (r50 > 0, không giữ đứng được) ⇒ bám đường dốc r50 kết thúc ở 200 + kep lúc 300 s (`dich_t`) — qua dải
+    ±1,5 trong ≥ 60 s cuối chỉ được khi r50 ≲ 2,6 °C/ph (giới hạn vật lý: gió không hãm thêm dưới 50 %)."""
+
+    def __init__(self, dich, kg, tg, tre, tc, buoc=10, a_b=0.05, g0=50, chu_ky=2, kep=1.1):
+        self.dich, self.kg, self.tg, self.tre, self.tc = dich, kg, tg, tre, tc
+        self.buoc, self.a_b, self.g, self.chu_ky, self.kep = buoc, a_b, int(g0), chu_ky, kep
+        self.g_eff, self.t_cu, self.r50, self.t_chinh, self.ke = float(g0), None, None, -1e9, ""
+
+    def quan_sat(self, t, bt, ror, g_that):
+        dt = 1.0 if self.t_cu is None else max(0.2, t - self.t_cu)
+        self.t_cu = t
+        self.g_eff += (g_that - self.g_eff) * min(1.0, dt / self.tg)
+        r_hat = ror - self.kg * (self.g_eff - 50.0)
+        self.r50 = r_hat if self.r50 is None else self.r50 + self.a_b * (r_hat - self.r50)
+
+    def dich_t(self, t):
+        """(đích, độ dốc °C/ph) lúc t. r50 ≤ 0,3 ⇒ giữ đứng 200. r50 > 0,3 (gió 50 vẫn trôi lên, không giữ đứng được) ⇒ đường
+        dốc r50 kết thúc ở 200 + kep lúc hết lượt: BT đi qua dải với tốc độ tự nhiên, gió chỉ để TĂNG TỐC khi tụt sau đường."""
+        r = self.r50 if self.r50 is not None else 0.0
+        if r <= 0.3:
+            return self.dich, 0.0
+        t_giua = LUOT_BAI_GIAY - self.kep / r * 60.0
+        v = self.dich + r * (t - t_giua) / 60.0
+        return (self.dich + self.kep, 0.0) if v >= self.dich + self.kep else (v, r)
+
+    def quyet_dinh(self, t, bt, ror):
+        if t - self.t_chinh < self.chu_ky or self.r50 is None:
+            return self.g
+        self.t_chinh = t
+        bt_p = bt + ror / 60.0 * self.tre
+        dt_, r_ref = self.dich_t(t + self.tre)
+        ror_d = r_ref + (dt_ - bt_p) / self.tc * 60.0
+        g = 50.0 + (ror_d - self.r50) / self.kg
+        g = max(self.g - self.buoc, min(self.g + self.buoc, g))
+        self.g = int(round(max(GIO_BAI[0], min(GIO_BAI[1], g))))
+        self.ke = "dich %.1f BTp %.1f RoRd %+.1f r50 %+.2f geff %.0f" % (dt_, bt_p, ror_d, self.r50, self.g_eff)
+        return self.g
+
+
+def phan_tich_gio(duong_csv, cua=20):
+    """Độ nhạy gió → BT từ csv của `ngam` (gio, bt, et, buong, nhiet, gio_pct, …): RoR hồi quy `cua` s TRƯỚC mỗi bước gió và
+    sau bước (bỏ 10 s trễ đầu). Trả list (giờ, gió trước → sau, BT, RoR trước, RoR sau, ΔRoR / 10 % gió)."""
+    rows = [r for r in csv.reader(open(duong_csv, encoding="utf-8")) if r and r[0][:1].isdigit()]
+    t = np.array([sum(int(x) * k for x, k in zip(r[0].split(":"), (3600, 60, 1))) for r in rows], float)
+    bt = np.array([float(r[1]) for r in rows])
+    g = np.array([float(r[5]) for r in rows])
+    kq = []
+    for i in range(1, len(g)):
+        if g[i] == g[i - 1]:
+            continue
+        tr = (t >= t[i] - cua) & (t < t[i])
+        j = np.flatnonzero(g[i:] != g[i])
+        het = t[i + j[0]] if len(j) else t[-1]
+        sa = (t >= t[i] + 10) & (t <= min(t[i] + 10 + cua, het))
+        if tr.sum() < 5 or sa.sum() < 5:
+            continue
+        r0 = np.polyfit(t[tr], bt[tr], 1)[0] * 60
+        r1 = np.polyfit(t[sa], bt[sa], 1)[0] * 60
+        kq.append((rows[i][0], g[i - 1], g[i], bt[i], r0, r1, (r1 - r0) / (g[i] - g[i - 1]) * 10))
+    return kq
+
+
+def do_gio(duong_csv, nhiet, buoc, trong=85):
+    """ĐO chiều + độ nhạy gió → BT ở Nhiệt cố định (chuẩn bị, không chấm). Giản đồ riêng: Artisan OFF bản đang ghi → ON → START,
+    kiểm ĐANG GHI → chuỗi bước gió `buoc` [(gió %, giây)] bằng `ngam` (lớp an toàn BT > 245 / ET > 255 / mất số / mã / cờ PC)
+    → TẮT Lệnh + gió 100 → OFF lưu giản đồ → in ΔRoR mỗi bước."""
+    art, p = ArtisanThat(), Panel()
+    ok, ly = art.kiem()
+    print("ARTISAN KIEM:", ly, flush=True)
+    if not ok:
+        sys.exit(2)
+    print("ARTISAN OFF (ban dang ghi):", art.tat_luu(), flush=True)
+    art.reset_start()
+    time.sleep(3)
+    ok, ct = art.dang_ghi()
+    print("ARTISAN DANG GHI:", ct, flush=True)
+    if not ok:
+        p.lenh_nhiet(False)
+        sys.exit("Artisan không ghi — không lái mù; đã TẮT Lệnh nhiệt")
+    ok = True
+    try:
+        for gio, giay in buoc:
+            ok = ngam(giay / 60.0, nhiet, duong_csv, gio=gio, trong=trong)
+            if not ok:
+                break
+    finally:
+        p.lenh_nhiet(False)
+        p.dat_gio(100)
+        time.sleep(1.5)
+        d = p.doc_tat_ca()
+        print("DO GIO XONG (%s) · Lenh %s · gio dat %s · BT %.1f ET %.1f buong %s" % (
+            ok, d["lenh_nhiet"], d["dat_gio"], d["bt"], d["et"], d["buong"]), flush=True)
+        print("ARTISAN OFF:", art.tat_luu(), flush=True)
+    for gio_, g0, g1, b, r0, r1, k in phan_tich_gio(duong_csv):
+        print("BUOC %s gio %.0f -> %.0f · BT %.1f · RoR %+.1f -> %+.1f °C/ph · %+.2f °C/ph moi +10 %% gio" % (
+            gio_, g0, g1, b, r0, r1, k), flush=True)
+    return ok
+
+
+def _doc_an_toan(p, t_ok, in_ra):
+    try:
+        return p.doc_tat_ca(), time.time()
+    except (OSError, ValueError) as e:
+        if time.time() - t_ok > MAT_SO_GIAY:
+            raise RuntimeError("MAT SO PANEL > %.0f s (%s)" % (MAT_SO_GIAY, e))
+        return None, t_ok
+
+
+def chuan_bi_gio(p, dau, g0, csv_w, in_ra, het, lead=12.0, ha=12.0, phut_max=8.0):
+    """CHUẨN BỊ (không chấm, giản đồ riêng): NGUỘI (Lệnh TẮT, gió 100) tới BT ≤ dau − ha → NUNG (Nhiệt NHIET_BAI, Lệnh bật, gió g0)
+    tới BT + RoR·lead ≥ dau (lead = thời gian OFF → ON → START của Artisan). Điểm xuất phát mỗi lượt giống nhau: BT ≈ dau ĐANG
+    LÊN, Nhiệt NHIET_BAI (VX4 đã giữ buồng ≥ 60 s), gió g0, trống giữ nguyên. Trả RoR lúc kích START, None nếu phải dừng."""
+    t0 = t_ok = time.time()
+    pha, ls = None, []
+    while True:
+        d, t_ok = _doc_an_toan(p, t_ok, in_ra)
+        now = time.time()
+        if d is None:
+            time.sleep(1)
+            continue
+        loi = tu_kiem(d, None)
+        if d["bt"] > BT_TUYET_DOI or d["et"] > ET_MAX or loi or now > het or now - t0 > phut_max * 60:
+            in_ra("CHUAN BI DUNG: BT %.1f ET %.1f %s" % (d["bt"], d["et"], "; ".join(loi) or "het gio / qua lau"))
+            return None
+        ls.append((now, d["bt"]))
+        ls = ls[-30:]
+        ror = doc_hoi_quy(ls, 20)
+        moi = "nguoi" if (pha in (None, "nguoi") and d["bt"] > dau - ha) else "nung"
+        if moi != pha:
+            pha = moi
+            if pha == "nguoi":
+                p.lenh_nhiet(False)
+                p.dat_gio(100)
+            else:
+                p.dat_nhiet(NHIET_BAI)
+                p.dat_gio(g0)
+                p.lenh_nhiet(True)
+            time.sleep(1.0)
+            d = p.doc_tat_ca()
+            in_ra("CHUAN BI %s · BT %.1f · Lenh %d Nhiet dat %d gio dat %d trong dat %d" % (
+                pha.upper(), d["bt"], d["lenh_nhiet"], d["dat_nhiet"], d["dat_gio"], d["dat_trong"]))
+        csv_w.writerow([time.strftime("%H:%M:%S"), round(now - t0, 1), "chuan_bi_" + pha, d["bt"], d["et"], d["buong"],
+                        d["dat_nhiet"], d["lenh_nhiet"], d["dat_gio"], d["gio"], d["trong"], d["ma"], round(ror, 2), "", ""])
+        if pha == "nung" and now - t0 > 5 and d["bt"] + ror / 60.0 * lead >= dau:
+            in_ra("CHUAN BI XONG · BT %.1f RoR %+.1f °C/ph · kich START" % (d["bt"], ror))
+            return ror
+        time.sleep(max(0.0, 1.0 - (time.time() - now)))
+
+
+def giu_bt_gio(luot, het_luc_hhmm, thu_muc, dau=175.0, g0=50, kg=0.08, tg=12.0, tre=10.0, tc=45.0, buoc=10, a_b=0.05,
+               kep=1.1, nguoi=False):
+    """MỘT lượt bài gió trên MÁY THẬT: Artisan kiểm → giản đồ CHUẨN BỊ → giản đồ LƯỢT (đúng 5 phút từ START, Nhiệt khoá NHIET_BAI,
+    chỉ gió 50–100 %) → TẮT nhiệt + an_toan → chấm .alog + k David → tong_ket.jsonl. Tham số mô hình qua dòng lệnh (ghi vào log)."""
+    import json
+    if os.environ.get("HONG_DUOC_LAI") != "1":
+        sys.exit("Chưa có quyền lái (HONG_DUOC_LAI=1).")
+    het = _gio_het(het_luc_hhmm)
+    os.makedirs(thu_muc, exist_ok=True)
+    nk = open(os.path.join(thu_muc, "bai_gio.txt"), "a", encoding="utf-8")
+
+    def in_ra(s):
+        dong = time.strftime("%H:%M:%S ") + "[L%d] " % luot + s
+        print(dong, flush=True)
+        nk.write(dong + "\n")
+        nk.flush()
+
+    ts_ = dict(nhiet=NHIET_BAI, dau=dau, g0=g0, kg=kg, tg=tg, tre=tre, tc=tc, buoc=buoc, a_b=a_b, kep=kep)
+    in_ra("THAM SO %s" % ts_)
+    art, p = ArtisanThat(), Panel()
+    ly_do, alog_cb, alog, ror0, gio_dung, pha = "xong", None, None, None, [], "kiem"
+    fcsv = open(os.path.join(thu_muc, "luot%d.csv" % luot), "a", newline="", encoding="utf-8")
+    w = csv.writer(fcsv)
+    w.writerow(["gio", "t", "pha", "bt", "et", "buong", "nhiet_dat", "lenh", "gio_dat", "gio_that", "trong", "ma", "ror",
+                "ke_hoach", "k_david"])
+    try:
+        ok, ly = art.kiem()
+        in_ra("ARTISAN KIEM: %s" % ly)
+        if not ok:
+            raise RuntimeError("artisan")
+        if p.doc(21, 1)[0] != MAN_RANG:
+            in_ra("dang nhap -> man %s" % p.dang_nhap())
+        trong0 = p.doc_tat_ca()["dat_trong"]
+        # ── giản đồ CHUẨN BỊ ──
+        art.reset_start()
+        pha = "chuan_bi"
+        time.sleep(3)
+        ok, ct = art.dang_ghi()
+        in_ra("ARTISAN (chuan bi) DANG GHI: %s" % ct)
+        if not ok:
+            raise RuntimeError("artisan_khong_ghi_chuan_bi")
+        ror0 = chuan_bi_gio(p, dau, g0, w, in_ra, het)
+        if ror0 is None:
+            raise RuntimeError("chuan_bi_dung")
+        alog_cb, pha = art.tat_luu(), "giua"
+        # ── giản đồ LƯỢT: OFF → ON → START một lần ──
+        art.reset_start()
+        t0, pha = time.time(), "luot"
+        d = p.doc_tat_ca()
+        in_ra("START · BT %.1f ET %.1f buong %s · Nhiet dat %d Lenh %d · gio dat %d · trong dat %d · (chuan bi %s)" % (
+            d["bt"], d["et"], d["buong"], d["dat_nhiet"], d["lenh_nhiet"], d["dat_gio"], d["dat_trong"], alog_cb))
+        ok, ct = art.dang_ghi()
+        if not ok:
+            art.bam_start()
+            time.sleep(2)
+            ok, ct = art.dang_ghi()
+        in_ra("ARTISAN (luot) DANG GHI: %s" % ct)
+        if not ok:
+            raise RuntimeError("artisan_khong_ghi")
+        bo = GiuBTGio(DICH_BAI, kg, tg, tre, tc, buoc=buoc, a_b=a_b, g0=g0, kep=kep)
+        ls, t_ok, g_cu = [], time.time(), g0
+        while True:
+            now = time.time()
+            t = now - t0
+            if t >= LUOT_BAI_GIAY + 1.0:
+                break
+            d, t_ok = _doc_an_toan(p, t_ok, in_ra)
+            if d is None:
+                time.sleep(1)
+                continue
+            if d["et"] > ET_MAX or d["bt"] > min(DICH_BAI + BT_TREN_MOC, BT_TUYET_DOI):
+                ly_do = "AN TOAN BT %.1f ET %.1f" % (d["bt"], d["et"])
+                break
+            loi = tu_kiem(d, None, cho_nhiet=NHIET_BAI, cho_lenh=1)
+            if d["dat_trong"] != trong0:
+                loi.append("trống đặt %s ≠ %s" % (d["dat_trong"], trong0))
+            if loi:
+                ly_do = "TU KIEM: " + "; ".join(loi)
+                break
+            if now > het:
+                ly_do = "HET GIO LAI"
+                break
+            ls.append((t, d["bt"]))
+            ls = ls[-40:]
+            ror = doc_hoi_quy(ls, 20)
+            k_dv = david.k_song(doc_hoi_quy(ls, 30), d["et"], d["bt"])
+            bo.quan_sat(t, d["bt"], ror, d["gio"])
+            g = bo.quyet_dinh(t, d["bt"], ror)
+            if g != g_cu or d["dat_gio"] != g:
+                p.dat_gio(g)
+                if g != g_cu:
+                    in_ra("%5.0f BT %.1f RoR %+.1f · gio %d -> %d · %s" % (t, d["bt"], ror, g_cu, g, bo.ke))
+                g_cu = g
+            gio_dung.append(g)
+            w.writerow([time.strftime("%H:%M:%S"), round(t, 1), "luot", d["bt"], d["et"], d["buong"], d["dat_nhiet"],
+                        d["lenh_nhiet"], g, d["gio"], d["trong"], d["ma"], round(ror, 2), bo.ke,
+                        round(k_dv, 4) if k_dv is not None else ""])
+            fcsv.flush()
+            if not art.con_nhan_so(d["bt"]):
+                ly_do = "Artisan mất số > 10 s"
+                break
+            if int(t) % 30 == 15 and not art.con_ghi():
+                ly_do = "Artisan NGỪNG GHI (đồng hồ đứng)"
+                break
+            time.sleep(max(0.0, 1.0 - (time.time() - now)))
+    except RuntimeError as e:
+        ly_do = str(e)
+    finally:
+        p.lenh_nhiet(False)
+        in_ra("KET THUC LUOT: %s · TAT Lenh nhiet" % ly_do)
+        fcsv.close()
+        try:
+            if pha == "luot":
+                alog = art.tat_luu()
+            elif pha == "chuan_bi":
+                alog_cb = art.tat_luu()
+        finally:
+            an_toan(gio=100, duong_csv=os.path.join(thu_muc, "lam_mat.csv") if nguoi else None)
+    in_ra("ARTISAN OFF · gian do: %s" % alog)
+    dong = {"luot": luot, "tham_so": ts_, "dung": ly_do, "alog": alog, "chuan_bi_alog": alog_cb, "ror_kich_start": ror0,
+            "gio_min": min(gio_dung) if gio_dung else None, "gio_max": max(gio_dung) if gio_dung else None}
+    if alog:
+        ch = cham_gio_alog(alog)
+        in_ra(in_cham_gio(ch))
+        k_dv = david.tom_tat(david.phan_tich(alog))
+        in_ra(k_dv)
+        dong.update(cham=ch, david=k_dv)
+    with open(os.path.join(thu_muc, "tong_ket.jsonl"), "a", encoding="utf-8") as f:
+        f.write(json.dumps(dong, ensure_ascii=False) + "\n")
+    nk.close()
+    return dong
+
+
 def _tach_opt(argv):
     pos, opt, i = [], {}, 0
     while i < len(argv):
@@ -1434,5 +1780,27 @@ if __name__ == "__main__":
         print(ArtisanThat().kiem())
     elif lenh == "giai_de":
         giai_de_that(pos[0], pos[1])
+    elif lenh == "giu_bt_gio":
+        # bài gió 15/10: giu_bt_gio <lượt> <hết HH:MM> <thư mục> [--dau 175 --g0 50 --kg 0.08 --tg 12 --tre 10 --tc 45
+        #   --buoc 10 --a_b 0.05 --kep 1.1 --nguoi 0]
+        giu_bt_gio(int(pos[0]), pos[1], pos[2], dau=float(opt.get("dau", 175)), g0=int(opt.get("g0", 50)),
+                   kg=float(opt.get("kg", 0.08)), tg=float(opt.get("tg", 12)), tre=float(opt.get("tre", 10)),
+                   tc=float(opt.get("tc", 45)), buoc=int(opt.get("buoc", 10)), a_b=float(opt.get("a_b", 0.05)),
+                   kep=float(opt.get("kep", 1.1)), nguoi=opt.get("nguoi", "0") == "1")
+    elif lenh == "do_gio":
+        # do_gio <csv> [--nhiet 75 --buoc 100:90,50:90,100:60] — đo chiều + độ nhạy gió → BT (giản đồ riêng)
+        if os.environ.get("HONG_DUOC_LAI") != "1":
+            sys.exit("Chưa có quyền lái (HONG_DUOC_LAI=1).")
+        bb = [tuple(int(v) for v in x.split(":")) for x in opt.get("buoc", "100:90,50:90,100:60").split(",")]
+        if any(not (GIO_BAI[0] <= g <= GIO_BAI[1]) or s > 300 for g, s in bb):
+            sys.exit("bước gió phải trong 50–100 %, mỗi bước ≤ 300 s")
+        do_gio(pos[0], float(opt.get("nhiet", NHIET_BAI)), bb)
+    elif lenh == "phan_tich_gio":
+        for r in phan_tich_gio(pos[0]):
+            print("BUOC %s gio %.0f -> %.0f · BT %.1f · RoR %+.1f -> %+.1f · %+.2f °C/ph moi +10 %% gio" % r)
+    elif lenh == "cham_gio":
+        for f in pos:
+            print(in_cham_gio(cham_gio_alog(f, dich=float(opt.get("dich", DICH_BAI)))))
+            print(david.in_kq(david.phan_tich(f)))
     else:
         print(__doc__)
