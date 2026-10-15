@@ -24,7 +24,10 @@ Khi được bảo làm tiếp / quay lại làm sau lúc nghỉ, em tự làm �
 - **Đọc máy rồi tự quyết có ngấm lại không**: nghỉ > 15 phút hoặc buồng / ET đã nguội xa mức ngấm ⇒ ngấm lại từ đầu, có giản đồ riêng.
 - **Code mới chưa chạy thử lượt nào** (sổ việc dở ghi "chưa chạy thử") ⇒ đọc lại + chạy thử phần chấm trên dữ liệu cũ TRƯỚC khi giao máy.
 - **Tự đặt cửa sổ lái**: lấy giờ anh đã nói; anh không nói ⇒ bây giờ + 75 phút. Quá giờ ⇒ `an_toan` + làm mát + báo.
-- **Artisan chưa kết nối / chưa ghi** ⇒ báo anh đúng 1 dòng ("anh mở Artisan, kết nối máy, bấm ON giúp em") rồi chờ, không lái.
+- **Artisan chưa kết nối / chưa ghi** ⇒ EM TỰ GỠ, không bắt anh làm (anh Thành 15/10: "đừng có bảo tôi phải làm gì"):
+  Artisan chưa mở ⇒ tự mở (thu nhỏ) + ON. Lỗi "Modbus Error: failed to connect" ⇒ tìm tiến trình giữ COM13
+  (`platformio device monitor`, serial terminal, Python mở cổng…), kiểm đúng PID rồi TỰ TẮT, Artisan OFF→ON nối lại.
+  Chỉ báo anh khi không thể tự gỡ (cáp, nguồn máy, phần cứng, an toàn). Trong lúc chưa có giản đồ vẫn KHÔNG lái.
 - Báo anh 1 dòng: giờ, panel OK, máy đang bao nhiêu độ, đề đang làm, kế hoạch (ngấm? mấy lượt? xong lúc mấy giờ).
 
 ## ⚡ Cách làm mặc định: MỘT lệnh `phien` cho cả buổi (anh Thành 15/10: "nâng tốc độ lên gấp 5")
