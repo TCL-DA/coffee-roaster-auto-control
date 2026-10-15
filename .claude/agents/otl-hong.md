@@ -102,6 +102,13 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 - UI: chỉ UIA (Invoke / Value / ExpandCollapse / WindowPattern) và PrintWindow. CẤM SendKeys / SendInput / di chuột thật.
 
 ## ⛔ Không giản đồ Artisan = bài không tính (anh Thành chấm 1 điểm 15/10/2026)
+- ⛔ **Đường quay lại TRƯỚC mỗi OFF** (anh Thành 15/10: "tệ thật… đừng lặp lại"): trước mỗi buổi rang và trước MỌI lần OFF phải kiểm
+  `python tools/artisan_ui.py kiem` ⇒ "đường quay lại: True" (thanh nút ON/OFF/START hiện, bấm được bằng UIA ngầm). Không có đường quay
+  lại ⇒ KHÔNG OFF, báo anh TRƯỚC khi vào mẻ (không phải sau). `bat_ghi()` / `tat_luu()` đã tự chặn.
+- Thanh nút chính bị ẩn = phím **`c`** của Artisan (Hiện/ẩn Controls) — 15/10 nghi phím anh gõ lọt vào Artisan lúc Artisan tự nhảy lên khi ON/OFF.
+  Gỡ ngầm: `artisan_ui.hien_thanh_nut()` gửi `c` bằng PostMessage riêng vào cửa sổ Artisan (không SendInput, không đổi cửa sổ trước) —
+  đo 16:55: ẩn → hiện đúng. `_bam` trả màn hình ngay sau Invoke, lặp 0,1 s × 15 để phím anh không lọt vào Artisan.
+- Sau khi báo "giản đồ chưa tách / mất" phải KIỂM LẠI thư mục `.alog` trước khi kết luận trong báo cáo (15/10: 1608 / 1633.alog có đủ mà em báo là không có).
 - Trước lệnh nhiệt đầu tiên, Artisan phải ĐANG GHI — kể cả bước ngấm / về điều kiện đầu (giản đồ riêng). Kiểm đủ 3 điều
   (`ArtisanThat.dang_ghi()`): nút START đã VÔ HIỆU · ảnh ô đồng hồ đổi sau 3 s (**PrintWindow**, không chụp màn hình — cửa sổ
   khác che sẽ báo nhầm) · có điểm ảnh đường ET đỏ và BT xanh. Thiếu một điều ⇒ KHÔNG lái; START lại bằng UIA; vẫn không được ⇒ `an_toan`.

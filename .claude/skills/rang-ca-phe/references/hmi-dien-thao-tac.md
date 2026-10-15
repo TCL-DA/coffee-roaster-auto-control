@@ -466,11 +466,11 @@ Chuẩn bị: `doc` lưu ảnh đầu (`python tools/hmi_dien.py doc --json --ho
 | 4 | Làm mới hồ sơ | `lam_moi_ho_so` | `$38` đổi; `$600..$809` khớp thẻ (`ho_so`) | — (vô hại) |
 | 5 | Chọn hồ sơ có sẵn (vd 5 "thu1") | `chon_ho_so 5` | `$15 = 5`, `$204 = 1`, `$40` 102/103/120, `$M23` đổi | `bo_chon_ho_so`; `$M23` về giá trị gốc |
 | 6 | Kiểm luật "$15 tự về 0" | ở màn 2: chỉ ghi `$15 = 5` (không `$204`) | đọc lại 0 trong < 1 s | — |
-| 7 | Đổi chế độ | `che_do auto` rồi `che_do save` | `$22` = 1 rồi 0; `$925`, `$928` theo | `che_do save` |
-| 8 | Đổi nhiệt charge | `nhiet_charge 175` | `$M23 = 1750` | ghi lại giá trị gốc |
-| 9 | Nút Quạt làm nguội (cơ cấu nhẹ, không nhiệt) | `HONG_DUOC_LAI=1 … co_cau quat_nguoi 1` rồi `0` | `$4` = 1, `$40` 210; rồi 0 / 211 | `co_cau quat_nguoi 0` |
+| 7 ✅ 15/10 | Đổi chế độ | `che_do auto` rồi `che_do save` | `$22` = 1 rồi 0; `$925`, `$928` theo | `che_do save` |
+| 8 ✅ 15/10 | Đổi nhiệt charge | `nhiet_charge 175` | `$M23 = 1750` | ghi lại giá trị gốc |
+| 9 ✅ 15/10 | Nút Quạt làm nguội (cơ cấu nhẹ, không nhiệt) | `HONG_DUOC_LAI=1 … co_cau quat_nguoi 1` rồi `0` | `$4` = 1, `$40` 210; rồi 0 / 211 | `co_cau quat_nguoi 0` |
 | 10 | Xác nhận cảnh báo (nếu `$990 ≠ 0`) | `xac_nhan_canh_bao` | `$990 = 0`, `$991 = 0` | — |
-| 11 | START / Dừng KHÔNG nhiệt — chỉ khi anh cho riêng | `$M23 = 0` (bỏ auto-charge) → `bat_dau` → đọc `$40` 52→53/56 → **ngay** `dung_chuong_trinh` | `$0` 1 rồi 0; `$1` vẫn 0 | `dung_chuong_trinh`, `an_toan`, trả `$M23` |
+| 11 ✅ 15/10 (2 mẻ thật) | START / Dừng KHÔNG nhiệt — chỉ khi anh cho riêng | `$M23 = 0` (bỏ auto-charge) → `bat_dau` → đọc `$40` 52→53/56 → **ngay** `dung_chuong_trinh` | `$0` 1 rồi 0; `$1` vẫn 0 | `dung_chuong_trinh`, `an_toan`, trả `$M23` |
 | 12 | Trả máy | so `doc` với `thu_0.json` | mọi ô cấu hình như cũ | ghi lại ô lệch |
 Bước 11 có rủi ro (RANG LƯU ⇒ xoá `0.csv`/`n.csv`): bỏ chọn hồ sơ trước, hoặc bỏ hẳn bước này nếu anh không muốn.
 
@@ -478,12 +478,12 @@ Bước 11 có rủi ro (RANG LƯU ⇒ xoá `0.csv`/`n.csv`): bỏ chọn hồ s
 
 ## 9. CHƯA XÁC MINH (cách kiểm)
 1. ~~Đổi sang màn phụ bằng `$49`~~ — ĐÃ XÁC MINH 15/10 15:52: được (`$21 = 14`).
-2. Ghi `$49` có cần "về 0" (Auto Reset Flags) để lần ghi cùng số sau vẫn chuyển — ghi `$49 = 2` hai lần khi đang ở màn 6.
+2. ~~`$49` cần về 0?~~ — ĐÃ XÁC MINH 15/10 16:53: panel tự trả `$49 = 0` sau khi chuyển màn ⇒ ghi lại cùng số vẫn chuyển.
 3. ~~`chon_ho_so` đủ 2 ô~~ — ĐÃ XÁC MINH 15/10 15:52: `$200 = 1` rồi `$15 = 1` ở màn 6 ⇒ `$15` giữ 1 (cả sau khi về màn 2), board nạp ngay (mã 120 vì thẻ CHƯA có `1.csv`). Luật trả về cũng xác minh: ở màn 2 ghi `$15 = 2` khi `$201 = 0` ⇒ đọc lại 0 sau ~0,3 s. ⚠ Nạp (kể cả hỏng) ghi `$M23 = 1800` — có thể tới MUỘN sau khi về màn 2 (15:52:57 đã đặt 1700 vẫn bị đè 1800) ⇒ đặt `$M23` SAU khi `$40` báo xong nạp và đọc lại sau ≥ 3 s.
-4. Chuỗi ASCII byte thấp trước — so `hmi_dien.py ho_so` với chữ trên màn Hồ sơ (anh nhìn) .
+4. Chuỗi ASCII byte thấp trước — ĐÃ XÁC MINH phần máy 15/10 16:50 (ghi/đọc lại "1510 M1 500g", "thu1" khớp); còn chờ anh nhìn màn Hồ sơ.
 5. ~~`$M29 = 1` + `$M28 = 50` kẹp Nhiệt %~~ — ĐÃ XÁC MINH 15/10: KHÔNG kẹp ở máy điện (`$M36 = 100` ⇒ `$66` đọc 100,0 lúc 15:04; đề 3 chạy 72 %).
-6. START RANG LƯU khi `$15 = 0` ghi `0.csv`.
-7. `$964..$966` ai ghi.
+6. START RANG LƯU khi `$15 = 0` ghi `0.csv` — ĐÚNG theo code (`Program.h:267`, không chốt `$15 ≥ 1`); không thử (xoá 0.csv). Luật: chọn hồ sơ trước khi START.
+7. `$964..$966` — 15/10: 540/2089/1841 đứng yên khi số đo đổi, firmware không ghi ⇒ HMI tự tính; nguồn cụ thể phải mở .dpa.
 8. Macro nút Xoá xoá tên hồ sơ 1 (`FILL($M100, 0, 30)`) thay vì hồ sơ đang chọn — xem trên giả lập, không thử máy thật.
-9. Ô DE/FCs màn Hồ sơ (`$106/$109`) vô tác dụng với board — theo code `rwHMI_2` chỉ đọc `$58..$84`.
+9. ~~Ô `$106/$109` vô tác dụng~~ — ĐÃ XÁC MINH theo code 15/10: board chỉ đọc `$0..$40`, `$59..$85`, `$M1..$M63` (+ `$0..$11` nhanh).
 10. Macro "Set Low Security" màn 5 (`BITOFF $5000.0`) làm gì.

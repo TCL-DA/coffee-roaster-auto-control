@@ -38,6 +38,53 @@ def _tra_man_hinh(w, fg_cu):
         u32.SetForegroundWindow(fg_cu)
 
 
+NUT_CHINH = ("ON", "OFF", "START")
+
+
+def co_thanh_nut(w):
+    """Thanh nút chính (ON/OFF/START + đồng hồ) đang hiện? Chỉ đọc UIA."""
+    return any(w.ButtonControl(Name=n, searchDepth=12).Exists(0.3) for n in NUT_CHINH)
+
+
+def _phim_c(w):
+    """Gửi phím 'c' RIÊNG vào cửa sổ Artisan bằng PostMessage (không SendInput, không đổi cửa sổ trước, không đụng bàn phím anh).
+    Phím 'c' của Artisan = Hiện / ẩn thanh nút chính (Controls) — đo thật 15/10 16:55: ẩn rồi hiện lại đúng."""
+    import ctypes
+    u32 = ctypes.windll.user32
+    hw = w.NativeWindowHandle
+    u32.PostMessageW(hw, 0x100, 0x43, 0x002E0001)      # WM_KEYDOWN 'C'
+    u32.PostMessageW(hw, 0x102, ord("c"), 0x002E0001)  # WM_CHAR 'c'
+    u32.PostMessageW(hw, 0x101, 0x43, 0xC02E0001)      # WM_KEYUP
+    time.sleep(1.2)
+
+
+def hien_thanh_nut(w=None):
+    """Bảo đảm thanh nút chính hiện. 15/10 15:20: thanh nút bị ẩn (gốc nghi: Artisan tự nhảy lên khi ON/OFF, phím 'c' anh đang gõ
+    lọt vào Artisan) ⇒ Hồng kẹt, mất giản đồ. Ẩn ⇒ gửi 'c' một lần; vẫn không thấy ⇒ gửi lại 'c' (trả trạng thái cũ) và báo lỗi."""
+    w = w or _cua_so(3)
+    if w is None:
+        raise RuntimeError("Artisan không chạy")
+    if co_thanh_nut(w):
+        return True
+    _phim_c(w)
+    if co_thanh_nut(w):
+        return True
+    _phim_c(w)
+    raise RuntimeError("Artisan: không hiện được thanh nút chính (phím 'c' không tác dụng)")
+
+
+def duong_quay_lai(w=None):
+    """⛔ Luật 15/10: TRƯỚC mỗi OFF phải chắc bấm lại được ON → START. Trả (True, lý do) nếu đủ đường quay lại."""
+    w = w or _cua_so(3)
+    try:
+        hien_thanh_nut(w)
+    except RuntimeError as e:
+        return False, str(e)
+    if not w.ButtonControl(Name="OFF", searchDepth=12).Exists(0.5) and not w.ButtonControl(Name="ON", searchDepth=12).Exists(0.5):
+        return False, "không thấy nút ON/OFF"
+    return True, "thanh nút hiện, ON/OFF/START bấm được bằng UIA"
+
+
 def _bam(w, ten):
     import ctypes
     ctypes.windll.user32.GetForegroundWindow.restype = ctypes.c_void_p
@@ -46,9 +93,9 @@ def _bam(w, ten):
     if not b.Exists(5):
         raise RuntimeError("Artisan: không thấy nút %s" % ten)
     b.GetInvokePattern().Invoke()
-    for _ in range(3):                                  # Artisan có thể tự đưa cửa sổ lên chậm vài trăm ms
-        time.sleep(0.5)
+    for _ in range(15):                                 # trả màn NGAY và nhiều lần (0,1 s): phím anh gõ không lọt vào Artisan
         _tra_man_hinh(w, fg_cu)
+        time.sleep(0.1)
 
 
 def bat_ghi():
@@ -60,6 +107,9 @@ def bat_ghi():
             raise RuntimeError("Artisan không mở được")
         time.sleep(5)
     # 14/10: bài nộp phải là biểu đồ MỚI — đang ghi / đang ON thì OFF trước (autosave cất bản cũ), rồi mới ON (Artisan reset)
+    ok, ly = duong_quay_lai(w)
+    if not ok:
+        raise RuntimeError("Artisan: KHÔNG có đường quay lại (%s) — không OFF, báo anh trước khi vào mẻ" % ly)
     st = w.ButtonControl(Name="START", searchDepth=12)
     if w.ButtonControl(Name="OFF", searchDepth=12).Exists(1):
         if st.Exists(0.5) and st.IsEnabled:
@@ -82,6 +132,9 @@ def tat_luu(cho=20):
     w = _cua_so(5)
     if w is None:
         raise RuntimeError("Artisan không chạy")
+    ok, ly = duong_quay_lai(w)
+    if not ok:
+        raise RuntimeError("Artisan: KHÔNG có đường quay lại (%s) — không OFF" % ly)
     _bam(w, "OFF")
     t = time.time()
     while time.time() - t < cho:
@@ -94,4 +147,11 @@ def tat_luu(cho=20):
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    print(bat_ghi() if sys.argv[1:] == ["bat"] else tat_luu())
+    lenh = sys.argv[1:] or ["tat"]
+    if lenh == ["kiem"]:
+        w = _cua_so(3)
+        print("thanh nút:", co_thanh_nut(w), "· đường quay lại:", duong_quay_lai(w))
+    elif lenh == ["bat"]:
+        print(bat_ghi())
+    else:
+        print(tat_luu())
