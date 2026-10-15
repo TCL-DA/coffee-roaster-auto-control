@@ -25,11 +25,30 @@ def _cua_so(cho=20):
     return w if w.Exists(0.5) else None
 
 
+def _tra_man_hinh(w, fg_cu):
+    """⛔ Luật chủ máy 15/10: không chiếm màn hình anh. Artisan tự nhảy lên khi ON/OFF ⇒ đẩy Artisan xuống ĐÁY z-order (không
+    kích hoạt; PrintWindow vẫn chụp được khi bị che) và trả lại cửa sổ anh đang dùng."""
+    import ctypes
+    u32 = ctypes.windll.user32
+    u32.SetWindowPos.argtypes = [ctypes.c_void_p, ctypes.c_void_p] + [ctypes.c_int] * 4 + [ctypes.c_uint]
+    u32.SetForegroundWindow.argtypes = [ctypes.c_void_p]
+    hw = w.NativeWindowHandle
+    if fg_cu and fg_cu != hw:
+        u32.SetWindowPos(hw, ctypes.c_void_p(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)  # HWND_BOTTOM, NOSIZE|NOMOVE|NOACTIVATE
+        u32.SetForegroundWindow(fg_cu)
+
+
 def _bam(w, ten):
+    import ctypes
+    ctypes.windll.user32.GetForegroundWindow.restype = ctypes.c_void_p
+    fg_cu = ctypes.windll.user32.GetForegroundWindow()
     b = w.ButtonControl(Name=ten, searchDepth=12)
     if not b.Exists(5):
         raise RuntimeError("Artisan: không thấy nút %s" % ten)
     b.GetInvokePattern().Invoke()
+    for _ in range(3):                                  # Artisan có thể tự đưa cửa sổ lên chậm vài trăm ms
+        time.sleep(0.5)
+        _tra_man_hinh(w, fg_cu)
 
 
 def bat_ghi():
@@ -41,10 +60,9 @@ def bat_ghi():
             raise RuntimeError("Artisan không mở được")
         time.sleep(5)
     # 14/10: bài nộp phải là biểu đồ MỚI — đang ghi / đang ON thì OFF trước (autosave cất bản cũ), rồi mới ON (Artisan reset)
-    off = w.ButtonControl(Name="OFF", searchDepth=12)
-    if off.Exists(1):
-        off.GetInvokePattern().Invoke()
-        time.sleep(4)
+    if w.ButtonControl(Name="OFF", searchDepth=12).Exists(1):
+        _bam(w, "OFF")
+        time.sleep(2.5)
     _bam(w, "ON")
     time.sleep(3)
     _bam(w, "START")
