@@ -18,7 +18,8 @@ THU_MUC_LUU = r"F:\Artisan\Profile\OTL-Hong"
 
 def _cua_so(cho=20):
     import uiautomation as A
-    w = A.WindowControl(searchDepth=2, SubName="Artisan")
+    # 15/10 17:10: SubName="Artisan" bắt nhầm hộp "Artisan is free to use!" (QMessageBox) lúc khởi động ⇒ chỉ lấy cửa sổ chính
+    w = A.WindowControl(searchDepth=1, ClassName="ApplicationWindow", SubName="Artisan")
     t = time.time()
     while not w.Exists(1) and time.time() - t < cho:
         time.sleep(1)
@@ -98,14 +99,28 @@ def _bam(w, ten):
         time.sleep(0.1)
 
 
+def dong_hop_tai_tro():
+    """Hộp "Artisan is free to use!" bật lúc khởi động, chặn nút chính ⇒ đóng bằng UIA Invoke OK (đo 15/10 17:10)."""
+    import uiautomation as A
+    mb = A.WindowControl(searchDepth=1, ClassName="QMessageBox", SubName="Artisan")
+    if mb.Exists(2):
+        _bam(mb, "OK")
+        return True
+    return False
+
+
 def bat_ghi():
     w = _cua_so(2)
     if w is None:
-        subprocess.Popen([EXE])
+        si = subprocess.STARTUPINFO()                   # luật 15/10: không cướp màn anh. Không thu nhỏ hẳn: Qt thu nhỏ không vẽ
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW   # ⇒ PrintWindow kiểm "đang ghi" hỏng; giống hong_qua_panel.bat_on
+        si.wShowWindow = 4                              # SW_SHOWNOACTIVATE
+        subprocess.Popen([EXE], startupinfo=si)
         w = _cua_so(40)
         if w is None:
             raise RuntimeError("Artisan không mở được")
         time.sleep(5)
+        dong_hop_tai_tro()
     # 14/10: bài nộp phải là biểu đồ MỚI — đang ghi / đang ON thì OFF trước (autosave cất bản cũ), rồi mới ON (Artisan reset)
     ok, ly = duong_quay_lai(w)
     if not ok:
