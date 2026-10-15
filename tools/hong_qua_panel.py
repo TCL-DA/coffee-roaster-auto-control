@@ -17,6 +17,7 @@ Bản đồ (firmware include/Define.h):
     python hong_qua_panel.py thu [seed] [thư mục]                 # DRY-RUN 1 lượt đề trên bản sao số (cùng logic với máy thật)
     python hong_qua_panel.py mc <số lượt> [--lo 1.5] [--luong 12] # Monte Carlo bản sao số
     python hong_qua_panel.py kiem_artisan                         # CHỈ ĐỌC: cấu hình COM13, ON, LCD (UIA, không bấm)
+    python hong_qua_panel.py an_toan [--gio 100] [--csv <file> --den 60]  # TẮT nhiệt + làm mát 1 phát; --csv: theo dõi tới nguội
     HONG_DUOC_LAI=1 python hong_qua_panel.py giai_de <hết lúc HH:MM> <thư mục log>   # MÁY THẬT — chỉ khi anh Thành duyệt
 
 Bộ giải đề chuỗi mốc (15/10/2026) — xem `.claude/skills/rang-ca-phe/references/dieu-khien-nhiet.md` mục 7.
@@ -1216,6 +1217,40 @@ def giai_de_that(het_luc_hhmm, thu_muc):
     return kq
 
 
+def an_toan(gio=100, den=60.0, duong_csv=None, toi_da_phut=60):
+    """Lệnh AN TOÀN một phát (chủ máy 15/10: "lệnh an toàn làm trước, phân tích sau"): cờ PC control TẮT (board nghe panel)
+    → TẮT Lệnh nhiệt + Nhiệt đặt 0 % → gió lên `gio` % · trống GIỮ NGUYÊN để quay làm mát. Đọc lại, in 1 dòng kiểm.
+    Có `duong_csv` thì theo dõi mỗi 5 s tới khi BT, ET và buồng đều < `den` °C (không tự tắt gió / trống)."""
+    p = Panel()
+    p.pc_control(False)
+    p.lenh_nhiet(False)
+    p.dat_nhiet(0)
+    p.dat_gio(gio)
+    time.sleep(1.5)
+    d = p.doc_tat_ca()
+    print("AN TOAN: Lenh %s · Nhiet dat %s · gio dat %s · trong dat %s · PC %s · man %s · ma %s · BT %.1f ET %.1f buong %s"
+          % (d["lenh_nhiet"], d["dat_nhiet"], d["dat_gio"], d["dat_trong"], d["pc_control"], d["man"], d["ma"],
+             d["bt"], d["et"], d["buong"]), flush=True)
+    if d["lenh_nhiet"] or d["dat_nhiet"]:
+        sys.exit("CANH BAO: Lệnh nhiệt / Nhiệt đặt chưa về 0 — kiểm panel ngay")
+    if not duong_csv:
+        return d
+    het = time.time() + toi_da_phut * 60
+    with open(duong_csv, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        while time.time() < het:
+            d = p.doc_tat_ca()
+            w.writerow([time.strftime("%H:%M:%S"), d["bt"], d["et"], d["buong"], d["lenh_nhiet"], d["gio"], d["trong"]])
+            f.flush()
+            nong = [v for v in (d["bt"], d["et"], d["buong"]) if v is not None and v >= den]
+            if not nong:
+                print("NGUOI: BT %.1f ET %.1f buong %s < %.0f °C" % (d["bt"], d["et"], d["buong"], den), flush=True)
+                return d
+            time.sleep(5)
+    print("HET GIO THEO DOI: BT %.1f ET %.1f buong %s" % (d["bt"], d["et"], d["buong"]), flush=True)
+    return d
+
+
 def _tach_opt(argv):
     pos, opt, i = [], {}, 0
     while i < len(argv):
@@ -1277,6 +1312,9 @@ if __name__ == "__main__":
         if os.environ.get("HONG_DUOC_LAI") != "1":
             sys.exit("Chưa có quyền lái (HONG_DUOC_LAI=1).")
         sys.exit(0 if ve_dau(float(pos[0]), pos[1], nhiet0=float(opt["n0"]) if "n0" in opt else None) is not None else 2)
+    elif lenh == "an_toan":
+        # luôn được chạy, không cần HONG_DUOC_LAI: chỉ TẮT nhiệt + làm mát
+        an_toan(gio=float(opt.get("gio", 100)), den=float(opt.get("den", 60)), duong_csv=opt.get("csv"))
     elif lenh == "kiem_artisan":
         print(ArtisanThat().kiem())
     elif lenh == "giai_de":
