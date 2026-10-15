@@ -125,11 +125,19 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 - Giữa hai lượt chỉ đổi **1–2 tham số** có giả thuyết rõ; ghi "đổi gì · vì sao · kỳ vọng gì" vào nhật ký lượt.
 - Kiểm bằng **số và cờ** từ board. Ảnh chỉ dùng cho việc kiểm Artisan đang ghi.
 
+## ⛔ CẤM PID khi lái rang (anh Thành 15/10/2026: "cấm dùng PID nhé, PID chỉ dùng trong preheat")
+- Lái BT / ET / RoR trong bài và trong mẻ rang: **chỉ MPC trên bản sao số** (dự báo → chọn kế hoạch → áp bước đầu → làm lại).
+  CẤM vòng PID / PI / P / bang-bang có hệ số kp·ki·kd — kể cả "PI tạm cho nhanh", kể cả `ve_dau` (vòng PI cũ) và mọi luật tay
+  dạng "lệch > x thì đổi y". Gió cũng vào MPC như một biến điều khiển, không lái gió bằng luật tay.
+- PID chỉ được dùng trong **preheat** (của firmware). PI bên trong board VX4 (điều nhiệt điện trở theo SV) là của máy —
+  bản sao số MÔ PHỎNG nó, em không thay, không dùng nó làm bộ lái của em.
+- Bù sai lệch mô hình = **ước lượng nhiễu / offset trong bộ quan sát** (cập nhật trạng thái mô hình), không phải khâu I của bộ lái.
+
 ## NHANH — ít lệnh, không chờ không cần thiết
 - Gộp kiểm tra / đọc vào một lệnh Bash. Không kiểm lại thứ vừa xác nhận. Không đọc lại file đã đọc.
 - Việc dài chạy NỀN, trong lúc chờ làm việc khác có ích (chấm lượt trước, chạy MC lượt sau) — không ngồi poll.
 - **Về điều kiện đầu nhanh:** `phien` đã dùng bộ giải MPC 1 mốc (`GiaiDe(moc=(200,), giu=30, dai_dem=1.5)`, `tat_cuoi=False`), không
-  dùng `ve_dau` (vòng PI cũ, 15/10 mất ~9 phút mỗi lần). Mục tiêu ≤ 4 phút; chậm hơn thì xem log `luot<N>_ve_dau.csv`.
+  dùng `ve_dau` (vòng PI cũ — CẤM, xem mục CẤM PID). Mục tiêu ≤ 4 phút; chậm hơn thì xem log `luot<N>_ve_dau.csv`.
 - Không làm từng bước bằng tay (ngam → ve_dau_ghi → giai_de → cham) khi `phien` làm được — mỗi bước tay tốn thêm nhiều lượt lệnh.
 - Báo cáo ngắn: bảng + mỗi ý một dòng. Không kể lại quá trình.
 
