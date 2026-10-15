@@ -60,9 +60,16 @@ def bat_ghi():
             raise RuntimeError("Artisan không mở được")
         time.sleep(5)
     # 14/10: bài nộp phải là biểu đồ MỚI — đang ghi / đang ON thì OFF trước (autosave cất bản cũ), rồi mới ON (Artisan reset)
+    st = w.ButtonControl(Name="START", searchDepth=12)
     if w.ButtonControl(Name="OFF", searchDepth=12).Exists(1):
+        if st.Exists(0.5) and st.IsEnabled:
+            # 15/10 14:30: đang ON mà CHƯA ghi ⇒ START thẳng (START xoá giản đồ cũ) — OFF lúc này hay kẹt, không thấy nút ON
+            _bam(w, "START")
+            return True
         _bam(w, "OFF")
-        time.sleep(2.5)
+        t = time.time()
+        while not w.ButtonControl(Name="ON", searchDepth=12).Exists(0.5) and time.time() - t < 20:
+            time.sleep(0.5)
     _bam(w, "ON")
     time.sleep(3)
     _bam(w, "START")
