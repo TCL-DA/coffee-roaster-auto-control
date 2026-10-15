@@ -169,3 +169,29 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 
 ## Báo cáo mẫu
 `Lượt 3 · 1009.alog · 7/7 · lố 0,2/0,8 · 11:24 (dự báo 10:40) · 230 mất 130 s (ngân sách 85) · k David nền 0,75 (lồng trống) · đổi: lề hãm 0,5→0,8 · máy: Lệnh 0, BT 131↓`
+
+## Quy trình HMI: chọn / lưu / chạy hồ sơ (đọc code firmware 15/10/2026 — CHƯA chạy thử qua panel)
+Panel: ô HMI `dAddress[n]` (W400nn) ≡ `$(n−1)` khi đọc/ghi Modbus TCP. Firmware đọc thay đổi ở `Modbus_Master.h` (so `_R` với `_R_CP`).
+
+| Nút / ô trên HMI | Ô nhớ (Define.h) | Panel TCP | Firmware xử lý | Tác dụng phụ | Em làm |
+|---|---|---|---|---|---|
+| Chọn file hồ sơ 1–30 | `SELECT_FILE_W 16` | `$15` | `Modbus_Master.h:694` ⇒ `sdReadStep = 1`; `sdRead()` chỉ nạp khi màn `SCRNUM` = 6/12/13 (hoặc PC_Link) | nạp hồ sơ ⇒ ghi đè `$M23` chargeTemp = nhiệt CHARGE của file (không có ⇒ 180,0) + mốc TP/DE/FCs/DROP vào ô 103–118 | 15:21 ghi `$15 = 1` ở màn 2 ⇒ đọc lại 0 (HMI trả về). Phải đứng màn chọn file, hoặc qua PC_Link reg 17 (đường COM — cấm) |
+| SAVE / AUTO | `MANUAL_AUTO_W 23` (= `SW_M_AUTO_W`) | `$22` | `Modbus_Master.h:737`: 0 ⇒ `STT_PROGRAM_SAVE` (rang lưu), 1 ⇒ `STT_PROGRAM_AUTO` (chạy theo hồ sơ) | AUTO: lúc CHARGE nguồn gas/gió/trống = AUTO, áp MaxGas của hồ sơ | ghi + đọc lại |
+| START chương trình | `START_BTN_W 1` | `$0` | `Program.h:1838` máy trạng thái: DATA → COOL DOWN (lồng nóng: chờ nguội tới chargeTemp − turnGasPoint, rồi **gas 50 % AUTO**) → GAS → CHECK (BT vào chargeTemp ± chTolerange ⇒ **tự CHARGE + còi**; vọt > +5 × dung sai ⇒ tắt gas về DATA) | SAVE: `sdLogStartEn` ⇒ XOÁ `N.csv` rồi ghi mới từ lúc START (1 Hz, `Time1 Time2 ET BT Event Air Burner Drum VacFlag VacSP`), header viết lại lúc DROP | chỉ khi anh cho: lấy quyền lửa/gió/trống khỏi tay người |
+| Lệnh nhiệt / gas | `START_GAS_BTN_W 2` | `$1` | bật/tắt gas (máy điện: Lệnh VX4) | — | đang dùng |
+| Nhiệt charge | `chargeTemp_W 23` (iMemHMI, **×10**) | `$M23` (TCP 2023) | `Modbus_Master.h:267` | bị ghi đè mỗi lần nạp hồ sơ | 15:18 ghi 1700, đọc lại 1700 |
+| Xoá 1 / tất cả hồ sơ | `DEL_PROFILE_W 18` / `DEL_ALLPROFILE_W 19` | `$17` / `$18` | xoá `N.csv` + `N.txt` | mất hồ sơ | không bao giờ tự ghi |
+
+Trình tự "rang lưu vào hồ sơ N, charge T" (khi anh cho): `$M23 = T×10` → đứng màn chọn file + `$15 = N` → `$22 = 0` → `$0 = 1` (firmware tự đưa lồng về T rồi CHARGE)
+→ đọc lại từng ô + mã `$40` (STT_SD_LOG_STARTED). Chạy theo hồ sơ N: `$15 = N` (chờ nạp xong, `LOADING_SHOW` = 100) → `$22 = 1` → `$0 = 1`.
+Rang tay ngoài chương trình (như mẻ 15:2x): firmware KHÔNG ghi SD ⇒ dựng `N.csv` từ `.alog` theo đúng định dạng trên rồi chép vào SD.
+
+## Thao tác HMI
+- Giáo trình 100 % (đọc + thao tác, 30 màn, mọi nút, quy trình, CẤM, kế hoạch thử): `.claude/skills/rang-ca-phe/references/hmi-dien-thao-tac.md`.
+- ĐỌC hết: `python tools/hmi_dien.py doc [--json] [--ho_so]` · theo màn: `doc_man <id>` · màn đang hiện: `man` ($21).
+- Chuyển màn: `$49` = số màn (Control Block), kiểm `$21` · chọn hồ sơ: `chon_ho_so <n>` (đứng màn 6/12/13 + `$199+n` = 1 rồi `$15 = n`).
+- Rang lưu vào hồ sơ n: `chon_ho_so n` → `che_do save` → `nhiet_charge T` → `bat_dau` (⛔ anh duyệt). AUTO: `chon_ho_so n` (`$118 = 1`) → `che_do auto` → `bat_dau`.
+- Dừng: `dung_chuong_trinh` (`$0 = 0`, KHÔNG tắt nhiệt) rồi `hong_qua_panel.py an_toan`.
+- Ghi qua TCP BỎ QUA khoá / popup / macro của nút ⇒ tự kiểm điều kiện như mục 4 giáo trình; chuyển ĐÚNG màn trước khi ghi ô phụ thuộc màn.
+- Mọi ghi phải đọc lại xác nhận (`hmi_dien.py` tự làm). Cần `HONG_DUOC_THAO_TAC=1`; cơ cấu / nhiệt thêm `HONG_DUOC_LAI=1`.
+- KHÔNG VNC, KHÔNG chuột / phím, KHÔNG xoá hồ sơ, KHÔNG đổi cấu hình máy — chỉ Modbus TCP 169.254.116.153:502.
