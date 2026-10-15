@@ -80,7 +80,7 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 
 ## ⛔ Kết nối — LUÔN LUÔN (anh Thành 14/10/2026)
 - **Artisan kết nối máy rang TRƯỚC** (giữ COM13 57600 slave 1, đồ thị, lưu giản đồ). Artisan chưa mở thì **em tự mở**
-  (Start-Process), tự ON bằng UIA — anh đã cho phép 15/10, không bắt anh bấm tay.
+  (Start-Process **-WindowStyle Minimized**, không cướp màn anh), tự ON bằng UIA — anh đã cho phép 15/10, không bắt anh bấm tay.
 - **Agent kết nối SAU bằng đường riêng = panel HMI Modbus TCP** (169.254.116.153:502, bản HMI có bảng TCP mở). Em KHÔNG mở COM,
   KHÔNG dựng cầu Modbus cho Artisan, KHÔNG dùng `tools/lai_may.py` / `chuoi_moc_bt.py` (đường COM cũ — sai luật).
 - Đọc: $60 BT · $61 ET · $96 buồng · $66/$64/$65 nhiệt/gió/trống ×10 · $40 mã · $1 Lệnh nhiệt · $13 PC control · $21 màn.
@@ -95,7 +95,15 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
   (`ArtisanThat.dang_ghi()`): nút START đã VÔ HIỆU · ảnh ô đồng hồ đổi sau 3 s (**PrintWindow**, không chụp màn hình — cửa sổ
   khác che sẽ báo nhầm) · có điểm ảnh đường ET đỏ và BT xanh. Thiếu một điều ⇒ KHÔNG lái; START lại bằng UIA; vẫn không được ⇒ `an_toan`.
 - Mỗi lượt: OFF→ON (RESET) → START MỘT lần → làm đề → OFF lưu. Trong lượt CẤM bấm START / RESET / ON / OFF.
-  Sau OFF mở `.alog` vừa lưu kiểm đủ mẫu rồi mới `cham`. Artisan ẩn thanh nút / thu nhỏ ⇒ bật lại bằng UIA.
+  Sau OFF mở `.alog` vừa lưu kiểm đủ mẫu rồi mới `cham`. Artisan ẩn thanh nút ⇒ bật lại bằng UIA (KHÔNG restore cửa sổ — xem mục dưới).
+
+## ⛔ Không chiếm màn hình anh (anh Thành 15/10/2026: "đừng có mà chiếm window bằng cách hiện artisan lên")
+- Anh đang dùng máy trong lúc em lái. Em **KHÔNG** đưa cửa sổ Artisan (hay bất kỳ cửa sổ nào) lên trước: cấm SetForegroundWindow,
+  ShowWindow/restore/maximize, WindowPattern.SetWindowVisualState, SetFocus, `Start-Process` không kèm `-WindowStyle Minimized`.
+- Mọi thao tác Artisan chạy NGẦM trên cửa sổ đang ở yên chỗ cũ (bị che / thu nhỏ vẫn vậy): UIA Invoke / Value, đọc ảnh bằng PrintWindow.
+  Thao tác nào chỉ chạy được khi cửa sổ hiện lên ⇒ KHÔNG làm, báo anh 1 dòng xin phép, hoặc đổi cách khác (đọc `.alog` / log thay ảnh).
+- Hộp thoại Artisan (lưu? ghi đè?) bật giữa màn anh = lỗi của em: tránh bằng cách đặt sẵn tên file / tự lưu, đóng ngay bằng UIA.
+- Artisan chưa mở mà phải tự mở ⇒ mở thu nhỏ (`-WindowStyle Minimized`), không cướp focus.
 
 ## CHÍNH XÁC — số nào cũng có nguồn
 - Điểm bài **chỉ** chấm bằng `cham` trên `.alog` của Artisan. Không chấm từ log bộ lái, không ước lượng bằng mắt.
