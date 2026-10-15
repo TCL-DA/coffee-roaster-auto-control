@@ -16,9 +16,23 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
 2. Một lệnh gộp đọc máy + Artisan: `python tools/hong_qua_panel.py doc && python tools/hong_qua_panel.py kiem_artisan`.
 3. Báo anh 1 dòng trạng thái + kế hoạch (số lượt, thời gian dự toán) rồi làm. Không chờ duyệt lại việc anh đã giao.
 
+## ⚡ Cách làm mặc định: MỘT lệnh `phien` cho cả buổi (anh Thành 15/10: "nâng tốc độ lên gấp 5")
+```
+HONG_DUOC_LAI=1 python tools/hong_qua_panel.py phien <số lượt> <hết lúc HH:MM> <thư mục> [--ngam 15 --n_ngam 55]
+```
+- Một tiến trình làm hết: [ngấm, có giản đồ] → mỗi lượt: **về BT 200 bằng MPC** (bản sao số ~2–3 phút, sáng 15/10 vòng PI
+  cũ mất ~9 phút) → lượt đề → chấm `.alog` → ghi `tong_ket.jsonl` → hết lượt / dừng an toàn / hết giờ ⇒ `an_toan` + làm mát
+  tới < 60 °C. Mỗi bước tự RESET/START/OFF Artisan (giản đồ riêng); code tự đóng băng vì cùng một tiến trình.
+- Chạy NỀN (`run_in_background`), rồi **chờ thông báo xong** — không poll từng phút. Trong lúc chờ: chấm / phân tích lượt cũ,
+  chạy MC cho thay đổi kế tiếp. Muốn xem nhanh: `tail -n 2 <thư mục>/phien.txt`.
+- Muốn chỉnh giữa các lượt thì chia nhỏ: `phien 2 …` → đọc `tong_ket.jsonl` → chỉnh 1–2 tham số → `phien 2 …` tiếp.
+- ⛔ Trong lúc `phien` chạy KHÔNG sửa `ban_sao_so_may_dien.json` (mỗi lượt đọc lại tham số từ file) và không sửa code.
+- Cả buổi chỉ tốn ~5 lệnh của em: kiểm (1) → `phien` (1) → đọc `tong_ket.jsonl` (1) → ghi bài học + bộ nhớ (1) → commit (1).
+
 ## Lệnh nhanh — `tools/hong_qua_panel.py` (dùng lệnh có sẵn, không viết script tạm cho việc đã có lệnh)
 | Việc | Lệnh |
 |---|---|
+| **Cả buổi (mặc định)** | `HONG_DUOC_LAI=1 python tools/hong_qua_panel.py phien <N> <HH:MM> <thư mục> [--ngam 15]` |
 | Đọc máy 1 lần | `python tools/hong_qua_panel.py doc` |
 | Kiểm Artisan (chỉ đọc) | `python tools/hong_qua_panel.py kiem_artisan` |
 | **AN TOÀN: tắt nhiệt + làm mát** | `python tools/hong_qua_panel.py an_toan` (thêm `--csv <file>` chạy NỀN để theo dõi tới < 60 °C) |
@@ -61,16 +75,18 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 ## CHÍNH XÁC — số nào cũng có nguồn
 - Điểm bài **chỉ** chấm bằng `cham` trên `.alog` của Artisan. Không chấm từ log bộ lái, không ước lượng bằng mắt.
 - Mỗi con số trong báo cáo ghi kèm nguồn: thanh ghi ($60…), file `.alog` / csv, hoặc "dự báo bản sao số". Chưa đo thì nói chưa đo.
-- **Đóng băng code mỗi lượt:** trước lượt chép `hong_qua_panel.py`, `ban_sao_so_may_dien.py`, `.json` vào `<thư mục lượt>/code/`
-  và chạy từ bản chép đó. Trong lượt KHÔNG sửa code repo (15/10 đã phạm). Không dừng / khởi động lại bộ lái giữa lượt.
+- **Đóng băng code mỗi lượt:** `phien` chạy một tiến trình nên code tự đóng băng — nhưng tham số `.json` đọc lại mỗi lượt, nên
+  trong lúc chạy KHÔNG sửa code lẫn `.json` (15/10 đã phạm). Chạy bước tay thì chép code + `.json` vào `<thư mục lượt>/code/`
+  và chạy từ bản chép. Không dừng / khởi động lại bộ lái giữa lượt.
 - Giữa hai lượt chỉ đổi **1–2 tham số** có giả thuyết rõ; ghi "đổi gì · vì sao · kỳ vọng gì" vào nhật ký lượt.
 - Kiểm bằng **số và cờ** từ board. Ảnh chỉ dùng cho việc kiểm Artisan đang ghi.
 
 ## NHANH — ít lệnh, không chờ không cần thiết
 - Gộp kiểm tra / đọc vào một lệnh Bash. Không kiểm lại thứ vừa xác nhận. Không đọc lại file đã đọc.
 - Việc dài chạy NỀN, trong lúc chờ làm việc khác có ích (chấm lượt trước, chạy MC lượt sau) — không ngồi poll.
-- **Về điều kiện đầu nhanh:** dùng mức giữ đã đo (bảng mục 7 `dieu-khien-nhiet.md`, vd 200 °C ≈ 39–45 %) làm feedforward:
-  CHẠY hết cỡ rồi hãm theo mô hình, không để PI bò (15/10 mất ~9 phút mỗi lần về BT 200 — mục tiêu ≤ 4 phút).
+- **Về điều kiện đầu nhanh:** `phien` đã dùng bộ giải MPC 1 mốc (`GiaiDe(moc=(200,), giu=60)`, `tat_cuoi=False`), không
+  dùng `ve_dau` (vòng PI cũ, 15/10 mất ~9 phút mỗi lần). Mục tiêu ≤ 4 phút; chậm hơn thì xem log `luot<N>_ve_dau.csv`.
+- Không làm từng bước bằng tay (ngam → ve_dau_ghi → giai_de → cham) khi `phien` làm được — mỗi bước tay tốn thêm nhiều lượt lệnh.
 - Báo cáo ngắn: bảng + mỗi ý một dòng. Không kể lại quá trình.
 
 ## THÔNG MINH — vòng học mỗi lượt: DỰ BÁO → LÀM → CHẤM → SO → CHỈNH

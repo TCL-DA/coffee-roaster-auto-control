@@ -18,6 +18,8 @@ Bản đồ (firmware include/Define.h):
     python hong_qua_panel.py mc <số lượt> [--lo 1.5] [--luong 12] # Monte Carlo bản sao số
     python hong_qua_panel.py kiem_artisan                         # CHỈ ĐỌC: cấu hình COM13, ON, LCD (UIA, không bấm)
     python hong_qua_panel.py an_toan [--gio 100] [--csv <file> --den 60]  # TẮT nhiệt + làm mát 1 phát; --csv: theo dõi tới nguội
+    HONG_DUOC_LAI=1 python hong_qua_panel.py phien <số lượt> <hết lúc HH:MM> <thư mục> [--ngam 15 --n_ngam 55] [--dau 200]
+        # CẢ BUỔI 1 tiến trình: [ngấm] → N × (về đầu MPC → lượt đề → chấm .alog) → an_toan + làm mát. Đọc tong_ket.jsonl
     HONG_DUOC_LAI=1 python hong_qua_panel.py giai_de <hết lúc HH:MM> <thư mục log>   # MÁY THẬT — chỉ khi anh Thành duyệt
 
 Bộ giải đề chuỗi mốc (15/10/2026) — xem `.claude/skills/rang-ca-phe/references/dieu-khien-nhiet.md` mục 7.
@@ -875,10 +877,11 @@ def tu_kiem(d, artisan, cho_nhiet=None, cho_lenh=None):
     return loi
 
 
-def chay_de(panel, artisan, dong_ho, giai, log_csv=None, in_ra=print, het_luc=None, cho_noi=3):
+def chay_de(panel, artisan, dong_ho, giai, log_csv=None, in_ra=print, het_luc=None, cho_noi=3, tat_cuoi=True):
     """MỘT lượt đề, cùng logic cho máy thật và bản sao số. Thứ tự (luật chủ máy 14–15/10):
     Artisan kiểm (COM13 57600 slave 1, ON, nhận số) → Artisan RESET + START → Hồng nối panel, tự kiểm → lái tới hết mốc
-    → TẮT Lệnh nhiệt → Artisan OFF (lưu giản đồ) → Hồng tự chấm từ .alog. Không dừng / khởi động lại giữa chừng."""
+    → TẮT Lệnh nhiệt → Artisan OFF (lưu giản đồ) → Hồng tự chấm từ .alog. Không dừng / khởi động lại giữa chừng.
+    `tat_cuoi=False` (bước VỀ ĐẦU): xong sạch thì GIỮ Lệnh + mức giữ cho lượt sau; dừng vì bất kỳ lý do nào khác vẫn TẮT."""
     ok, ly = artisan.kiem()
     in_ra("ARTISAN KIEM: %s" % ly)
     if not ok:
@@ -912,7 +915,7 @@ def chay_de(panel, artisan, dong_ho, giai, log_csv=None, in_ra=print, het_luc=No
     if w:
         w.writerow(["gio", "t", "moc", "bt", "et", "buong", "nhiet", "lenh_nhiet", "flags_hex", "ma", "ror_fw_bo_qua",
                     "ke_hoach", "ghi_chu"])
-    ly_do, t_doc_ok, cho = "xong", dong_ho.now(), None
+    ly_do, t_doc_ok, cho, xong_sach = "xong", dong_ho.now(), None, False
     try:
         while not giai.het:
             now = dong_ho.now()
@@ -975,22 +978,27 @@ def chay_de(panel, artisan, dong_ho, giai, log_csv=None, in_ra=print, het_luc=No
                 ly_do = "Artisan NGỪNG GHI (đồng hồ đứng)"
                 break
             dong_ho.sleep(max(0.0, 1.0 - (dong_ho.now() - now)))
+        xong_sach = ly_do == "xong" and giai.het
     finally:
-        panel.lenh_nhiet(False)                         # xong / dừng: TẮT Lệnh nhiệt (lồng trống, gió 85 % tự nguội)
+        tat = tat_cuoi or not xong_sach
+        if tat:
+            panel.lenh_nhiet(False)                     # xong / dừng: TẮT Lệnh nhiệt (lồng trống, gió 85 % tự nguội)
         if f:
             f.close()
     dong_ho.sleep(1)
     d = panel.doc_tat_ca()
-    loi = tu_kiem(d, artisan, cho_lenh=0)
-    in_ra("%s · TAT Lenh nhiet · tu kiem: %s" % (ly_do, "; ".join(loi) if loi else "màn rang, $13=0, $1=0, mã %s, Artisan có số"
-                                                 % d["ma"]))
+    loi = tu_kiem(d, artisan, cho_lenh=0 if tat else None)
+    in_ra("%s · %s · tu kiem: %s" % (ly_do, "TAT Lenh nhiet" if tat else "GIU Nhiet %d%% Lenh %d" % (giai.u[0], giai.u[1]),
+                                     "; ".join(loi) if loi else "màn rang, $13=0, $1=%d, mã %s, Artisan có số"
+                                     % (d["lenh_nhiet"], d["ma"])))
     alog = artisan.tat_luu()
     in_ra("ARTISAN OFF · gian do: %s" % alog)
     if alog:
         ts, bts, _, _ = doc_alog(alog)
         in_ra("KIEM ALOG: %d mau · %.0f s · BT %.1f..%.1f" % (len(ts), (ts[-1] - ts[0]) if ts else 0,
                                                             min(bts) if bts else 0, max(bts) if bts else 0))
-    return {"dung": ly_do, "alog": alog, "xong_noi_bo": giai.xong, "so_ghi": getattr(panel, "so_ghi", None)}
+    return {"dung": ly_do, "alog": alog, "xong_noi_bo": giai.xong, "so_ghi": getattr(panel, "so_ghi", None),
+            "sach": xong_sach}
 
 
 # ── dry-run + Monte Carlo ─────────────────────────────────────────────────────────────────────
@@ -1217,6 +1225,87 @@ def giai_de_that(het_luc_hhmm, thu_muc):
     return kq
 
 
+def _gio_het(hhmm):
+    h, m = (int(v) for v in hhmm.split(":"))
+    lt = time.localtime()
+    het = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, h, m, 0, 0, 0, -1))
+    if het <= time.time():
+        sys.exit("Giờ hết quyền đã qua.")
+    return het
+
+
+def phien(so_luot, het_luc_hhmm, thu_muc, ngam_phut=0.0, n_ngam=55, dau=200, giu_dau=60, nguoi=True):
+    """CẢ BUỔI trong MỘT tiến trình (chủ máy 15/10: "nâng tốc độ lên gấp 5"): [ngấm] → N × (VỀ ĐẦU bằng MPC 1 mốc → LƯỢT ĐỀ
+    → CHẤM .alog) → AN TOÀN + làm mát. Mỗi bước có giản đồ Artisan riêng (chay_de tự RESET/START/OFF). Code đóng băng sẵn
+    (một tiến trình). Dừng sạch ⇒ lượt sau; dừng vì an toàn / hết giờ / Artisan ⇒ thôi, `an_toan`. Kết quả: tong_ket.jsonl."""
+    import json
+    if os.environ.get("HONG_DUOC_LAI") != "1":
+        sys.exit("Chưa có quyền lái (HONG_DUOC_LAI=1).")
+    het = _gio_het(het_luc_hhmm)
+    os.makedirs(thu_muc, exist_ok=True)
+    nhat_ky = open(os.path.join(thu_muc, "phien.txt"), "a", encoding="utf-8")
+
+    def in_ra(s):
+        dong = time.strftime("%H:%M:%S ") + s
+        print(dong, flush=True)
+        nhat_ky.write(dong + "\n")
+        nhat_ky.flush()
+
+    bang = []
+    try:
+        art, panel = ArtisanThat(), Panel()
+        ok, ly = art.kiem()
+        in_ra("PHIEN %d luot · het %s · Artisan: %s" % (so_luot, het_luc_hhmm, ly))
+        if not ok:
+            return bang
+        if panel.doc(21, 1)[0] != MAN_RANG:
+            in_ra("dang nhap -> man %s" % panel.dang_nhap())
+        if ngam_phut > 0:
+            art.reset_start()
+            time.sleep(8)
+            ok, ct = art.dang_ghi()
+            in_ra("NGAM %.0f ph Nhiet %d%% · Artisan dang ghi: %s" % (ngam_phut, n_ngam, ct))
+            if not ok:
+                return bang
+            ok = ngam(ngam_phut, n_ngam, os.path.join(thu_muc, "ngam.csv"))
+            in_ra("NGAM xong (%s) · gian do %s" % (ok, art.tat_luu()))
+            if not ok:
+                return bang
+        for i in range(1, so_luot + 1):
+            if time.time() > het - (TRAN_GIAY + 4 * 60):
+                in_ra("KHONG DU GIO cho luot %d — thoi" % i)
+                break
+            t1 = time.time()
+            kv = chay_de(panel, art, DongHoThat(), GiaiDe(moc=(dau,), giu=giu_dau), het_luc=het, tat_cuoi=False,
+                         log_csv=os.path.join(thu_muc, "luot%d_ve_dau.csv" % i), in_ra=lambda s: in_ra("[ve dau] " + s))
+            t_ve = time.time() - t1
+            in_ra("LUOT %d · VE DAU %s sau %.0f s · %s" % (i, "xong" if kv["sach"] else "DUNG", t_ve, kv["dung"]))
+            if not kv["sach"]:
+                break
+            kq = chay_de(panel, art, DongHoThat(), GiaiDe(), het_luc=het,
+                         log_csv=os.path.join(thu_muc, "luot%d.csv" % i), in_ra=lambda s: in_ra("[luot %d] %s" % (i, s)))
+            ch = cham_alog(kq["alog"]) if kq.get("alog") else {"dat": False, "so_moc_dat": 0, "loi": "không có giản đồ"}
+            in_ra(in_cham(ch) if kq.get("alog") else "CHAM: không có giản đồ — lượt không tính")
+            dong = {"luot": i, "alog": kq.get("alog"), "ve_dau_alog": kv.get("alog"), "ve_dau_giay": round(t_ve),
+                    "dung": kq["dung"], "dat": ch.get("dat"), "so_moc_dat": ch.get("so_moc_dat"),
+                    "tong_giay": ch.get("tong_giay"), "lo_len": ch.get("lo_len"), "lo_xuong": ch.get("lo_xuong"),
+                    "moc": [(k["moc"], k["giay"], k["lo"], k["truot"]) for k in ch.get("moc", [])]}
+            bang.append(dong)
+            with open(os.path.join(thu_muc, "tong_ket.jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps(dong, ensure_ascii=False) + "\n")
+            if kq["dung"] not in ("xong", "HET GIO") or time.time() > het:
+                in_ra("DUNG PHIEN: %s" % kq["dung"])
+                break
+    finally:
+        in_ra("KET THUC PHIEN · %s" % " | ".join("L%d %s %s/7 %s lo %.1f/%.1f" % (
+            b["luot"], "DAT" if b["dat"] else "-", b["so_moc_dat"],
+            "%d:%02d" % divmod(int(b["tong_giay"]), 60) if b["tong_giay"] else "--:--",
+            b["lo_len"] or 0, b["lo_xuong"] or 0) for b in bang))
+        nhat_ky.close()
+        an_toan(gio=100, duong_csv=os.path.join(thu_muc, "lam_mat.csv") if nguoi else None)
+    return bang
+
+
 def an_toan(gio=100, den=60.0, duong_csv=None, toi_da_phut=60):
     """Lệnh AN TOÀN một phát (chủ máy 15/10: "lệnh an toàn làm trước, phân tích sau"): cờ PC control TẮT (board nghe panel)
     → TẮT Lệnh nhiệt + Nhiệt đặt 0 % → gió lên `gio` % · trống GIỮ NGUYÊN để quay làm mát. Đọc lại, in 1 dòng kiểm.
@@ -1312,6 +1401,9 @@ if __name__ == "__main__":
         if os.environ.get("HONG_DUOC_LAI") != "1":
             sys.exit("Chưa có quyền lái (HONG_DUOC_LAI=1).")
         sys.exit(0 if ve_dau(float(pos[0]), pos[1], nhiet0=float(opt["n0"]) if "n0" in opt else None) is not None else 2)
+    elif lenh == "phien":
+        phien(int(pos[0]), pos[1], pos[2], ngam_phut=float(opt.get("ngam", 0)), n_ngam=int(opt.get("n_ngam", 55)),
+              dau=float(opt.get("dau", 200)), giu_dau=int(opt.get("giu_dau", 60)), nguoi=opt.get("nguoi", "1") == "1")
     elif lenh == "an_toan":
         # luôn được chạy, không cần HONG_DUOC_LAI: chỉ TẮT nhiệt + làm mát
         an_toan(gio=float(opt.get("gio", 100)), den=float(opt.get("den", 60)), duong_csv=opt.get("csv"))
