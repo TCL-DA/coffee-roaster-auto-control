@@ -30,6 +30,21 @@ Artisan (thanh trượt Burner / Air / Drum, nút sự kiện), Artisan gửi l�
   mã cảnh báo ($40), Lệnh nhiệt ($1), cờ PC control ($13), Artisan còn nhận số (ô LCD). Thiếu một mục là chưa xong.
   (Anh Thành: "sao cứ phải để tao nhắc vậy".)
 
+## ⛔ Thao tác nhanh, gọn lẹ (anh Thành 15/10/2026)
+- **Lệnh an toàn (tắt nhiệt, làm mát) làm TRƯỚC, phân tích SAU** — ngay trong lệnh kế tiếp, không đọc tài liệu / viết code trước.
+- Gộp nhiều thao tác vào một lệnh; không kiểm đi kiểm lại thứ đã chắc. Báo cáo ngắn, mỗi ý một dòng.
+
+## ⛔ Không giản đồ Artisan = bài không tính (anh Thành 15/10/2026)
+- **Trước khi bộ lái đổi nhiệt, Artisan phải ĐANG GHI** — kể cả bước làm nóng / về điều kiện đầu (giản đồ riêng). Kiểm đủ 3 điều
+  bằng UIA + ảnh vùng (chỉ đọc, `ArtisanThat.dang_ghi()` trong `tools/hong_qua_panel.py`): nút START đã VÔ HIỆU · ảnh ô đồng hồ
+  đổi sau 3 s (UIA đọc QLCDNumber đồng hồ ra "0", phải so ảnh) · có điểm ảnh đường ET (đỏ) và BT (xanh đậm). Thiếu một điều thì
+  KHÔNG lái; thử START lại bằng UIA (không bao giờ Invoke nút đang vô hiệu); vẫn không được thì TẮT Lệnh nhiệt rồi báo.
+- Trong lượt: mỗi 30 s kiểm đồng hồ còn chạy; Artisan ngừng ghi hoặc mất số > 10 s ⇒ dừng lượt, TẮT Lệnh nhiệt.
+- Mỗi lượt: OFF→ON (RESET) → START MỘT lần, TRƯỚC lệnh nhiệt đầu tiên; trong lượt CẤM bấm START / RESET / ON / OFF; OFF chỉ sau
+  khi xong đề. Sau OFF mở `.alog` vừa lưu kiểm số mẫu đủ thời gian rồi mới chấm (`cham_alog`).
+- Artisan 4.0.2 có thể đang ẨN thanh nút (View → Controls tắt) hoặc bị THU NHỎ: bật lại / khôi phục bằng UIA (menu
+  ExpandCollapse + Invoke, WindowPattern) — cấm SendKeys / SendInput / di chuột thật.
+
 ## Quyền lái — luật cứng
 1. Chỉ lái khi anh Thành **nói rõ** cho quyền, kèm phạm vi (nhiệt / gió / trống) và thời gian. Hết thời gian là trả quyền.
 2. Đọc số thì luôn được làm. Ghi lệnh chỉ đi qua PC_Link (`tools/lai_may.py`) khi cờ `pc_control` bật. Công tắc "Điều khiển từ PC" trên HMI: chỉ chạm qua VNC khi đã được cho quyền lái; chạm xong trả màn về "Vận hành".

@@ -19,7 +19,15 @@ Mô hình (gió 85 %, trống 85 %, lồng TRỐNG — đổi gió / trống / c
     BT   += kT·(aT·ET + bT·W1 + cT − BT)                                  (đầu dò hạt trong lồng trống)
     W1   (vỏ lồng, ẩn) += g1·(buồng − W1) + g12·(W2 − W1) − l1·(W1 − 30)
     W2   (thân máy, ẩn, chậm hàng chục phút) += g21·(W1 − W2) − l2·(W2 − 30)
-Bộ quan sát (dùng khi bám log): mỗi giây gán buồng/ET/BT = số đo; H, W1, W2 chỉnh theo sai số dự báo 1 bước (L*)."""
+Bộ quan sát (dùng khi bám log): mỗi giây gán buồng/ET/BT = số đo; H, W1, W2 chỉnh theo sai số dự báo 1 bước (L*).
+
+15/10/2026 — bổ sung cho bộ giải đề (`hong_qua_panel.py`):
+    trang_thai_tu_do()  ước trạng thái ẩn từ MỘT mẫu đo (bộ giải vừa nối panel, chưa có lịch sử)
+    buoc_quan_sat()     bộ quan sát 1 bước, chạy cho 1 hoặc K mô hình cùng lúc (xep_tham_so)
+    doi_do_nhay()       đổi độ nhạy cân bằng °C/% (0,76 bảng giữ thật … 0,94 khớp log)
+    lech_tham_so()      bộ tham số lệch ngẫu nhiên cho Monte Carlo (động học ±12 %, VX4 ±25 %, offset ±2,5…3 °C)
+    MayMoPhong          máy ảo có nhiễu, trễ đọc / trễ lệnh, RoR firmware giả (trễ 35 s, có lúc đảo dấu)
+    kiem_dac_diem()     soát mô hình với đặc điểm đo thật (VX4 bám SV 10–15 s, mức giữ 200/210, lên chậm khi lồng nguội)"""
 import csv
 import json
 import math
@@ -55,7 +63,8 @@ def _kep_so(x, lo, hi):
 
 
 def _cong_thuc(p, h, b, et, bt, w1, w2, i, g, nhiet, lenh, kep):
-    """Phương trình mô hình — MỘT chỗ duy nhất; chạy được cho số đơn (bộ quan sát) và mảng (dự báo theo lô)."""
+    """Phương trình mô hình — MỘT chỗ duy nhất; chạy được cho số đơn (bộ quan sát) và mảng (dự báo theo lô).
+    Tham số có thể là số hoặc mảng (K, 1) — bộ giải dùng K mô hình cùng lúc (MPC nhiều mô hình)."""
     sv = (130.0 + 2.2 * nhiet) * lenh
     g = (g + 1.0) * lenh
     mo = kep((g - p["d0"]) / p["r"], 0.0, 1.0)
@@ -209,8 +218,9 @@ def _p(v):
     return dict(zip(TEN, v))
 
 
-def hoc(d, diem, p0=None, in_tien_trinh=True):
-    """Bình phương tối thiểu trên sai số dự báo nhiều tầm (BT 5/15/30/60 s, ET 15/30, buồng 5/15)."""
+def hoc(d, diem, p0=None, in_tien_trinh=True, tam_dai=()):
+    """Bình phương tối thiểu trên sai số dự báo nhiều tầm (BT 5/15/30/60 s, ET 15/30, buồng 5/15).
+    tam_dai = ((giây, trọng số), …) thêm tầm dài (vd 120/240 s) — ép độ nhạy cân bằng °C/% khớp máy thật (15/10)."""
     from scipy.optimize import least_squares
     lo = np.array([KHOI[k][1] for k in TEN])
     hi = np.array([KHOI[k][2] for k in TEN])
@@ -221,9 +231,10 @@ def hoc(d, diem, p0=None, in_tien_trinh=True):
     def r(v):
         p = _p(v)
         X = quan_sat(p, d)
-        Y = du_bao(p, d, X, diem, 60)
+        tam = max([60] + [h for h, _ in tam_dai])
+        Y = du_bao(p, d, X, diem, tam)
         res = []
-        for h, w in ((5, 0.5), (15, 1.0), (30, 1.0), (60, 1.0)):
+        for h, w in ((5, 0.5), (15, 1.0), (30, 1.0), (60, 1.0)) + tuple(tam_dai):
             res.append(w * (Y[:, h, T] - d["bt"][diem + h]))
         for h, w in ((15, 0.4), (30, 0.4)):
             res.append(w * (Y[:, h, E] - d["et"][diem + h]))
@@ -278,6 +289,175 @@ class BanSaoSo:
     def an(self):
         """Trạng thái ẩn để soi: điện trở H, vỏ lồng W1, thân máy W2, tích phân VX4."""
         return {"H": self.x[H], "W1": self.x[W1], "W2": self.x[W2], "I_vx4": self.x[I]}
+
+
+# ---------------------------------------------------------------- khởi tạo trạng thái từ MỘT lần đo
+def trang_thai_tu_do(p, bt, et, buong, nhiet, lenh):
+    """Ước trạng thái ẩn từ một mẫu đo khi máy gần đứng (dùng lúc bộ giải vừa nối, chưa có lịch sử).
+    W1 suy từ phương trình ET (hệ số bE ≈ 1 ⇒ ít nhạy nhiễu); H, I suy từ cân bằng buồng; W2 ≈ W1."""
+    b = et if buong is None or buong != buong else buong
+    w1 = (et - p["aE"] * b - p["cE"]) / max(p["bE"], 1e-3)
+    h = b + (p["dB"] * (b - T_MOI_TRUONG) - p["eB"] * (w1 - b)) / p["cB"]
+    sv = (130.0 + 2.2 * nhiet) if lenh else 0.0
+    u = _kep_so(p["bH"] * (h - b) / p["aH"], 0.0, 1.0)
+    i = _kep_so(u - p["kp"] * (sv - b), 0.0, 1.0) if lenh else 0.0
+    return np.array([h, b, et, bt, w1, w1, i, 600.0 if lenh else 0.0])
+
+
+def buoc_quan_sat(p, x, u, bt, et, buong):
+    """Một bước bộ quan sát (giống quan_sat): dự báo 1 s với lệnh u = (nhiệt %, lệnh) rồi gán số đo, chỉnh trạng thái ẩn.
+    Chạy được cho x (8,) hoặc (K, 8) với p là tham số mảng (K, 1)."""
+    y = buoc(p, x, u[0], u[1]) if x.ndim == 1 else _buoc_k(p, x, u)
+    eT, eE = bt - y[..., T], et - y[..., E]
+    if buong is not None and buong == buong:
+        y[..., H] += _sq(p["LhB"]) * (buong - y[..., B])
+        y[..., B] = buong
+    else:
+        y[..., B] += _sq(p["LbE"]) * eE
+    y[..., E], y[..., T] = et, bt
+    y[..., W1] += _sq(p["LwT"]) * eT + _sq(p["LwE"]) * eE
+    y[..., W2] += _sq(p["Lw2"]) * eT
+    return y
+
+
+def _sq(v):
+    return np.squeeze(v, -1) if isinstance(v, np.ndarray) else v
+
+
+def _buoc_k(p, x, u):
+    """x (K, 8), p mảng (K, 1): đưa về (K, 1, 8) để dùng chung buoc() theo lô."""
+    return buoc(p, x[:, None, :], np.full((x.shape[0], 1), u[0]), np.full((x.shape[0], 1), u[1]))[:, 0, :]
+
+
+def xep_tham_so(ds):
+    """Gộp K bộ tham số thành dict mảng (K, 1) để mô phỏng K mô hình một lượt."""
+    return {k: np.array([q[k] for q in ds], float)[:, None] for k in ds[0]}
+
+
+# ---------------------------------------------------------------- MONTE CARLO: máy ảo lệch tham số + nhiễu + trễ
+# Mức lệch chọn theo độ phân tán THẬT 14/10: cùng BT 200 °C nhưng mức giữ 37–45 % giữa các phiên (≈ ±3 °C BT tương đương
+# ⇒ lệch offset cT ±2,5 / cE ±3); động học ±12 % (VX4 bám SV 10–15 s ⇒ aH, cB, r lệch ±25 %).
+DONG_HOC = ("kp", "ki", "bH", "dB", "eB", "kE", "kT", "g1", "g12", "l1", "g21", "l2")
+VX4_NHANH = ("aH", "cB", "r", "d0")
+
+
+def doi_do_nhay(p, he_so):
+    """Đổi độ nhạy cân bằng °C BT / % Nhiệt bằng tỉ lệ buồng→ET (aE), giữ tổng aE + bE.
+    aE × 0,75 ⇒ 0,76 °C/% (bảng giữ thật 14/10: 200 → 37–41 %, 210 → 51–54 %); × 1,0 ⇒ 0,94 (khớp log tốt nhất); × 1,1 ⇒ 1,01."""
+    q = dict(p)
+    s = p["aE"] + p["bE"]
+    q["aE"] = p["aE"] * he_so
+    q["bE"] = s - q["aE"]
+    return q
+
+
+def lech_tham_so(p, rng, muc=0.12, muc_vx4=0.25, lech_cT=2.5, lech_cE=3.0, nhay=(0.75, 1.1)):
+    q = doi_do_nhay(p, rng.uniform(*nhay))
+    for k in DONG_HOC:
+        q[k] = q[k] * rng.uniform(1 - muc, 1 + muc)
+    for k in VX4_NHANH:
+        q[k] = q[k] * rng.uniform(1 - muc_vx4, 1 + muc_vx4)
+    s = q["aT"] + q["bT"]                               # giữ tổng hệ số (đúng ở cân bằng) — đổi tỉ lệ khí / thành lồng
+    q["aT"] = q["aT"] * rng.uniform(1 - muc / 2, 1 + muc / 2)
+    q["bT"] = s - q["aT"]
+    q["cT"] = p["cT"] + rng.uniform(-lech_cT, lech_cT)
+    q["cE"] = p["cE"] + rng.uniform(-lech_cE, lech_cE)
+    return q
+
+
+class MayMoPhong(BanSaoSo):
+    """Máy ảo cho Monte Carlo: tham số lệch, nhiễu quá trình + nhiễu đo, trễ đọc (bản sao trên panel) và trễ lệnh
+    (panel → board → VX4), RoR firmware giả lập (trễ 30–40 s, có lúc NGƯỢC DẤU — bộ giải KHÔNG được dùng)."""
+
+    def __init__(self, x0, p, rng, tre_do=1, tre_lenh=1, nhieu_do=0.1, nhieu_qt=(0.3, 0.3, 0.05)):
+        super().__init__(x0[T], x0[E], p=p)
+        self.x = np.array(x0, float)
+        self.rng, self.tre_do, self.tre_lenh = rng, int(tre_do), int(tre_lenh)
+        self.nhieu_do, self.nhieu_qt = nhieu_do, nhieu_qt
+        self.hang_lenh = [(0.0, 0.0)] * (self.tre_lenh + 1)
+        self.hang_do = []
+        self.ls_bt = []
+        self.dao_dau = 0
+        self.ror_fw = 0.0
+
+    def dat(self, nhiet, lenh):
+        """Lệnh mới — tới board sau `tre_lenh` giây."""
+        self.hang_lenh[-1] = (float(_kep_so(nhiet, 0, 100)), 1.0 if lenh else 0.0)
+
+    def tick(self):
+        """Một giây máy thật. Trả số đo trên panel (đã trễ): (bt, et, buong)."""
+        u = self.hang_lenh[0]
+        self.hang_lenh = self.hang_lenh[1:] + [self.hang_lenh[-1]]
+        self.x = buoc(self.p, self.x, *u)
+        a, b, c = self.nhieu_qt
+        self.x[E] += self.rng.normal(0, a)
+        self.x[B] += self.rng.normal(0, b)
+        self.x[T] += self.rng.normal(0, c)
+        do = np.round(self.x[[T, E, B]] + self.rng.normal(0, self.nhieu_do, 3), 1)
+        self.hang_do.append(do)
+        self.ls_bt.append(self.x[T])
+        self._ror_firmware()
+        return tuple(self.hang_do[max(0, len(self.hang_do) - 1 - self.tre_do)])
+
+    def bt_that(self):
+        return float(self.x[T])
+
+    def _ror_firmware(self):
+        """Giống `ror_bt` firmware đo 14/10: độ dốc của đoạn 30 s kết thúc 35 s trước; thỉnh thoảng đảo dấu 5–10 s."""
+        ls = self.ls_bt
+        if len(ls) < 70:
+            self.ror_fw = 0.0
+            return
+        doc = (ls[-36] - ls[-66]) * 2.0
+        if self.dao_dau <= 0 and self.rng.random() < 0.01:
+            self.dao_dau = int(self.rng.integers(5, 11))
+        if self.dao_dau > 0:
+            self.dao_dau -= 1
+            doc = -doc
+        self.ror_fw = round(doc, 1)
+
+
+def kiem_dac_diem(p, x0):
+    """Soát mô hình với đặc điểm ĐÃ ĐO của VX4: trả dict số để ghi vào giáo trình."""
+    kq = {}
+    # 1) VX4 bám SV: giữ 40 % tới đứng, nâng 50 % — đo giây tới khi buồng đạt 90 % bước SV
+    x = np.array(x0, float)
+    for _ in range(400):
+        x = buoc(p, x, 40.0, 1.0)
+    b0 = x[B]
+    sv1 = 130 + 2.2 * 50
+    for s in range(1, 120):
+        x = buoc(p, x, 50.0, 1.0)
+        if x[B] >= b0 + 0.9 * (sv1 - b0):
+            kq["vx4_90pt_s"] = s
+            break
+    # 2) độ nhạy BT ở 200–210 °C: mức giữ sau 3 phút đứng (như cách đọc bảng cân bằng thật)
+    def bt_sau(n, giay=180):
+        y = np.array(x0, float)
+        for _ in range(giay):
+            y = buoc(p, y, n, 1.0)
+        return y[T]
+    gia = {n: bt_sau(n) for n in range(30, 61, 2)}
+    tim = lambda T0: min(gia, key=lambda n: abs(gia[n] - T0))  # noqa: E731
+    kq["giu_200_pct"], kq["giu_210_pct"] = tim(200), tim(210)
+    kq["do_nhay_C_per_pct"] = round((gia[50] - gia[40]) / 10, 2)
+    # 3) lên chậm khi thân lồng nguội: RoR 100 % trong 60 s, lồng ngấm vs nguội hơn 40 °C
+    def ror_100(dw):
+        y = np.array(x0, float)
+        y[W1] -= dw
+        y[W2] -= dw
+        a = y[T]
+        for _ in range(60):
+            y = buoc(p, y, 100.0, 1.0)
+        return y[T] - a
+    kq["tang_60s_100pct_ngam"], kq["tang_60s_100pct_long_nguoi20"] = round(ror_100(0), 1), round(ror_100(20), 1)
+    return kq
+
+
+def trang_thai_ngam(duong=NOI):
+    """Trạng thái máy ĐÃ NGẤM (đo lúc bắt đầu đề 14/10 20:18:57, BT 192,9) — điểm xuất phát Monte Carlo."""
+    with open(duong, encoding="utf-8") as f:
+        return np.array(json.load(f)["trang_thai_ngam"], float)
 
 
 def hoc_lai(duong_log, hoc_den=None, p0=None):

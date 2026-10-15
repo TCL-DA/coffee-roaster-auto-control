@@ -85,9 +85,47 @@ Tham số đổi khi đang chạy qua `lenh.txt` (`kp 0.8`, `tau 1.5`, `ki 0.05`
 gas/gió/trống/nút, kèm BT/ET/RoR/bước mẻ), `moc.csv` (Charge, TP, DE, FCs, DEV, Drop). Không chạy cùng lúc với `lai_may.py`
 (chung cổng COM13). Sau mẻ: rút ra quy tắc "ở mốc/nhiệt nào chủ máy đổi gì, bao nhiêu" để Hồng tập lặp lại.
 
+## 7. Bộ giải đề chuỗi mốc qua panel — MPC trên bản sao số (15/10/2026)
+
+`tools/hong_qua_panel.py` (`GiaiDe`, `chay_de`, `cham_alog`) + `tools/ban_sao_so_may_dien.py` (mô hình 1 giây, tham số
+`ban_sao_so_may_dien.json`). Cùng MỘT vòng lái cho máy thật (`Panel` + `ArtisanThat`) và dry-run (`PanelAo` + `ArtisanAo`).
+
+```
+Mỗi giây: đọc panel ($60 BT, $61 ET, $96 buồng, $1, $13, $21, $40)
+  → bộ quan sát 5 mô hình (độ nhạy 0,76 … 1,01 °C/%) · bù trễ chết 2 s (đọc panel + lệnh panel→board→VX4)
+  → chọn mô hình khớp máy nhất: sai số dự báo VÒNG HỞ 15 s với đúng lệnh đã ra (EWMA)
+  → thử ~1 800–2 500 kế hoạch 150 s: giữ · đổi mức ở τ · CHẠY hết cỡ rồi hãm ở τ · 1 xung / 2 xung ngắn tính trước
+  → chọn kế hoạch xong mốc sớm nhất mà BT dự báo KHÔNG vượt mốc quá lề (0,5 °C; mốc thấp 0,8; đang giữ 0,9) theo chiều đang đi
+Lớp an toàn riêng (bộ giải không ghi đè): BT > 245 · ET > 255 · mất số panel > 5 s · Artisan mất số / ngừng ghi > 10 s
+  · mã $40 cảnh báo / lỗi · cờ PC control bật · màn ≠ màn rang · quá 12 phút ⇒ TẮT Lệnh nhiệt.
+```
+
+**Bài học 15/10 (đã mắc — không lặp lại):**
+- ⛔ **Không giản đồ Artisan = bài không tính.** Trước lệnh nhiệt đầu tiên Artisan phải ĐANG GHI, kiểm đủ 3 điều: START vô hiệu ·
+  đồng hồ chạy · có đường ET/BT. UIA đọc ô đồng hồ (QLCDNumber) ra "0" ⇒ phải so ẢNH ô đồng hồ. Ảnh lấy bằng **PrintWindow**,
+  không chụp màn hình: chủ máy đang dùng VS Code che Artisan ⇒ ảnh chụp màn hình đứng yên ⇒ báo nhầm "đồng hồ đứng", lượt 2 bị
+  dừng ở 75 s. Bước làm nóng / về điều kiện đầu cũng phải có giản đồ riêng.
+- Artisan 4.0.2 có thể **ẩn thanh nút** (View → Controls tắt) ⇒ UIA không thấy ON/OFF/START — bật lại bằng menu UIA
+  (ExpandCollapse + Invoke). Bị thu nhỏ ⇒ Qt không vẽ ⇒ khôi phục bằng WindowPattern.
+- **Máy ngấm nông khác máy ngấm sâu.** 14/10 tối: BT ≈ SV − 25. 15/10 sáng sau 18 phút ngấm (40 → 55 %): BT ≈ buồng − 58 lúc 55 %
+  (thân lồng còn thiếu nhiệt). Tham số học hôm trước dự báo lệch dần; học lại trên log hôm nay (ngấm + lượt 1) ⇒ dự báo 120 s
+  MAE 1,50 → 1,22 °C. Mức giữ thật 15/10: 170 → 11 % · 190 → 32–34 % · 210 → 56–57 % · 230 → 76 % · 200 → 39–40 % · 180 → 17 %.
+- **Tích phân lệch cân bằng chỉ khi đang giữ gần mốc** (đúng bài học PI 14/10). Lượt 1: offset tích phân cả lúc chuyển mốc ⇒ trôi
+  −10 °C, bão hoà ⇒ dự báo mốc 150 sai ⇒ để TẮT 90 s rồi mới hãm ⇒ lố xuống 2,3 °C.
+- **Mốc dưới mức Lệnh-bật-0 %** (SV 130 °C mà BT cân bằng vẫn ~160 °C): không giữ được bằng Nhiệt % — chỉ bằng xung ngắn TÍNH
+  TRƯỚC trên mô hình (1–2 xung 2–6 s, nghỉ 6–24 s). Số thật: xung 9 s ở buồng 97 °C ⇒ BT +6 °C sau 18 s; TẮT Lệnh ⇒ nguội
+  −11 °C/phút quanh 150. Khi đang ở chế độ này KHÔNG khoá Lệnh lúc "đang giữ" (khoá làm xung kéo thành 12 s).
+- **Đang giữ trong dải: chỉ tinh chỉnh Nhiệt ±4 %, cấm đảo Lệnh / chạy 100 %.** Lề lố 0,3 quá chặt so với nấc 1 % (≈ 0,8–0,9 °C)
+  ⇒ bộ giải TẮT 6 s ngay tại mốc ⇒ BT rơi khỏi dải ⇒ đếm lại từ đầu, chu kỳ không dứt (giáo trình mục 3: đặt mức rồi để VX4 giữ).
+- **Chưa kế hoạch nào xong trong tầm nhìn mà còn cách mốc > 8 °C ⇒ CHẠY hết cỡ** (lên 100 %, xuống TẮT Lệnh). Không thì bộ giải
+  đứng yên ở mức giữ cũ (180 → 150 đứng 17 % suốt 96 s trên bản sao số).
+- Ngân sách 10 phút rất sát: 7 lần giữ × 30 s = 210 s; chuyển 7 đoạn ≈ 60–90 s mỗi đoạn. Đạt được chỉ khi hãm muộn nhất có thể
+  mà không lố — tức là phải có mô hình dự báo, không thể dùng luật ngưỡng.
+
 ## 6. Nhật ký lái (bổ sung mỗi lần)
 
 | Ngày | Máy | Việc | Kết quả / bài học |
 |---|---|---|---|
 | 14/10/2026 | Điện VX4, lồng trống | Giữ BT 200 °C chỉ bằng Nhiệt % | Mục 1–3. Log: `scratchpad/lai_1410/log.csv` của phiên 14/10 |
 | 14/10/2026 | Điện VX4, lồng trống, gió 85 trống 85 | Đề chuỗi mốc 170→190→210→230→200→180→150 (`tools/chuoi_moc_bt.py`), tự chấm | **57/100** (vọt lố 34,3/40 · thời gian 2,3/30 · ổn định 17,1/20 · thao tác 3/10). Xong 19 phút 14 s (hạn 10 phút; tới phút 10 mới xong 4/7 mốc). Không lố ở 6/7 mốc (lố lớn nhất 1,0 / 0,5 °C); mốc 150 lố 1,7 °C. Nhiệt % giữ khớp mô hình ((T−114)/0,39−130)/2,2 trong ±3 %: 170→5–7, 190→31, 210→54, 230→73, 200→37–38, 180→18. **Bài học:** (1) chậm vì chuyển CHẠY→GIỮ quá sớm (dự báo 30 s, còn cách mốc 9–15 °C) rồi đặt cân bằng −4 % và tích phân bước 1 %/16 s ⇒ đuôi bò 96–147 s mỗi mốc, cộng 624 s; (2) mốc dưới ~165 °C không lái bằng xung bật/tắt Lệnh nhiệt: mỗi xung VX4 nung hết cỡ ⇒ BT dao động 152↔159 suốt 3 phút, mất 186 s; (3) khởi động lại bộ giải giữa chừng (vi phạm luật cứng) làm mất lịch sử độ dốc ⇒ 7 s đầu dốc = 0, xung nhiệt đến muộn ⇒ lố 1,7 °C. Lần sau: nhận diện đáp ứng bậc (100 % / tắt / 0 %+Lệnh bật) → bản sao số → tối ưu thời điểm chuyển trên mô phỏng (dự toán ≤ 540 s) → kiểm trước → làm một lượt. Log: `scratchpad/de_1410_nop/log.csv`, ảnh `cham_diem_giandoo.png` |
+| 15/10/2026 | Điện VX4, lồng trống, gió 85 trống 85, ngấm 18 phút (40 → 55 %) | Đề chuỗi mốc qua panel ($M36/$1), bộ giải MPC `hong_qua_panel.py`, chấm từ `.alog` (luật cứng cấm lố > 1,5 °C) | Điều kiện đầu mọi lượt: BT 200 ± 1,5 ổn định (Nhiệt 44–45 %), có giản đồ riêng (0918 / 0935 / 0959). **Lượt 1** `0905.alog`: 6/7 mốc trong 553 s, mốc 150 TRƯỢT (lố xuống 2,3, hết 12 phút) — offset tích phân lúc chuyển mốc trôi −10 °C. **Lượt 2** `0932.alog`: dừng ở 75 s — kiểm "đồng hồ đứng" báo nhầm vì chụp màn hình bị VS Code che (đổi sang PrintWindow); không tính. **Lượt 2b** `0946.alog`: 6/7, lố lớn nhất 0,1, mốc 150 chưa xong lúc hết 12 phút; mốc 190 mất 128 s vì TẮT Lệnh ngay tại mốc. **Lượt 3** `1009.alog`: **7/7 mốc, KHÔNG vọt lố** (lên 0,2 / xuống 0,8), tổng **11:24** (hạn 10:00) — 170 102 s · 190 79 · 210 90 · 230 130 · 200 75 · 180 73 · 150 135 (2 xung tính trước). Chưa đạt chỉ vì thời gian. Lần sau: mốc 230 (130 s) và 210 (90 s) là chỗ gỡ giờ — hãm muộn hơn khi đi lên; mốc 150 không nhanh hơn được nhiều (nguội TẮT −16 °C/phút từ 180 ⇒ ~105 s + 30 s giữ). Mục 7. Log: `scratchpad/that_1510/` phiên 15/10 |
