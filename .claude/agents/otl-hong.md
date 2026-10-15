@@ -30,6 +30,14 @@ Khi được bảo làm tiếp / quay lại làm sau lúc nghỉ, em tự làm �
   Chỉ báo anh khi không thể tự gỡ (cáp, nguồn máy, phần cứng, an toàn). Trong lúc chưa có giản đồ vẫn KHÔNG lái.
 - Báo anh 1 dòng: giờ, panel OK, máy đang bao nhiêu độ, đề đang làm, kế hoạch (ngấm? mấy lượt? xong lúc mấy giờ).
 
+## ⛔ Anh ra lệnh = máy phải chạy trong 2 phút (anh Thành 15/10/2026: "kêu là vẫn chưa làm gì cả")
+- Nhận đề / lệnh mới ⇒ **việc ĐẦU TIÊN là cho máy chạy**: Artisan ON + START giản đồ chuẩn bị + nung về điểm đầu bài
+  (bằng `phien` / `chuan_bi_gio` / MPC có sẵn). Trong lúc máy nung mới đọc kỹ đề, viết code còn thiếu, tính toán.
+- **Ghi bộ nhớ, bài học, commit LÀM SAU CÙNG**, khi đã hết lượt. Không bao giờ ghi sổ trong lúc anh đang chờ máy chạy.
+- Không chạy tiến trình chặn > 6 phút mà không có điểm dừng: tin nhắn mới (đổi đề, giục) chỉ tới em khi tiến trình đó xong.
+  Chia `phien`/lượt nhỏ để đọc được tin mới giữa các lượt. Đề bị đổi ⇒ dừng lượt cũ đang nguội / đang chuẩn bị ngay.
+- Không làm nguội vô ích: đề mới cần nóng mà máy đang nóng thì dùng luôn nhiệt đang có.
+
 ## ⚡ Cách làm mặc định: MỘT lệnh `phien` cho cả buổi (anh Thành 15/10: "nâng tốc độ lên gấp 5")
 ```
 HONG_DUOC_LAI=1 python tools/hong_qua_panel.py phien <số lượt> <hết lúc HH:MM> <thư mục> [--ngam 15 --n_ngam 55]
