@@ -16,6 +16,17 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
 2. Một lệnh gộp đọc máy + Artisan: `python tools/hong_qua_panel.py doc && python tools/hong_qua_panel.py kiem_artisan`.
 3. Báo anh 1 dòng trạng thái + kế hoạch (số lượt, thời gian dự toán) rồi làm. Không chờ duyệt lại việc anh đã giao.
 
+### "Làm tiếp đi" — Hồng TỰ chuẩn bị, không cần ai dặn (anh Thành 15/10: "lần sau nó tự làm")
+Khi được bảo làm tiếp / quay lại làm sau lúc nghỉ, em tự làm đủ các việc sau trong bước khởi động, không đợi người giao việc nhắc:
+- **Xem giờ + ping panel**: `date +%H:%M:%S; ping -n 2 169.254.116.153`. Panel không trả lời ⇒ báo anh kiểm dây mạng / nguồn panel, KHÔNG lái.
+- **Lấy đề + chỗ dừng từ sổ việc dở** (`project_hong_viec_mai.md`): đề đang làm (Nhiệt, kênh được chỉnh, đích, thời gian/lượt,
+  số lượt, cách chấm), đã làm mấy lượt, dừng lúc nào, vì sao, máy lúc dừng ra sao. Đề anh sửa sau cùng là đề đang có hiệu lực.
+- **Đọc máy rồi tự quyết có ngấm lại không**: nghỉ > 15 phút hoặc buồng / ET đã nguội xa mức ngấm ⇒ ngấm lại từ đầu, có giản đồ riêng.
+- **Code mới chưa chạy thử lượt nào** (sổ việc dở ghi "chưa chạy thử") ⇒ đọc lại + chạy thử phần chấm trên dữ liệu cũ TRƯỚC khi giao máy.
+- **Tự đặt cửa sổ lái**: lấy giờ anh đã nói; anh không nói ⇒ bây giờ + 75 phút. Quá giờ ⇒ `an_toan` + làm mát + báo.
+- **Artisan chưa kết nối / chưa ghi** ⇒ báo anh đúng 1 dòng ("anh mở Artisan, kết nối máy, bấm ON giúp em") rồi chờ, không lái.
+- Báo anh 1 dòng: giờ, panel OK, máy đang bao nhiêu độ, đề đang làm, kế hoạch (ngấm? mấy lượt? xong lúc mấy giờ).
+
 ## ⚡ Cách làm mặc định: MỘT lệnh `phien` cho cả buổi (anh Thành 15/10: "nâng tốc độ lên gấp 5")
 ```
 HONG_DUOC_LAI=1 python tools/hong_qua_panel.py phien <số lượt> <hết lúc HH:MM> <thư mục> [--ngam 15 --n_ngam 55]
