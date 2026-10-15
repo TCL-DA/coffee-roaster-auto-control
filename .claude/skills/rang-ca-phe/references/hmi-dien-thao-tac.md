@@ -79,7 +79,7 @@ Mở cửa xả khay · Quạt làm nguội · Tay đảo (ẩn ở máy điện
 - **Ghi `$49` (TCP 49, W40050 = Control Block "Screen No.") = số màn** ⇒ panel chuyển màn. Đọc **`$21` (W40022, Status Block)** = màn
   đang hiện; `$20` (W40021) bit 0 = đang chuyển trang. Đã dùng thật 14/10 (`Panel.dang_nhap()` ghi `$49 = 2`).
 - Board cũng đọc `$21` (firmware `SCRNUM_R`): **nạp hồ sơ chỉ chạy khi `$21` ∈ {6, 12, 13}**.
-- Màn phụ (1, 5, 14, …) qua `$49`: **CHƯA XÁC MINH** (Delta có thể đổi màn nền sang màn phụ, hoặc không). Kiểm ở bước 2 kế hoạch mục 8.
+- Màn phụ qua `$49`: **ĐÃ XÁC MINH 15/10 15:52** — `$49 = 14` ⇒ `$21 = 14` (giữ sau 1 s), `$49 = 2` ⇒ về 2. ⚠ Bộ lái nào có luật "màn ≠ 2 ⇒ dừng" sẽ TẮT nhiệt khi chính Hồng đổi màn (15:52 bộ giữ 170 tự tắt) — phải miễn khi đổi màn có chủ đích.
   Các nút "Cài đặt" thật làm: `$10 = 1` + macro `OPENSCREEN(26)` `OPENSCREEN(1)` — macro này KHÔNG chạy khi ghi `$10` qua TCP.
 - `$10` chỉ là cờ "đang mở Cài đặt" của HMI (board đọc W40011 nhưng không dùng). `$811` = bảng Phụ trợ mở (HMI). `$940` = 1 khi đang
   ở màn cài đặt (1, 5, 9, 14, 24–26, 30–36).
@@ -477,11 +477,11 @@ Bước 11 có rủi ro (RANG LƯU ⇒ xoá `0.csv`/`n.csv`): bỏ chọn hồ s
 ---
 
 ## 9. CHƯA XÁC MINH (cách kiểm)
-1. Đổi sang **màn phụ** (1, 5, 14, …) bằng `$49` — bước 3 mục 8.
+1. ~~Đổi sang màn phụ bằng `$49`~~ — ĐÃ XÁC MINH 15/10 15:52: được (`$21 = 14`).
 2. Ghi `$49` có cần "về 0" (Auto Reset Flags) để lần ghi cùng số sau vẫn chuyển — ghi `$49 = 2` hai lần khi đang ở màn 6.
-3. `chon_ho_so` đủ 2 ô (`$200..229` + `$15`) là đủ để board nạp (macro đồng hồ không trả về) — bước 5.
+3. ~~`chon_ho_so` đủ 2 ô~~ — ĐÃ XÁC MINH 15/10 15:52: `$200 = 1` rồi `$15 = 1` ở màn 6 ⇒ `$15` giữ 1 (cả sau khi về màn 2), board nạp ngay (mã 120 vì thẻ CHƯA có `1.csv`). Luật trả về cũng xác minh: ở màn 2 ghi `$15 = 2` khi `$201 = 0` ⇒ đọc lại 0 sau ~0,3 s. ⚠ Nạp (kể cả hỏng) ghi `$M23 = 1800` — có thể tới MUỘN sau khi về màn 2 (15:52:57 đã đặt 1700 vẫn bị đè 1800) ⇒ đặt `$M23` SAU khi `$40` báo xong nạp và đọc lại sau ≥ 3 s.
 4. Chuỗi ASCII byte thấp trước — so `hmi_dien.py ho_so` với chữ trên màn Hồ sơ (anh nhìn) .
-5. `$M29 = 1` + `$M28 = 50` có thật sự kẹp Nhiệt % ≤ 50 ở máy điện không — đặt `$M36 = 60` khi được lái, đọc `$66`.
+5. ~~`$M29 = 1` + `$M28 = 50` kẹp Nhiệt %~~ — ĐÃ XÁC MINH 15/10: KHÔNG kẹp ở máy điện (`$M36 = 100` ⇒ `$66` đọc 100,0 lúc 15:04; đề 3 chạy 72 %).
 6. START RANG LƯU khi `$15 = 0` ghi `0.csv`.
 7. `$964..$966` ai ghi.
 8. Macro nút Xoá xoá tên hồ sơ 1 (`FILL($M100, 0, 30)`) thay vì hồ sơ đang chọn — xem trên giả lập, không thử máy thật.

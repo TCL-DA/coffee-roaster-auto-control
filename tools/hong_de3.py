@@ -103,6 +103,8 @@ class BamDuong(hq.GiaiDe):
         super().__init__(moc=(200.0,), tam=tam, **kw)
         self._gan = False
         self.bias, self.ki_bam = 0.0, float(os.environ.get("HONG_KI_BAM", "0.03"))
+        self.khong_lo = float(os.environ.get("HONG_KHONG_LO", "3"))          # trọng số lố lên / tụt
+        self.rang_buoc_tren = os.environ.get("HONG_RANG_BUOC_TREN", "1") == "1"
         self.ref_tuong_lai = lambda s: 200.0          # s = giây tính từ BÂY GIỜ
         self.dai = 1.5
         U = []
@@ -158,7 +160,13 @@ class BamDuong(hq.GiaiDe):
         w = np.ones(H)
         w[:8] = 0.3                                    # vài giây đầu gần như không đổi được (trễ VX4)
         ra = np.maximum(np.abs(e) - (self.dai - 0.5), 0)
-        gia = (w * e ** 2).sum(1) / H + 40 * (w * ra ** 2).sum(1) / H
+        # 15/10 chiều (anh Thành: "đảm bảo không vọt lố"): LỐ LÊN phạt nặng gấp KHONG_LO lần tụt, và ràng buộc cứng — kế hoạch nào
+        # dự báo BT vượt mép trên (ref + dải − 0,3) ở BẤT KỲ giây nào trong tầm nhìn bị loại nếu còn kế hoạch khác không vượt
+        lo = np.maximum(e - (self.dai - 0.5), 0)
+        gia = (w * e ** 2).sum(1) / H + 40 * (w * ra ** 2).sum(1) / H + 40 * (self.khong_lo - 1) * (w * lo ** 2).sum(1) / H
+        vuot = (e > self.dai - 0.3).any(1)
+        if self.rang_buoc_tren and not vuot.all():
+            gia = gia + 1e4 * vuot
         # đổi lệnh: phạt nhẹ, cấm đổi Nhiệt < 4 s, đổi Lệnh < 6 s
         dau = U[:, 0, :]
         doi_n = dau[:, 0] != self.u[0]
@@ -379,6 +387,123 @@ def chay(thu_muc, tu=1):
     return ly_do
 
 
+def giu(dich, thu_muc, phut=60.0, dai=1.5, cho_charge=False):
+    """GIỮ BT ở `dich` chờ charge (anh Thành 15/10 15:15), giản đồ chuẩn bị riêng. Dừng khi có file <thư mục>/dung
+    (lệnh "bắt đầu" — GIỮ Lệnh + Nhiệt hiện tại cho anh charge) hoặc hết `phut` / an toàn / lỗi (TẮT Lệnh)."""
+    if os.environ.get("HONG_DUOC_LAI") != "1":
+        sys.exit("Chưa có quyền lái (HONG_DUOC_LAI=1).")
+    os.makedirs(thu_muc, exist_ok=True)
+    nk = open(os.path.join(thu_muc, "giu.txt"), "a", encoding="utf-8")
+
+    def in_ra(s):
+        dong = time.strftime("%H:%M:%S ") + s
+        print(dong, flush=True)
+        nk.write(dong + "\n")
+        nk.flush()
+
+    p, art = hq.Panel(), hq.ArtisanThat()
+    if cho_charge:          # 15:49: thanh nút Artisan ẩn ⇒ dang_on() lỗi; giản đồ đang ghi — chỉ kiểm LCD còn số
+        lcd = art.doc_lcd()
+        ok, ly = len(lcd) == 2, "LCD %s" % (lcd,)
+    else:
+        ok, ly = art.kiem() if art.dang_on() else (art.bat_on() and art.kiem())
+    in_ra("ARTISAN: %s" % (ly,))
+    if not ok:
+        return
+    d = p.doc_tat_ca()
+    loi = hq.tu_kiem(d, None)
+    if loi:
+        in_ra("DUNG: " + "; ".join(loi))
+        return
+    t_start = _chuyen_artisan(False) if not cho_charge else time.time()   # chờ charge: giản đồ MẺ đã START, không bấm
+    time.sleep(2)
+    ok, ct = art.dang_ghi(cho=2.0)
+    ok = ok or ("vô hiệu" in ct and "đồng hồ chạy" in ct) or cho_charge
+    in_ra("GIAN DO CHUAN BI · START %s · %s" % (time.strftime("%H:%M:%S", time.localtime(t_start)), ct))
+    if not ok:
+        in_ra("DUNG: Artisan không ghi — không lái")
+        return
+    giai = BamDuong()
+    T0 = time.time()
+    d = p.doc_tat_ca()
+    giai.bat_dau(0.0, d["bt"], d["et"], d["buong"], (d["dat_nhiet"], d["lenh_nhiet"]))
+    giai.ref_tuong_lai, giai.dai = (lambda s: dich), dai
+    f = open(os.path.join(thu_muc, "giu.csv"), "a", encoding="utf-8")
+    f.write("gio,t,ref,bt,et,buong,nhiet,lenh,ke_hoach\n")
+    ly_do, t_ok, giu_lenh, t_trong, bao = "het gio", time.time(), False, None, False
+    dung = os.path.join(thu_muc, "dung")
+    t_ghi_cuoi, bao_het, da_toi = None, False, False
+    try:
+        while time.time() - T0 < phut * 60:
+            now = time.time()
+            if os.path.exists(dung):
+                ly_do, giu_lenh = "lenh bat dau", True
+                break
+            try:
+                d = p.doc_tat_ca()
+                t_ok = now
+            except (OSError, ValueError):
+                if now - t_ok > hq.MAT_SO_GIAY:
+                    ly_do = "mất số panel"
+                    break
+                time.sleep(0.5)
+                continue
+            if d["bt"] > hq.BT_TUYET_DOI or d["et"] > hq.ET_MAX:
+                ly_do = "AN TOAN BT %.1f ET %.1f" % (d["bt"], d["et"])
+                break
+            loi = [x for x in hq.tu_kiem(d, None) if not (cho_charge and "màn" in x)]   # 15:52: thử HMI đổi màn ≠ lỗi máy
+            if loi:
+                ly_do = "TU KIEM: " + "; ".join(loi)
+                break
+            if t_ghi_cuoi is not None and now - t_ghi_cuoi > 4 and (
+                    int(d["lenh_nhiet"]) != int(giai.u[1]) or (giai.u[1] and int(d["dat_nhiet"]) != int(round(giai.u[0])))):
+                # 15:57: người khác (anh / tiến trình khác) đổi Lệnh hoặc Nhiệt ⇒ KHÔNG giành lại, giao máy, báo
+                ly_do, giu_lenh = "người khác đổi lửa (Lệnh %d, Nhiệt %d; em đặt %s) — em ngừng, không giành lại" % (
+                    d["lenh_nhiet"], d["dat_nhiet"], hq._u(giai.u)), True
+                break
+            if not bao_het and time.time() - T0 > phut * 60 - 120:
+                bao_het = True
+                in_ra("BAO TRUOC: 2 phút nữa bộ giữ hết giờ và TẮT nhiệt")
+            t = now - T0
+            ls_c = [x for x in getattr(giai, "_ls_c", []) if now - x[0] <= 20] + [(now, d["bt"])]
+            giai._ls_c = ls_c
+            da_toi = da_toi or abs(d["bt"] - dich) <= dai          # 16:00: BT còn thấp lúc khởi động ≠ CHARGE
+            if cho_charge and da_toi and (max(x[1] for x in ls_c) - d["bt"] >= 25 or d["bt"] < dich - 30):
+                ly_do, giu_lenh = "CHARGE (BT rơi %.0f °C/20 s, BT %.1f) — giao lửa/gió/trống cho anh" % (
+                    max(x[1] for x in ls_c) - d["bt"], d["bt"]), True
+                break
+            giai.cap_nhat(t, d["bt"], d["et"], d["buong"])
+            u_cu = giai.u
+            u = giai.quyet_dinh(t)
+            if u != u_cu or t_ghi_cuoi is None:
+                if u[1]:
+                    p.dat_nhiet(u[0])
+                if u[1] != u_cu[1] or t_ghi_cuoi is None:
+                    p.lenh_nhiet(bool(u[1]))
+                t_ghi_cuoi = time.time()
+            if abs(d["bt"] - dich) <= dai:
+                t_trong = t_trong or now
+                if not bao and now - t_trong >= 60:
+                    bao = True
+                    in_ra("SAN SANG CHARGE: BT %.1f trong %.0f ± %.1f đã 60 s · Nhiệt %s" % (d["bt"], dich, dai, hq._u(u)))
+            else:
+                t_trong = None
+            f.write("%s,%.1f,%.1f,%.1f,%.1f,%s,%.0f,%d,%s\n" % (time.strftime("%H:%M:%S"), t, dich, d["bt"], d["et"],
+                                                              d["buong"], u[0], u[1], giai.ke_hoach))
+            f.flush()
+            if int(t) % 20 == 0 and t - int(t) < 1.0:
+                in_ra("  %4.0f s BT %.1f ET %.1f buong %s · %s" % (t, d["bt"], d["et"], d["buong"], giai.ke_hoach))
+            time.sleep(max(0.0, 1.0 - (time.time() - now)))
+    except Exception as ex:                             # noqa: BLE001
+        ly_do = "LOI CODE: %r" % ex
+    finally:
+        if not giu_lenh:
+            p.lenh_nhiet(False)
+        f.close()
+    in_ra("KET THUC GIU: %s · %s" % (ly_do, "GIỮ Nhiệt %s cho charge" % hq._u(giai.u) if giu_lenh else "TẮT Lệnh nhiệt"))
+    nk.close()
+
+
 def cham_thu_muc(thu_muc_alog_list):
     out = []
     for so, duong in thu_muc_alog_list:
@@ -393,6 +518,8 @@ if __name__ == "__main__":
     lenh, (pos, opt) = sys.argv[1], hq._tach_opt(sys.argv[2:])
     if lenh == "chay":
         chay(pos[0], tu=int(opt.get("tu", 1)))
+    elif lenh == "giu":
+        giu(float(pos[0]), pos[1], phut=float(opt.get("phut", 60)), cho_charge=opt.get("cho_charge", "0") == "1")
     elif lenh == "cham":
         b = BAI[int(pos[0]) - 1]
         kq = cham(b, pos[1])

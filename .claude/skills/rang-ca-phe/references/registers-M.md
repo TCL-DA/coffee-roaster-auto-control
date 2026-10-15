@@ -137,6 +137,7 @@ Nhiều tham số khi so sánh nhiệt được firmware nhân ×10 (`_CV`) vì 
 | 59 | `autoDropMin` | giây | Thời gian rang tối thiểu trước khi cho auto-drop — chặn xả mẻ ma/chưa nạp. |
 | 60 | `manualEscapeExtra` | giây | Cộng thêm vào `escapeDuration` khi đóng escape tay. |
 | 61 | `loopDoorStuck` | giây | Hạn chờ cửa drop đóng ở `STP_LOOP_2` trước khi coi là kẹt. |
+| 62 | `mcOpt` (machineOptions) | bitmask | **Cấu hình máy** (13/10/2026, `include/MachineOpt.h`). Bit 0 VR gas+gió · 1 VR trống · 2 vacuum · 3 loader · 4 cân · 5 relay ngoài ID 7 · 6–8 cỡ máy (0=6 · 1=12 · 2=15 · 3=30 kg) · 9 đốt khói · 10 tách đá · 11 khuấy relay riêng (cần bit 5) · 15 đã cấu hình. **Bit 15 = 0 ⇒ chặn rang** (relay gas không đóng, nút gas/Start/làm nóng bị trả 0, mã 422). Cấu hình vô lý ⇒ mã 423, giữ cấu hình cũ. Chỉ chốt khi máy đứng yên. PC_Link CHỈ ĐỌC (min>max). ⛔ Firmware và HMI phải nạp thành cặp (khung `rwMemHMI` 62 ô). |
 
 ---
 
@@ -145,3 +146,19 @@ Nhiều tham số khi so sánh nhiệt được firmware nhân ×10 (`_CV`) vì 
 - Chuỗi mốc rang: **Charge → TP → DE(yellow) → FCs → DEV → Drop**. `TpCalib/DeCalib/FcsCalib` = trần bậc tăng gas AUTO ứng 3 vùng BT<DE / DE→FCs / >FCs.
 - BT/ET lưu ×10 (2150=215.0°C); nhiều `_CV` = giá trị HMI ×10 để so sánh cùng thang.
 - Cân: `netW` giữ ×10 cho feeder/HMI, `netW100` ×100 cho auto-loader — xem `[[project_scale_precision]]`.
+
+## Quy trình HMI: chọn / lưu / chạy hồ sơ (đọc code firmware 15/10/2026 — CHƯA chạy thử qua panel)
+Panel: ô HMI `dAddress[n]` (W400nn) ≡ `$(n−1)` khi đọc/ghi Modbus TCP. Firmware đọc thay đổi ở `Modbus_Master.h` (so `_R` với `_R_CP`).
+
+| Nút / ô trên HMI | Ô nhớ (Define.h) | Panel TCP | Firmware xử lý | Tác dụng phụ | Em làm |
+|---|---|---|---|---|---|
+| Chọn file hồ sơ 1–30 | `SELECT_FILE_W 16` | `$15` | `Modbus_Master.h:694` ⇒ `sdReadStep = 1`; `sdRead()` chỉ nạp khi màn `SCRNUM` = 6/12/13 (hoặc PC_Link) | nạp hồ sơ ⇒ ghi đè `$M23` chargeTemp = nhiệt CHARGE của file (không có ⇒ 180,0) + mốc TP/DE/FCs/DROP vào ô 103–118 | 15:21 ghi `$15 = 1` ở màn 2 ⇒ đọc lại 0 (HMI trả về). Phải đứng màn chọn file, hoặc qua PC_Link reg 17 (đường COM — cấm) |
+| SAVE / AUTO | `MANUAL_AUTO_W 23` (= `SW_M_AUTO_W`) | `$22` | `Modbus_Master.h:737`: 0 ⇒ `STT_PROGRAM_SAVE` (rang lưu), 1 ⇒ `STT_PROGRAM_AUTO` (chạy theo hồ sơ) | AUTO: lúc CHARGE nguồn gas/gió/trống = AUTO, áp MaxGas của hồ sơ | ghi + đọc lại |
+| START chương trình | `START_BTN_W 1` | `$0` | `Program.h:1838` máy trạng thái: DATA → COOL DOWN (lồng nóng: chờ nguội tới chargeTemp − turnGasPoint, rồi **gas 50 % AUTO**) → GAS → CHECK (BT vào chargeTemp ± chTolerange ⇒ **tự CHARGE + còi**; vọt > +5 × dung sai ⇒ tắt gas về DATA) | SAVE: `sdLogStartEn` ⇒ XOÁ `N.csv` rồi ghi mới từ lúc START (1 Hz, `Time1 Time2 ET BT Event Air Burner Drum VacFlag VacSP`), header viết lại lúc DROP | chỉ khi anh cho: lấy quyền lửa/gió/trống khỏi tay người |
+| Lệnh nhiệt / gas | `START_GAS_BTN_W 2` | `$1` | bật/tắt gas (máy điện: Lệnh VX4) | — | đang dùng |
+| Nhiệt charge | `chargeTemp_W 23` (iMemHMI, **×10**) | `$M23` (TCP 2023) | `Modbus_Master.h:267` | bị ghi đè mỗi lần nạp hồ sơ | 15:18 ghi 1700, đọc lại 1700 |
+| Xoá 1 / tất cả hồ sơ | `DEL_PROFILE_W 18` / `DEL_ALLPROFILE_W 19` | `$17` / `$18` | xoá `N.csv` + `N.txt` | mất hồ sơ | không bao giờ tự ghi |
+
+Trình tự "rang lưu vào hồ sơ N, charge T" (khi anh cho): `$M23 = T×10` → đứng màn chọn file + `$15 = N` → `$22 = 0` → `$0 = 1` (firmware tự đưa lồng về T rồi CHARGE)
+→ đọc lại từng ô + mã `$40` (STT_SD_LOG_STARTED). Chạy theo hồ sơ N: `$15 = N` (chờ nạp xong, `LOADING_SHOW` = 100) → `$22 = 1` → `$0 = 1`.
+Rang tay ngoài chương trình (như mẻ 15:2x): firmware KHÔNG ghi SD ⇒ dựng `N.csv` từ `.alog` theo đúng định dạng trên rồi chép vào SD.
