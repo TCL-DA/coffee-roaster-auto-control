@@ -29,3 +29,31 @@
 Mẫu hump–crash–flick (Scott Rao), ảnh hưởng vị của từng đoạn, vị trí/đường kính đầu dò và vì sao TP, đỉnh RoR không có nghĩa tuyệt đối: `probat-vat-ly-thiet-bi.md` mục 4. Vị khói do rang quá đậm hoặc vỏ lụa cháy trong cyclone: `probat-van-hanh-hat-xanh.md` mục 6. Vì sao không điều khiển bám RoR: `probat-dieu-khien-du-lieu.md` mục 2.
 
 Nghi sensor khi có bước nhảy phi vật lý, flatline, BT/ET bất thường hoặc thay đổi lớn sau bảo trì probe. Nghi process khi sai lệch có quan hệ thời gian hợp lý với gas/gió/cỡ mẻ/preheat và lặp lại cùng điều kiện.
+
+## Cách tính David — hằng số truyền nhiệt k
+
+Dùng khi người dùng nói "cách tính David", hoặc khi mẻ không lặp lại được, Agtron lệch, RoR cuối mẻ vẫn cao dù đã giảm lửa, nhất là sau cúp điện / sửa đường gas. Nguồn: phân tích 6 mẻ thật của một khách máy 3 kg (10/2026).
+
+**Công thức** (mô hình Newton): `RoR = k × (ET − BT)` → **`k = RoR / (ET − BT)`** (RoR °C/phút, ET/BT °C).
+
+**Cách làm:**
+1. Lấy mẻ mẫu tốt và các mẻ nghi lỗi (.alog hoặc ảnh Artisan), cùng máy, cùng cỡ mẻ.
+2. Đọc ET, BT, RoR tại nhiều mốc dọc mẻ (vd 3:00, 6:00, 9:00, 11:00, cuối phát triển), tính k từng mốc.
+3. Mẻ mẫu chuẩn: k gần phẳng suốt mẻ (ca gốc: 0,13 → 0,11 → 0,12 → 0,128 ở 11:00).
+4. Mẻ nghi lỗi: xem k có vọt lên ở cuối mẻ không (ca gốc sau cúp điện: 0,280 / 0,295 / 0,186–0,231). Kiểm chéo ca gốc mẻ 12/10 lúc ~11:00: ET≈238, BT≈206, RoR≈9 → k≈0,28; mẻ mẫu ET≈247, BT≈200, RoR≈5,5 → k≈0,12.
+
+**Luật suy luận:**
+- Lô nhân xanh khác → k khác, nhưng vẫn là một hằng số; k không thể tăng trong lúc rang.
+- k tăng cuối mẻ = hạt nhận nhiều nhiệt hơn mức ET−BT giải thích → nhiệt đi đường ET không thấy: **thành trống (dẫn nhiệt)**, không phải không khí.
+- k vọt mạnh nhất đúng lúc lửa thấp nhất (vd B19 → B5) = ngọn lửa đáng lẽ rất nhỏ lại đốt nhiều nhất → **gas thực > lệnh ở mức thấp** → nghi **điểm 0 van gas lệch**, không phải sai lệch 5 % ở thang đo.
+
+**Giới hạn và giả thuyết cạnh tranh:** k không tuyệt đối hằng (phụ thuộc gió, tốc độ trống, ẩm hạt, nhiệt sinh lúc nổ) — chỉ so giữa các mẻ cùng máy, cùng gió/trống; mẻ mẫu cũng qua nổ mà k vẫn phẳng thì phép so mới có giá trị. Phải loại trừ:
+
+| Giả thuyết | Dấu hiệu phân biệt |
+|---|---|
+| Lệch điểm 0 van gas tỷ lệ | Lửa to bất thường chỉ ở mức thấp; áp gas bình thường |
+| Van giảm áp hỏng, áp gas cao | Lửa to ở mọi mức; đồng hồ áp cao hơn lúc lắp máy |
+| Đầu dò ET bẩn / lệch vị trí | k cao cả mẻ, không chỉ cuối mẻ |
+| Gió yếu (nghẹt cyclone, ống vỏ lụa) | Áp âm / tần số quạt đổi; ET thấp hơn mọi mức lửa |
+
+**Xác nhận:** máy nóng, không hạt, cho lửa 0 → 5 → 20 → 50 → 100 %, mỗi mức quay ngọn lửa + đồng hồ áp ~30 s, so với áp chuẩn lúc lắp máy.

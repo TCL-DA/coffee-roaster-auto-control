@@ -24,6 +24,7 @@ Làm việc như một chuyên gia rang có tư duy thực nghiệm: nối dữ 
 - Kỹ thuật và giải thích trong 201 video, Shorts và livestream Mill City Roasters: [references/mill-city-roasters.md](references/mill-city-roasters.md).
 - Lỗi, yêu cầu và phản hồi người dùng Artisan GitHub (snapshot 2016–2026): xem [references/artisan-github.md](references/artisan-github.md) và skill `artisan-issues`; Roast Lab có thêm công cụ `search_artisan_issues`.
 - RoR và chẩn đoán crash/flick/scorching/tipping/baked: [references/chan-doan-profile.md](references/chan-doan-profile.md).
+- **Cách tính David** (`k = RoR / (ET − BT)`; k vọt cuối mẻ khi lửa thấp = gas thực > lệnh, nghi điểm 0 van gas): mục cùng tên trong [references/chan-doan-profile.md](references/chan-doan-profile.md).
 - Màu, hao hụt, chiết xuất, cupping, CVA và dataset AI: [references/danh-gia-chat-luong.md](references/danh-gia-chat-luong.md).
 - Kho tri thức PROBAT (300 video YouTube 3 kênh chính thức + bên thứ ba + Bilibili + 115 trang probat.com) — bắt đầu ở cổng vào [references/probat-youtube.md](references/probat-youtube.md), rồi vào file chủ đề:
   - vật lý máy, cấu tạo, đầu dò, nguồn nhiệt điện/hydro/LPG: [references/probat-vat-ly-thiet-bi.md](references/probat-vat-ly-thiet-bi.md);
