@@ -122,6 +122,18 @@ Lớp an toàn riêng (bộ giải không ghi đè): BT > 245 · ET > 255 · m�
 - Ngân sách 10 phút rất sát: 7 lần giữ × 30 s = 210 s; chuyển 7 đoạn ≈ 60–90 s mỗi đoạn. Đạt được chỉ khi hãm muộn nhất có thể
   mà không lố — tức là phải có mô hình dự báo, không thể dùng luật ngưỡng.
 
+## 7b. Bài GIÓ — Nhiệt khoá, chỉ lái gió (15/10/2026, `hong_qua_panel.py giu_bt_gio`)
+- Máy điện VX4 giữ BUỒNG theo Nhiệt % (75 % ⇒ buồng ~295 °C, đo $96). Khi đó **gió là bộ CỘNG nhiệt**, không phải bộ hút nhiệt:
+  gió 100 đưa nhiều khí nóng hơn qua lồng ⇒ BT lên nhanh hơn; gió 50 chậm hơn nhưng VẪN lên (khác mục 1: gió hút nhiệt khi TẮT nhiệt).
+- Số đo (`F:/Artisan/Profile/OTL-Hong/du-lieu_1510_gio/do75.csv`): 75 %, gió 100, lồng vừa nguội ⇒ BT 125 → 196 trong ~2 phút
+  (~15 °C/ph ở 196). Hạ 100 → 50 ở BT 197,7 ⇒ quán tính +6,6 °C trong 30 s, rồi RoR ~1,5 trong ~30 s, sau đó ổn ~2,6 °C/ph ở 205.
+  Nâng 50 → 100 ở 206,6 ⇒ RoR ~6 sau trễ ~10 s. Độ nhạy ≈ 0,07–0,10 °C/ph cho mỗi 1 % gió.
+- **Giới hạn vật lý:** gió tối thiểu 50 vẫn trôi lên ⇒ không giữ đứng 200. Chỉ qua được luật "± 1,5 liên tục ≥ 60 s cuối" khi độ trôi
+  gió 50 quanh 200 (r50) ≤ ~2,6 °C/ph (dải 3 °C đi hết trong 60 s ⇒ ≤ 3; trừ lề nhiễu). Vì gió chỉ TĂNG TỐC được, chiến lược đúng là
+  "đến MUỘN rồi dùng gió đuổi": xuất phát sao cho quỹ đạo tự nhiên ở gió 50 hơi chậm; đến sớm là lố không cứu được.
+- Mô phỏng `GiuBTGio` (mô hình r50 = (Teq − BT)/τ + kg·(gió − 50)): r50(200) 3,1–4 ⇒ vào dải lúc 266–275 s ⇒ TRƯỢT. Lượt thật chưa làm.
+- Giả thuyết cần đo: lồng ngấm ít (nung nhanh bằng gió 100 từ lồng nguội, thả gió 50 lúc BT ~192) ⇒ r50 ở 200 thấp hơn ngấm chậm.
+
 ## 6. Nhật ký lái (bổ sung mỗi lần)
 
 | Ngày | Máy | Việc | Kết quả / bài học |
@@ -129,3 +141,4 @@ Lớp an toàn riêng (bộ giải không ghi đè): BT > 245 · ET > 255 · m�
 | 14/10/2026 | Điện VX4, lồng trống | Giữ BT 200 °C chỉ bằng Nhiệt % | Mục 1–3. Log: `scratchpad/lai_1410/log.csv` của phiên 14/10 |
 | 14/10/2026 | Điện VX4, lồng trống, gió 85 trống 85 | Đề chuỗi mốc 170→190→210→230→200→180→150 (`tools/chuoi_moc_bt.py`), tự chấm | **57/100** (vọt lố 34,3/40 · thời gian 2,3/30 · ổn định 17,1/20 · thao tác 3/10). Xong 19 phút 14 s (hạn 10 phút; tới phút 10 mới xong 4/7 mốc). Không lố ở 6/7 mốc (lố lớn nhất 1,0 / 0,5 °C); mốc 150 lố 1,7 °C. Nhiệt % giữ khớp mô hình ((T−114)/0,39−130)/2,2 trong ±3 %: 170→5–7, 190→31, 210→54, 230→73, 200→37–38, 180→18. **Bài học:** (1) chậm vì chuyển CHẠY→GIỮ quá sớm (dự báo 30 s, còn cách mốc 9–15 °C) rồi đặt cân bằng −4 % và tích phân bước 1 %/16 s ⇒ đuôi bò 96–147 s mỗi mốc, cộng 624 s; (2) mốc dưới ~165 °C không lái bằng xung bật/tắt Lệnh nhiệt: mỗi xung VX4 nung hết cỡ ⇒ BT dao động 152↔159 suốt 3 phút, mất 186 s; (3) khởi động lại bộ giải giữa chừng (vi phạm luật cứng) làm mất lịch sử độ dốc ⇒ 7 s đầu dốc = 0, xung nhiệt đến muộn ⇒ lố 1,7 °C. Lần sau: nhận diện đáp ứng bậc (100 % / tắt / 0 %+Lệnh bật) → bản sao số → tối ưu thời điểm chuyển trên mô phỏng (dự toán ≤ 540 s) → kiểm trước → làm một lượt. Log: `scratchpad/de_1410_nop/log.csv`, ảnh `cham_diem_giandoo.png` |
 | 15/10/2026 | Điện VX4, lồng trống, gió 85 trống 85, ngấm 18 phút (40 → 55 %) | Đề chuỗi mốc qua panel ($M36/$1), bộ giải MPC `hong_qua_panel.py`, chấm từ `.alog` (luật cứng cấm lố > 1,5 °C) | Điều kiện đầu mọi lượt: BT 200 ± 1,5 ổn định (Nhiệt 44–45 %), có giản đồ riêng (0918 / 0935 / 0959). **Lượt 1** `0905.alog`: 6/7 mốc trong 553 s, mốc 150 TRƯỢT (lố xuống 2,3, hết 12 phút) — offset tích phân lúc chuyển mốc trôi −10 °C. **Lượt 2** `0932.alog`: dừng ở 75 s — kiểm "đồng hồ đứng" báo nhầm vì chụp màn hình bị VS Code che (đổi sang PrintWindow); không tính. **Lượt 2b** `0946.alog`: 6/7, lố lớn nhất 0,1, mốc 150 chưa xong lúc hết 12 phút; mốc 190 mất 128 s vì TẮT Lệnh ngay tại mốc. **Lượt 3** `1009.alog`: **7/7 mốc, KHÔNG vọt lố** (lên 0,2 / xuống 0,8), tổng **11:24** (hạn 10:00) — 170 102 s · 190 79 · 210 90 · 230 130 · 200 75 · 180 73 · 150 135 (2 xung tính trước). Chưa đạt chỉ vì thời gian. Lần sau: mốc 230 (130 s) và 210 (90 s) là chỗ gỡ giờ — hãm muộn hơn khi đi lên; mốc 150 không nhanh hơn được nhiều (nguội TẮT −16 °C/phút từ 180 ⇒ ~105 s + 30 s giữ). Mục 7. Log: `scratchpad/that_1510/` phiên 15/10 |
+| 15/10/2026 chiều | Điện VX4, lồng trống, trống 85 | Đề 2: Nhiệt khoá 75 %, chỉ gió 50–100 %, giữ BT 200 (5 phút/lượt, ≤ 3 lượt) | **Chưa lượt nào.** 13:18 bước ngấm có giản đồ tự dừng TRƯỚC lệnh nhiệt đầu: Artisan "Modbus Error: failed to connect" (COM13 bị `platformio device monitor` giữ) ⇒ lớp kiểm điểm ảnh `dang_ghi` chặn đúng; `kiem()` báo "LCD có số" sai vì ân hạn 10 s ⇒ đã sửa. Luật mới: không chiếm màn hình anh (không restore / menu). Vật lý bài gió: mục 7b. |

@@ -30,6 +30,7 @@ import os
 import re
 import socket
 import struct
+import subprocess
 import sys
 import time
 
@@ -565,36 +566,27 @@ class ArtisanThat:
         self.t_co_so = time.time()
 
     def _w(self):
-        """Cửa sổ Artisan; bị THU NHỎ thì khôi phục (UIA WindowPattern — thu nhỏ thì Qt không vẽ, ảnh kiểm ra đen)."""
+        """Cửa sổ Artisan, ĐỂ YÊN chỗ cũ. ⛔ Luật chủ máy 15/10 chiều: KHÔNG chiếm màn hình anh — không restore / maximize /
+        activate / SetFocus. Thu nhỏ thì Qt không vẽ ⇒ `dang_ghi` báo lý do, không tự khôi phục."""
         import artisan_ui
+        return artisan_ui._cua_so(2)
+
+    def thu_nho(self):
+        """True nếu cửa sổ Artisan đang thu nhỏ (chỉ ĐỌC trạng thái, không đổi)."""
         import uiautomation as A
-        w = artisan_ui._cua_so(2)
+        w = self._w()
         try:
-            wp = w.GetWindowPattern()
-            if wp.WindowVisualState == A.WindowVisualState.Minimized:
-                wp.SetWindowVisualState(A.WindowVisualState.Maximized)
-                time.sleep(1.0)
-        except Exception:                                   # noqa: BLE001 — không có WindowPattern thì để nguyên
-            pass
-        return w
+            return w is not None and w.GetWindowPattern().WindowVisualState == A.WindowVisualState.Minimized
+        except Exception:                                   # noqa: BLE001 — không có WindowPattern thì coi như không thu nhỏ
+            return False
 
     def hien_nut(self):
-        """15/10: Artisan 4.0.2 đang ẨN thanh nút chính (View → Controls tắt) ⇒ UIA không thấy ON/OFF/START.
-        Bật lại bằng UIA (ExpandCollapse + Invoke menu), không chuột / phím."""
+        """Artisan ẩn thanh nút chính (View → Controls tắt) ⇒ UIA không thấy ON/OFF/START. ⛔ 15/10 chiều: KHÔNG mở menu
+        (menu bật lên giữa màn hình anh) — chỉ báo lỗi để anh bật lại."""
         w = self._w()
-        if w is None or w.ButtonControl(Name="OFF", searchDepth=14).Exists(0.5) \
-                or w.ButtonControl(Name="ON", searchDepth=14).Exists(0.5):
+        if w is None or w.ButtonControl(Name="OFF", searchDepth=14).Exists(0.5)                 or w.ButtonControl(Name="ON", searchDepth=14).Exists(0.5):
             return
-        mb = w.Control(searchDepth=2, ClassName="QMenuBar")
-        it = mb.MenuItemControl(Name="View")
-        it.GetExpandCollapsePattern().Expand()
-        time.sleep(1.0)
-        c = it.MenuItemControl(Name="Controls", searchDepth=3)
-        if c.GetTogglePattern().ToggleState == 0:
-            c.GetInvokePattern().Invoke()
-        else:
-            it.GetExpandCollapsePattern().Collapse()
-        time.sleep(1.0)
+        raise RuntimeError("Artisan đang ẩn thanh nút (View → Controls) — không mở menu vì luật không chiếm màn hình")
 
     def dang_on(self):
         self.hien_nut()
@@ -687,6 +679,8 @@ class ArtisanThat:
         w = self._w()
         if w is None:
             return False, "không thấy cửa sổ Artisan"
+        if self.thu_nho():
+            return False, "cửa sổ Artisan đang THU NHỎ — PrintWindow không vẽ được; không tự khôi phục (luật không chiếm màn hình)"
         st = w.ButtonControl(Name="START", searchDepth=14)
         off = w.ButtonControl(Name="OFF", searchDepth=14)
         nut = off.Exists(1) and off.IsEnabled and (not st.Exists(0.5) or not st.IsEnabled)
@@ -728,14 +722,36 @@ class ArtisanThat:
                 return True
         return False
 
+    def bat_on(self, cho=6.0):
+        """Artisan chưa mở ⇒ mở (Popen exe); đang OFF ⇒ bấm ON bằng UIA (chủ máy cho phép 15/10). Không START.
+        15/10 13:15: sau `tat_luu` Artisan nằm OFF ⇒ `kiem()` lượt sau báo "chưa ON" — gọi hàm này trước `kiem()`."""
+        import artisan_ui
+        w = artisan_ui._cua_so(2)
+        if w is None:
+            si = subprocess.STARTUPINFO()                   # mở KHÔNG kích hoạt (SW_SHOWNOACTIVATE) — không giành bàn phím của anh
+            si.dwFlags, si.wShowWindow = subprocess.STARTF_USESHOWWINDOW, 4
+            subprocess.Popen([artisan_ui.EXE], startupinfo=si)
+            w = artisan_ui._cua_so(60)
+            if w is None:
+                return False
+            time.sleep(8)
+        self.hien_nut()
+        if self.dang_on():
+            return True
+        artisan_ui._bam(self._w(), "ON")
+        time.sleep(cho)
+        self.lcd, self.t_co_so = None, time.time()
+        return self.dang_on()
+
     def kiem(self, bt_panel=None):
         ok, ly = self.kiem_cau_hinh()
         if not ok:
             return False, "Artisan sai cấu hình: " + ly
         if not self.dang_on():
             return False, "Artisan chưa ON"
-        if not self.con_nhan_so(bt_panel):
-            return False, "Artisan không nhận số (LCD không đọc được / lệch BT panel > 3 °C)"
+        a = self.doc_lcd()                                  # 15/10 13:20: phải ĐỌC ĐƯỢC số thật, không dùng ân hạn 10 s
+        if len(a) != 2 or not 20 <= a[1] <= 300 or (bt_panel is not None and abs(a[1] - bt_panel) > 3.0):
+            return False, "Artisan không nhận số (LCD %s — Modbus COM13 chưa nối? lệch BT panel > 3 °C?)" % (str(a) if a else "không đọc được",)
         return True, "Artisan " + ly + ", ON, LCD có số"
 
     def reset_start(self):
@@ -1493,6 +1509,7 @@ def do_gio(duong_csv, nhiet, buoc, trong=85):
     kiểm ĐANG GHI → chuỗi bước gió `buoc` [(gió %, giây)] bằng `ngam` (lớp an toàn BT > 245 / ET > 255 / mất số / mã / cờ PC)
     → TẮT Lệnh + gió 100 → OFF lưu giản đồ → in ΔRoR mỗi bước."""
     art, p = ArtisanThat(), Panel()
+    print("ARTISAN ON:", art.bat_on(), flush=True)
     ok, ly = art.kiem()
     print("ARTISAN KIEM:", ly, flush=True)
     if not ok:
@@ -1601,6 +1618,7 @@ def giu_bt_gio(luot, het_luc_hhmm, thu_muc, dau=175.0, g0=50, kg=0.08, tg=12.0, 
     w.writerow(["gio", "t", "pha", "bt", "et", "buong", "nhiet_dat", "lenh", "gio_dat", "gio_that", "trong", "ma", "ror",
                 "ke_hoach", "k_david"])
     try:
+        in_ra("ARTISAN ON: %s" % art.bat_on())
         ok, ly = art.kiem()
         in_ra("ARTISAN KIEM: %s" % ly)
         if not ok:
