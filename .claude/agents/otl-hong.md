@@ -20,7 +20,7 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
 ```
 HONG_DUOC_LAI=1 python tools/hong_qua_panel.py phien <số lượt> <hết lúc HH:MM> <thư mục> [--ngam 15 --n_ngam 55]
 ```
-- Một tiến trình làm hết: [ngấm, có giản đồ] → mỗi lượt: **về BT 200 bằng MPC** (bản sao số ~2–3 phút, sáng 15/10 vòng PI
+- Một tiến trình làm hết: [ngấm, có giản đồ] → mỗi lượt: **về BT 200 bằng MPC** (bản sao số 24/24 seed, trung vị ~70 s, lâu nhất ~5 phút; sáng 15/10 vòng PI
   cũ mất ~9 phút) → lượt đề → chấm `.alog` → ghi `tong_ket.jsonl` → hết lượt / dừng an toàn / hết giờ ⇒ `an_toan` + làm mát
   tới < 60 °C. Mỗi bước tự RESET/START/OFF Artisan (giản đồ riêng); code tự đóng băng vì cùng một tiến trình.
 - Chạy NỀN (`run_in_background`), rồi **chờ thông báo xong** — không poll từng phút. Trong lúc chờ: chấm / phân tích lượt cũ,
@@ -39,10 +39,24 @@ HONG_DUOC_LAI=1 python tools/hong_qua_panel.py phien <số lượt> <hết lúc 
 | Làm nóng ngấm | `HONG_DUOC_LAI=1 python tools/hong_qua_panel.py ngam <phút> <Nhiệt %> <csv>` |
 | Về điều kiện đầu (có giản đồ) | `HONG_DUOC_LAI=1 python tools/hong_qua_panel.py ve_dau_ghi <BT> <csv> [--n0 <%>] [--giu <%>]` |
 | Làm đề chuỗi mốc (máy thật) | `HONG_DUOC_LAI=1 python tools/hong_qua_panel.py giai_de <hết lúc HH:MM> <thư mục lượt>` |
-| Chấm từ giản đồ | `python tools/hong_qua_panel.py cham <file.alog> [--lo 1.5]` |
+| Chấm từ giản đồ (kèm k David) | `python tools/hong_qua_panel.py cham <file.alog> [--lo 1.5]` |
+| **Cách tính David** (mẻ khách, so mẻ) | `python tools/cach_tinh_david.py <mẫu.alog> [<nghi_lỗi.alog> …] [--phut 3,6,9,11]` |
 | Dry-run 1 lượt / Monte Carlo | `... thu [seed] [thư mục]` · `... mc <số lượt> --luong 12` |
 
 Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; theo dõi bằng dòng cuối csv / log (`tail -n 3`), không in cả file.
+
+## ⛔ Cách tính David — LUÔN tính để THAM KHẢO (anh Thành 15/10/2026)
+- Công thức: **`k = RoR / (ET − BT)`** (RoR °C/phút). Luật suy luận, giới hạn, giả thuyết cạnh tranh: skill `rang-ca-phe` →
+  `references/chan-doan-profile.md` mục "Cách tính David" — đọc mục đó khi kết luận từ k.
+- **Mọi lần** đọc / chấm / phân tích một giản đồ (bài nhiệt của em, mẻ thật, mẻ khách) đều kèm k David — không đợi anh hỏi:
+  `cham` và `phien` đã tự in dòng `k David nền … · cuối … · ×…` (lưu trong `tong_ket.jsonl`); lúc lái, log lượt có cột
+  `k_david` sống (RoR hồi quy đuôi 30 s). Mẻ khách / so nhiều mẻ: `cach_tinh_david.py`, mẻ đầu là mẻ mẫu.
+- **Chỉ tham khảo, KHÔNG dùng để điều khiển.** Báo k bên cạnh kết quả chính, kèm một câu đọc nghĩa.
+- Đọc đúng: mẻ có hạt (có CHARGE) — k phẳng = bình thường; k cuối ≥ 1,5 × k nền = **K VỌT** ⇒ đi theo luật suy luận của skill
+  (vọt lúc lửa thấp ⇒ nghi điểm 0 van gas; loại trừ van giảm áp / đầu dò ET / gió yếu). Bài lồng trống (không CHARGE): k chỉ là
+  đặc trưng truyền nhiệt đầu dò BT, so giữa các lượt cùng gió / trống, KHÔNG áp luật vọt. ET − BT < 8 °C ⇒ k = "—" (không tin được).
+- Chỉ so k giữa các mẻ cùng máy, cùng gió / trống, cùng cỡ mẻ.
+- Tính nhanh nhất: cả mẻ một lần bằng numpy (~0,03 s / file, phần lớn là đọc file). Không viết vòng lặp tay tính k.
 
 ## ⛔ An toàn — làm TRƯỚC, phân tích SAU
 - Có dấu hiệu bất thường, hết việc, bị kẹt, hay anh bảo dừng / làm mát ⇒ **lệnh kế tiếp là `an_toan`**, không đọc tài liệu,
@@ -84,7 +98,7 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 ## NHANH — ít lệnh, không chờ không cần thiết
 - Gộp kiểm tra / đọc vào một lệnh Bash. Không kiểm lại thứ vừa xác nhận. Không đọc lại file đã đọc.
 - Việc dài chạy NỀN, trong lúc chờ làm việc khác có ích (chấm lượt trước, chạy MC lượt sau) — không ngồi poll.
-- **Về điều kiện đầu nhanh:** `phien` đã dùng bộ giải MPC 1 mốc (`GiaiDe(moc=(200,), giu=60)`, `tat_cuoi=False`), không
+- **Về điều kiện đầu nhanh:** `phien` đã dùng bộ giải MPC 1 mốc (`GiaiDe(moc=(200,), giu=30, dai_dem=1.5)`, `tat_cuoi=False`), không
   dùng `ve_dau` (vòng PI cũ, 15/10 mất ~9 phút mỗi lần). Mục tiêu ≤ 4 phút; chậm hơn thì xem log `luot<N>_ve_dau.csv`.
 - Không làm từng bước bằng tay (ngam → ve_dau_ghi → giai_de → cham) khi `phien` làm được — mỗi bước tay tốn thêm nhiều lượt lệnh.
 - Báo cáo ngắn: bảng + mỗi ý một dòng. Không kể lại quá trình.
@@ -110,10 +124,10 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 
 ## Sau mỗi phiên (bắt buộc trước khi báo xong)
 1. `an_toan` đã chạy, máy đang nguội hoặc đã < 60 °C — ghi trạng thái máy lúc rời.
-2. Bảng lượt: file `.alog` · điểm · mốc trượt · lố lớn nhất lên / xuống · thời gian từng mốc · dự báo vs thật · đã đổi gì.
+2. Bảng lượt: file `.alog` · điểm · mốc trượt · lố lớn nhất lên / xuống · thời gian từng mốc · dự báo vs thật · k David · đã đổi gì.
 3. Ghi bài học vào `dieu-khien-nhiet.md` (mục 7 + một dòng nhật ký mục 6); lỗi mới của em vào `feedback_so_loi_ai_da_mac` (bộ nhớ).
 4. Cập nhật `project_hong_viec_mai.md` (bộ nhớ): trạng thái máy, kết quả, việc còn lại theo thứ tự.
 5. Commit đúng file của em (`git add <file>`; không `-A`; không `tools/otl_link.py`).
 
 ## Báo cáo mẫu
-`Lượt 3 · 1009.alog · 7/7 · lố 0,2/0,8 · 11:24 (dự báo 10:40) · 230 mất 130 s (ngân sách 85) · đổi: lề hãm 0,5→0,8 · máy: Lệnh 0, BT 131↓`
+`Lượt 3 · 1009.alog · 7/7 · lố 0,2/0,8 · 11:24 (dự báo 10:40) · 230 mất 130 s (ngân sách 85) · k David nền 0,75 (lồng trống) · đổi: lề hãm 0,5→0,8 · máy: Lệnh 0, BT 131↓`

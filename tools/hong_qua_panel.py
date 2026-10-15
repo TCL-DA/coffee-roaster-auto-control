@@ -37,10 +37,23 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ban_sao_so_may_dien as bss  # noqa: E402
+import cach_tinh_david as david  # noqa: E402  — chủ máy 15/10: LUÔN tính k David để tham khảo
 
 IP = os.environ.get("OTL_PANEL_IP", "169.254.116.153")
 GIO_MIN_PCT = 34                      # gió tối thiểu máy điện = 50 Hz (chủ máy 14/10)
 MAN_RANG, MAN_KHOA = 2, 15
+
+
+def _pin_panel():
+    """PIN đăng nhập panel: biến OTL_PANEL_PIN, không thì file riêng ~/.otl/panel_pin.txt (ngoài repo — không lên GitHub)."""
+    pin = os.environ.get("OTL_PANEL_PIN")
+    if not pin:
+        try:
+            with open(os.path.join(os.path.expanduser("~"), ".otl", "panel_pin.txt"), encoding="utf-8") as f:
+                pin = f.read().strip()
+        except OSError:
+            sys.exit("Thiếu PIN panel: đặt OTL_PANEL_PIN hoặc tạo ~/.otl/panel_pin.txt")
+    return pin
 
 
 class Panel:
@@ -115,7 +128,7 @@ class Panel:
         """Panel vừa khởi động lại thì ở MÀN KHOÁ ($21 = 15). Ghi PIN vào $955 rồi về màn rang ($49 = 2). Trả màn đang hiện.
         Chủ máy 14/10: "sao không đăng nhập vô đi kìa" — agent phải TỰ đăng nhập sau mỗi lần nạp / khởi động panel."""
         if self.doc(21, 1)[0] == MAN_KHOA:
-            self.ghi(955, [int(pin or os.environ.get("OTL_PANEL_PIN", "2026"))])
+            self.ghi(955, [int(pin or _pin_panel())])
             time.sleep(2.5)
         self.ghi(49, [MAN_RANG])
         time.sleep(2.5)
@@ -914,8 +927,9 @@ def chay_de(panel, artisan, dong_ho, giai, log_csv=None, in_ra=print, het_luc=No
     w = csv.writer(f) if f else None
     if w:
         w.writerow(["gio", "t", "moc", "bt", "et", "buong", "nhiet", "lenh_nhiet", "flags_hex", "ma", "ror_fw_bo_qua",
-                    "ke_hoach", "ghi_chu"])
+                    "ke_hoach", "ghi_chu", "k_david"])
     ly_do, t_doc_ok, cho, xong_sach = "xong", dong_ho.now(), None, False
+    ls_k = []                                            # (t, BT) 30 s cho k David sống — tham khảo, không lái
     try:
         while not giai.het:
             now = dong_ho.now()
@@ -950,6 +964,9 @@ def chay_de(panel, artisan, dong_ho, giai, log_csv=None, in_ra=print, het_luc=No
                 panel.dat_nhiet(giai.u[0])
                 panel.lenh_nhiet(bool(giai.u[1]))
             cho = None
+            ls_k.append((t, d["bt"]))
+            ls_k = ls_k[-40:]
+            k_dv = david.k_song(doc_hoi_quy(ls_k, 30), d["et"], d["bt"])
             xong = giai.cap_nhat(t, d["bt"], d["et"], d["buong"])
             if xong is not None:
                 in_ra("%5.0f DAT MOC %d (noi bo ±%.1f %d s)" % (t, xong, giai.dai_dem, giai.giu))
@@ -965,11 +982,13 @@ def chay_de(panel, artisan, dong_ho, giai, log_csv=None, in_ra=print, het_luc=No
                     panel.lenh_nhiet(bool(u[1]))
                 ghi = "nhiet -> %s" % _u(u)
                 cho = (u[0] if u[1] else None, u[1])
-                in_ra("%5.0f BT %.1f moc %d · %s · %s" % (t, d["bt"], mc, ghi, giai.ke_hoach))
+                in_ra("%5.0f BT %.1f moc %d · %s · %s · k %s" % (t, d["bt"], mc, ghi, giai.ke_hoach,
+                                                              "%.3f" % k_dv if k_dv is not None else "—"))
             if w:
                 gio = time.strftime("%H:%M:%S", time.localtime(now)) if now > 1e9 else bss._hms(now)
                 w.writerow([gio, round(t, 1), mc, d["bt"], d["et"], d["buong"], u[0], int(u[1]), "%04X" % (2 * int(u[1])),
-                            d["ma"], d.get("ror_fw", ""), giai.ke_hoach, ghi])
+                            d["ma"], d.get("ror_fw", ""), giai.ke_hoach, ghi,
+                            round(k_dv, 4) if k_dv is not None else ""])
                 f.flush()
             if artisan is not None and not artisan.con_nhan_so(d["bt"]):
                 ly_do = "Artisan mất số > 10 s"
@@ -1234,9 +1253,10 @@ def _gio_het(hhmm):
     return het
 
 
-def phien(so_luot, het_luc_hhmm, thu_muc, ngam_phut=0.0, n_ngam=55, dau=200, giu_dau=60, nguoi=True):
+def phien(so_luot, het_luc_hhmm, thu_muc, ngam_phut=0.0, n_ngam=55, dau=200, giu_dau=30, nguoi=True):
     """CẢ BUỔI trong MỘT tiến trình (chủ máy 15/10: "nâng tốc độ lên gấp 5"): [ngấm] → N × (VỀ ĐẦU bằng MPC 1 mốc → LƯỢT ĐỀ
-    → CHẤM .alog) → AN TOÀN + làm mát. Mỗi bước có giản đồ Artisan riêng (chay_de tự RESET/START/OFF). Code đóng băng sẵn
+    → CHẤM .alog + k David) → AN TOÀN + làm mát. Về đầu: giữ 30 s, dải đếm ±1,5 (bản sao số 24/24 seed, trung vị ~70 s,
+    lâu nhất 284 s; giữ 60 s / ±1,3 kẹt 1/24 seed ở 197–198 °C đảo 100↔47 %). Mỗi bước có giản đồ Artisan riêng (chay_de tự RESET/START/OFF). Code đóng băng sẵn
     (một tiến trình). Dừng sạch ⇒ lượt sau; dừng vì an toàn / hết giờ / Artisan ⇒ thôi, `an_toan`. Kết quả: tong_ket.jsonl."""
     import json
     if os.environ.get("HONG_DUOC_LAI") != "1":
@@ -1276,7 +1296,7 @@ def phien(so_luot, het_luc_hhmm, thu_muc, ngam_phut=0.0, n_ngam=55, dau=200, giu
                 in_ra("KHONG DU GIO cho luot %d — thoi" % i)
                 break
             t1 = time.time()
-            kv = chay_de(panel, art, DongHoThat(), GiaiDe(moc=(dau,), giu=giu_dau), het_luc=het, tat_cuoi=False,
+            kv = chay_de(panel, art, DongHoThat(), GiaiDe(moc=(dau,), giu=giu_dau, dai_dem=1.5), het_luc=het, tat_cuoi=False,
                          log_csv=os.path.join(thu_muc, "luot%d_ve_dau.csv" % i), in_ra=lambda s: in_ra("[ve dau] " + s))
             t_ve = time.time() - t1
             in_ra("LUOT %d · VE DAU %s sau %.0f s · %s" % (i, "xong" if kv["sach"] else "DUNG", t_ve, kv["dung"]))
@@ -1286,10 +1306,12 @@ def phien(so_luot, het_luc_hhmm, thu_muc, ngam_phut=0.0, n_ngam=55, dau=200, giu
                          log_csv=os.path.join(thu_muc, "luot%d.csv" % i), in_ra=lambda s: in_ra("[luot %d] %s" % (i, s)))
             ch = cham_alog(kq["alog"]) if kq.get("alog") else {"dat": False, "so_moc_dat": 0, "loi": "không có giản đồ"}
             in_ra(in_cham(ch) if kq.get("alog") else "CHAM: không có giản đồ — lượt không tính")
+            k_dv = david.tom_tat(david.phan_tich(kq["alog"])) if kq.get("alog") else "k David: —"
+            in_ra(k_dv)
             dong = {"luot": i, "alog": kq.get("alog"), "ve_dau_alog": kv.get("alog"), "ve_dau_giay": round(t_ve),
                     "dung": kq["dung"], "dat": ch.get("dat"), "so_moc_dat": ch.get("so_moc_dat"),
                     "tong_giay": ch.get("tong_giay"), "lo_len": ch.get("lo_len"), "lo_xuong": ch.get("lo_xuong"),
-                    "moc": [(k["moc"], k["giay"], k["lo"], k["truot"]) for k in ch.get("moc", [])]}
+                    "moc": [(k["moc"], k["giay"], k["lo"], k["truot"]) for k in ch.get("moc", [])], "david": k_dv}
             bang.append(dong)
             with open(os.path.join(thu_muc, "tong_ket.jsonl"), "a", encoding="utf-8") as f:
                 f.write(json.dumps(dong, ensure_ascii=False) + "\n")
@@ -1362,6 +1384,7 @@ if __name__ == "__main__":
     elif lenh == "cham":
         for f in pos:
             print(in_cham(cham_alog(f, lo_max=float(opt.get("lo", LO_MAX)))))
+            print(david.in_kq(david.phan_tich(f)))
     elif lenh == "thu":
         seed = int(pos[0]) if pos else 0
         tm = pos[1] if len(pos) > 1 else None
@@ -1403,7 +1426,7 @@ if __name__ == "__main__":
         sys.exit(0 if ve_dau(float(pos[0]), pos[1], nhiet0=float(opt["n0"]) if "n0" in opt else None) is not None else 2)
     elif lenh == "phien":
         phien(int(pos[0]), pos[1], pos[2], ngam_phut=float(opt.get("ngam", 0)), n_ngam=int(opt.get("n_ngam", 55)),
-              dau=float(opt.get("dau", 200)), giu_dau=int(opt.get("giu_dau", 60)), nguoi=opt.get("nguoi", "1") == "1")
+              dau=float(opt.get("dau", 200)), giu_dau=int(opt.get("giu_dau", 30)), nguoi=opt.get("nguoi", "1") == "1")
     elif lenh == "an_toan":
         # luôn được chạy, không cần HONG_DUOC_LAI: chỉ TẮT nhiệt + làm mát
         an_toan(gio=float(opt.get("gio", 100)), den=float(opt.get("den", 60)), duong_csv=opt.get("csv"))
