@@ -187,6 +187,10 @@ Trình tự "rang lưu vào hồ sơ N, charge T" (khi anh cho): `$M23 = T×10` 
 Rang tay ngoài chương trình (như mẻ 15:2x): firmware KHÔNG ghi SD ⇒ dựng `N.csv` từ `.alog` theo đúng định dạng trên rồi chép vào SD.
 
 ## Thao tác HMI
+
+- ⛔ **Mỗi mẻ RANG LƯU xong ⇒ LUÔN đặt tên hồ sơ trên HMI** (anh Thành 15/10): `<ddmm> M<số mẻ> <khối lượng>g [ghi chú ngắn]`, ASCII không dấu,
+  ≤ 30 ký tự — `HONG_DUOC_THAO_TAC=1 python tools/hmi_dien.py dat_ten_ho_so <n> <tên>` (ô `$M(100 + 30(n−1))`, 15 word, byte thấp trước),
+  rồi `lam_moi_ho_so` + `ho_so` đọc lại thấy tên. Tên nằm trong `$M` của HMI (giữ khi mất điện), firmware KHÔNG ghi tên xuống SD.
 - Giáo trình 100 % (đọc + thao tác, 30 màn, mọi nút, quy trình, CẤM, kế hoạch thử): `.claude/skills/rang-ca-phe/references/hmi-dien-thao-tac.md`.
 - ĐỌC hết: `python tools/hmi_dien.py doc [--json] [--ho_so]` · theo màn: `doc_man <id>` · màn đang hiện: `man` ($21).
 - Chuyển màn: `$49` = số màn (Control Block), kiểm `$21` · chọn hồ sơ: `chon_ho_so <n>` (đứng màn 6/12/13 + `$199+n` = 1 rồi `$15 = n`).

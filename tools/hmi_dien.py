@@ -15,7 +15,7 @@ Bản giao khách DIEN-110WS chỉ mở $300..$399, $500..$515, $819..$847, $M32
 Ghi (Hồng tự thử SAU mẻ, máy rảnh, theo kế hoạch mục 8 của giáo trình) — cần HONG_DUOC_THAO_TAC=1;
 lệnh làm cơ cấu chạy / bật nhiệt cần thêm HONG_DUOC_LAI=1:
     chuyen_man <id> · chon_ho_so <1..30> · bo_chon_ho_so · che_do <save|auto> · nhiet_charge <°C>
-    lam_moi_ho_so · pc_control <0|1> · xac_nhan_canh_bao · dung_chuong_trinh
+    dat_ten_ho_so <n> <tên> · lam_moi_ho_so · pc_control <0|1> · xac_nhan_canh_bao · dung_chuong_trinh
     [+HONG_DUOC_LAI] bat_dau · lam_nong <0|1> [--dich 210 --phut 15] · co_cau <nap|xa_trong|xa_khay|quat_nguoi> <0|1>
 Không có lệnh xoá hồ sơ / dò PID / đổi cấu hình máy — đó là việc chủ máy bấm tay (giáo trình mục 7).
 """
@@ -362,6 +362,25 @@ def lam_moi_ho_so(p=None):
     return {"38": _ghi_kiem(p, 38, 0 if cu else 1)}
 
 
+def dat_ten_ho_so(n, ten, p=None):
+    """Đặt TÊN hồ sơ n (1..30) = ô chữ màn Hồ sơ `$M(100 + 30(n−1))`, 15 word = 30 ký tự ASCII, byte thấp trước.
+    Tên chỉ nằm trong `$M` của HMI (giữ khi mất điện) — firmware KHÔNG ghi tên xuống SD. Luật anh Thành 15/10: mỗi mẻ RANG LƯU
+    xong ⇒ đặt tên `<ddmm> M<số mẻ> <khối lượng>g [ghi chú]`. Chỉ khi máy không chạy chương trình."""
+    _quyen()
+    p = p or Panel()
+    n = int(n)
+    if not 1 <= n <= 30:
+        raise TuChoi("Hồ sơ phải 1..30.")
+    if not ten or len(ten) > 30 or any(not (32 <= ord(c) < 127) for c in ten):
+        raise TuChoi("Tên 1..30 ký tự ASCII không dấu.")
+    if doc_tat_ca(p)["chuong_trinh"]["start"]:
+        raise TuChoi("Đang chạy chương trình ($0 = 1) — đặt tên sau mẻ.")
+    b = ten.encode("ascii").ljust(30, b"\x00")
+    words = [b[i] | (b[i + 1] << 8) for i in range(0, 30, 2)]
+    lai, ok = _ghi_kiem(p, "M%d" % (100 + 30 * (n - 1)), words)
+    return {"ho_so": n, "ten_doc_lai": chu(lai if isinstance(lai, list) else [lai]), "dat": ok}
+
+
 def pc_control(bat, p=None):
     """$13: 1 = board nghe PC (Artisan / PC_Link) thay vì panel. Hồng lái qua panel ⇒ luôn để 0."""
     _quyen()
@@ -493,6 +512,8 @@ def _main(argv):
             xuat(che_do(pos[0].lower() == "auto"))
         elif lenh == "nhiet_charge":
             xuat(nhiet_charge(float(pos[0])))
+        elif lenh == "dat_ten_ho_so":
+            xuat(dat_ten_ho_so(int(pos[0]), " ".join(pos[1:])))
         elif lenh == "lam_moi_ho_so":
             xuat(lam_moi_ho_so())
         elif lenh == "pc_control":

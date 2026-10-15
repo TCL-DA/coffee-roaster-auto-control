@@ -275,7 +275,7 @@ Cột "Hồng làm" = ghi gì qua TCP + đọc lại gì. "Khoá" = điều ki�
 | Nhãn | Ghi | Kiểu | Khoá | Macro sau bấm | Firmware | Hồng làm |
 |---|---|---|---|---|---|---|
 | Nút chọn hồ sơ n (10/trang) | `$(199+n)` (W402xx) | đảo | IL `$922` (có mẻ) | `$15 = n`, xoá `$200..229`, `$(199+n) = 1`. Macro ĐỒNG HỒ: `$15 = n` mà `$(199+n) = 0` ⇒ **`$15 = 0`** | `$15` đổi & `$21 ∈ {6,12,13}` ⇒ đọc `n.csv` ⇒ `$102..$117`, `$118`, `$120`, **ghi đè `$M23`** = charge của tệp (hỏng ⇒ 180,0) | `chon_ho_so(n)`: đứng đúng trang → `$200..229` một-nóng → `$15 = n` → chờ `$120`/`$118`/`$40` |
-| Tên hồ sơ (ô chữ) | `$M(100+30(n−1))` | chuỗi 30 ký tự | IL `$926` | — | không (chỉ HMI) | ⛔ không cần |
+| Tên hồ sơ (ô chữ) | `$M(100+30(n−1))` | chuỗi 30 ký tự | IL `$926` | — | không (chỉ HMI, firmware không ghi SD) | `dat_ten_ho_so(n, ten)` — ĐÃ XÁC MINH 15/10 16:50: ghi slot 1/2 "1510 M1 500g" / "1510 M2 700g", còn sau Làm mới. LUẬT: mỗi mẻ RANG LƯU xong đặt tên `<ddmm> M<số> <g>g` |
 | Ô DE °C / FCs °C của hồ sơ | `$106` / `$109` | 0,0..300,0 | IL `$926` | ⚠ `if $M5 > 0 ⇒ $M4 = 0` (xoá trần bù trước DE!) | **board không đọc lại `$102..$117`** ⇒ vô tác dụng, bị ghi đè khi nạp lại | KHÔNG ghi |
 | Ô Nhiệt charge | `$M23` | 0,0..250,0 (×10) | IL `$928` (AUTO thì khoá) | — | nhiệt nạp: COOL_DOWN / CHECK / tự CHARGE ở `$M23 ± $M10` | `nhiet_charge(°C)` — SAU khi chọn hồ sơ |
 | Làm mới | `$38` | đảo | — | — | nạp lại ngày giờ 30 hồ sơ | `lam_moi_ho_so()` |
