@@ -5,12 +5,15 @@ CHỈ chạy trên file: không mở cổng COM, không đụng Artisan / panel.
 
     python ban_sao_so_may_dien.py hoc  <log1.csv> [log2.csv …] [--hoc-den HH:MM:SS] [--kiem-tu HH:MM:SS]
     python ban_sao_so_may_dien.py kiem <log1.csv> [log2.csv …] --kiem-tu HH:MM:SS [--den HH:MM:SS]
+    (log trước 16/10/2026 thêm `--thang cu` — thang Nhiệt % -> SV cũ 130..350)
 
 Cột log đọc được: gio, bt, et, [buong], gas|nhiet (= Nhiệt %), [flags_hex] (bit 0x02 = Lệnh nhiệt). Không có flags ⇒ coi Lệnh bật.
 Tham số học xong ghi vào `ban_sao_so_may_dien.json` cạnh file này; class BanSaoSo tự đọc.
 
 Mô hình (gió 85 %, trống 85 %, lồng TRỐNG — đổi gió / trống / có hạt thì phải học lại):
-    SV   = 130 + 2,2·Nhiệt%  khi Lệnh nhiệt bật, = 0 khi tắt.
+    SV   = SV_0 + SV_DOC·Nhiệt%  khi Lệnh nhiệt bật, = 0 khi tắt.
+           Firmware từ 16/10: 160 + 2,1·% (160..370). Log TRƯỚC 16/10 ghi ở thang cũ 130 + 2,2·% ⇒ học / kiểm log cũ
+           thì thêm `--thang cu`.
     Mở   = rampa sau khi bật Lệnh: kep((giây_bật − d0)/r, 0, 1)    (firmware cần ~3 s mới báo "có nhiệt")
     VX4  : u = Mở · kep(kp·(SV − buồng) + I, 0, 1);  I += ki·(SV − buồng), kẹp 0…1, về 0 khi Lệnh tắt
     H    (điện trở, trạng thái ẩn)  += aH·u − bH·(H − buồng)            ⇒ tắt nguồn buồng vẫn lên thêm ~10 s
@@ -39,6 +42,19 @@ import numpy as np
 NOI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ban_sao_so_may_dien.json")
 T_MOI_TRUONG = 30.0
 KHOANG_DUT = 5          # mất số liệu > 5 s ⇒ cắt đoạn
+# Nhiệt % -> SV VX4 (Config.h VX4_SV_MIN_X10 / MAX). 'cu' = firmware tới 15/10, 'moi' = từ 16/10.
+THANG_SV = {"cu": (130.0, 2.2), "moi": (160.0, 2.1)}
+SV_0, SV_DOC = THANG_SV["moi"]
+
+
+def dat_thang_sv(ten):
+    """Chọn thang Nhiệt % -> SV cho cả module ('cu' khi học / kiểm log trước 16/10)."""
+    global SV_0, SV_DOC
+    SV_0, SV_DOC = THANG_SV[ten]
+
+
+def sv_tu_nhiet(nhiet):
+    return SV_0 + SV_DOC * nhiet
 GIU_CHAM_QUA_DUT = 600  # trạng thái chậm (W1, W2) mang qua chỗ đứt ≤ 10 phút
 TEN = ["kp", "ki", "d0", "r", "aH", "bH", "cB", "dB", "eB", "kE", "aE", "bE", "cE", "kT", "aT", "bT", "cT",
        "g1", "g12", "l1", "g21", "l2", "LhB", "LbE", "LwT", "LwE", "Lw2"]
@@ -65,7 +81,7 @@ def _kep_so(x, lo, hi):
 def _cong_thuc(p, h, b, et, bt, w1, w2, i, g, nhiet, lenh, kep):
     """Phương trình mô hình — MỘT chỗ duy nhất; chạy được cho số đơn (bộ quan sát) và mảng (dự báo theo lô).
     Tham số có thể là số hoặc mảng (K, 1) — bộ giải dùng K mô hình cùng lúc (MPC nhiều mô hình)."""
-    sv = (130.0 + 2.2 * nhiet) * lenh
+    sv = sv_tu_nhiet(nhiet) * lenh
     g = (g + 1.0) * lenh
     mo = kep((g - p["d0"]) / p["r"], 0.0, 1.0)
     e = sv - b
@@ -163,7 +179,7 @@ def quan_sat(p, d):
         bm, em, tm = bb[k], ee[k], TT[k]
         co_b = bm == bm  # không phải NaN
         if x is None or dd[k] != dd[k - 1]:
-            b0 = bm if co_b else (130 + 2.2 * nn[k] if ll[k] else em)
+            b0 = bm if co_b else (sv_tu_nhiet(nn[k]) if ll[k] else em)
             cham = (x[W1], x[W2]) if (x is not None and tt[k] - t_truoc <= GIU_CHAM_QUA_DUT) else (tm, tm)
             x = [b0, b0, em, tm, cham[0], cham[1], 0.0, 0.0]
         else:
@@ -298,7 +314,7 @@ def trang_thai_tu_do(p, bt, et, buong, nhiet, lenh):
     b = et if buong is None or buong != buong else buong
     w1 = (et - p["aE"] * b - p["cE"]) / max(p["bE"], 1e-3)
     h = b + (p["dB"] * (b - T_MOI_TRUONG) - p["eB"] * (w1 - b)) / p["cB"]
-    sv = (130.0 + 2.2 * nhiet) if lenh else 0.0
+    sv = sv_tu_nhiet(nhiet) if lenh else 0.0
     u = _kep_so(p["bH"] * (h - b) / p["aH"], 0.0, 1.0)
     i = _kep_so(u - p["kp"] * (sv - b), 0.0, 1.0) if lenh else 0.0
     return np.array([h, b, et, bt, w1, w1, i, 600.0 if lenh else 0.0])
@@ -425,7 +441,7 @@ def kiem_dac_diem(p, x0):
     for _ in range(400):
         x = buoc(p, x, 40.0, 1.0)
     b0 = x[B]
-    sv1 = 130 + 2.2 * 50
+    sv1 = sv_tu_nhiet(50)
     for s in range(1, 120):
         x = buoc(p, x, 50.0, 1.0)
         if x[B] >= b0 + 0.9 * (sv1 - b0):
@@ -489,6 +505,7 @@ def main():
         print(__doc__)
         return
     log, opt = _tach(sys.argv[2:])
+    dat_thang_sv(opt.get("thang", "moi"))
     d = nap_log(log)
     for a, b, n, cb in tom_tat_doan(d):
         print("đoạn %s–%s  %5d s  %s" % (a, b, n, "CÓ buồng" if cb else "không buồng"))

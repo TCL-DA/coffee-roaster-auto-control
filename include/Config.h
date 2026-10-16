@@ -129,8 +129,8 @@
 #endif
 #define VX4_REG_PV                        0     // thanh ghi đọc nhiệt buồng (×10 °C — VX4 đặt 1 số lẻ)
 #define VX4_REG_SV                        103   // thanh ghi ghi SV (×10 °C)
-#define VX4_SV_MIN_X10                    1300  // 'Nhiệt' 0 %   -> SV 130,0 °C  (chủ máy chốt 14/10: 130..350)
-#define VX4_SV_MAX_X10                    3500  // 'Nhiệt' 100 % -> SV 350,0 °C
+#define VX4_SV_MIN_X10                    1600  // 'Nhiệt' 0 %   -> SV 160,0 °C  (chủ máy chốt 16/10: 160..370; trước 14/10: 130..350)
+#define VX4_SV_MAX_X10                    3700  // 'Nhiệt' 100 % -> SV 370,0 °C  (đo 15/10: SV − BT ổn định ≈ 4..8 °C ⇒ 0 % giữ BT ≤ ~160)
 #define VX4_SV_TAT_X10                    0     // SV khi TẮT lệnh nhiệt — VX4 không nung
 #define VX4_SV_GHI_LAI_MS                 5000  // ghi lại SV định kỳ (VX4 khởi động lại / mất 1 gói vẫn nhận lại)
 #define ELEC_HEAT_ON_DELAY_MS             3000  // bật 'Lệnh nhiệt' 3 s -> coi là bếp chạy (thay tín hiệu lửa, chủ máy 14/10)

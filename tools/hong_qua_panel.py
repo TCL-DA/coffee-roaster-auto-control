@@ -171,7 +171,7 @@ def theo_doi(phut, duong_csv):
         if now - t_pt >= 3:
             t_pt = now
             r_bt, r_et, r_bu = (doc_hoi_quy(ls[k]) for k in ("bt", "et", "buong"))
-            sv = 130 + 2.2 * d["nhiet"] if d["lenh_nhiet"] else 0
+            sv = 160 + 2.1 * d["nhiet"] if d["lenh_nhiet"] else 0   # thang firmware từ 16/10 (Config.h VX4_SV_*)
             print("%s BT %.1f (RoR %+.1f) · ET %.1f (%+.1f) · BUONG %s (%+.1f) · SV %d · buong-ET %s · ET-BT %.1f · "
                   "BT+30s %.1f · nhiet %d%% gio %d%% trong %d%% · lenh %d pc %d ma %d"
                   % (time.strftime("%H:%M:%S"), d["bt"], r_bt, d["et"], r_et, d["buong"], r_bu, sv,

@@ -3,10 +3,15 @@
 Rút từ lần tự lái máy rang ĐIỆN VX4 ngày 14/10/2026: chủ máy cho toàn quyền nhiệt / gió / trống 60 phút, lồng trống, mục tiêu giữ BT 200 °C.
 Số liệu là đo THẬT; mỗi lần lái phải bổ sung thêm số mới vào cuối file.
 
+> ⚠️ **16/10/2026 — đổi thang Nhiệt % → SV:** firmware mới **SV = 160 + 2,1 × Nhiệt %** (0 % = 160 °C, 100 % = 370 °C;
+> `Config.h VX4_SV_MIN/MAX_X10`). Mọi số "Nhiệt X %" đo TRƯỚC 16/10 trong file này là thang CŨ 130 + 2,2 × % —
+> đổi sang thang mới bằng SV: `% mới = (130 + 2,2 × % cũ − 160) / 2,1`. Nghĩ theo **SV / buồng**, đừng chép % cũ.
+> Nhiệt 0 % giờ vẫn nung buồng 160 °C ⇒ lồng trống để lâu BT lên ~152–156 °C; muốn nguội hẳn phải TẮT Lệnh nhiệt.
+
 ## 1. Mô hình nhiệt máy điện (chuỗi trễ)
 
 ```
-'Nhiệt %' ──(firmware)──> SV đồng hồ VX4 = 130 + 2,2 × Nhiệt% (°C) ──(PID VX4, điện trở)──> nhiệt BUỒNG
+'Nhiệt %' ──(firmware)──> SV đồng hồ VX4 = 160 + 2,1 × Nhiệt% (°C, từ 16/10; trước: 130 + 2,2 ×) ──(PID VX4, điện trở)──> nhiệt BUỒNG
    ──(gió mang nhiệt, trễ)──> ET (khí) ──(truyền vào hạt / thành lồng)──> BT (hạt)
 ```
 
@@ -19,11 +24,11 @@ Số liệu là đo THẬT; mỗi lần lái phải bổ sung thêm số mới v
 
 | Khâu | Số đo |
 |---|---|
-| Nhiệt % → SV | SV = 130 + 2,2 × Nhiệt % |
+| Nhiệt % → SV | SV = 130 + 2,2 × Nhiệt % (thang cũ lúc đo; từ 16/10: 160 + 2,1 ×) |
 | SV → BUỒNG | VX4 bám SV trong **10–15 s**, lệch ±3 °C, gần như không vọt — tầng nhanh, KHÔNG phải nguồn dao động |
 | BUỒNG → ET | ET ≈ buồng − 15…22 °C |
 | ET → BT | BT ≈ ET − 3…12 °C, trễ thêm vài giây |
-| **Tổng (gió 85 %, lồng trống, máy đã ngấm)** | **BT ≈ SV − 25 °C** ⇒ BT 200 °C ≈ SV 225–228 ≈ **Nhiệt 43–45 %** |
+| **Tổng (gió 85 %, lồng trống, máy đã ngấm)** | **BT ≈ SV − 25 °C** ⇒ BT 200 °C ≈ SV 225–228 ≈ **Nhiệt 43–45 % thang cũ = 31–32 % thang mới** |
 
 - Hệ **NHANH** (BT theo Nhiệt % trong ~20–30 s). Mọi lần vọt lố trước đó là do bộ lái dự báo 1 phút (TAU 0,8–1,3) trên một hệ nhanh → bù quá tay. Đừng dùng dự báo RoR dài.
 - Có thêm một **tầng chậm**: thân lồng ngấm nhiệt hàng chục phút, BT trôi +0,5 °C/phút dù Nhiệt % đứng yên. Bù bằng tích phân chậm (`tools/vong_ngoai_bt.py`: mỗi 30 s, Nhiệt % += 0,4 × (đích − BT), kẹp ±3).

@@ -42,7 +42,7 @@ while True:
     buong = r[-1].get("buong") or "?"
     print(time.strftime("%H:%M:%S"), "BT %.1f (tb15s) ET %.1f BUONG %s ET-BT %.1f buong-ET %s RoR_ET %s nhiet %d (SV %d) -> %d"
           % (bt, et, buong, et - bt, ("%.1f" % (float(buong) - et)) if buong != "?" else "?", r[-1].get("ror_et"), gas,
-             130 + 2.2 * gas, moi))
+             160 + 2.1 * gas, moi))   # thang SV firmware từ 16/10 (Config.h VX4_SV_*)
     if moi != gas:
         with open(LENH, "a", encoding="utf-8") as f:
             f.write("gas %d\n" % moi)

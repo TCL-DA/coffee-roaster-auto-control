@@ -262,7 +262,7 @@ Cột "Hồng làm" = ghi gì qua TCP + đọc lại gì. "Khoá" = điều ki�
 |---|---|---|---|---|---|---|
 | **Bắt đầu mẻ / Dừng chương trình** | `$150` (W40151) | đảo | IL `$923` (khoá Start) | `$150=1`: AUTO cần `$118=1` ⇒ `$0=1`, không thì `$150=0`; RANG LƯU + `$15>0` + chưa chạy ⇒ mở **16 (Ghi đè?)**; còn lại ⇒ `$0=1`. `$150=0` ⇒ `$0=0` | `$0` chạy máy trạng thái (mục 5) | ⛔ ghi THẲNG `$0` sau khi tự kiểm (`bat_dau()` / `dung_chuong_trinh()`); KHÔNG ghi `$150` (vô tác dụng qua TCP) |
 | Chế độ (RANG LƯU / AUTO) | `$22` (W40023) | đảo | IL `$927` (thợ; Chuyên gia khi có mẻ) | mở 17 (AUTO) / 18 (LƯU) — chỉ là thông báo | đổi `progStatus` NGAY, kể cả giữa mẻ ⚠ | `che_do()` — chỉ khi `$0 = 0` |
-| Ô **Nhiệt %** | `$M36` (TCP 2036) | 0..100, bước ± 5 | IL `$464` (núm vặn / nguồn AUTO); nút ± ẩn khi `$467` bit 0 = 0 | — | nguồn VR/HMI: `gasPercent = $M36` ⇒ SV VX4 = 130 + % × 2,2 °C. Bỏ qua khi nguồn AUTO (`$14 = 2`) hoặc PC | `Panel.dat_nhiet()`; đọc `$M36`, `$66/10` |
+| Ô **Nhiệt %** | `$M36` (TCP 2036) | 0..100, bước ± 5 | IL `$464` (núm vặn / nguồn AUTO); nút ± ẩn khi `$467` bit 0 = 0 | — | nguồn VR/HMI: `gasPercent = $M36` ⇒ SV VX4 = 160 + % × 2,1 °C (từ 16/10; trước 130 + % × 2,2). Bỏ qua khi nguồn AUTO (`$14 = 2`) hoặc PC | `Panel.dat_nhiet()`; đọc `$M36`, `$66/10` |
 | Ô Gió % | `$M35` (2035) | 0..100 ± 5 (Hồng ≥ 34) | IL `$465` (thợ / núm); ẩn khi `$930 = 1` | — | `airflowPercent` → biến tần ID 5 45–60 Hz | `dat_gio()`; đọc `$64/10` |
 | Ô Áp hút Pa | `$M48` | 50..250 ± 5 | ẩn khi `$931 = 1` (máy điện: ẩn); IL `$926` | — | setpoint PID vacuum | không dùng |
 | Ô Trống % | `$M34` (2034) | 0..100 ± 5 | IL `$466` | — | biến tần ID 4 | `dat_trong()`; đọc `$65/10`, `$84` |
