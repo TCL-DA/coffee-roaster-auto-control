@@ -104,14 +104,14 @@ def doc_hong():
             if isinstance(c, str) or (isinstance(c, list) and any(x.get("type") == "text" for x in c if isinstance(x, dict))):
                 s = _chu(c).strip().replace("The coordinator sent a message while you were working:", "").strip()
                 if s and not s.startswith("<") and not s.startswith("Base directory for this skill"):
-                    ev.append({"ts": ts, "loai": "lenh", "nhom": "lenh", "nhan": s[:160], "chi_tiet": s[:1500], "tt": "xong"})
+                    ev.append({"ts": ts, "loai": "lenh", "nhom": "lenh", "nhan": s[:160], "chi_tiet": s[:900], "tt": "xong"})
                 continue
             for x in c or []:
                 if isinstance(x, dict) and x.get("type") == "tool_result" and x.get("tool_use_id") in theo_id:
                     e = theo_id[x["tool_use_id"]]
                     kq = _chu(x.get("content"))
                     e["tt"] = "loi" if (x.get("is_error") or LOI.search(kq[:400])) else "xong"
-                    e["kq"] = kq[:600]
+                    e["kq"] = kq[:400]   # gói nhỏ ⇒ trình duyệt đọc JSON nhanh, không lỡ khung 120 Hz
                     e["ts_xong"] = ts
         elif loai == "assistant":
             for x in c or []:
@@ -119,7 +119,7 @@ def doc_hong():
                     continue
                 if x.get("type") == "text" and x.get("text", "").strip():
                     s = x["text"].strip()
-                    ev.append({"ts": ts, "loai": "nghi", "nhom": "nghi", "nhan": s.splitlines()[0][:160], "chi_tiet": s[:1500], "tt": "can_nhac"})
+                    ev.append({"ts": ts, "loai": "nghi", "nhom": "nghi", "nhan": s.splitlines()[0][:160], "chi_tiet": s[:900], "tt": "can_nhac"})
                 elif x.get("type") == "tool_use":
                     inp = x.get("input") or {}
                     nhan = _nhan(inp, x.get("name", "?"))
@@ -127,7 +127,7 @@ def doc_hong():
                     goc = " ".join(str(inp.get(k, "")) for k in ("command", "file_path", "pattern", "path")) \
                         if isinstance(inp, dict) else ""   # phân nhóm theo lệnh / file, không theo nội dung sửa
                     e = {"ts": ts, "loai": "lam", "nhom": _nhom(nhan + " " + goc[:800]), "nhan": nhan,
-                         "chi_tiet": tho[:1200], "tt": "dang_lam", "cong_cu": x.get("name")}
+                         "chi_tiet": tho[:700], "tt": "dang_lam", "cong_cu": x.get("name")}
                     theo_id[x.get("id")] = e
                     ev.append(e)
     tuoi = time.time() - os.path.getmtime(p)
