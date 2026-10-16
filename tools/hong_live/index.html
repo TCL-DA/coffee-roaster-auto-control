@@ -106,7 +106,7 @@ body{margin:0;background:var(--nen);color:var(--chu);font:var(--c-m)/1.5 "Be Vie
 @media (max-width:1180px){body{overflow:auto}.trang{height:auto}.luoi{grid-template-columns:1fr}.gd{min-height:480px}.sd{min-height:440px}.vl{height:auto;max-height:420px}
   .so{grid-template-columns:repeat(3,minmax(0,1fr))}.tren{grid-template-columns:1fr auto}#ray{grid-column:1/-1}.viec{display:none}}
 @media (max-width:640px){.trang{padding:8px;gap:8px}.so{grid-template-columns:repeat(2,minmax(0,1fr))}.gd{min-height:420px}.cg_sd{display:none}
-  .chu_giai_gd{margin-left:0}.tren{padding:10px 12px}.gio .dh{font-size:var(--c-l)}}
+  .cot,.gd,.gd .dau{min-width:0}.chu_giai_gd{flex:1 1 100%;min-width:0;margin-left:0;flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none;padding-bottom:2px}.cg{flex:none}.gd{min-height:480px}.tren{padding:10px 12px}.gio .dh{font-size:var(--c-l)}}
 @media (prefers-reduced-motion:reduce){.sk.moi{animation:none}*{transition-duration:0s!important}}
 </style>
 </head>
@@ -211,7 +211,7 @@ function dungLopGd(){ // vẽ phần KHÔNG đổi giữa hai lần lấy số
     else g.fillText('Chưa có số mẻ — Hồng bắt đầu mẻ thì giản đồ hiện ở đây',w/2,h/2);return}
   const moc=mocA, mbt=(m.moc&&m.moc.moc_bt)||{}, dich=(m.moc&&m.moc.dich)||{};
   const tCuoi=L[L.length-1][0], t0=Math.min(0,L[0][0]), t1=Math.max((dich.drop||840)+90,tCuoi+75,moc.DROP?moc.DROP+60:0);
-  const nho=w<620, PL=nho?40:52, PR=nho?38:54, PT=40, LAN=bat('lan')?(h<420?56:76):0, PB=26+LAN, H=h-PT-PB;
+  const nho=w<620, PL=nho?40:52, PR=nho?38:54, PT=58, LAN=bat('lan')?(h<420?56:76):0, PB=26+LAN, H=h-PT-PB;
   const X=s=>PL+(s-t0)*(w-PL-PR)/(t1-t0), Y=v=>PT+H-(v-40)*H/210, YR=v=>PT+H-(v+5)*H/40;
   HINH={X,Y,YR,PL,PR,PT,H,LAN,w,h,t0,t1,L,moc,dich};
   [[0,moc.DE,C.xanhNhat,'SẤY'],[moc.DE,moc.FCs,C.nauNhat,'MAILLARD'],[moc.FCs,moc.DROP,C.doNhat,'PHÁT TRIỂN']].forEach(([a,b,mau,ten])=>{
@@ -222,16 +222,18 @@ function dungLopGd(){ // vẽ phần KHÔNG đổi giữa hai lần lấy số
     if(!nho||v%40===0){g.fillStyle=C.mo;g.textAlign='right';g.fillText(v,PL-6,y+4)}}
   g.textAlign='left';for(let v=0;v<=30;v+=5){g.fillStyle=C.mo;g.fillText(v,w-PR+6,YR(v)+4)}
   g.font='600 11.5px '+FONT;g.fillStyle=C.mo;g.textAlign='left';g.fillText('°C',4,PT-6);g.textAlign='right';g.fillText('RoR',w-4,PT-6);
-  g.font='11.5px '+SO;const buoc=(t1-t0)>(nho?600:1200)?120:60;
+  g.font='11.5px '+SO;const pxGiay=(w-PL-PR)/(t1-t0),buoc=[60,120,180,300].find(b=>b*pxGiay>=48)||300;   // nhãn giờ cách nhau ≥ 48 px
   for(let s=Math.ceil(t0/buoc)*buoc;s<=t1;s+=buoc){const x=X(s);g.strokeStyle=C.luoi;g.beginPath();g.moveTo(x,PT);g.lineTo(x,PT+H);g.stroke();
     g.fillStyle=C.mo;g.textAlign='center';g.fillText(mmss(s),x,PT+H+16)}
   if(bat('ror')&&moc.FCs!=null){const a=X(moc.FCs),b=X(moc.DROP!=null?moc.DROP:t1),[rl,rh]=daiRoR(dich);
     g.fillStyle='rgba(185,28,28,.10)';g.fillRect(a,YR(rh),b-a,YR(rl)-YR(rh));
     g.setLineDash([3,3]);g.strokeStyle=C.do;g.beginPath();g.moveTo(a,YR(rh));g.lineTo(b,YR(rh));g.moveTo(a,YR(rl));g.lineTo(b,YR(rl));g.stroke();g.setLineDash([]);
     g.fillStyle=C.do;g.font='600 11.5px '+FONT;g.textAlign='right';g.fillText('RoR đích '+rl+'–'+rh,b-4,YR(rh)-5)}
+  let phaiDich=-1e9;   // nhãn đích: màn hẹp bỏ chữ "đích", nhãn nào chạm nhãn trước thì không vẽ
   [['DE',dich.de],['FCs',dich.fcs],['DROP',dich.drop]].forEach(([ten,s])=>{if(s==null)return;const x=X(s);
     g.setLineDash([4,4]);g.strokeStyle=C.vienDam;g.beginPath();g.moveTo(x,PT);g.lineTo(x,PT+H);g.stroke();g.setLineDash([]);
-    g.fillStyle=C.mo;g.font='11.5px '+FONT;g.textAlign='center';g.fillText('đích '+ten+' '+mmss(s),x,PT+H-6)});
+    const f='11.5px '+FONT,chu=(nho?'':'đích ')+ten+' '+mmss(s),ww=doRong(g,f,chu),xl=Math.min(Math.max(x-ww/2,PL+2),w-PR-ww-2);
+    if(xl<phaiDich+6)return;phaiDich=xl+ww;g.fillStyle=C.mo;g.font=f;g.textAlign='left';g.fillText(chu,xl,PT+H-6)});
   const dichCua={DE:dich.de,FCs:dich.fcs,DROP:dich.drop};let coPhai=-1e9,hang=0;
   ['CHARGE','TP','DE','FCs','DROP'].forEach(ten=>{const s=moc[ten];if(s==null)return;const x=X(s);
     g.strokeStyle='rgba(68,64,60,.5)';g.beginPath();g.moveTo(x,PT);g.lineTo(x,PT+H);g.stroke();
