@@ -177,7 +177,7 @@ class QuanSat:
             ten = ("Nhiệt", "Lệnh", "gió", "trống")
             doi = " · ".join("%s %s→%s%s" % (ten[i], self.cu[i], dk[i], "" if i == 1 else " %")
                              for i in range(4) if dk[i] != self.cu[i])
-            self.ghi("THAO TÁC (anh hoặc bộ lái Hồng): %s · lúc %s · BT %.1f · RoR %+.1f °C/ph" % (
+            self.ghi(("LỆNH Hồng" if os.path.exists(os.path.join(self.tm, "lai_dang_chay")) else "THAO TÁC anh") + ": %s · lúc %s · BT %.1f · RoR %+.1f °C/ph" % (
                 doi, mmss(tr) if tr is not None else "trước charge", bt, self.ror(now)))
         self.cu = dk
 

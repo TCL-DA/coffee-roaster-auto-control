@@ -148,6 +148,24 @@ Lớp an toàn riêng (bộ giải không ghi đè): BT > 245 · ET > 255 · m�
 - Bậc thang LÊN 195 → 200 → 205 (30 s mỗi mốc) thuận chiều trôi: gió 50 cố định đi qua mỗi dải 3 °C trong 45–55 s. Lượt 1339 (chạy cho
   đề giữ 200) chấm theo bậc thang: 195 vào 98 s ra 144 s (46 s) · 200 166 → 221 s (55 s) · 205 256 → 300 s (44 s) ⇒ 3/3.
 
+## 7c. MPC mẻ CÓ HẠT 800 g — `tools/hong_lai_me_mpc.py` (16/10/2026, mẻ 5–6)
+
+- Mô hình (học từ log mẻ mồi 1 Hz): buồng' = α↑·(SV − buồng) kẹp ρ (α↑ ≈ 0,012/s, ρ ≈ 1,5 °C/s) hoặc α↓·(SV − buồng) (≈ 0,08/s);
+  RoR_BT = a·(buồng − BT) + c + d̂ (a ≈ 0,08, c ≈ −1; rmse 3,8 °C/ph — thô). Thêm hạng BT tự do ⇒ a âm (cộng tuyến) — bỏ.
+  d̂ = nhiễu lọc mũ trong bộ quan sát, tắt dần (τ 90 s) trong dự báo. Đường đích = BT mẻ mồi tới FCs, sau FCs dốc 6 °C/ph.
+- **MPC phải kẹp quanh lịch Nhiệt của mẻ mồi** (feed-forward): MPC tự do với mô hình tĩnh hạ Nhiệt 32–44 % lúc 2:30 (mẻ 5 v1)
+  vì d̂ lớn làm dự báo "đủ nóng" ⇒ buồng tụt 50 °C so mẻ mồi. Kẹp u_ff −20/+10 + phạt lệch FF chạy tốt. Nhưng khi điều kiện đầu
+  khác hẳn (mẻ 6: lồng còn nóng từ mẻ trước) kẹp −20 KHÔNG đủ hãm ⇒ nới −50 (`HONG_DU`).
+- **Nhiệt tích của LỒNG lúc charge quyết định sấy, không phải BT charge.** Mẻ 6 (charge 20 phút sau mẻ 5, buồng chỉ 167 nhưng
+  thân lồng còn nóng): TP 0:46 / 82 (mẻ 4: 1:01 / 75), RoR 28 lúc 1:35, BT sớm hơn đường đích 19–22 °C ⇒ DE 5:21 (−69 s) dù cắt Nhiệt
+  còn 16–33 %. Muốn DE đúng giờ phải biết trạng thái lồng TRƯỚC charge (thời gian nghỉ, ET/buồng lúc START) và hạ nhiệt sớm/sâu ngay
+  0:00 — đưa nhiệt tích lồng vào mô hình là việc kế tiếp.
+- **Dev: cho MPC nhìn RoR khi BT dự báo ≥ 192 từ FCs − 120 s (trọng số 3)** ⇒ mẻ 6 RoR dev 5,4–7,1, TB 6,2, ~99 % thời gian trong 5–7
+  (mẻ 5 trọng số 0,6 từ FCs − 60: 77 %; mẻ 4 anh lái: 49 %). Nhiệt dev 68–77 % (mẻ 4: 80–85 %).
+- FCs đúng giờ được dù DE sớm: MPC kéo Maillard dài (RoR 5–7) — đổi lại RoR Maillard thấp (≈ 6,9 so mẻ 4 8,5), có rủi ro "baked".
+- Artisan: Invoke nút CHARGE (cả nút chính chữ HOA thanh sự kiện) KHÔNG ghi mốc CHARGE vào .alog cả 2 mẻ; DROP thì ghi. Sửa sau mẻ:
+  đặt `timeindex[0]` = điểm BT max quanh (t_DROP_alog − t_DROP_firmware). Chưa rõ gốc — cần thử ngoài mẻ.
+
 ## 6. Nhật ký lái (bổ sung mỗi lần)
 
 | Ngày | Máy | Việc | Kết quả / bài học |
@@ -165,3 +183,5 @@ Lớp an toàn riêng (bộ giải không ghi đè): BT > 245 · ET > 255 · m�
 | 15/10/2026 17:15 | Điện VX4, lồng trống, gió 100 trống 100 (không lái) | Học lại bản sao số cho cấu hình gió 100 / trống 100 | Học trên log nung 14:29–14:37 + đề 3 14:38–14:50 + giữ 170 15:40–16:09; kiểm trên log anh lái 15:02–15:12 (không dùng để học): BT +30 s MAE 2,17 → 0,76, +60 s 2,77 → 0,75, lệch TB −2,69 → −0,54 °C (mô hình cũ đoán thiếu ⇒ khớp nhận xét cT +6). Tham số ở `tools/ban_sao_so_g100_t100.json`, chưa thay bộ chính. Đổi lớn: cE 15 → 31, aH 18,6 → 7,8, cB 0,24 → 0,64 ⇒ nhiều tham số bù nhau, chỉ tin trong cấu hình gió 100 / trống 100. |
 | 16/10/2026 10:44–10:58 | Điện VX4, **mẻ thật 800 g**, slot 4 (RANG LƯU), charge 170, thang SV mới (160 + 2,1 × %) | Anh lái theo đích DE 4:00 · FCs 9:00 · DROP 13:00 · dev 4:00; Hồng quan sát 3 s (`hong_quan_sat_me.py`) và DROP ở BT 215 theo lệnh | DE 6:29 (+149) · FCs 10:59 (+119) · DROP 14:02 / 215,6 (+62) · dev 3:03 · DTR 21,7 %. Mẻ 3 (900 g, 15/10, thang cũ Nhiệt 90 % = SV 328): DE 6:38 · FCs 11:30 · DROP 15:31. Mẻ 4 Nhiệt 85 % = SV 338,5. Gốc trễ DE: hạ Nhiệt 80 → 20 % từ 0:21 tới 1:27 ⇒ RoR TP→DE 14,5 °C/ph (cần ~27). Số Artisan tự tính khớp ca kiểm 8:54 (AUC từ TP, nền BT_TP: 466 ↔ 464). k nền 0,322; 'vọt' cuối lúc ET − BT ~10 °C — không tin. |
 | 15/10/2026 15:20–16:46 | Artisan khi rang mẻ thật | Lỗi của Hồng: OFF Artisan lúc 15:20 mà không kiểm "đường quay lại" | Thanh nút ON/OFF/START bị ẩn (phím `c` của Artisan) ⇒ Hồng kẹt, chỉ báo SAU, rồi còn báo sai "hai mẻ không có giản đồ" — thực tế `1608.alog` (mẻ 1, CHARGE 169,3 · DRY 6:04 · FCs 12:18 · DROP 16:46) và `1633.alog` (mẻ 2, DRY 4:05 · FCs 8:38 · DROP 12:04) có đủ (không do Hồng bấm). k David chính thức (`cach_tinh_david.py`): mẻ 1 nền 0,252, cuối ×1,08 phẳng; mẻ 2 nền 0,310, cuối ×1,33 phẳng. Sửa: `artisan_ui.duong_quay_lai()` chặn OFF khi không quay lại được; `hien_thanh_nut()` gửi `c` bằng PostMessage riêng vào cửa sổ Artisan (đo thật: ẩn → hiện, cửa sổ anh không đổi); `_bam` trả màn hình ngay. |
+| 16/10/2026 11:19–11:36 | Điện VX4, **mẻ 800 g**, slot 5 (RANG LƯU), charge 170 | **Hồng TỰ RANG** bằng MPC `hong_lai_me_mpc.py` (mồi = log mẻ 4); đích DE 6:30 · FCs 11:00 · DROP BT 217,0 · RoR dev 5–7 | DE 6:38 (+8) · FCs 11:13 (+13) · DROP **217,0** / 14:37 · dev 3:24 · DTR 23,3 % · RoR dev TB 6,7 (5,4–8,0), 77 % trong 5–7. Lỗi: bộ lái dựng trễ 25 s sau charge; MPC v1 hạ Nhiệt quá sâu ⇒ dừng 3:19, v2 kẹp quanh lịch. .alog thiếu CHARGE ⇒ `1118_charge_sua.alog`. k nền 0,311, cuối ×2,09 (ET − BT ~10, không tin). Mục 7c. |
+| 16/10/2026 11:41–11:56 | Điện VX4, **mẻ 800 g**, slot 6, charge 170, lồng còn nóng từ mẻ 5 | Hồng TỰ RANG, MPC v3 (học mẻ 4+5, dựng TRƯỚC `$0=1`, FF +3 % sấy, dev nhìn RoR từ FCs − 120 s) | DE **5:21 (−69)** · FCs **11:00 (0)** · DROP **217,0** / 14:42 · dev 3:42 · DTR 25,2 % · RoR dev TB 6,2 (5,4–7,1), ~99 % trong 5–7. TP 0:46 / 82: lồng nóng ⇒ BT trước đích 19–22 °C lúc 1:35–2:30, kẹp −20 không hãm nổi ⇒ khởi động lại nới −50. .alog lại thiếu CHARGE ⇒ `1141_charge_sua.alog`. k nền 0,374, cuối ×1,92 (ET − BT 9,7). Mục 7c. |

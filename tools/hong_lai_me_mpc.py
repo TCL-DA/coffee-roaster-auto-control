@@ -24,6 +24,8 @@ import numpy as np  # noqa: E402
 
 SV = lambda u: 160 + 2.1 * u  # noqa: E731
 U_MAX = 90
+UFF_SAY = float(os.environ.get("HONG_UFF_SAY", "3"))
+W_DEV = float(os.environ.get("HONG_W_DEV", "3"))
 
 
 def s16(v):
@@ -83,8 +85,10 @@ def mo_phong(p, bt, bu, u, d, H):
 class LaiMe:
     def __init__(self, tm, moi, drop=217.0, fcs=660.0, ror_dev=6.0):
         self.tm, self.drop_bt, self.fcs_t, self.ror_dev = tm, drop, fcs, ror_dev
-        self.a = doc_moi(moi)
-        self.p = hoc(self.a)
+        ds = [doc_moi(x) for x in moi.split(",")]
+        self.a = ds[0]
+        self.p = hoc(np.vstack(ds))
+        open(os.path.join(tm, "lai_dang_chay"), "w").write(str(os.getpid()))
         self.pn = Panel()
         self.d = 0.0
         self.lich = []
@@ -161,17 +165,17 @@ class LaiMe:
         sau_fcs = bt >= 194.0 or t > self.fcs_t
         u0 = self.u if self.u is not None else 80
         best = None
-        uff = self.ff(t, 5)
-        for u in range(int(max(0, uff - 20)), int(min(U_MAX, uff + 10)) + 1):
+        uff = self.ff(t, 5) + (UFF_SAY if t < 600 else 0)
+        for u in range(int(max(0, uff - float(os.environ.get("HONG_DU", "20")))), int(min(U_MAX, uff + 10)) + 1):
             bts, rors = mo_phong(p, bt, bu, u, self.d, H)
             tt = t + np.arange(1, H + 1)
             ref = np.array([self.bt_ref(x) for x in tt])
             w = np.where(np.arange(1, H + 1) >= 15, 1.0, 0.0)
             J = float(np.sum(w * (bts - ref) ** 2)) / H
-            if sau_fcs or t > self.fcs_t - 60:
-                m = (tt >= max(self.fcs_t, t))
+            if sau_fcs or t > self.fcs_t - 120:
+                m = (bts >= 192.0)
                 if m.any():
-                    J += 0.6 * float(np.mean((rors[m] - self.ror_dev) ** 2))
+                    J += W_DEV * float(np.mean((rors[m] - self.ror_dev) ** 2))
             J += 0.004 * (u - u0) ** 2 + 0.01 * (u - uff) ** 2
             if best is None or J < best[0]:
                 best = (J, u, bts[59], bts[-1])
@@ -211,11 +215,13 @@ class LaiMe:
                 return
             if t_charge is None:
                 ds = [b for tt, b in self.lich if now - tt <= 30]
-                if r[81] > 0 or (max(ds) - bt >= 25 and max(ds) > 120):
+                if r[81] == 0:
+                    self._da_0 = True
+                if (r[81] > 0 and getattr(self, "_da_0", False)) or (max(ds) - bt >= 25 and max(ds) > 120):
                     t_charge = now - (r[67] * 60 + r[68])
                     self.ghi("Hồng LÁI: CHARGE thấy lúc BT %.1f · bắt đầu phát lại feed-forward 0–85 s rồi MPC" % bt)
                     self.bam_artisan("CHARGE")
-                elif now - t_bat > 900:
+                elif now - t_bat > 1200:
                     self.ghi("⛔ 15 phút chưa CHARGE — bộ lái thoát (firmware giữ chương trình)")
                     return
                 time.sleep(0.5)
@@ -260,9 +266,25 @@ class LaiMe:
     def bam_artisan(self, nut):
         try:
             import artisan_ui
+            import ctypes
             w = artisan_ui._cua_so(3)
-            artisan_ui._bam(w, nut)
-            self.ghi("Artisan: bấm %s (UIA Invoke)" % nut)
+            hit = []
+            def walk(c, d=0):
+                if d > 12 or hit: return
+                for x in c.GetChildren():
+                    if x.ControlTypeName == 'ButtonControl' and x.Name == nut:
+                        hit.append(x); return
+                    walk(x, d + 1)
+            walk(w)
+            if not hit:
+                self.ghi("⛔ Artisan: KHÔNG thấy nút chính %s (chỉ có nút sự kiện) — mốc Artisan sẽ thiếu, sửa .alog sau mẻ" % nut)
+                return
+            b = hit[0]
+            fg = ctypes.windll.user32.GetForegroundWindow()
+            b.GetInvokePattern().Invoke()
+            for _ in range(10):
+                artisan_ui._tra_man_hinh(w, fg); time.sleep(0.1)
+            self.ghi("Artisan: bấm nút chính %s (UIA Invoke) ở %s" % (nut, b.BoundingRectangle))
         except Exception as e:
             self.ghi("⚠ Artisan %s lỗi: %s" % (nut, e))
 
