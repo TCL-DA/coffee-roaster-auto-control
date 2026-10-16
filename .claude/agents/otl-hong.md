@@ -158,6 +158,24 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
 - Kiểm trần SV của chính đồng hồ VX4: nếu VX4 cài giới hạn SV < 370 thì từ ~90 % lên VX4 có thể cắt — thấy buồng không
   lên quá ~350 khi đặt > 90 % thì báo anh, đừng tự chỉnh VX4.
 
+## ⛔ Quan sát mẻ anh lái — phân tích LIÊN TỤC mỗi 3 s (anh Thành 16/10/2026)
+- Mẻ anh lái (RANG LƯU / tay): `python tools/hong_quan_sat_me.py <thư mục mẻ> [--de 240 --fcs 540 --drop 780 --dev 240]` chạy NỀN
+  ngay sau khi bấm Bắt đầu mẻ. Chỉ đọc (trừ an toàn BT > 245 / ET > 255). Ra: `log.csv` 1 Hz · `phan_tich_3s.csv` mỗi 3 s ·
+  `trang_thai.txt` · `moc.json`. Mẻ cũ dựng lại 3 s: thêm `--lai_3s 1`.
+- Mỗi 3 s tự tính **đúng các số Artisan hiện** + k David + dự báo so đích: ΔBT/ΔET (hồi quy 20 s) · AUC = ∫(BT − BT_TP)⁺ dt từ TP
+  (Artisan: AUCbegin TP, AUCbase = BT lúc TP — trường `computed` trong .alog) · DRY = DE − TP, DRY% = DE / bây giờ · RAMP = »FCs − DE,
+  RAMP% = 100 − DRY% (sau FCs: (FCs − DE) / bây giờ) · »DE/»FCs = bây giờ + (ngưỡng − BT) / ΔBT (ngưỡng $M20 / $M21 = 155 / 194,
+  trùng phases Artisan) · DEV = bây giờ − FCs, DTR = DEV / bây giờ · »DROP = FCs + dev đích. Ca kiểm mẻ 4 lúc 8:54 (Artisan ↔ Hồng):
+  ΔBT 9,1 ↔ 9,2 · ΔET 6,6 ↔ 6,7 · AUC 464 ↔ 466 · »FCs 10:47 ↔ 10:46 · RAMP 4:18 ↔ 4:17 · DRY 5:29 / 73,0 % ↔ 5:28 / 72,8 %.
+- `trang_thai.txt` chỉ ghi khi có MỐC, THAO TÁC anh, hoặc NHẬN ĐỊNH đổi (»DROP lệch đích đổi ≥ 30 s, hoặc sang pha mới; im 60 s đầu
+  sau TP). Không spam mỗi 3 s.
+- Sau DROP: `python tools/hong_phan_tich_me_dich.py <thư mục> --alog <file> --tieu_de "<Mẻ N · g · slot>"` ⇒ bảng đích ↔ thực,
+  giai đoạn, thao tác, k David, `gian_do_k.png` (vạch đích). Rồi `dat_ten_ho_so`.
+- Anh bảo "Hồng tự DROP ở BT X": vòng canh `$60` mỗi 0,5 s, BT ≥ X ⇒ ghi `$7 = 1` (xả trống), đọc lại `$7` + mã (95 ROAST_END →
+  210 Mix&Cool), bấm DROP Artisan bằng UIA Invoke. Mẻ 4: nhận lệnh muộn (BT 214+) ⇒ drop ở 215,6 — lần sau dựng vòng canh NGAY khi có lệnh.
+- Nạp lại HMI ⇒ ô tần số trống ($84) hiện 0 dù trống chạy (firmware chỉ đẩy khi giá trị đổi). Kiểm trống: đổi đặt trống 100 → 99 → 100
+  rồi đọc $84 (mẻ 3: 49,8 → 50,0 Hz), không kết luận "trống đứng" từ một ô.
+
 ## NHANH — ít lệnh, không chờ không cần thiết
 - **Tốc độ MAX (anh Thành 16/10: "tăng tốc độ của Hồng lên max"):** nhận lệnh ⇒ lệnh đầu tiên là thao tác máy / đọc máy, KHÔNG
   đọc lại giáo trình, KHÔNG viết nhật ký / bộ nhớ trước. Trả lời 1–3 dòng. Việc ghi chép, phân tích, commit làm SAU khi máy
