@@ -152,6 +152,25 @@ def _so(x):
     return v if v == v and abs(v) != float("inf") else None   # NaN / inf làm hỏng JSON của trình duyệt
 
 
+def _csv(p, so_dong=None):
+    """Đọc CSV có tiêu đề -> list dict (so_dong: chỉ lấy N dòng cuối)."""
+    if not os.path.exists(p):
+        return []
+    try:
+        hang = open(p, encoding="utf-8", errors="ignore").read().splitlines()
+    except OSError:
+        return []
+    if len(hang) < 2:
+        return []
+    dau = hang[0].split(",")
+    than = hang[1:] if so_dong is None else hang[-so_dong:]
+    return [r for r in csv.DictReader(than, fieldnames=dau) if r.get(dau[0]) != dau[0]]
+
+
+# cột log gửi cho giản đồ: t, bt, et, buồng, RoR BT, k, nhiệt thực, gió thực, trống Hz, nhiệt đặt
+COT_LOG = ("t_rang", "bt", "et", "buong", "ror_bt", "k_david", "nhiet", "gio_pv", "trong_hz", "dat_nhiet")
+
+
 def doc_me():
     tt = sorted(glob.glob(os.path.join(ME_GOC, "*", "trang_thai.txt")), key=os.path.getmtime)
     if not tt:
@@ -161,23 +180,34 @@ def doc_me():
         dong = open(tt[-1], encoding="utf-8", errors="ignore").read().splitlines()
     except OSError:
         dong = []
-    log, cuoi = [], {}
     lp = os.path.join(thu_muc, "log.csv")
-    if os.path.exists(lp):
-        hang = _doc_duoi(lp, 400_000)
-        try:
-            dau = open(lp, encoding="utf-8", errors="ignore").readline().strip().split(",")
-            for r in csv.DictReader(hang[-SO_DIEM_LOG:], fieldnames=dau):
-                if r.get(dau[0]) == dau[0]:
-                    continue
-                log.append([r.get("gio"), _so(r.get("bt")), _so(r.get("et")), _so(r.get("buong")),
-                            _so(r.get("ror_bt")), _so(r.get("k_david")), _so(r.get("nhiet")), _so(r.get("t_rang"))])
-            if log:
-                cuoi = {"gio": log[-1][0], "bt": log[-1][1], "et": log[-1][2], "buong": log[-1][3], "ror": log[-1][4],
-                        "k": log[-1][5], "nhiet": log[-1][6], "t": log[-1][7]}
-        except (OSError, csv.Error):
-            pass
-    return {"thu_muc": os.path.basename(thu_muc), "dong": dong[-40:], "log": log, "cuoi": cuoi,
+    hang = _csv(lp)
+    trong_me = [r for r in hang if (r.get("t_rang") or "").strip()]
+    nguon = trong_me if trong_me else hang[-SO_DIEM_LOG:]          # chưa charge: lấy đoạn chờ gần nhất
+    log = [[_so(r.get(c)) for c in COT_LOG] for r in nguon]
+    if not trong_me:
+        for i, r in enumerate(log):
+            r[0] = i - len(log)                                        # giây âm = trước charge
+    cuoi = {}
+    if hang:
+        r = hang[-1]
+        cuoi = {"gio": r.get("gio"), "t": _so(r.get("t_rang")), "bt": _so(r.get("bt")), "et": _so(r.get("et")),
+                "buong": _so(r.get("buong")), "ror": _so(r.get("ror_bt")), "k": _so(r.get("k_david")),
+                "nhiet": _so(r.get("nhiet")), "dat_nhiet": _so(r.get("dat_nhiet")), "gio_pv": _so(r.get("gio_pv")),
+                "trong_hz": _so(r.get("trong_hz")), "lenh": _so(r.get("lenh")), "ma": _so(r.get("ma"))}
+    try:
+        moc = json.load(open(os.path.join(thu_muc, "moc.json"), encoding="utf-8"))
+    except (OSError, ValueError):
+        moc = {}
+    pt = _csv(os.path.join(thu_muc, "phan_tich_3s.csv"), 1)
+    mpc = _csv(os.path.join(thu_muc, "mpc.csv"))
+    duong_dich = [[_so(r.get("t_rang")), _so(r.get("bt_ref"))] for r in mpc[::3]]
+    mc = mpc[-1] if mpc else {}
+    return {"thu_muc": os.path.basename(thu_muc), "dong": dong[-60:], "log": log, "cuoi": cuoi, "moc": moc,
+            "pt": {k: (_so(v) if k != "gio" else v) for k, v in (pt[-1].items() if pt else [])},
+            "duong_dich": duong_dich,
+            "du_bao": {"t": _so(mc.get("t_rang")), "bt60": _so(mc.get("bt_du_bao_60")),
+                       "bt120": _so(mc.get("bt_du_bao_120")), "ref": _so(mc.get("bt_ref"))} if mc else {},
             "tuoi_log_s": round(time.time() - os.path.getmtime(lp)) if os.path.exists(lp) else None}
 
 
