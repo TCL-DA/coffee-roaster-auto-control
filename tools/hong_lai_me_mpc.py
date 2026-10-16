@@ -26,6 +26,13 @@ SV = lambda u: 160 + 2.1 * u  # noqa: E731
 U_MAX = 90
 UFF_SAY = float(os.environ.get("HONG_UFF_SAY", "3"))
 W_DEV = float(os.environ.get("HONG_W_DEV", "3"))
+KG = float(os.environ.get("HONG_KG", "0.08"))      # °C/ph RoR mỗi 1 % gió khi có nhiệt (mục 7b: 0,07–0,10)
+GIO_NEN, GIO_FCS, T_GIO_FCS, BT_GIO_FCS = 85, 90, 600, 190.0
+
+
+def lich_gio(t, bt):
+    """Lịch gió anh Thành mẻ 7: 85 % suốt mẻ, gần FCs (t ≥ 10:00 hoặc BT ≥ 190) lên 90 % giữ tới DROP."""
+    return GIO_FCS if (t >= T_GIO_FCS or bt >= BT_GIO_FCS) else GIO_NEN
 
 
 def s16(v):
@@ -69,14 +76,14 @@ def hoc(a):
             "a_up": a_up, "a_dn": max(a_dn, 0.03), "rho": max(rho, 0.3)}
 
 
-def mo_phong(p, bt, bu, u, d, H):
+def mo_phong(p, bt, bu, u, d, H, dg=None):
     """Trả BT[1..H], RoR[1..H] với Nhiệt u hằng."""
     sv = SV(u)
     bts, rors = np.empty(H), np.empty(H)
     for i in range(H):
         g = sv - bu
         bu += min(p["a_up"] * g, p["rho"]) if g > 0 else p["a_dn"] * g
-        r = p["a"] * (bu - bt) + p["b"] * bt + p["c"] + d * math.exp(-i / 90.0)
+        r = p["a"] * (bu - bt) + p["b"] * bt + p["c"] + d * math.exp(-i / 90.0) + (KG * dg[i] if dg is not None else 0.0)
         bt += r / 60.0
         bts[i], rors[i] = bt, r
     return bts, rors
@@ -90,7 +97,8 @@ class LaiMe:
         self.p = hoc(np.vstack(ds))
         open(os.path.join(tm, "lai_dang_chay"), "w").write(str(os.getpid()))
         self.pn = Panel()
-        self.d = 0.0
+        # mẻ 8: nhiệt tích lồng lúc START ⇒ khởi tạo nhiễu bộ quan sát (mẻ 6/7: d̂ ~+8 khi START BT 111–138; mẻ 4/5 START ~79 ⇒ 0)
+        self.d = float(os.environ.get("HONG_D0", "0"))
         self.lich = []
         self.u = None
         self.t_fcs_that = None
@@ -159,7 +167,10 @@ class LaiMe:
     # ── MPC ──────────────────────────────────────────────────────────────────
     def mpc(self, t, bt, bu, ror_do):
         p, H = self.p, 120
-        ror_mh = p["a"] * (bu - bt) + p["b"] * bt + p["c"]
+        g_now = lich_gio(t, bt)
+        ror_mh = p["a"] * (bu - bt) + p["b"] * bt + p["c"] + KG * (g_now - self.ff(t, 6))
+        tt0 = t + np.arange(1, H + 1)
+        dg = np.array([lich_gio(x, bt if x < T_GIO_FCS else 999) - self.ff(x, 6) for x in tt0], dtype=float)
         if math.isfinite(ror_do):
             self.d += 0.15 * ((ror_do - ror_mh) - self.d)        # bộ quan sát nhiễu
         sau_fcs = bt >= 194.0 or t > self.fcs_t
@@ -167,7 +178,7 @@ class LaiMe:
         best = None
         uff = self.ff(t, 5) + (UFF_SAY if t < 600 else 0)
         for u in range(int(max(0, uff - float(os.environ.get("HONG_DU", "20")))), int(min(U_MAX, uff + 10)) + 1):
-            bts, rors = mo_phong(p, bt, bu, u, self.d, H)
+            bts, rors = mo_phong(p, bt, bu, u, self.d, H, dg)
             tt = t + np.arange(1, H + 1)
             ref = np.array([self.bt_ref(x) for x in tt])
             w = np.where(np.arange(1, H + 1) >= 15, 1.0, 0.0)
@@ -180,7 +191,7 @@ class LaiMe:
             if best is None or J < best[0]:
                 best = (J, u, bts[59], bts[-1])
         J, u, b60, b120 = best
-        gio = self.ff(t, 6)
+        gio = g_now
         self.w_mpc.writerow([time.strftime("%H:%M:%S"), round(t), bt, bu, round(ror_do, 2), round(ror_mh, 2),
                              round(self.d, 2), round(self.bt_ref(t), 1), u0, u, gio, round(b60, 1), round(b120, 1),
                              round(J, 3)])
@@ -232,7 +243,7 @@ class LaiMe:
                     self.dat(u=moc_ff[ff_i][1])
                     self.ghi("FF %d s · Nhiệt %d %% (phát lại mẻ mồi)" % (t, moc_ff[ff_i][1]))
                     ff_i += 1
-                g = self.ff(t, 6)
+                g = lich_gio(t, bt)
                 if g != getattr(self, "_g", None):
                     self.dat(gio=g)
                     self._g = g

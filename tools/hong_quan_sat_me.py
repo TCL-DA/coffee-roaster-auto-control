@@ -355,6 +355,7 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     pos, opt = hq._tach_opt(sys.argv[1:])
     dich = {k: float(opt.get(k, v)) for k, v in (("de", 240), ("fcs", 540), ("drop", 780), ("dev", 240))}
+    dich.update(ror_lo=float(opt.get("ror_lo", 5)), ror_hi=float(opt.get("ror_hi", 7)))
     if opt.get("lai_3s") == "1":
         print(lai_3s(pos[0], dich))
     else:
