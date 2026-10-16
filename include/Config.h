@@ -2,7 +2,13 @@
 
 /*
  * Cấu hình máy rang
- * Cấu hình hiện tại (09/10/2026) — firmware v3.13.1 cho máy 30 kg cacao M06
+ * Cấu hình hiện tại (16/10/2026) — firmware v3.13.3 cho máy 6 kg auto M07, HMI cũ
+ *   DOP-110CS (dòng OTL-06-ALS-0426-warm-up, KHÔNG ô $M53, KHÔNG $M62). Board V400,
+ *   CÓ biến trở VR, KHÔNG module relay ngoài (afterburner CH6 / destoner CH7 onboard),
+ *   loader theo thời gian (không cân), vacuum đọc ACI biến tần GIÓ (slave 5), drum
+ *   biến tần RS485 slave 4, bếp premix chọn trên HMI ($M29). Nền v3.13.2 (bản M06 bên
+ *   dưới) + chốt mồi hụt đóng gas (f43afea, 12/10).
+ * (Bản trước) Cấu hình (09/10/2026) — firmware v3.13.1 cho máy 30 kg cacao M06
  *   (docs/config/config-30kg-M06.md), đi với HMI DOP-110CS. KHÔNG cân (feeder chạy
  *   theo timer), CÓ vacuum (cảm biến áp đấu ACI biến tần DRUM slave 4), CÓ biến trở VR,
  *   KHÔNG module IO relay ngoài. Nền v3.13.0-rc1 (ca36125) + sửa ghi Drum / SV BT chờ
@@ -67,7 +73,7 @@
 #define MACHINE_HAS_IO_RELAY_MODULE       0  // M06 KHÔNG có module relay ngoài
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30 kg
+#define MACHINE_BATCH_KG                  6  // Khối lượng mẻ rang danh định (kg) — máy 6 kg M07
 // KHOÁ LOẠI ĐẦU ĐỐT LÚC BUILD.
 //   1 = ÉP đầu đốt THƯỜNG (khuếch tán), BỎ QUA thanh ghi HMI 29. Dùng cho máy chắc chắn
 //       không phải premix — nhất là HMI đời cũ không có ô chọn bếp, đọc reg 29 ra rác thì
@@ -126,7 +132,7 @@
 // Dùng khi cảm biến áp suất nối vào ngõ analog ACI của biến tần drum thay vì quạt
 // gió. Cùng địa chỉ thanh ghi (AIR_INV_ACI_RAW_REGISTER) vì 2 biến tần cùng model.
 // ---------------------------------------------------------------------------
-#define MACHINE_VACUUM_FROM_DRUM          1  // M06: cảm biến áp đấu ACI biến tần DRUM (slave 4)
+#define MACHINE_VACUUM_FROM_DRUM          0  // M07: cảm biến áp đấu ACI biến tần GIÓ (slave 5)
 
 // ---------------------------------------------------------------------------
 // Địa chỉ thanh ghi Modbus của biến tần drum.

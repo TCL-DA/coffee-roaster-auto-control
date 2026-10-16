@@ -92,6 +92,9 @@ static uint32_t pclAppSeenMs  = 0;       // lần cuối thấy app nhấp heart
 static uint32_t pclGasOnMs    = 0;       // lúc gas được bật mà chưa có lửa
 static bool     pclAgentLatch = false;   // phần mềm ĐÃ tự khai là tác nhân tự động
 
+inline void setMachineStatus(uint16_t code);   // định nghĩa ở MachineStatus.h (main.cpp nạp SAU tệp này)
+#define PCL_STT_GAS_WAIT_TMO 414               // = STT_ERR_GAS_WAIT_TMO (MachineStatus.h chưa nạp tại đây)
+
 static void pclSafety(){
     const uint32_t now = millis();
 
@@ -144,17 +147,30 @@ static void pclSafety(){
 #endif
 
     // ── 2) Mồi hụt → đóng gas ──────────────────────────────────────────────
+    /* 12/10/2026 (bàn thử board + panel thật, công tắc lửa tắt) — hai lỗi của chốt này:
+       (a) pclFlameFail chỉ xoá khi CÓ LỬA. Sau lần đóng gas đầu, cờ còn đó nên lần bật gas
+           kế tiếp KHÔNG được canh nữa: đo gas mở > 2 phút không lửa, board không đóng
+           (thợ mồi hụt, bấm gas lại = xả gas không cháy vô thời hạn). Nay xoá cờ ngay khi
+           relay gas đã đọc lại = 0 → mỗi lần bật gas có 75 s riêng.
+       (b) Đóng gas mà không báo mã: mẻ đang chạy treo im ở "chờ đạt nhiệt nạp", BT tụt mãi
+           (hai mẻ thử 13:21 và 14:02). Nay báo 414 (nghiêm trọng, chờ xác nhận) và nếu
+           đang có mẻ thì tắt START như nhánh hết giờ của STP_GAS — không tự mồi lại. */
     if (START_GAS_BTN_R == 1 && gasSignal == 0) {
         if (pclGasOnMs == 0) pclGasOnMs = now;
         if (!pclFlameFail && (now - pclGasOnMs) > (uint32_t)PCL_FLAME_TMO_S * 1000UL) {
             pclFlameFail = true;
             nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);    // ĐÓNG GAS
             buzzerTimerEn = 1;
-            SerialComputer.println("=> PC_Link: moi hut -> dong gas");
+            setMachineStatus(PCL_STT_GAS_WAIT_TMO);
+            if (START_BTN_R == 1) {
+                nodeHMI.writeSingleRegister(START_BTN_W - 1, 0);    // huỷ mẻ, không để treo
+                nodeHMI.writeSingleCoil(LOCK_BUTTON_W - 1, 0);      // mở khoá HMI cho thợ xem bếp
+            }
+            if (enDebug) SerialComputer.println("=> PC_Link: moi hut -> dong gas");
         }
     } else {
         pclGasOnMs = 0;
-        if (gasSignal == 1) pclFlameFail = false;   // có lửa rồi thì xoá cờ
+        pclFlameFail = false;   // relay đã tắt (hoặc đã có lửa) → lần bật gas sau được canh lại
     }
 }
 
