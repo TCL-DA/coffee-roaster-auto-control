@@ -208,8 +208,10 @@ class XuLy(BaseHTTPRequestHandler):
 
 def main():
     port = int(sys.argv[sys.argv.index("--port") + 1]) if "--port" in sys.argv else 6099
-    print("Hồng live: http://127.0.0.1:%d/" % port, flush=True)
-    ThreadingHTTPServer(("127.0.0.1", port), XuLy).serve_forever()
+    # --lan: cho cả xưởng xem (mạng nội bộ). Trang CHỈ ĐỌC — không có đường ghi nào xuống máy rang / panel.
+    host = "0.0.0.0" if "--lan" in sys.argv else "127.0.0.1"
+    print("Hồng live: http://%s:%d/" % (host, port), flush=True)
+    ThreadingHTTPServer((host, port), XuLy).serve_forever()
 
 
 if __name__ == "__main__":
