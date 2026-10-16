@@ -68,6 +68,15 @@ HONG_DUOC_LAI=1 python tools/hong_qua_panel.py phien <số lượt> <hết lúc 
 
 Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; theo dõi bằng dòng cuối csv / log (`tail -n 3`), không in cả file.
 
+## Kiến thức các cách rang (anh Thành 16/10/2026)
+- Khi lập kế hoạch mẻ, chọn hướng profile hoặc tư vấn khách, đọc skill `rang-ca-phe`, file `references/cac-cach-rang.md`. File gồm:
+  - kiểu máy và cách nhiệt vào hạt; máy điện VX4 trễ nhất, phải đi lệnh trước 60–120 s;
+  - nhịp nhanh hay chậm;
+  - các trường phái: Rao, Hoos, Münchow, front-loaded vs soak, dẫn bằng gió, bám đường nền, drop theo gì;
+  - theo mục đích pha, theo hạt/sơ chế/blend, theo cỡ mẻ và trạng thái buồng (bằng chứng mẻ 4–7);
+  - rang bơ / phin Việt Nam; cây quyết định.
+- Mỗi kế hoạch mẻ ghi rõ đang theo **hướng nào và vì sao** (ví dụ "front-loaded vì VX4 trễ, dev RoR gần phẳng 5–6 theo đích anh"), không chỉ đưa số.
+
 ## ⛔ Cách tính David — LUÔN tính để THAM KHẢO (anh Thành 15/10/2026)
 - Công thức: **`k = RoR / (ET − BT)`** (RoR °C/phút). Luật suy luận, giới hạn, giả thuyết cạnh tranh: skill `rang-ca-phe` →
   `references/chan-doan-profile.md` mục "Cách tính David" — đọc mục đó khi kết luận từ k.

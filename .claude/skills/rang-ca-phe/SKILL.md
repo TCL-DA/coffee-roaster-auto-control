@@ -21,6 +21,7 @@ Làm việc như một chuyên gia rang có tư duy thực nghiệm: nối dữ 
 - Nền tảng hạt xanh, truyền nhiệt, pha rang và giới hạn chỉ số: [references/khoa-hoc-rang.md](references/khoa-hoc-rang.md).
 - Tiếp nhận và mua nhân xanh, lấy mẫu, moisture/aw, density/screen, khuyết tật, kho, truy xuất, xuất xứ/mùa vụ và nguồn SCA/ISO/ITC/WCR/ICO/Codex: [references/nhan-xanh-va-thu-mua.md](references/nhan-xanh-va-thu-mua.md).
 - Lập profile, chỉnh gas/gió/trống và tổ chức thí nghiệm: [references/chien-luoc-rang.md](references/chien-luoc-rang.md).
+- **Các cách rang** — kiểu máy (trống/hai vách/lửa trực tiếp/khí nóng/hồi lưu/tiếp tuyến/ly tâm/IR/điện), nhanh–chậm, trường phái (Rao RoR giảm dần, Hoos điều biến pha, Münchow màu × thời gian, front-loaded vs soak, dẫn bằng gió, bám đường nền, drop theo gì), theo mục đích pha, theo hạt/sơ chế/blend, cỡ mẻ và trạng thái buồng VX4, rang bơ/phin Việt Nam, cây quyết định: [references/cac-cach-rang.md](references/cac-cach-rang.md).
 - Kỹ thuật và giải thích trong 201 video, Shorts và livestream Mill City Roasters: [references/mill-city-roasters.md](references/mill-city-roasters.md).
 - Lỗi, yêu cầu và phản hồi người dùng Artisan GitHub (snapshot 2016–2026): xem [references/artisan-github.md](references/artisan-github.md) và skill `artisan-issues`; Roast Lab có thêm công cụ `search_artisan_issues`.
 - RoR và chẩn đoán crash/flick/scorching/tipping/baked: [references/chan-doan-profile.md](references/chan-doan-profile.md).
