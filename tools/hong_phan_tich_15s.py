@@ -53,11 +53,11 @@ def chuoi_log(lg):
     return t, bt, nh, gi
 
 
-def nhan_ror(t, bt, nh, gi, moc, lo, hi, bay_gio, da_bao):
+def nhan_ror(t, bt, nh, gi, moc, lo, hi, bay_gio, da_bao, dich=None):
     """Nhãn lỗi RoR tại bay_gio. Trả (chuỗi nhãn, danh sách mã lỗi mới)."""
     m = {k: v for k, v in moc.items() if v is not None and v <= bay_gio}
     lenh = H.lenh_tu_log(t, nh, gi)
-    loi, _ = H.tim_loi(t, bt, m, lenh, lo, hi, bay_gio=bay_gio)
+    loi, _ = H.tim_loi(t, bt, m, lenh, lo, hi, bay_gio=bay_gio, dich=dich)
     dang = [l for l in loi if l["den_s"] >= bay_gio - 15 - GIU_NHAN]
     moi = [l for l in loi if (l["ma"], l["tu_s"] // 60) not in da_bao]
     for l in moi:
@@ -90,7 +90,7 @@ def dong(tm, lg, pt, mp, moc, lo, hi, da_bao):
             r = R[w]
             s += " · DEV RoR TB %.2f · %d %% trong %g–%g" % (r.mean(), 100 * np.mean((r >= lo) & (r <= hi)), lo, hi)
     if len(ta) > 40 and "TP" in moc:
-        nhan, _ = nhan_ror(ta, bta, nh, gi, moc, lo, hi, t, da_bao)
+        nhan, _ = nhan_ror(ta, bta, nh, gi, moc, lo, hi, t, da_bao, doc_dich(tm))
         s += " · " + nhan
     if mp:
         m = mp[-1]
@@ -104,6 +104,15 @@ def doc_moc(tm):
         return json.load(open(os.path.join(tm, "moc.json"), encoding="utf-8"))["moc_giay"]
     except (OSError, ValueError, KeyError):
         return {}
+
+
+def doc_dich(tm):
+    """Đích DE / FCs / dev (giây) từ moc.json › dich (bộ quan sát ghi); thiếu thì dùng kế hoạch mẻ 9."""
+    try:
+        d = json.load(open(os.path.join(tm, "moc.json"), encoding="utf-8"))["dich"]
+        return {"de": float(d["de"]), "fcs": float(d["fcs"]), "dev": float(d["dev"])}
+    except (OSError, ValueError, KeyError, TypeError):
+        return dict(H.DICH_ME9)
 
 
 def chay_song(tm, lo, hi):
@@ -124,7 +133,7 @@ def chay_song(tm, lo, hi):
             return
 
 
-def phat_lai(tm, lo, hi):
+def phat_lai(tm, lo, hi, dich=None):
     """Phát lại mẻ cũ mỗi 15 s giờ rang: chỉ dùng số tới thời điểm đó. Trả danh sách (giây phát hiện, lỗi)."""
     lg = rows(tm, "log.csv")
     moc = doc_moc(tm)
@@ -133,7 +142,7 @@ def phat_lai(tm, lo, hi):
     for now in np.arange(60, moc["DROP"] + 1, CHU_KY):
         m = {k: v for k, v in moc.items() if v <= now}
         k = ta <= now
-        _, moi = nhan_ror(ta[k], bta[k], nh[k], gi[k], m, lo, hi, now, da_bao)
+        _, moi = nhan_ror(ta[k], bta[k], nh[k], gi[k], m, lo, hi, now, da_bao, dich or H.DICH_ME9)
         for l in moi:
             phat_hien.append((int(now), l))
     return phat_hien

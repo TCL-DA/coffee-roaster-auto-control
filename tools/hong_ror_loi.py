@@ -15,6 +15,9 @@ TANG_LAI = 2.0          # °C/ph, RoR tăng lại trước FCs
 TANG_LAI_GIU = 20.0     # s, phải giữ ít nhất
 STALL_RoR = 4.0         # °C/ph, stall giữa DE và FCs
 STALL_GIU = 30.0        # s
+MAILLARD_MAX = 0.38      # Maillard dự báo / DROP dự báo (7g bài 3: mẻ 6–8 có 38–40 % đều RoR phẳng)
+DE_SOM_MAX = 45.0        # s — DE sớm hơn đích từng này trở lên ⇒ cùng nhãn
+DICH_ME9 = {"de": 390.0, "fcs": 660.0, "dev": 262.0}   # đích mặc định (kế hoạch mẻ 9) khi moc.json không có
 PHANG_TB_MAX = 7.5      # °C/ph: RoR DE→FCs trung bình cao hơn thì phẳng không đáng lo
 DOC_PHANG = -0.3        # °C/ph mỗi phút: RoR DE→FCs giảm chậm hơn mức này = phẳng
 CRASH_RoI = 3.0         # °C/ph rơi trong 60 s sau FCs so RoR lúc FCs − 30 s
@@ -65,7 +68,28 @@ def lenh_tu_log(t, nhiet, gio):
     return out
 
 
-def tim_loi(t, bt, moc, lenh=(), lo=None, hi=None, bay_gio=None):
+def maillard_du_bao(moc, dich=None):
+    """Nhãn 'Maillard dài dự báo — nguy cơ baked' (7g bài 3). Báo tại DE; cập nhật lại tại FCs. Trả lỗi hoặc None.
+    Tại DE: Maillard dự báo = (FCs đích − DE thật) / (FCs đích + dev đích).
+    Tại FCs: Maillard thật = (FCs − DE) / (FCs + dev đích).  Gắn nhãn nếu > 38 % HOẶC DE sớm hơn đích ≥ 45 s."""
+    dich = dict(DICH_ME9, **(dich or {}))
+    de, fcs = moc.get("DE"), moc.get("FCs")
+    if de is None:
+        return None
+    som = dich["de"] - de
+    if fcs is None:
+        m, o_dau, tu = (dich["fcs"] - de) / (dich["fcs"] + dich["dev"]), "dự báo tại DE", de
+    else:
+        m, o_dau, tu = (fcs - de) / (fcs + dich["dev"]), "cập nhật tại FCs", fcs
+    if m <= MAILLARD_MAX and som < DE_SOM_MAX:
+        return None
+    return {"loai": "Maillard dài dự báo — nguy cơ baked", "tu_s": int(tu), "den_s": int(tu), "muc": "vua" if m > 0.40 or som >= 90 else "nhe",
+            "so_do": "Maillard %.1f %% (%s, ngưỡng 38 %%) · DE %d:%02d, sớm %+d s so đích %d:%02d · lồng nóng?" % (
+                100 * m, o_dau, de // 60, de % 60, som, dich["de"] // 60, dich["de"] % 60),
+            "lenh": "", "ma": "maillard"}
+
+
+def tim_loi(t, bt, moc, lenh=(), lo=None, hi=None, bay_gio=None, dich=None):
     """t (s từ charge), bt, moc {'TP','DE','FCs','DROP'} (giây, có thể thiếu), lenh [(t, tên, cũ, mới)].
     bay_gio: đang rang — chỉ dùng số tới bay_gio. Trả (danh sách lỗi, mảng RoR)."""
     t = np.asarray(t, float)
@@ -204,6 +228,9 @@ def tim_loi(t, bt, moc, lenh=(), lo=None, hi=None, bay_gio=None):
                             "muc": "nhe" if tren + duoi < 0.35 else ("vua" if tren + duoi < 0.5 else "nang"),
                             "so_do": "%.0f %% trên %g · %.0f %% dưới %g · TB %.2f" % (100 * tren, hi, 100 * duoi, lo, float(x.mean())),
                             "lenh": _lenh_truoc(lenh, fcs, het), "ma": "dai"})
+    ml = maillard_du_bao(moc, dich)
+    if ml is not None:
+        loi.append(ml)
     return loi, R
 
 
@@ -216,5 +243,6 @@ VIEC_LAI = {
     "crash": "không cắt thêm; nâng nhẹ nếu RoR < dải dưới",
     "flick": "không tăng muộn; hạ 3–5 % nếu RoR > dải trên",
     "dai": "kéo RoR về giữa dải bằng bước nhỏ",
+    "maillard": "giữ năng lượng, không ép RoR phẳng ~6 để kéo FCs; chấp nhận FCs sớm hơn hoặc giảm dần Nhiệt ≤ 1 %/10 s (7f, 7g); mẻ sau START BT 85–90",
     "phang": "dồn năng lượng trước DE để RoR giảm đều; không giữ RoR ~6 quá sớm",
 }
