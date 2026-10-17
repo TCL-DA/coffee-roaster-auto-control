@@ -65,7 +65,8 @@ def chi_so(t, bt, et, moc, moc_bt, now, dich, bt_fcs=194.0, bt_de=155.0, span=20
     p_de = de if de is not None else du(bt_de)
     p_fcs = fcs if fcs is not None else du(bt_fcs)
     p_drop = (fcs if fcs is not None else p_fcs) + dich["dev"]
-    dry_s = (de - tp) if (de is not None and tp is not None) else ((now - tp) if tp is not None else float("nan"))
+    # pha sấy tính từ CHARGE (t = 0) tới DE — cùng gốc với dry_pct; trước đây lấy từ TP nên giờ lệch % (mẻ 8: 4:05 vs 32 %)
+    dry_s = de if de is not None else now
     dry_pct = 100 * (de if de is not None else now) / now
     ramp_s = (fcs - de) if (fcs is not None and de is not None) else ((p_fcs - de) if de is not None else float("nan"))
     ramp_pct = (100 * (fcs - de) / now) if (fcs is not None and de is not None) else (100 - dry_pct if de is not None else 0.0)

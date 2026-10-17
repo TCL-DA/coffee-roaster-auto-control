@@ -368,6 +368,10 @@ function capNhatSo(){
   datO('auc',pt.auc,'từ TP');datO('dtr',pt.dtr_pct,'dev '+mmss(pt.dev_s));
   datO('fcs',moc.FCs!=null?mmss(moc.FCs):mmss(pt.du_bao_fcs),moc.FCs!=null?'<b>đã vào</b> · '+lechTxt(pt.lech_fcs):'dự báo · '+lechTxt(pt.lech_fcs));
   datO('drop',moc.DROP!=null?mmss(moc.DROP):mmss(pt.du_bao_drop),moc.DROP!=null?'<b>đã xả</b>':'dự báo · '+lechTxt(pt.lech_drop));
+  // ba pha cùng gốc CHARGE (chuẩn tỉ lệ pha): có mốc thì tính từ mốc, chưa có mới dùng số phân tích
+  const tNay=moc.DROP!=null?moc.DROP:c.t;
+  if(moc.DE!=null&&tNay>0){pt.dry_s=moc.DE;pt.ramp_s=(moc.FCs!=null?moc.FCs:tNay)-moc.DE;pt.dev_s=moc.FCs!=null?tNay-moc.FCs:0;
+    pt.dry_pct=100*pt.dry_s/tNay;pt.ramp_pct=100*pt.ramp_s/tNay;pt.dtr_pct=100*pt.dev_s/tNay}
   const d=pt.dry_pct||0,r=pt.ramp_pct||0,v=pt.dtr_pct||0,tg=d+r+v||1;
   // màn hẹp: chỉ còn % (tên + giờ ẩn bằng CSS .dai) — không cắt chữ
   ghi($('vach'),'h','<div style="flex:'+d/tg+';background:'+C.xanhNhat+';color:'+C.xanh+'"><span class="dai">SẤY&nbsp;</span>'+d.toFixed(0)+'%<span class="dai">&nbsp;· '+mmss(pt.dry_s)+'</span></div>'+
