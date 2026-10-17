@@ -187,6 +187,75 @@ Báo cáo: `F:/Artisan/Profile/OTL-Hong/bao_cao_1710/` (hong_ror.json, hong_ror_
 - Bản sao (Claude, `ban_sao.py`) đúng từ DE → DROP (FCs lệch 1–17 s, RoR ±0,35) nhưng SAI trước DE (phát lại lệnh thật lệch DE −86…+96 s)
   ⇒ đoạn 0 → DE của bộ lái mẻ 9 chưa kiểm được trên bản sao, chỉ dựa khuôn mẻ 4.
 
+## 7e. CHARGE — vì sao 170, khi nào đổi (17/10/2026, Hồng + Claude; chi tiết `bao_cao_1710/hong_charge.json`)
+
+- **Nguồn gốc:** anh đặt 170 ngày 15/10, mẻ 1 (`$M23 = 1700`). Giữ nguyên để so mẻ. Không có thí nghiệm chọn số này; mặc định firmware là 180.
+- **Firmware** (`Program.h`):
+  - `STP_COOL_DOWN`: BT ≤ $M23 − $M9 (160) thì nung, gasPercent 50; BT cao hơn thì tắt nhiệt, chờ nguội.
+  - `STP_CHECK`: tự CHARGE khi |BT − $M23| ≤ $M10 (= 1 °C). CHỈ xét BT — không xét buồng, ET, thời gian hay độ ổn định.
+  - BT > $M23 + 5·$M10 (175): tắt nhiệt, vòng lại COOL_DOWN.
+- **Nung trước charge chỉ ~50 % ⇒ buồng đứng ~265 °C (= SV của 50 %)** ⇒ BT lồng trống bò chậm dần về sát 170:
+  - mẻ 4/5: BT 120 @ ~33 s (1,0 °C/s) · 160 @ ~90 s (0,4) · 168 @ ~125 s (0,1) · charge ở 169,0 sau 120–150 s.
+  - ⇒ Lồng nguội: "chờ BT 170" ≈ "chờ buồng ổn định + lồng ngấm 2–2,5 phút" — vô tình là mốc trạng thái ổn định (chien-luoc-rang › Trước charge).
+  - Lồng nóng (START 111–147): BT vọt qua 170 sau 24–36 s, buồng mới 140–220 ⇒ 170 MẤT tác dụng ⇒ DE sớm 69–100 s.
+- **Biến quyết định là nhiệt tích trong THÂN LỒNG, không phải BT charge.** Mẻ 4–8 (800 g):
+  - tương quan BT START ↔ DE −0,92; BT START ↔ TP +0,97;
+  - buồng lúc charge ↔ DE +0,88 — ngược trực giác vì buồng thấp = charge quá sớm trên lồng nóng.
+- **Đúng 170 không bắt buộc**, nhưng phải CỐ ĐỊNH giữa các mẻ (firmware tự giữ ±1). Lệch 2–3 °C nhỏ hơn nhiều so với ảnh hưởng của BT START.
+  - Ở khúc gối, 3 °C ngưỡng ≈ 30 s ngấm lồng.
+- **Đổi ngưỡng:**
+  - 180: ở mức nung 50 % có thể KHÔNG BAO GIỜ tới ⇒ phải nâng mức nung (đổi 2 biến).
+  - 160: charge sớm ~40 s, lồng ngấm ít ⇒ DE muộn, thiếu đà.
+  - Thử thì chỉ 165–175, nhiệt nung giữ nguyên. Luật cứng: ≥ 150.
+- **Chuẩn hoá thay cho chỉ BT charge:**
+  - BT START 85–90;
+  - START → CHARGE 120–150 s;
+  - buồng lúc charge 260 ± 10;
+  - ghi ET − BT lúc charge (10–12 ở mẻ tốt).
+  - Không dùng TP làm đích (TP là đặc tính phép đo).
+  - Charge theo trạng thái cần sửa `STP_CHECK` — anh quyết.
+- **Chưa biết:**
+  - dung tích lồng VX4 (hỏi anh, không đoán);
+  - Nhiệt 50 % lúc nung là do gasPercent = 50 hay trần $M28 = 50 % — đọc lại $M8 / $M28.
+
+## 7f. ⭐ Công cụ tự tính — để LINH HOẠT khi đề khác (Claude dạy Hồng 17/10/2026)
+
+Số trong 7d/7e là của **800 g, VX4, gió 85–90**. Đề khác thì KHÔNG chép số — dùng các quan hệ dưới đây tính lại, rồi kiểm trên bản sao.
+
+| Quan hệ | Công thức / số | Dùng để |
+|---|---|---|
+| Nhiệt → SV → buồng | SV = 160 + 2,1·N; buồng ổn định ≈ SV, trễ ~6 s | đổi % Nhiệt ra nhiệt buồng và ngược lại |
+| RoR theo buồng | RoR ≈ k·(buồng − BT); k ≈ 0,07 ở DE · 0,058 từ phút 6 · phút 2 = 0,15–0,36 (theo lồng) | biết buồng thì đoán RoR |
+| **Muốn RoR R ở BT B** | buồng = B + R/k ⇒ **N = (B + R/k − 160) / 2,1** | tự chọn mức Nhiệt cho đề mới |
+| Ví dụ 800 g | DE (155, R 10, k 0,07) ⇒ ~66 % · FCs (194, R 6) ⇒ ~65 % · DROP (218, R 5,5) ⇒ ~71 % | mức ổn định; đầu mẻ phải dồn trước nên cao hơn (77–85 %) |
+| Thời gian dev | dev_s ≈ (BT_drop − BT_fcs) / RoR_tb × 60 · 24 °C ở 5,5 ⇒ ~262 s | kiểm đề dev có khả thi |
+| Điều kiện đầu | DE dời ≈ −1,4…−1,5 s mỗi +1 °C BT START | chọn BT START cho DE mong muốn |
+| Gió | +5 % gió ⇒ k +6–8 % ⇒ RoR +0,6–1,1 sau 20–50 s ⇒ bù trước −3 % Nhiệt | đổi lịch gió |
+| Buồng bất đối xứng | xuống −1,6…−1,9 °C/s, lên +0,4…+1,5 °C/s | giảm: ít và sớm · tăng: sớm hơn 20–30 s · không cắt sâu rồi bù |
+| Trễ vòng | RoR trễ buồng 15–20 s + cửa sổ đo 15 s | không sửa theo RoR nhanh hơn mỗi 10 s; đoạn đầu mỗi 60 s |
+| k thật lệch mô hình | học ĉ = RoR_đo / (k·(buồng − BT)), lọc chậm τ ~100 s, kẹp 0,7–1,4 | máy / hạt / cỡ mẻ khác |
+
+**Đổi đề thì làm gì (tự suy, không chờ dặn):**
+- **Cỡ mẻ khác:**
+  - mẻ nhẹ: TP cao hơn (500 g 92 · 700 g 84 · 800 g 75 · 900 g 68), dễ cháy mặt ⇒ dồn trước nhẹ hơn;
+  - mẻ nặng: thiếu đà ⇒ dồn trước mạnh hơn, đừng để Nhiệt 0 % lúc charge (mẻ 900 g trễ DE 158 s).
+  - k và ĉ học lại ngay trong mẻ.
+- **Lồng nóng mà anh không cho chờ nguội:** hạ lịch đầu mẻ theo −1,4 s/°C (ví dụ START 120 ⇒ DE sớm ~45 s ⇒ giảm dồn trước). Ghi rõ là mẻ lệch chuẩn.
+- **DE / FCs đích khác:** tính RoR trung bình cần mỗi pha = ΔBT / Δt × 60. Đặt RoR_ref giảm thẳng, rồi suy N bằng công thức trên.
+  - RoR TB DE → FCs > ~12 hoặc < ~6 trên 800 g là đề khó ⇒ báo anh trước khi chạy.
+- **Dải dev khác (5–7, 4–5…):** RoR_ref = giữa dải. Tăng chậm Nhiệt theo BT, không cấm tăng.
+- **Kết quả lệch mô hình:** sửa ĉ / bản sao TRƯỚC, đừng vặn tham số bộ lái cho khớp một mẻ.
+
+**Cách làm việc rút ra 17/10 (Claude + Hồng):**
+1. **Đo trên log thật trước, mô phỏng sau.** Bản sao chỉ tin ở đoạn đã kiểm bằng phát lại lệnh thật; đoạn chưa kiểm thì ghi rõ "chưa kiểm".
+2. **Dự đoán phải có số đo đỡ.** Ví dụ sai: "charge 180 chỉ chờ thêm 20–40 s" — số đo khúc gối cho thấy có thể không bao giờ tới.
+3. **Mỗi mẻ thử đổi 1 biến**, có mẻ đối chứng trước khi đổi tiếp (chien-luoc-rang › thử nghiệm).
+4. **Tìm cơ chế vật lý trước khi vặn bộ lái:**
+   - lượn sóng = bộ lái nhanh hơn trễ máy;
+   - dev RoR tụt = luật cấm tăng đi ngược vật lý k hằng.
+5. **Bàn với Claude, phản biện thẳng, có số.** Mỗi báo cáo ghi mục skill đã dùng (trích nguyên văn). Claude kiểm lại số và trích dẫn.
+6. **Không biết thì hỏi, không đoán:** dung tích lồng, thanh ghi chưa đọc lại.
+
 ## 6. Nhật ký lái (bổ sung mỗi lần)
 
 | Ngày | Máy | Việc | Kết quả / bài học |
