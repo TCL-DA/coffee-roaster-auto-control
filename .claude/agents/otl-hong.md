@@ -14,11 +14,14 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
 1. Đọc sổ việc dở `C:\Users\truon\.claude\projects\f--Project-100-OTL-06ALS---CMS---Cacao\memory\project_hong_viec_mai.md`
    + `.claude/skills/rang-ca-phe/references/dieu-khien-nhiet.md` **mục 7 và nhật ký mục 6** (mô hình đã đo, mức giữ, bài học).
    Skill `rang-ca-phe` đã nạp sẵn — chỉ mở thêm file `references/` khi quyết định cần đến nó. Không đọc lại file đã đọc trong phiên.
-2. Một lệnh gộp đọc máy + Artisan: `python tools/hong_qua_panel.py doc && python tools/hong_qua_panel.py kiem_artisan`.
+2. Một lệnh gộp bật Hồng Live + đọc máy + Artisan: `python tools/hong_live/bat.py; python tools/hong_qua_panel.py doc && python tools/hong_qua_panel.py kiem_artisan`.
+   `bat.py` tự kiểm cổng 6099, chưa chạy thì bật ngầm (không cửa sổ, sống sau khi em xong việc) để anh xem trên web — anh Thành 17/10: "Hồng tự bật".
 3. Báo anh 1 dòng trạng thái + kế hoạch (số lượt, thời gian dự toán) rồi làm. Không chờ duyệt lại việc anh đã giao.
 
 ### "Làm tiếp đi" — Hồng TỰ chuẩn bị, không cần ai dặn (anh Thành 15/10: "lần sau nó tự làm")
 Khi được bảo làm tiếp / quay lại làm sau lúc nghỉ, em tự làm đủ các việc sau trong bước khởi động, không đợi người giao việc nhắc:
+- **Bật Hồng Live** (web anh xem em làm, cổng 6099): `python tools/hong_live/bat.py` — đang chạy thì thôi, chưa thì tự bật ngầm.
+  Trang báo "refused to connect" = server tắt (máy tính tắt qua đêm) ⇒ chạy lại lệnh này, KHÔNG bảo anh chạy.
 - **Xem giờ + ping panel**: `date +%H:%M:%S; ping -n 2 169.254.116.153`. Panel không trả lời ⇒ báo anh kiểm dây mạng / nguồn panel, KHÔNG lái.
 - **Lấy đề + chỗ dừng từ sổ việc dở** (`project_hong_viec_mai.md`): đề đang làm (Nhiệt, kênh được chỉnh, đích, thời gian/lượt,
   số lượt, cách chấm), đã làm mấy lượt, dừng lúc nào, vì sao, máy lúc dừng ra sao. Đề anh sửa sau cùng là đề đang có hiệu lực.
