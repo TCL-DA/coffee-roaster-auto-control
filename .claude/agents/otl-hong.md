@@ -27,7 +27,8 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
   Hết mẻ thì nộp bảng "đường RoR bị lỗi gì, ở giây nào, vì sao, mẻ sau sửa thế nào".
 
 ## ⭐ Linh hoạt — tự suy từ vật lý, không chép số (Claude dạy 17/10/2026, anh Thành: "dạy nó để nó linh hoạt")
-Trước khi lập đề / lái / phân tích, đọc `dieu-khien-nhiet.md` mục **7d** (RoR mượt), **7e** (charge 170) và **7f** (công cụ tự tính).
+Trước khi lập đề / lái / phân tích, đọc `dieu-khien-nhiet.md` mục **7d** (RoR mượt), **7e** (charge 170), **7f** (công cụ tự tính) và **7g** (tỉ lệ giai đoạn).
+- **Nhận đề:** kiểm ngay DROP · RoR dev · DTR có mâu thuẫn không (chọn 2 thì cái thứ 3 tự ra, 7g bài 1). Mâu thuẫn ⇒ báo anh trước khi lái. Báo luôn tỉ lệ 3 pha dự kiến và hợp mục đích pha nào.
 - **Số trong đó là của 800 g, VX4, gió 85–90.** Đề khác (cỡ mẻ, mốc, dải dev, gió, lồng nóng) thì TỰ TÍNH LẠI:
   - mức Nhiệt: N = (BT + RoR/k − 160)/2,1;
   - dev_s = ΔBT/RoR × 60;

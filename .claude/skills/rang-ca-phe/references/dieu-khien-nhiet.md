@@ -218,6 +218,34 @@ Báo cáo: `F:/Artisan/Profile/OTL-Hong/bao_cao_1710/` (hong_ror.json, hong_ror_
   - dung tích lồng VX4 (hỏi anh, không đoán);
   - Nhiệt 50 % lúc nung là do gasPercent = 50 hay trần $M28 = 50 % — đọc lại $M8 / $M28.
 
+## 7g. TỈ LỆ GIAI ĐOẠN (sấy · Maillard · phát triển) — Claude + Hồng cùng phân tích 17/10/2026
+Báo cáo: `bao_cao_1710/bao_cao_ty_le.html` · trích dẫn: `hong_ty_le.json`.
+- **Cùng gốc CHARGE cho cả 3 pha** (Hoos, `cac-cach-rang.md` › 3.2): sấy = CHARGE → DE, Maillard = DE → FCs, phát triển = FCs → DROP = DTR.
+  - Lỗi đã sửa 17/10: Hồng Live / `hong_quan_sat_me.py` từng tính giờ sấy từ TP (mẻ 8 hiện "32 % · 4:05") trong khi % tính từ CHARGE — đúng là "32 % · 4:50".
+- **8 mẻ (DE = BT 155, FCs = BT 194):**
+  - lồng nguội mẻ 4–5: 45–46 / 31–32 / 22–23 %;
+  - lồng nóng mẻ 6–8: 32–36 / 38–40 / 25–28 %;
+  - kế hoạch mẻ 9: ~43 / 30 / 27–28 %.
+- **Khoảng tham khảo** (`cac-cach-rang.md` › 4 + 3.1):
+  - phát triển: filter 12–18 % · omni 15–20 % · espresso specialty 20–25 % (Maillard dài hơn) · pha sữa / phin "dev dài";
+  - Rao 20–25 % chỉ là "điểm khởi đầu, không phải định luật".
+  - Hoos: Maillard dài ⇒ thân / ngọt, acid tròn; dev dài ⇒ đắng / thân, acid giảm.
+- **Bài học — nhớ và tự áp dụng:**
+  1. **DROP · RoR dev · DTR ràng buộc nhau — chọn 2 thì cái thứ 3 tự ra.**
+     - DTR = ΔBT_dev / (RoR_dev_TB × t_FCs/60 + ΔBT_dev).
+     - FCs 11:00, 194 → 218, RoR 5,5 ⇒ DTR 28 %. Muốn 25 % ⇒ DROP 214 hoặc RoR 6,5; muốn 22 % ⇒ DROP 211 hoặc RoR 7,7.
+     - RoR dev không phẳng cũng không thoát (chỉ RoR trung bình quyết định). Thoát được nếu: FCs muộn hơn (12:00 ⇒ 26,7 %), hoặc FCs thật (tiếng nổ) sớm hơn ngưỡng 194.
+     - Nhận đề có cả 3 số mà mâu thuẫn ⇒ báo anh ngay, đừng lái cố.
+  2. **Giữ FCs đúng giờ thì lồng nóng chuyển 70–100 s từ sấy sang Maillard** (sấy 32–36 % so với 43–46 %). Tổng thời gian gần như không đổi.
+  3. **Maillard > 38 % đi cùng RoR phẳng ~6 (nguy cơ baked)** — đúng 3 mẻ 6–8 vừa Maillard 38–40 % vừa bị nhãn "RoR phẳng". Cùng một cơ chế.
+     - Cảnh báo NGAY TẠI DE: Maillard dự báo = (FCs đích − DE) / DROP dự báo > 38 % (≈ DE sớm hơn đích ≥ 45 s) ⇒ nhãn "Maillard dài dự báo — nguy cơ baked, lồng nóng".
+     - Ngưỡng 38 % mới dựa trên 6 mẻ — cần thêm mẻ để chốt. Việc dở: thêm nhãn này vào `hong_phan_tich_15s.py`.
+  4. **Muốn DE sớm (vd espresso DE 5:45) thì dồn năng lượng đầu mẻ, KHÔNG START lồng nóng** (lồng nóng = kiểu mẻ 6–8, dấu hiệu cháy mặt).
+     - Lồng nguội cần RoR TP → DE 16,5 thay vì 14,3: giữ 50 % thay 20 % ở 0:20–1:25 (~−25 s) và 90 % sau 1:45 (~−15…−25 s).
+     - Canh đỉnh RoR ≤ 25. Đây là ước tính tay, chưa kiểm trên bản sao.
+  5. **Tỉ lệ dùng mốc đầu dò BT 155 / 194 chỉ so được trên cùng máy.** Muốn đúng nghĩa: đánh mốc vàng theo màu, FCs theo tiếng nổ. Vị phải xác nhận bằng màu + hao hụt + cupping mù — "DTR không cứu được mẻ thiếu nhiệt" (`khoa-hoc-rang.md`), "không dùng DTR đơn độc" (`danh-gia-chat-luong.md`).
+  6. **Tổ hợp lạ thì gọi tên:** mẻ 9 Maillard ngắn 30 % + dev dài 28 % = hai chiều vị kéo ngược (Hoos). Chấp nhận cho mẻ đối chứng thử bộ lái; mẻ sau mới chỉnh DTR (ví dụ DROP 214 ⇒ 25 %), đổi 1 biến.
+
 ## 7f. ⭐ Công cụ tự tính — để LINH HOẠT khi đề khác (Claude dạy Hồng 17/10/2026)
 
 Số trong 7d/7e là của **800 g, VX4, gió 85–90**. Đề khác thì KHÔNG chép số — dùng các quan hệ dưới đây tính lại, rồi kiểm trên bản sao.
