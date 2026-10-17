@@ -291,6 +291,9 @@ Rang tay ngoài chương trình (như mẻ 15:2x): firmware KHÔNG ghi SD ⇒ d�
 
 ## Thao tác HMI
 
+- ⛔ **Thao tác gì trên HMI xong ⇒ LUÔN trở về màn 2 VẬN HÀNH** (anh Thành 17/10/2026): `$49 = 2` rồi đọc `$21` thấy 2.
+  Anh nhìn panel để theo dõi — để panel đứng ở màn chọn file / thông số / hồ sơ là anh không thấy máy đang chạy gì.
+  Áp cho MỌI lệnh làm đổi màn (chon_ho_so, dat_ten_ho_so, doc_man, che_do…), kể cả khi lệnh lỗi giữa chừng.
 - ⛔ **Mỗi mẻ RANG LƯU xong ⇒ LUÔN đặt tên hồ sơ trên HMI** (anh Thành 15/10): `<ddmm> M<số mẻ> <khối lượng>g [ghi chú ngắn]`, ASCII không dấu,
   ≤ 30 ký tự — `HONG_DUOC_THAO_TAC=1 python tools/hmi_dien.py dat_ten_ho_so <n> <tên>` (ô `$M(100 + 30(n−1))`, 15 word, byte thấp trước),
   rồi `lam_moi_ho_so` + `ho_so` đọc lại thấy tên. Tên nằm trong `$M` của HMI (giữ khi mất điện), firmware KHÔNG ghi tên xuống SD.

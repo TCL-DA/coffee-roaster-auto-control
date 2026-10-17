@@ -176,7 +176,9 @@ class ChayMe9:
             if d["bt"] > BT_MAX or d["et"] > ET_MAX:
                 self.an_toan("BT %.1f / ET %.1f trước charge" % (d["bt"], d["et"]))
                 return "an_toan"
-            if d["fw_t"] > 0 or (len(truoc) >= 10 and max(truoc) - d["bt"] >= 25 and max(truoc) > 120):
+            if d["fw_t"] == 0:
+                self._da_thay_fw0 = True
+            if (d["fw_t"] > 0 and getattr(self, "_da_thay_fw0", False)) or (len(truoc) >= 10 and max(truoc) - d["bt"] >= 25 and max(truoc) > 120):
                 bt_charge = max(truoc[-10:])
                 if not L9.kiem_charge(bt_charge, ghi=self.ghi):
                     self.an_toan("CHARGE ở BT %.1f < %.0f (vi phạm luật — hạt đã vào lồng lạnh)" % (bt_charge, L9.BT_CHARGE_MIN))
@@ -249,6 +251,10 @@ def chay_may(tm, slot):
     import artisan_ui
     import hmi_dien
     may = MayThat()
+    # chọn hồ sơ trước — nạp hồ sơ trống làm firmware ghi đè $M23 = 180 ⇒ đặt lại 170 rồi MỚI kiểm (luật CHARGE ≥ 150, = kế hoạch)
+    hmi_dien.chon_ho_so(slot)
+    hmi_dien.che_do(False)                      # False = RANG LƯU (SAVE); True = AUTO
+    hmi_dien.nhiet_charge(L9.BT_CHARGE_KE_HOACH)
     ok, ly = L9.kiem_truoc_start(may.pn, ghi=print)
     if not ok:
         raise SystemExit("Không START: " + ly)
@@ -256,9 +262,11 @@ def chay_may(tm, slot):
     may.pn.dat_gio(L9.GIO_NEN)
     may.pn.dat_nhiet(80)
     may.pn.lenh_nhiet(1)
-    hmi_dien.chon_ho_so(slot)
-    hmi_dien.che_do("save")
-    hmi_dien.bat_dau()
+    try:
+        hmi_dien.bat_dau()
+    except Exception as e:                      # START không thành ⇒ TẮT nhiệt ngay (bài học 17/10: bật 80 % rồi chết)
+        may.an_toan()
+        raise SystemExit("START lỗi, đã tắt nhiệt: %s" % e)
     return ChayMe9(may, tm).chay()
 
 

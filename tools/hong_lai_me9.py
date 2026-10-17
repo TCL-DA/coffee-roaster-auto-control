@@ -28,10 +28,11 @@ import numpy as np
 NOI = os.path.dirname(os.path.abspath(__file__))
 MO_HINH = json.load(open(os.path.join(NOI, "ban_sao_me_k.json"), encoding="utf-8"))
 DICH = dict(de=390, fcs=660, drop_t=922, bt_de=155.0, bt_fcs=194.0, bt_drop=218.0, ror_fcs=6.0, ror_dev=5.5)
+DICH.update(json.loads(os.environ.get("HONG_DICH", "{}")))      # đề khác (vd Robusta phin) ghi đè bằng JSON
 LICH_DAU = [(0, 80), (14, 70), (16, 55), (18, 40), (19, 30), (20, 20), (87, 30), (89, 40), (92, 50), (96, 60), (100, 70), (105, 77)]
 U_DUNG = 77
 PHAT_DU = float(os.environ.get("HONG_PHAT_DU", "0.05"))
-GIO_NEN, GIO_FCS, T_GIO, BT_GIO, BU_GIO = 85, 90, 600, 190.0, -3
+GIO_NEN, GIO_FCS, T_GIO, BT_GIO, BU_GIO = 85, 90, float(os.environ.get("HONG_T_GIO", "600")), 190.0, -3
 
 
 # ⛔ Luật cứng anh Thành 17/10: KHÔNG BAO GIỜ CHARGE khi BT < 150 °C.
@@ -40,7 +41,7 @@ GIO_NEN, GIO_FCS, T_GIO, BT_GIO, BU_GIO = 85, 90, 600, 190.0, -3
 #   BT_CHARGE = BT lúc firmware đổ hạt (tự CHARGE ở nhiệt charge $M23, thường 170) — bắt buộc ≥ 150 °C
 BT_CHARGE_MIN = 150.0
 BT_CHARGE_KE_HOACH = 170.0
-BT_START_DAI = (85.0, 90.0)
+BT_START_DAI = tuple(float(x) for x in os.environ.get("HONG_BT_START", "85,90").split(","))
 
 
 def kiem_truoc_start(pn, ghi=print):
