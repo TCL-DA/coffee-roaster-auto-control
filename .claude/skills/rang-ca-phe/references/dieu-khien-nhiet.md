@@ -166,6 +166,27 @@ Lớp an toàn riêng (bộ giải không ghi đè): BT > 245 · ET > 255 · m�
 - Artisan: Invoke nút CHARGE (cả nút chính chữ HOA thanh sự kiện) KHÔNG ghi mốc CHARGE vào .alog cả 2 mẻ; DROP thì ghi. Sửa sau mẻ:
   đặt `timeindex[0]` = điểm BT max quanh (t_DROP_alog − t_DROP_firmware). Chưa rõ gốc — cần thử ngoài mẻ.
 
+## 7d. RoR mượt — "lái thưa / buồng phẳng" (17/10/2026, Hồng + Claude, phân tích log mẻ 3–8, KHÔNG lái)
+
+Báo cáo: `F:/Artisan/Profile/OTL-Hong/bao_cao_1710/` (hong_ror.json, hong_ror_muot.json, ban_sao.py, me9_thu_tu_DE.json). Bộ lái mẻ 9: `tools/hong_lai_me9.py`.
+- **k = RoR / (buồng − BT) ≈ 0,053–0,067 từ phút 6 tới DROP**, gần như giống nhau giữa các mẻ (mẻ 5–8). Phút 1–5 k giảm trơn theo
+  hàm mũ và phụ thuộc nhiệt tích lồng: k phút 2 = 0,149 (START BT 81) … 0,36 (START BT 147) ⇒ không feed-forward được đoạn đầu,
+  phải cố định điều kiện START (BT 85–90).
+- **Buồng bất đối xứng:** xuống −1,6…−1,9 °C/s, lên +0,4…+1,5 °C/s (lệch SV−buồng 3–15 ⇒ +0,36; 15–30 ⇒ +0,75; 30–60 ⇒ +1,05;
+  > 60 ⇒ +1,5 bão hoà). Buồng bám SV trễ ~6 s, ổn định buồng ≈ SV. Cắt sâu rồi bù ⇒ để lại HỐ RoR (mẻ 7: 68 → 43 % ⇒ RoR 2,4 rồi 8,4).
+- **RoR BT trễ sau buồng 15–20 s** (cộng ~15 s của cửa sổ hồi quy 30 s) ⇒ vòng sửa theo RoR mỗi 5 s trễ 30–40 s ⇒ dao động chu kỳ
+  60–270 s ("chuỗi giảm–tăng do phản ứng với tín hiệu trễ", chien-luoc-rang › Theo pha).
+- **Gió 85 → 90 %:** k +6–8 %, RoR +0,6–1,1 °C/ph sau 20–50 s; ET khựng dốc ngay 1–2 s; buồng gần như không đổi ⇒ bù trước −3 % Nhiệt.
+- **Lái thưa thì mượt (đo thật):** mẻ 4 anh để Nhiệt đứng 80–85 % từ 1:46 (10 lần đổi cả mẻ) ⇒ RoR đảo chiều ≥ 1 °C/ph: 1 lần,
+  sd dRoR/dt 0,043, ET đảo ≥ 3 °C: 0 — và vẫn DE 6:29 / FCs 10:59. Mẻ MPC 5–8: 67–79 lần đổi, RoR đảo 7–14, sd 0,072–0,091, ET đảo 2–10.
+  Luật: Nhiệt đứng 1:45 → DE (MPC xét mỗi 60 s, ±2 %); DE → DROP mỗi 10 s, |Δ| ≤ 1 %; cấm cắt sâu.
+- **Buồng phẳng:** buồng_ref = BT + RoR_ref / k̂ (k̂ học chậm, kẹp ×0,7–1,4); buồng gần phẳng thì RoR tự giảm đều vì BT tiến sát buồng.
+- **Muốn dev RoR PHẲNG thì phải TĂNG CHẬM Nhiệt, không phải cấm tăng:** k gần hằng mà BT +24 °C trong dev ⇒ buồng phải nhích theo BT.
+  Luật cấm tăng từ FCs − 90 s làm RoR dev trượt về 5,0 và DROP trễ +16…+43 s (bản sao). Sau FCs: RoR đích 5,5, giảm tự do, tăng
+  ≤ +0,5 %/10 s; chỉ cấm tăng trong FCs − 90 s → FCs (chặn RoR tăng lại trước FCs).
+- Bản sao (Claude, `ban_sao.py`) đúng từ DE → DROP (FCs lệch 1–17 s, RoR ±0,35) nhưng SAI trước DE (phát lại lệnh thật lệch DE −86…+96 s)
+  ⇒ đoạn 0 → DE của bộ lái mẻ 9 chưa kiểm được trên bản sao, chỉ dựa khuôn mẻ 4.
+
 ## 6. Nhật ký lái (bổ sung mỗi lần)
 
 | Ngày | Máy | Việc | Kết quả / bài học |
@@ -187,3 +208,4 @@ Lớp an toàn riêng (bộ giải không ghi đè): BT > 245 · ET > 255 · m�
 | 16/10/2026 11:41–11:56 | Điện VX4, **mẻ 800 g**, slot 6, charge 170, lồng còn nóng từ mẻ 5 | Hồng TỰ RANG, MPC v3 (học mẻ 4+5, dựng TRƯỚC `$0=1`, FF +3 % sấy, dev nhìn RoR từ FCs − 120 s) | DE **5:21 (−69)** · FCs **11:00 (0)** · DROP **217,0** / 14:42 · dev 3:42 · DTR 25,2 % · RoR dev TB 6,2 (5,4–7,1), ~99 % trong 5–7. TP 0:46 / 82: lồng nóng ⇒ BT trước đích 19–22 °C lúc 1:35–2:30, kẹp −20 không hãm nổi ⇒ khởi động lại nới −50. .alog lại thiếu CHARGE ⇒ `1141_charge_sua.alog`. k nền 0,374, cuối ×1,92 (ET − BT 9,7). Mục 7c. |
 | 16/10/2026 15:24–15:40 (giờ máy) | Điện VX4, **mẻ 800 g**, slot 7 "1610 M7 800g", charge 170 | Hồng TỰ RANG MPC; đích DE 6:30 · FCs 11:00 · DROP 218 · dev RoR **5–6** · gió 85 % → 90 % gần FCs (anh Thành). Anh bỏ bước chờ nguội ⇒ START BT 111, buồng lúc charge 223 | DE **5:11 (−79)** · FCs 11:15 (+15) · DROP **218,0** / 15:25 · dev 4:10 · DTR 27,0 % · RoR dev TB 5,76, 71 % trong 5–6. Lỗi Hồng: kẹp hạ Nhiệt ≥ lịch mẻ 4 − 20 % ⇒ 1:25–5:20 không hạ được dù BT trước 11–14 °C; khởi động lại bộ lái lúc 5:24. Gió đưa vào MPC KG 0,08 °C/ph mỗi 1 %. .alog thiếu CHARGE ⇒ `1616_charge_sua.alog`. |
 | 16/10/2026 (giờ máy) rang 15:12 | Điện VX4, **mẻ 800 g**, slot 8 "1610 M8 800g", charge 170 | Như mẻ 7; biên hạ Nhiệt rộng −45 % từ charge, HONG_D0 = +10 (nhiệt tích lồng), không chờ nguội: START BT 147,5, buồng charge 156,5 | DE **4:50 (−100)** · FCs **10:58 (−2)** · DROP **218,0** / 15:12 · dev 4:13 · DTR 27,7 % · RoR dev TB 5,68, 59 % trong 5–6. Gốc lỗi: 85 s đầu bộ lái PHÁT LẠI thao tác Nhiệt mẻ 4 (mẻ 4 lồng lạnh) ⇒ lúc MPC vào 1:25 BT đã trước ~20 °C, RoR 28. **Quy luật 5 mẻ: DE theo BT lúc START** — 77→6:29 · 81→6:38 · 111→5:11 · 138→5:21 · 147→4:50. Mẻ sau: MPC vào ngay sau TP (bỏ phát lại mẻ 4) hoặc START ở BT ≤ ~100; học đường DE theo trạng thái START. .alog thiếu CHARGE ⇒ `1637_charge_sua.alog`. |
+| 17/10/2026 | Điện VX4, 800 g, phân tích log mẻ 3–8 (KHÔNG lái) | Chấm 8 mẻ + chẩn đoán RoR theo skill + tìm cách rang mượt cùng Claude | Lượn sóng mẻ 6–8 do MPC đổi Nhiệt 8–14 % mỗi 5–15 s trên tín hiệu RoR trễ 30–40 s + buồng bất đối xứng. Mẻ 4 (Nhiệt đứng) mượt nhất và đúng mốc. Chốt mẻ 9: START BT 85–90, lái thưa, buồng phẳng, dev RoR phẳng 5,5 tăng chậm ≤ 0,5 %/10 s, bù gió −3 %. Mục 7d. Bộ lái `tools/hong_lai_me9.py` thử trên bản sao (chưa lên máy). |
