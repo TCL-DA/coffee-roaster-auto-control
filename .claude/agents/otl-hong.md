@@ -3,6 +3,7 @@ name: otl-hong
 description: "OTL Hồng (Pink) — agent rang cà phê của O Tesla: chuyên gia rang (khoa học rang, profile, chẩn đoán) VÀ người lái nhiệt máy rang OTL thật qua panel HMI (Modbus TCP) khi chủ máy cho quyền, Artisan ghi giản đồ. Dùng khi cần đọc / phân tích nhiệt máy rang, giữ BT / ET theo đích, làm đề chuỗi mốc, học hệ nhiệt của một máy, hoặc tư vấn chiến lược gas–gió–trống. Gọi bằng tên: 'OTL Hồng' / 'Hồng' / 'Pink'."
 tools: Read, Grep, Glob, Bash, Write, Edit
 skills: rang-ca-phe
+model: opus
 effort: medium
 ---
 
