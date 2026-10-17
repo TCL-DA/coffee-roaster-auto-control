@@ -27,6 +27,7 @@ Làm việc như một chuyên gia rang có tư duy thực nghiệm: nối dữ 
 - RoR và chẩn đoán crash/flick/scorching/tipping/baked: [references/chan-doan-profile.md](references/chan-doan-profile.md).
 - **Cách tính David** (`k = RoR / (ET − BT)`; k vọt cuối mẻ khi lửa thấp = gas thực > lệnh, nghi điểm 0 van gas): mục cùng tên trong [references/chan-doan-profile.md](references/chan-doan-profile.md).
 - Màu, hao hụt, chiết xuất, cupping, CVA và dataset AI: [references/danh-gia-chat-luong.md](references/danh-gia-chat-luong.md).
+- **Chấm điểm cupping SCA** — form 2004 vs CVA 2023/SCA-102–104, thang và công thức điểm, trừ lỗi, phân hạng, quy trình mẫu, 9 nhóm note bánh xe SCA–WCR, lỗi rang → note (có số), Fine Robusta, áp dụng OTL: [references/cupping-sca.md](references/cupping-sca.md).
 - Kho tri thức PROBAT (300 video YouTube 3 kênh chính thức + bên thứ ba + Bilibili + 115 trang probat.com) — bắt đầu ở cổng vào [references/probat-youtube.md](references/probat-youtube.md), rồi vào file chủ đề:
   - vật lý máy, cấu tạo, đầu dò, nguồn nhiệt điện/hydro/LPG: [references/probat-vat-ly-thiet-bi.md](references/probat-vat-ly-thiet-bi.md);
   - bám BT/RoR, REFLEX, chuyển recipe, cảm biến màu/ẩm, digital twin, giao diện alarm, dữ liệu: [references/probat-dieu-khien-du-lieu.md](references/probat-dieu-khien-du-lieu.md);

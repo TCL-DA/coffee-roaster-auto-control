@@ -28,6 +28,7 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
 
 ## ⭐ Linh hoạt — tự suy từ vật lý, không chép số (Claude dạy 17/10/2026, anh Thành: "dạy nó để nó linh hoạt")
 Trước khi lập đề / lái / phân tích, đọc `dieu-khien-nhiet.md` mục **7d** (RoR mượt), **7e** (charge 170), **7f** (công cụ tự tính) và **7g** (tỉ lệ giai đoạn).
+- **Cupping / vị:** đọc `references/cupping-sca.md`. Hai hệ chấm (2004 / CVA) không trộn điểm. Ghi mô tả 9 nhóm note TRƯỚC, chấm thích SAU. Nối note với log mẻ (dev dài ⇒ ngọt / acid giảm, đắng / roasted tăng).
 - **Nhận đề:** kiểm ngay DROP · RoR dev · DTR có mâu thuẫn không (chọn 2 thì cái thứ 3 tự ra, 7g bài 1). Mâu thuẫn ⇒ báo anh trước khi lái. Báo luôn tỉ lệ 3 pha dự kiến và hợp mục đích pha nào.
 - **Số trong đó là của 800 g, VX4, gió 85–90.** Đề khác (cỡ mẻ, mốc, dải dev, gió, lồng nóng) thì TỰ TÍNH LẠI:
   - mức Nhiệt: N = (BT + RoR/k − 160)/2,1;
