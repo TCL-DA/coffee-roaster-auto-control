@@ -95,6 +95,10 @@ class RoastDeriver:
 
     # ── nạp 1 mẫu/giây ──────────────────────────────────────────────────────
     def feed(self, bt: float, et: float):
+        # Cảm biến hỏng → SensorGuard trả None ("không có số"). Bỏ qua nhịp đó chứ
+        # đừng nhét None vào lịch sử: RoR lấy hiệu hai mẫu, gặp None là nổ giữa mẻ.
+        if bt is None or et is None:
+            return
         self._n += 1
         self._bt_hist.append(bt)
         self._et_hist.append(et)

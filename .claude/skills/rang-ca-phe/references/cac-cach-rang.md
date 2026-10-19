@@ -124,6 +124,38 @@ Thực hành tốt: drop theo BT **và** kiểm chéo dev time + màu sau mẻ; 
 | **Hạt cũ / mất ẩm** | Nóng nhanh, FCs sớm, phẳng vị | Giảm năng lượng đầu, rút dev; đừng kỳ vọng hương như hạt mới |
 | **Robusta** | Mật độ thường thấp hơn arabica, caffeine cao, đắng; nhiều chaff | Sấy kỹ, tránh cháy mặt; mức rang trung–đậm cho phin; robusta specialty (fine robusta) có thể rang trung để giữ ngọt |
 
+### 5b. Dữ liệu thật: Natural Ethiopia Yirgacheffe (Hồng + Claude, 17/10/2026)
+Dùng để so tỉ lệ, KHÔNG chép nhiệt tuyệt đối (máy nhỏ, đầu dò khác; không mẻ nào là trống điện 800 g).
+- **Roastetta, 10 mẻ Natural / dry công khai** (`F:/Research/Roastetta_Ethiopia_Yirgacheffe_All_Found.xlsx`):
+  - loại mẻ "Sample" (FC > DROP, vô lý) và mẻ washed;
+  - máy Kaleido / Skywalker / Yang-Chia / K3, mẻ 150–1000 g (đa số 200–400 g);
+  - mức rang do người rang tự ghi, không có màu đo, không có cup.
+
+  | Chỉ số | min | trung vị | max |
+  |---|---|---|---|
+  | DTR % | 10,3 | 13,5 | 22,4 |
+  | Dev (s) | 55 | 94 | 120 |
+  | ΔT FC→DROP (°C) | 3,8 | 8 | 17,5 |
+  | RoR dev = ΔT / dev × 60 | 3,3 | ~5,35 | 9,3 |
+  | Tổng | 8:23 | 9:29 | 12:56 |
+  | DE (thời gian) | 3:38 | ~4:29 | 6:18 |
+  | Sấy % | 34 | 47 | 60 |
+  | Maillard % | 26 | 36,5 | 53 |
+  | Hao hụt % | 12,7 | 14,5 | 15,3 |
+
+  - City / City+: DTR chủ yếu 10–17 %. Full City: 18,1 / 22,4 %, hao hụt 14,7–14,9 %.
+  - Hao hụt gần như phẳng theo DTR ⇒ không dùng để phân mức.
+  - Độ tin: vừa (thực hành cộng đồng).
+- **Gayo W4379534003** (2023, arabica washed, 2 kg, trống, charge 170 °C, ẩm 10,25 %; `F:/Research/Coffee-Roasting/fulltext/`):
+  - sấy 3:00 / 4:00 / 5:00 với Maillard 4:00 và dev 3:00 cố định ⇒ Q-grader và panel chọn sấy 4:00 (~36 % tổng);
+  - độ tin vừa: một nghiên cứu, washed, dev 27 % đậm hơn filter; ngược với sấy 47 % của Roastetta.
+- **Bài học:**
+  - bảng §4 (filter 12–18 %, cold brew "trung → trung đậm") là điểm khởi đầu; có dữ liệu cùng hạt thì đặt kế hoạch cạnh dữ liệu đó trước khi phán mức rang;
+  - ⛔ **Log hạt khác chỉ cho động học MÁY, không cho phản ứng HẠT** (anh Thành 17/10). Kế hoạch lấy DE 6:00 và tỉ số (RoR TB TP → DE) / đỉnh = 0,60–0,64 từ log **Robusta** mẻ 9–10 rồi áp cho Arabica Ethiopia ⇒ sai gốc;
+  - dữ liệu cùng hạt khác máy (Roastetta) cũng chỉ chép TỈ LỆ, không chép giờ tuyệt đối;
+  - hạt mới ⇒ đích mốc ghi GIẢ ĐỊNH, đặt dải theo nguồn cùng loại hạt, học k trong 2–3 phút đầu rồi mới chốt đường DE; mẻ đầu là mẻ hiệu chuẩn hạt;
+  - chi tiết: `F:/Artisan/Profile/OTL-Hong/ethiopia_yirgacheffe_g2_natural/`.
+
 Trộn (blend): **trộn trước rang** (một mẻ chung, nhanh nhưng hạt khác mật độ chín không đều) vs **rang riêng rồi trộn**
 (mỗi hạt một profile, đều hơn, tốn mẻ). Hạt chênh mật độ/sơ chế lớn → rang riêng.
 

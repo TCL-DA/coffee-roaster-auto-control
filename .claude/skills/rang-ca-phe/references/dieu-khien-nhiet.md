@@ -207,8 +207,11 @@ Báo cáo: `F:/Artisan/Profile/OTL-Hong/bao_cao_1710/` (hong_ror.json, hong_ror_
   - 180: ở mức nung 50 % có thể KHÔNG BAO GIỜ tới ⇒ phải nâng mức nung (đổi 2 biến).
   - 160: charge sớm ~40 s, lồng ngấm ít ⇒ DE muộn, thiếu đà.
   - Thử thì chỉ 165–175, nhiệt nung giữ nguyên. Luật cứng: ≥ 150.
-- **Chuẩn hoá thay cho chỉ BT charge:**
-  - BT START 85–90;
+- ⛔ **SỬA 17/10 chiều (anh Thành): BỎ "phải START lồng nguội BT 85–90".** Điều kiện đầu là thứ BÙ BẰNG ĐIỀU KHIỂN, không chờ máy
+  nguội: nhiệt trong lồng đã trả tiền (điện, gas, thời gian) — dùng cho mẻ. START ở BT đang có; sấy bám đường BT đích CHARGE → DE
+  (BT trước đường ⇒ hạ Nhiệt, sau ⇒ nâng, N = (B + R/k − 160)/2,1 với k ĐO). Số tương quan dưới đây vẫn đúng — dùng để BÙ, không để chờ.
+- **Chuẩn hoá thay cho chỉ BT charge** (ghi lại để so mẻ, KHÔNG phải điều kiện chờ):
+  - BT START (ghi lại, không chờ);
   - START → CHARGE 120–150 s;
   - buồng lúc charge 260 ± 10;
   - ghi ET − BT lúc charge (10–12 ở mẻ tốt).
@@ -257,7 +260,7 @@ Số trong 7d/7e là của **800 g, VX4, gió 85–90**. Đề khác thì KHÔNG
 | **Muốn RoR R ở BT B** | buồng = B + R/k ⇒ **N = (B + R/k − 160) / 2,1** | tự chọn mức Nhiệt cho đề mới |
 | Ví dụ 800 g | DE (155, R 10, k 0,07) ⇒ ~66 % · FCs (194, R 6) ⇒ ~65 % · DROP (218, R 5,5) ⇒ ~71 % | mức ổn định; đầu mẻ phải dồn trước nên cao hơn (77–85 %) |
 | Thời gian dev | dev_s ≈ (BT_drop − BT_fcs) / RoR_tb × 60 · 24 °C ở 5,5 ⇒ ~262 s | kiểm đề dev có khả thi |
-| Điều kiện đầu | DE dời ≈ −1,4…−1,5 s mỗi +1 °C BT START | chọn BT START cho DE mong muốn |
+| Điều kiện đầu | DE dời ≈ −1,4…−1,5 s mỗi +1 °C BT START | ước lượng phần cần BÙ bằng Nhiệt sấy — KHÔNG chờ nguội (17/10) |
 | Gió | +5 % gió ⇒ k +6–8 % ⇒ RoR +0,6–1,1 sau 20–50 s ⇒ bù trước −3 % Nhiệt | đổi lịch gió |
 | Buồng bất đối xứng | xuống −1,6…−1,9 °C/s, lên +0,4…+1,5 °C/s | giảm: ít và sớm · tăng: sớm hơn 20–30 s · không cắt sâu rồi bù |
 | Trễ vòng | RoR trễ buồng 15–20 s + cửa sổ đo 15 s | không sửa theo RoR nhanh hơn mỗi 10 s; đoạn đầu mỗi 60 s |
@@ -268,7 +271,7 @@ Số trong 7d/7e là của **800 g, VX4, gió 85–90**. Đề khác thì KHÔNG
   - mẻ nhẹ: TP cao hơn (500 g 92 · 700 g 84 · 800 g 75 · 900 g 68), dễ cháy mặt ⇒ dồn trước nhẹ hơn;
   - mẻ nặng: thiếu đà ⇒ dồn trước mạnh hơn, đừng để Nhiệt 0 % lúc charge (mẻ 900 g trễ DE 158 s).
   - k và ĉ học lại ngay trong mẻ.
-- **Lồng nóng mà anh không cho chờ nguội:** hạ lịch đầu mẻ theo −1,4 s/°C (ví dụ START 120 ⇒ DE sớm ~45 s ⇒ giảm dồn trước). Ghi rõ là mẻ lệch chuẩn.
+- **Lồng nóng (luôn vậy — không chờ nguội, 17/10):** bám đường BT đích CHARGE → DE; ước phần bù −1,4 s/°C (ví dụ START 120 ⇒ DE sớm ~45 s ⇒ giảm dồn trước). Ghi rõ là mẻ lệch chuẩn.
 - **DE / FCs đích khác:** tính RoR trung bình cần mỗi pha = ΔBT / Δt × 60. Đặt RoR_ref giảm thẳng, rồi suy N bằng công thức trên.
   - RoR TB DE → FCs > ~12 hoặc < ~6 trên 800 g là đề khó ⇒ báo anh trước khi chạy.
 - **Dải dev khác (5–7, 4–5…):** RoR_ref = giữa dải. Tăng chậm Nhiệt theo BT, không cấm tăng.

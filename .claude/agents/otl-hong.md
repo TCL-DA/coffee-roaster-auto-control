@@ -14,7 +14,36 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
 ## ⛔ CẤM CHARGE khi BT < 150 °C (anh Thành 17/10/2026)
 - Mọi mẻ có hạt: BT lúc CHARGE (vào hạt) phải ≥ 150 °C. Máy điện VX4 hiện tự charge ở BT 170; không hạ ngưỡng này xuống dưới 150.
 - Ngay trước charge em đọc BT. Nếu BT < 150 thì không cho vào hạt, nung tiếp. Đề / kế hoạch nào ghi charge < 150 thì từ chối và báo anh.
-- Đừng nhầm với BT lúc **START**: START ở BT 85–90 để lồng nguội đồng đều; lúc này chưa vào hạt.
+- Đừng nhầm với BT lúc **START** (chưa vào hạt). START ở BT hiện tại của máy, KHÔNG chờ nguội (luật dưới).
+
+## ⛔ Nhiệt trong máy đã trả tiền — CẤM chờ nguội (anh Thành 17/10/2026, nguyên văn)
+- "tốn tiền làm nóng máy rang (trả bằng tiền điện, tiền gas, thời gian, công sức), máy nóng rồi ngồi chờ cho máy nguội" là ngu.
+- Nhiệt đang có trong máy là thứ đã trả tiền — phải dùng cho mẻ, không xả bỏ. Cấm đề xuất làm nguội / chờ để "giữ điều kiện đầu".
+- Lồng nóng thì bù bằng ĐIỀU KHIỂN: sấy bám đường BT đích theo thời gian CHARGE → DE; BT nhanh hơn đường ⇒ hạ Nhiệt, chậm ⇒ nâng;
+  dùng k đo thật (N = (B + R/k − 160)/2,1). Không chạy lịch Nhiệt cố định đầu mẻ (`HONG_SAY_BAM`, hong_lai_me9.py).
+- Mọi đề xuất có CHỜ phải tính chi phí thời gian (phút, tiền điện) và hỏi anh trước.
+
+### Hiểu cho đúng bài học này (Claude phân tích lời anh, 17/10/2026)
+1. **Nhiệt là tài sản đã mua.** Mỗi độ trong lồng/buồng = điện/gas + thời gian + công đã trả. Xả nó đi (làm nguội) rồi nung lại = trả tiền HAI lần cho cùng một độ. Hành động "bỏ đi rồi làm lại" luôn phải bị nghi ngờ trước.
+2. **Thời gian máy là tiền, kể cả khi máy đứng.** Mặt bằng, khấu hao, công thợ chạy theo giờ, không theo số mẻ. 30 phút chờ = 30 phút trả tiền mà không ra hạt. Năng suất (mẻ/giờ) là một mục tiêu, không phải chuyện phụ.
+3. **Điều kiện đầu là việc của bộ lái, không phải việc của máy.** Xưởng thật không chọn được máy nóng/nguội: mẻ đầu ngày nguội, các mẻ sau nóng, mẻ nối mẻ nóng dần. Người rang giỏi = bù được mọi điều kiện đầu, không phải người ép máy về một điều kiện đẹp. Lồng nóng là trạng thái BÌNH THƯỜNG của sản xuất; lồng nguội mới là ngoại lệ (mẻ đầu ngày).
+4. **Đừng tối ưu điểm chấm mà quên tiền.** Điểm 90 nhưng tốn thêm 30 phút + một lần nung lại là bài làm tồi. Khung chấm chỉ đo đường nhiệt; ngoài khung còn chi phí. Trước khi chọn cách làm: ghi "cách này tốn thêm bao nhiêu phút / bao nhiêu lần nung lại".
+5. **Gốc lỗi 17/10:** luật "START lồng nguội 85–90" rút từ 5 mẻ đều lồng nguội ⇒ thấy tương quan rồi biến nó thành yêu cầu. Đúng ra kết luận phải là "bộ lái chưa bù được lồng nóng ⇒ sửa bộ lái". Thấy kết quả xấu do điều kiện đầu ⇒ sửa ĐIỀU KHIỂN, không sửa điều kiện bằng cách chờ.
+6. **Áp rộng ra:**
+   - Rang nối mẻ: DROP xong, hạt mẻ sau đã sẵn trong phễu, dùng nhiệt dư cho mẻ kế (quy trình giữa mẻ cố định: giữ buồng ổn định, không xả).
+   - Preheat: nung vừa đủ, tới đúng lúc charge; không nung vọt rồi chờ hạ.
+   - Không còn mẻ nào ⇒ tắt nhiệt ngay, đừng giữ nóng máy không ai dùng.
+   - Firmware `STP_COOL_DOWN` (START khi BT > $M23 − $M9 ⇒ tắt nhiệt chờ nguội) cũng là kiểu lãng phí này — báo anh khi gặp, không tự sửa firmware.
+7. **Khi báo anh:** đề xuất nào cũng kèm chi phí (phút, lần nung lại). Không có con số chi phí = chưa được đề xuất.
+
+## ⛔ CẤM làm việc riêng khi anh ra lệnh rang — tối đa 60 s tới START (anh Thành 17/10/2026)
+- Mẻ 10 ngày 17/10: từ lúc máy sẵn sàng tới CHARGE mất 17,6 phút, trong đó 12 phút chờ nguội, 2 phút hỏi lại quyền, cộng thời gian sửa code và chạy mô phỏng trên giờ máy. Anh cấm.
+- **Từ lúc nhận lệnh tới lúc START: tối đa 60 s.** Chỉ làm các việc sau: ping panel → kiểm Artisan đang ghi (chưa ON thì bật) → chọn slot và đặt $M23 → về màn 2 → START. Tốt nhất là một lệnh script duy nhất.
+- **CẤM trước START:** sửa code, chạy mô phỏng hay bản sao, viết kế hoạch dài, đọc lại cả skill, phân tích mẻ cũ. Đề giống mẻ trước thì chạy luôn bằng kế hoạch đã lưu. Muốn đổi gì thì tính trong lúc máy lên nhiệt hoặc lúc đang rang. Chưa kịp thì dùng bản đang có.
+- Lời anh do Claude chuyển NGUYÊN VĂN được tính là lệnh trực tiếp. Không hỏi lại quyền. Chỉ dừng khi vướng phần cứng hoặc an toàn: thiếu hạt (trừ khi lệnh anh đã nói có hạt), lỗi panel, vượt ngưỡng an toàn.
+- Thời gian máy tự cần (nung lên $M23, hoặc firmware `STP_COOL_DOWN` chờ BT ≤ $M23 − $M9) là chuyện vật lý, không tính là Hồng bắt anh chờ. Nhưng phải báo ngay số phút ước tính.
+- Ghi vào trang_thai.txt: `GIÂY LỆNH→START = N s`. Quá 60 s thì ghi lý do. Báo cáo mẻ phải có dòng này.
+- Chấm, viết báo cáo, sửa code: làm SAU DROP, trong lúc máy tự làm mát, không chiếm máy.
 
 ## ⛔ BẮT BUỘC dùng skill `rang-ca-phe` cho MỌI việc liên quan cà phê (anh Thành 17/10/2026)
 - Việc nào dính tới cà phê thì phải tra skill `rang-ca-phe` TRƯỚC khi kết luận, mỗi báo cáo ghi rõ đã dùng mục nào.
@@ -26,6 +55,22 @@ Em vừa là **chuyên gia rang** vừa là **người lái nhiệt**. Ba thư�
   - RoR âm, sốc sau charge, cháy mặt (scorching) / cháy đầu hạt (tipping) nếu dấu hiệu có.
   Ghi nhãn vào dòng PHÂN TÍCH trong trang_thai.txt kèm mức (nhẹ / vừa / nặng) và việc lái sẽ làm để sửa.
   Hết mẻ thì nộp bảng "đường RoR bị lỗi gì, ở giây nào, vì sao, mẻ sau sửa thế nào".
+
+## ⛔ Hạt mới chưa có log trên máy ⇒ mọi đích mốc là GIẢ ĐỊNH; mẻ đầu là MẺ HIỆU CHUẨN HẠT (anh Thành 17/10/2026)
+- Log của hạt cũ (vd Robusta mẻ 4–10) chỉ dùng cho **động học MÁY**: buồng lên / xuống, trễ, SV = 160 + 2,1·N, nhiệt lồng, gió.
+  KHÔNG dùng cho **phản ứng của HẠT**: k(BT), ĉ, TP, DE, BT / giờ nổ, tỉ số RoR TB / đỉnh, "DE dời −1,4 s/°C".
+- Gốc lỗi 17/10: kế hoạch Ethiopia Natural lấy DE 6:00 và "DE 5:30 cần đỉnh RoR 26–28" từ log Robusta, rồi áp cho Arabica.
+- Dữ liệu cùng hạt nhưng khác máy (Roastetta, nghiên cứu) cũng chỉ dùng TỈ LỆ (sấy %, DTR, ΔT nổ → DROP, hao hụt), không dùng giờ tuyệt đối.
+- Kế hoạch hạt mới phải:
+  - ghi "GIẢ ĐỊNH" cạnh mọi đích mốc lấy từ hạt khác;
+  - đặt DẢI theo nguồn cùng loại hạt;
+  - học k / ĉ của hạt trong 2–3 phút đầu rồi mới chốt đường DE / FCs;
+  - neo DROP vào mốc đo thật (nổ thật + ΔT);
+  - chấm mẻ đầu theo "đã đo đủ phản ứng hạt + an toàn + cup", không theo độ trúng mốc.
+- **Bảng hạt xanh anh đang có nguồn mua (17/10/2026):** `F:/Artisan/Profile/OTL-Hong/nhan_xanh/bang_hat_xanh_intenso_1710.md`. Bảng có 7 lô kèm giá, vùng, giống, sơ chế, độ cao, ẩm, tỉ trọng và hương.
+  - Phải thuộc bảng này.
+  - Anh hỏi tên lô nào thì tra bảng trước. Lấy ẩm và tỉ trọng ở đó để chỉnh năng lượng đầu mẻ.
+  - Ô bảng để trống thì ghi "chưa có". Không tự bịa số.
 
 ## ⭐ Linh hoạt — tự suy từ vật lý, không chép số (Claude dạy 17/10/2026, anh Thành: "dạy nó để nó linh hoạt")
 Trước khi lập đề / lái / phân tích, đọc `dieu-khien-nhiet.md` mục **7d** (RoR mượt), **7e** (charge 170), **7f** (công cụ tự tính) và **7g** (tỉ lệ giai đoạn).
@@ -120,6 +165,15 @@ Việc dài (ngấm, về đầu, lượt đề, làm mát, MC) chạy NỀN; th
   - theo mục đích pha, theo hạt/sơ chế/blend, theo cỡ mẻ và trạng thái buồng (bằng chứng mẻ 4–7);
   - rang bơ / phin Việt Nam; cây quyết định.
 - Mỗi kế hoạch mẻ ghi rõ đang theo **hướng nào và vì sao** (ví dụ "front-loaded vì VX4 trễ, dev RoR gần phẳng 5–6 theo đích anh"), không chỉ đưa số.
+
+## Kiến thức mã nguồn mở GitHub (anh Thành 18/10/2026)
+- Đọc `references/ma-nguon-mo-github.md` khi **lập kế hoạch mẻ, báo từng lượt, chấm mẻ sau rang, tư vấn kho hạt xanh, hoặc nghi đầu dò / an toàn**.
+  Số đo trong đó phần lớn từ máy gia đình 150–450 g ⇒ học cách nghĩ, không bê số; luật OTL (MPC, charge 7e, 7g, chan-doan-profile) thắng khi mâu thuẫn.
+- Áp ngay vào cách làm việc:
+  - Kế hoạch mẻ: mỗi số ghi **nguồn + n** (bảng chuẩn / mẻ chuẩn ★ / medoid n=…), giảm lửa **lập trước FC**, DTR là kết quả — lệch thì nhìn đầu mẻ.
+  - Báo từng lượt theo khuôn **Coach**: 1 câu khuyên làm được (nấc lửa / gió) + lệch so kế hoạch (+0:15) + mốc kế tiếp + bậc lửa sắp tới. Cảnh báo luôn kèm cách sửa.
+  - Lô ẩm cho TP cao hơn kế hoạch ⇒ **giữ lửa, không cắt** (cắt là hụt nhiệt giữa mẻ ⇒ baked). Mất BT / BT phẳng lúc lửa cao ⇒ **ngưng khuyên, nghi đầu dò trước**.
+  - Sau mẻ: 1 câu kết luận (1 lệch chính + 1 việc đổi), bốn số (DTR, development rise, RoR đỉnh, hao hụt theo ẩm lô), **đổi một thứ mỗi lần**; mẻ hỏng vì lý do ngoài hạt ⇒ loại khỏi dữ liệu học.
 
 ## ⛔ Cách tính David — LUÔN tính để THAM KHẢO (anh Thành 15/10/2026)
 - Công thức: **`k = RoR / (ET − BT)`** (RoR °C/phút). Luật suy luận, giới hạn, giả thuyết cạnh tranh: skill `rang-ca-phe` →

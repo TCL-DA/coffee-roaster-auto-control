@@ -26,6 +26,7 @@ import os
 import sqlite3
 import threading
 import time
+import unicodedata
 
 DB_NAME = "batches.db"
 BACKUP_DIR = "backup"
@@ -46,7 +47,8 @@ CREATE TABLE IF NOT EXISTS batches(
   dev_pct    INTEGER,                     -- % phát triển
   mile       TEXT    DEFAULT '{}',        -- JSON {"TP":{"t":94,"bt":91.2},...}
   live       INTEGER DEFAULT 0,           -- 1 = có điểm từ máy thật, 0 = mô phỏng
-  status     TEXT    DEFAULT 'RUNNING'    -- RUNNING | DONE | INTERRUPTED
+  status     TEXT    DEFAULT 'RUNNING',   -- RUNNING | DONE | INTERRUPTED
+  charge_kg  REAL                         -- khối lượng nạp (kg) do thợ nhập; NULL = chưa ghi
 );
 CREATE TABLE IF NOT EXISTS points(
   batch_id INTEGER NOT NULL,
@@ -59,6 +61,13 @@ CREATE TABLE IF NOT EXISTS points(
 
 def _now():
     return time.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _search_text(value):
+    """Tìm không phân biệt hoa/thường và dấu tiếng Việt."""
+    value = str(value or "").casefold().replace("đ", "d")
+    return "".join(c for c in unicodedata.normalize("NFD", value)
+                   if not unicodedata.combining(c))
 
 
 class RoastDb:
@@ -78,6 +87,7 @@ class RoastDb:
         con = sqlite3.connect(self.path, check_same_thread=False, timeout=5)
         try:
             con.row_factory = sqlite3.Row
+            con.create_function("search_text", 1, _search_text, deterministic=True)
             con.execute("PRAGMA journal_mode=WAL")
             con.execute("PRAGMA synchronous=NORMAL")
         except Exception:
@@ -106,9 +116,20 @@ class RoastDb:
                         self.base, f"batches.hong-{stamp}.db{suf}"))
             con = self._connect()
         con.executescript(_SCHEMA)
+        self._them_cot_thieu(con)
         con.commit()
         self._con = con
         self._recover()
+
+    @staticmethod
+    def _them_cot_thieu(con):
+        """Kho đã tạo từ bản cũ thì CREATE TABLE IF NOT EXISTS không đụng tới nữa,
+        nên cột mới phải tự thêm. Chỉ thêm, không bao giờ xoá hay đổi cột cũ —
+        mất dữ liệu mẻ là mất luôn, không dựng lại được."""
+        co = {r[1] for r in con.execute("PRAGMA table_info(batches)")}
+        for ten, kieu in (("charge_kg", "REAL"),):
+            if ten not in co:
+                con.execute(f"ALTER TABLE batches ADD COLUMN {ten} {kieu}")
 
     def _recover(self):
         """Mẻ còn RUNNING từ phiên trước = app chết giữa mẻ → chốt INTERRUPTED
@@ -152,14 +173,17 @@ class RoastDb:
                 self._con.commit()
 
     def finish(self, bid, summary=None):
-        """Chốt mẻ DONE với tổng kết từ JS (mã mẻ, giây xả, mốc…)."""
+        """Chốt mẻ với tổng kết từ JS (mã mẻ, giây xả, mốc…).
+        summary.interrupted = thợ đóng mẻ lúc MẤT KẾT NỐI, máy chưa xác nhận xả →
+        INTERRUPTED chứ không DONE (review 14/09 RF-01)."""
         s = summary if isinstance(summary, dict) else {}
         mile = s.get("mile")
+        status = "INTERRUPTED" if s.get("interrupted") else "DONE"
         with self._lock:
             self._con.execute(
-                "UPDATE batches SET status='DONE', ended_at=?, code=?, "
+                "UPDATE batches SET status=?, ended_at=?, code=?, "
                 "drop_sec=?, drop_temp=?, dev_pct=?, mile=? WHERE id=?",
-                (_now(), str(s.get("code") or "")[:16],
+                (status, _now(), str(s.get("code") or "")[:16],
                  s.get("drop_sec"), s.get("drop_temp"), s.get("dev_pct"),
                  json.dumps(mile, ensure_ascii=False) if mile else "{}", bid))
             self._con.commit()
@@ -193,12 +217,30 @@ class RoastDb:
                       r["id"], reason, last["t"])
 
     # ── đọc cho UI ──────────────────────────────────────────────────────────
-    def latest(self, n=50):
+    def latest(self, n=50, query="", date_from="", date_to="", offset=0):
+        # Lọc trong kho trước khi phân trang; tham số luôn được bind riêng.
+        n = max(1, min(500, int(n)))
+        offset = max(0, int(offset))
+        where, args = [], []
+        if query:
+            where.append("(instr(search_text(code),search_text(?))>0 OR "
+                         "instr(search_text(prof_name),search_text(?))>0 OR "
+                         "instr(search_text(roaster),search_text(?))>0)")
+            args.extend([str(query)[:200]] * 3)
+        if date_from:
+            where.append("substr(started_at,1,10)>=?")
+            args.append(str(date_from)[:10])
+        if date_to:
+            where.append("substr(started_at,1,10)<=?")
+            args.append(str(date_to)[:10])
+        clause = " WHERE " + " AND ".join(where) if where else ""
         with self._lock:
             rows = self._con.execute(
                 "SELECT id, code, prof_no, prof_name, color, roaster, started_at,"
-                " ended_at, drop_sec, drop_temp, dev_pct, mile, live, status"
-                " FROM batches ORDER BY id DESC LIMIT ?", (int(n),)).fetchall()
+                " ended_at, drop_sec, drop_temp, dev_pct, mile, live, status,"
+                " charge_kg"
+                " FROM batches" + clause + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                (*args, n, offset)).fetchall()
         out = []
         for r in rows:
             d = dict(r)
@@ -208,6 +250,40 @@ class RoastDb:
                 d["mile"] = {}
             out.append(d)
         return out
+
+    def count(self, query="", date_from="", date_to=""):
+        """Đếm mẻ khớp bộ lọc. Giao diện cần con số tổng ("N mẻ đã lưu") mà
+        latest() chỉ trả từng trang, nên trước đây không có chỗ nào lấy được."""
+        where, args = [], []
+        if query:
+            where.append("(instr(search_text(code),search_text(?))>0 OR "
+                         "instr(search_text(prof_name),search_text(?))>0 OR "
+                         "instr(search_text(roaster),search_text(?))>0)")
+            args.extend([str(query)[:200]] * 3)
+        if date_from:
+            where.append("substr(started_at,1,10)>=?")
+            args.append(str(date_from)[:10])
+        if date_to:
+            where.append("substr(started_at,1,10)<=?")
+            args.append(str(date_to)[:10])
+        clause = " WHERE " + " AND ".join(where) if where else ""
+        with self._lock:
+            return int(self._con.execute(
+                "SELECT COUNT(*) FROM batches" + clause, tuple(args)).fetchone()[0])
+
+    def set_weight(self, bid, kg):
+        """Ghi khối lượng nạp cho một mẻ. kg=None nghĩa là xoá số đã ghi.
+        Không suy ra từ cân phễu — số này do thợ nhập, vì cân phễu đo lượng
+        TRONG PHỄU chứ không phải lượng đã vào trống."""
+        if kg is not None:
+            kg = float(kg)
+            if not (0 < kg <= 1000):
+                raise ValueError("khối lượng ngoài dải 0–1000 kg")
+            kg = round(kg, 2)
+        with self._lock:
+            self._con.execute("UPDATE batches SET charge_kg=? WHERE id=?", (kg, int(bid)))
+            self._con.commit()
+        return True
 
     def curve(self, bid):
         """Curve 1 mẻ dạng mảng cột (như p.curve của JS) — vẽ/xuất CSV đều dùng."""

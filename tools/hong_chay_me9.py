@@ -24,6 +24,10 @@ import hong_ror_loi as H  # noqa: E402
 BT_MAX, ET_MAX = 245.0, 255.0
 T_MAX = 1080            # 18:00 chưa DROP ⇒ xả
 CHO_CHARGE_MAX = 1200   # 20 phút sau START chưa CHARGE ⇒ dừng
+ROR_BAO, ROR_CAT = 25.0, 30.0   # mẻ 2: RoR (sau TP + 20 s) > 25 ghi báo, > 30 ghi "quá ngưỡng cắt" (trần sấy HONG_ROR_TRAN là cơ chế hạ)
+# HONG_DROP_NO="11,205,209" ⇒ bật đổi DROP theo nổ người báo (no_that.txt). Không đặt ⇒ DROP = DICH["bt_drop"] cố định.
+DROP_NO = tuple(float(x) for x in os.environ["HONG_DROP_NO"].split(",")) if os.environ.get("HONG_DROP_NO") else None
+CHARGE_ROI_MIN = 40.0   # dự phòng nhận CHARGE khi không đọc được fw_t: BT rơi ≥ 40 °C trong 20 s (nguội ≤ 25/30 s, hạt vào 66/20 s)
 
 
 def s16(v):
@@ -144,13 +148,36 @@ class ChayMe9:
         if not self.may.gia_lap:
             print(dong, flush=True)
 
-    def buoc_cua(self, t, bt):
+    def doi_drop_theo_no(self, t, bt):
+        """MỘT cơ chế DROP (mẻ 2, 18/10): bt_drop = DICH["bt_drop"] (207 = nổ đo 196 + 11). Chỉ khi bật HONG_DROP_NO="cộng,min,max":
+        người đứng máy nghe nổ ⇒ Hồng ghi file <thư mục mẻ>/no_that.txt (số = BT nổ; để trống = BT lúc file xuất hiện) ⇒
+        bt_drop = BT nổ + cộng, kẹp [min, max]. Đọc 1 lần. Không có file ⇒ giữ 207. Đổi cả DICH để đường RoR dev bám đích mới."""
+        if DROP_NO is None or getattr(self, "da_doc_no", False):
+            return
+        f = os.path.join(self.tm, "no_that.txt")
+        if not os.path.exists(f):
+            return
+        self.da_doc_no = True
+        try:
+            s = open(f, encoding="utf-8").read().strip().replace(",", ".")
+            bt_no = float(s) if s else bt
+        except ValueError:
+            self.ghi("⚠ no_that.txt không đọc được số — giữ DROP %.1f" % self.bt_drop, t)
+            return
+        cong, lo, hi = DROP_NO
+        moi = min(hi, max(lo, bt_no + cong))
+        self.ghi("NỔ NGƯỜI BÁO %d:%02d · BT nổ %.1f (BT bây giờ %.1f) ⇒ DROP %.1f (= nổ + %g, kẹp %g–%g; trước %.1f)" % (
+            t // 60, t % 60, bt_no, bt, moi, cong, lo, hi, self.bt_drop), t)
+        self.bt_drop = moi
+        L9.DICH["bt_drop"] = moi
+
+    def buoc_cua(self, t, bt, ror=float("nan")):
         if t < 105:
             return "2_lich_me4"
         if bt < L9.DICH["bt_de"]:
             return "3_dung_den_DE"
         if bt < L9.DICH["bt_fcs"]:
-            return "4_buong_phang" if t < L9.DICH["fcs"] - 90 else "6a_FCs-90_cam_tang"
+            return "6a_FCs-90_cam_tang" if (self.lai.da_gan_fcs or L9.gan_fcs(bt, ror)) else "4_buong_phang"
         return "6b_dev_phang_5.5"
 
     def an_toan(self, ly_do, t=None):
@@ -178,8 +205,23 @@ class ChayMe9:
                 return "an_toan"
             if d["fw_t"] == 0:
                 self._da_thay_fw0 = True
-            if (d["fw_t"] > 0 and getattr(self, "_da_thay_fw0", False)) or (len(truoc) >= 10 and max(truoc) - d["bt"] >= 25 and max(truoc) > 120):
-                bt_charge = max(truoc[-10:])
+            # CHARGE = đồng hồ rang firmware chạy (fw_t 0 → > 0). Mẻ 11 (17/10): luật cũ "BT rơi ≥ 25 / 30 s" bắt nhầm lúc
+            # firmware COOL_DOWN tắt nhiệt từ BT 224 (lồng trống). Đo mẻ 11: nguội rơi ≤ 25 / 30 s, hạt 500 g vào rơi 66,6 / 20 s.
+            # Dự phòng (đồng hồ kẹt / không đọc được): BT rơi ≥ CHARGE_ROI_MIN °C trong 20 s — nhanh gấp ~2 lần nguội nhanh nhất.
+            fw_chay = d["fw_t"] > 0 and getattr(self, "_da_thay_fw0", False)
+            # Hồng 18/10: dự phòng chỉ tin khi Lệnh nhiệt = 1 — firmware COOL_DOWN luôn TẮT Lệnh (mẻ 11: Lệnh 0, mã 164),
+            # còn lúc nung tới $M23 rồi tự CHARGE thì Lệnh 1 (mẻ 11: mã 163 → 86). Lồng nóng nguội nhanh hơn dự kiến vẫn không nhận nhầm.
+            roi_hat = (len(truoc) >= 20 and max(truoc[-20:]) - d["bt"] >= CHARGE_ROI_MIN and max(truoc[-20:]) > 120
+                       and d.get("lenh") == 1)
+            if fw_chay or roi_hat:
+                # đồng hồ chạy ⇒ hạt vừa vào 0–2 s trước (5 s là đủ; 20 s có thể lẫn BT cao lúc COOL_DOWN vừa xong);
+                # nhận bằng BT rơi ⇒ hạt vào ~10–12 s trước ⇒ cửa 20 s
+                bt_charge = max(truoc[-5:]) if fw_chay else max(truoc[-20:])
+                # nhận bằng BT rơi ⇒ giờ rang bắt đầu từ đỉnh BT (hạt vào), không từ lúc phát hiện (~10–12 s sau)
+                if not fw_chay:
+                    w = truoc[-20:]
+                    self.bt_hist = list(w[int(np.argmax(w)):])     # đỉnh → mẫu hiện tại = giây 0 … tre
+                    self.t_dau = len(self.bt_hist)                 # vòng lái đọc mẫu KẾ TIẾP
                 if not L9.kiem_charge(bt_charge, ghi=self.ghi):
                     self.an_toan("CHARGE ở BT %.1f < %.0f (vi phạm luật — hạt đã vào lồng lạnh)" % (bt_charge, L9.BT_CHARGE_MIN))
                     return "cam_charge"
@@ -195,7 +237,9 @@ class ChayMe9:
         self.may.artisan("CHARGE")
         self.ghi("MỐC CHARGE · BT_CHARGE %.1f °C (≥ %.0f) — bộ lái mẻ 9 bắt đầu" % (bt_charge, L9.BT_CHARGE_MIN), 0)
         # 3. vòng lái 1 Hz
-        t, u_ghi, gio_ghi, t_pt, buoc_cu = 0, None, None, 0, None
+        t, u_ghi, gio_ghi, t_pt, buoc_cu = getattr(self, "t_dau", 0), None, None, 0, None
+        if t:
+            self.ghi("CHARGE nhận bằng BT rơi (đồng hồ firmware không chạy) ⇒ giờ rang bắt đầu từ đỉnh BT, trễ %d s" % t, t)
         moc = {}
         while True:
             d = self.may.doc()
@@ -208,12 +252,12 @@ class ChayMe9:
             ror = 60 * np.polyfit(np.arange(30), self.bt_hist[-30:], 1)[0] if len(self.bt_hist) >= 30 else float("nan")
             if "TP" not in moc and t > 20 and len(self.bt_hist) > 5 and bt > min(self.bt_hist) + 0.5:
                 moc["TP"] = int(np.argmin(self.bt_hist))
-            for ten, nguong in (("DE", 155.0), ("FCs", 194.0)):
+            for ten, nguong in (("DE", L9.DICH["bt_de"]), ("FCs", L9.DICH["bt_fcs"])):     # mẻ 2: nổ đo 196 qua HONG_DICH
                 if ten not in moc and "TP" in moc and bt >= nguong:
                     moc[ten] = t
                     self.ghi("MỐC %s %d:%02d · BT %.1f" % (ten, t // 60, t % 60, bt), t)
             u, gio, chu = self.lai.lenh(t, bt, bu, ror)
-            buoc = self.buoc_cua(t, bt)
+            buoc = self.buoc_cua(t, bt, ror)
             if buoc != buoc_cu:
                 self.ghi("BƯỚC %s bắt đầu lúc %d:%02d (BT %.1f)" % (buoc, t // 60, t % 60, bt), t)
                 buoc_cu = buoc
@@ -235,6 +279,11 @@ class ChayMe9:
                 nhan = " | ".join("%s [%s] %s ⇒ %s" % (l["loai"], l["muc"], l["so_do"], H.VIEC_LAI[l["ma"]]) for l in dang) or "không lỗi"
                 self.ghi("PHÂN TÍCH 15s %d:%02d · BT %.1f ET %.1f buồng %.1f · RoR %s · Nhiệt %d %% gió %d %% · bước %s · RoR: %s" % (
                     t // 60, t % 60, bt, et, bu, ("%.1f" % ror) if ror == ror else "—", u_int, gio, buoc, nhan), t)
+            self.doi_drop_theo_no(t, bt)
+            if "TP" in moc and t >= moc["TP"] + 20 and ror == ror and ror > ROR_BAO and t - getattr(self, "t_bao_ror", -99) >= 30:
+                self.t_bao_ror = t
+                self.ghi("⚠ RoR %.1f > %s °C/ph (%s) · Nhiệt %d %% — trần sấy %s đang giữ; > %s kéo dài ⇒ an_toan" % (
+                    ror, ROR_BAO, "QUÁ NGƯỠNG CẮT" if ror > ROR_CAT else "báo", u_int, L9.ROR_TRAN, ROR_CAT), t)
             if bt >= self.bt_drop:
                 v = self.may.xa()
                 self.ghi("Hồng DROP: $7=1 (đọc lại %s) ở BT %.1f · %d:%02d" % (v, bt, t // 60, t % 60), t)
@@ -247,14 +296,52 @@ class ChayMe9:
             self.may.ngu(1)
 
 
+def va_drop_alog(alog, t_drop, bt_drop=None):
+    """Artisan thiếu mốc DROP (mẻ 11, 17/10: UIA báo đã bấm DROP nhưng timeindex[6] = 0 — gốc chưa rõ) ⇒ ghi bản
+    `<tên>_drop_sua.alog` với DROP = CHARGE + t_drop giây (giờ rang firmware). Không sửa đè file gốc.
+    Hồng 18/10 — kiểm trước khi ghi (Artisan có thể giữ CHARGE NHẦM nếu bị bấm 2 lần, như mẻ 11 lúc 16:51:23 / 16:52:53):
+      · CHARGE Artisan phải là hạt vào thật: BT rơi ≥ 40 °C trong 60 s sau CHARGE (lồng trống nguội ≤ 25 / 30 s);
+      · bt_drop (nếu đưa): BT ở mẫu DROP phải lệch ≤ 2 °C so BT DROP ghi trong trang_thai / log bộ lái.
+    Trả (đường dẫn bản sửa | None, ghi chú)."""
+    import ast
+    d = ast.literal_eval(open(alog, encoding="utf-8").read())
+    ti, tx, bt = d["timeindex"], d["timex"], d["temp2"]
+    if ti[6] > 0:
+        return None, "Artisan đã có DROP — không sửa"
+    if ti[0] < 0 or not tx:
+        return None, "Artisan chưa có CHARGE — không sửa"
+    sau = [bt[i] for i in range(ti[0], len(tx)) if tx[i] - tx[ti[0]] <= 60 and bt[i] > 0]
+    if not sau or bt[ti[0]] - min(sau) < 40:
+        return None, "CHARGE Artisan (mẫu %d, BT %.1f) không có BT rơi ≥ 40 °C / 60 s ⇒ nghi CHARGE NHẦM — không sửa, sửa tay" % (
+            ti[0], bt[ti[0]])
+    dich = tx[ti[0]] + float(t_drop)
+    i = min(range(len(tx)), key=lambda k: abs(tx[k] - dich))
+    if bt_drop is not None and abs(bt[i] - float(bt_drop)) > 2:
+        return None, "mẫu %d BT %.1f lệch BT DROP %.1f > 2 °C — không sửa" % (i, bt[i], float(bt_drop))
+    ti[6] = i
+    ra = os.path.splitext(alog)[0] + "_drop_sua.alog"
+    with open(ra, "w", encoding="utf-8") as f:
+        f.write(repr(d))
+    return ra, "DROP mẫu %d · %.1f s sau CHARGE · BT %.1f" % (i, tx[i] - tx[ti[0]], bt[i])
+
+
 def chay_may(tm, slot):
     import artisan_ui
     import hmi_dien
     may = MayThat()
     # chọn hồ sơ trước — nạp hồ sơ trống làm firmware ghi đè $M23 = 180 ⇒ đặt lại 170 rồi MỚI kiểm (luật CHARGE ≥ 150, = kế hoạch)
-    hmi_dien.chon_ho_so(slot)
-    hmi_dien.che_do(False)                      # False = RANG LƯU (SAVE); True = AUTO
-    hmi_dien.nhiet_charge(L9.BT_CHARGE_KE_HOACH)
+    try:
+        hmi_dien.chon_ho_so(slot)
+        hmi_dien.che_do(False)                      # False = RANG LƯU (SAVE); True = AUTO
+        hmi_dien.nhiet_charge(L9.BT_CHARGE_KE_HOACH)
+    except Exception:
+        hmi_dien.chuyen_man(2)                      # lỗi giữa chừng vẫn trả HMI về màn 2
+        raise
+    # luật anh Thành 17/10: thao tác HMI xong ⇒ về NGAY màn 2 VẬN HÀNH (anh xem giản đồ trên HMI suốt mẻ)
+    v2 = hmi_dien.chuyen_man(2)
+    print("HMI về màn 2:", v2, "· $21 =", may.pn.doc(21, 1)[0])
+    if may.pn.doc(21, 1)[0] != 2:
+        raise SystemExit("Không đưa được HMI về màn 2 — không START")
     ok, ly = L9.kiem_truoc_start(may.pn, ghi=print)
     if not ok:
         raise SystemExit("Không START: " + ly)
@@ -267,7 +354,12 @@ def chay_may(tm, slot):
     except Exception as e:                      # START không thành ⇒ TẮT nhiệt ngay (bài học 17/10: bật 80 % rồi chết)
         may.an_toan()
         raise SystemExit("START lỗi, đã tắt nhiệt: %s" % e)
-    return ChayMe9(may, tm).chay()
+    c = ChayMe9(may, tm)
+    if os.environ.get("HONG_T_LENH"):               # luật 17/10: ghi GIÂY LỆNH→START (đích ≤ 60 s)
+        n = time.time() - float(os.environ["HONG_T_LENH"])
+        c.ghi("START (slot %d, RANG LƯU, $M23 %.0f) · GIÂY LỆNH→START = %.0f s%s" % (
+            slot, L9.BT_CHARGE_KE_HOACH, n, "" if n <= 60 else " — QUÁ 60 s, ghi lý do"))
+    return c.chay()
 
 
 def chay_kho(me, charge_bt=None, m23=1700, drop=None):
@@ -305,6 +397,8 @@ if __name__ == "__main__":
         r = chay_kho(int(a[1]), float(opt["charge_bt"]) if "charge_bt" in opt else None, int(opt.get("m23", 1700)),
                      float(opt["drop"]) if "drop" in opt else None)
         print(json.dumps(r, ensure_ascii=False, indent=1))
+    elif a and a[0] == "va_drop":                   # python tools/hong_chay_me9.py va_drop <file.alog> <giây DROP từ CHARGE> [--bt <BT DROP>]
+        print(*va_drop_alog(a[1], float(a[2]), float(opt["bt"]) if "bt" in opt else None), sep=" · ")
     elif a and a[0] == "may":
         if os.environ.get("HONG_DUOC_THAO_TAC") != "1":
             raise SystemExit("cần HONG_DUOC_THAO_TAC=1 (chọn slot / START trên HMI)")
