@@ -166,6 +166,9 @@ static void pclSafety(){
                 nodeHMI.writeSingleRegister(START_BTN_W - 1, 0);    // huỷ mẻ, không để treo
                 nodeHMI.writeSingleCoil(LOCK_BUTTON_W - 1, 0);      // mở khoá HMI cho thợ xem bếp
             }
+            // 21/10/2026: đang làm nóng thì cũng TẮT làm nóng — trước đây làm nóng tự mở lại gas ~40 s sau trong khi HMI
+            // vẫn báo 414 "đã cắt gas, huỷ mẻ" (đo panel thật, công tắc lửa tắt)
+            if (WU_R == 1) nodeHMI.writeSingleRegister(WU_W - 1, 0);
             if (enDebug) SerialComputer.println("=> PC_Link: moi hut -> dong gas");
         }
     } else {
