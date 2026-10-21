@@ -996,7 +996,7 @@ boolean Charge_btn_PC;
 boolean Drop_btn_PC;
 boolean Escape_btn_PC;
 boolean MiCool_btn_PC;
-
+boolean Mixer_btn_PC;               // Artisan ô 21 — mixer
 
 //Temp store for comparison
 boolean Start_btn_PC_CP;
@@ -1005,6 +1005,7 @@ boolean Charge_btn_PC_CP;
 boolean Drop_btn_PC_CP;
 boolean Escape_btn_PC_CP;
 boolean MiCool_btn_PC_CP;
+boolean Mixer_btn_PC_CP;
 //----------------------End
 
 //----------------------Define analog

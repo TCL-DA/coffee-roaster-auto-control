@@ -454,7 +454,11 @@ void rwMemHMI(){
         if(manualEscapeExtra_R != manualEscapeExtra_R_CP) manualEscapeExtra_R = manualEscapeExtra_R_CP;
         if(loopDoorStuck_R != loopDoorStuck_R_CP) loopDoorStuck_R = loopDoorStuck_R_CP;
         // $M62 cấu hình máy: chỉ chép số HMI vào iMemHMI — CHỐT vào mcOpt do mcOptLatch() lúc máy đứng yên
+#if MACHINE_OPT_FIXED
+        mcOpt_R = (int16_t)mcOpt;   // HMI cũ không có $M62: báo cấu hình ghim cho app (PC_Link đọc iMemHMI[62])
+#else
         if(mcOpt_R != mcOpt_R_CP) mcOpt_R = mcOpt_R_CP;
+#endif
         // $M63 thợ bấm "Điều khiển trên HMI" (núm vặn hỏng): áp NGAY, kể cả giữa mẻ — không chờ máy đứng yên
         if(vrHmi_R != vrHmi_R_CP) vrHmi_R = vrHmi_R_CP;
         vrUseHmi = (vrHmi_R != 0);
@@ -589,6 +593,7 @@ static void hmiApplyButtons(){
     if(MIXER_BTN_R != MIXER_BTN_R_CP){//Kiểm tra thay đổi của biến HMI
         MIXER_BTN_R = MIXER_BTN_R_CP;
         mbs.Hreg(MIXER_W, MIXER_BTN_R);     delay(1);
+        mbs.Hreg(MIXER_artisan_W, MIXER_BTN_R);  delay(1);
         if (optRelayExt()) { nodeIORelay.writeSingleCoil(CH2_IO_RL_W, MIXER_BTN_R); delay(10); } // Relay ngoài 2: mixer — chờ 10ms nhả bus (07/10/2026)
     }
 

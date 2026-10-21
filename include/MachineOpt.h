@@ -39,7 +39,16 @@
 #define OPT_SIZE_COUNT      4       // 0 = 6 kg · 1 = 12 kg · 2 = 15 kg · 3 = 30 kg
 static const uint8_t OPT_SIZE_KG[OPT_SIZE_COUNT] = {6, 12, 15, 30};
 
-uint16_t mcOpt = 0;                 // cấu hình ĐANG DÙNG (đã chốt khi máy đứng yên)
+// MACHINE_OPT_FIXED (Config.h) khác 0: cấu hình ghim lúc build cho HMI đời cũ — bỏ qua $M62.
+#if MACHINE_OPT_FIXED
+static_assert(MACHINE_OPT_FIXED & OPT_CONFIGURED, "MACHINE_OPT_FIXED phai co bit 15 (da cau hinh)");
+static_assert(!(MACHINE_OPT_FIXED & 0x7000), "MACHINE_OPT_FIXED: bit 12-14 de danh, phai = 0");
+static_assert(!((MACHINE_OPT_FIXED & OPT_VR_DRUM) && !(MACHINE_OPT_FIXED & OPT_VR_GAS_AIR)), "VR trong phai di voi VR gas + gio");
+static_assert(!((MACHINE_OPT_FIXED & OPT_COOL_SPLIT) && !(MACHINE_OPT_FIXED & OPT_RELAY_EXT)), "Khuay rieng can relay ngoai");
+static_assert(((MACHINE_OPT_FIXED & OPT_SIZE_MASK) >> OPT_SIZE_SHIFT) < OPT_SIZE_COUNT, "Ma co may vuot bang");
+#endif
+
+uint16_t mcOpt = MACHINE_OPT_FIXED; // cấu hình ĐANG DÙNG (đã chốt khi máy đứng yên; ghim sẵn nếu MACHINE_OPT_FIXED)
 bool     mcOptChanged = false;      // vừa đổi cấu hình — vòng chính khởi động lại ngoại vi rồi xoá cờ
 
 // ── Hỏi cấu hình ─────────────────────────────────────────────────────────────
@@ -86,6 +95,10 @@ static inline bool mcOptIdle() {
 
 // Chốt $M62 vào mcOpt. Trả: 0 = không đổi · 1 = đã đổi · 2 = từ chối (vô lý) · 3 = chờ máy đứng yên.
 static uint8_t mcOptLatch(bool idle) {
+#if MACHINE_OPT_FIXED
+    (void)idle;
+    return 0;                       // cấu hình ghim lúc build — HMI cũ không có $M62
+#else
     const uint16_t want = (uint16_t)mcOpt_R;
     if (want == mcOpt) return 0;
     if (!idle) return 3;
@@ -93,4 +106,5 @@ static uint8_t mcOptLatch(bool idle) {
     mcOpt = want;
     mcOptChanged = true;
     return 1;
+#endif
 }

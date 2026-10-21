@@ -57,18 +57,32 @@
 #define MACHINE_HAS_DRUM_SPEED_CONTROL    1  // Điều khiển tốc độ drum bằng biến tần (slave 4)
 #define MACHINE_HAS_AIR_INVERTER          1  // Biến tần quạt gió nối RS485 Modbus (cần cho vacuum)
 #define MACHINE_HAS_VACUUM_SENSOR         1  // CÓ cảm biến áp hút — PID gió qua biến tần gió
-#define MACHINE_HAS_SCALE_FEEDER          1  // CÓ đầu cân Bluetooth cho auto-loader
+#ifndef MACHINE_HAS_SCALE_FEEDER
+#define MACHINE_HAS_SCALE_FEEDER          1  // CÓ đầu cân Bluetooth cho auto-loader (env 'may3kg': 0)
+#endif
 #define MACHINE_HAS_IO_RELAY_MODULE       1  // M03 CÓ module relay ngoài Modbus (ID 7): CH1 Trống/Quạt, CH2 Khuấy
 #define MACHINE_HAS_BT_TEMP_CONTROLLER    1  // Đồng hồ nhiệt BT có nối RS485 Modbus
 #define MACHINE_HAS_ET_TEMP_CONTROLLER    1  // Đồng hồ nhiệt ET có nối RS485 Modbus
-#define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30 kg
+#ifndef MACHINE_BATCH_KG
+#define MACHINE_BATCH_KG                  30 // Khối lượng mẻ rang danh định (kg) — máy 30 kg (env 'may3kg': 3)
+#endif
+
+// CẤU HÌNH MÁY GHIM LÚC BUILD (MachineOpt.h).
+//   0 = theo ô $M62 trên màn Cấu hình máy của HMI (bản chung, HMI LO85 trở lên).
+//   khác 0 = ghim số này, BỎ QUA $M62 — cho máy chạy HMI đời cũ không có màn Cấu hình
+//            (không ghim thì $M62 đọc ra 0 ⇒ máy bị chặn rang, mã 422). Phải có bit 15 (đã cấu hình).
+#ifndef MACHINE_OPT_FIXED
+#define MACHINE_OPT_FIXED                 0
+#endif
 // KHOÁ LOẠI ĐẦU ĐỐT LÚC BUILD.
 //   1 = ÉP đầu đốt THƯỜNG (khuếch tán), BỎ QUA thanh ghi HMI 29. Dùng cho máy chắc chắn
 //       không phải premix — nhất là HMI đời cũ không có ô chọn bếp, đọc reg 29 ra rác thì
 //       firmware sẽ nhảy nhầm sang bộ tham số PREMIX (gains HOLD yếu + timeout mồi 65s).
 //   0 = theo HMI như cũ (1 firmware chạy được cả 2 loại bếp).
 // Máy 30kg M03: HMI có ô chọn bếp → để 0, theo HMI như cũ.
+#ifndef MACHINE_BURNER_FORCE_STANDARD
 #define MACHINE_BURNER_FORCE_STANDARD     0
+#endif
 
 // Loại đầu đốt do HMI chọn lúc chạy qua thanh ghi burnerPremix_R (địa chỉ 29):
 //   0 = đầu đốt thường (khuếch tán), 1 = đầu đốt premix (khí+gió trộn sẵn).
@@ -405,7 +419,9 @@
 //   BT < SV_tune → gas = PH_TUNE_GAS_HI ; BT > SV_tune → gas = 0 + gió mạnh
 //   Ku = 4·d/(π·a) ; Kp = 0.6·Ku ; Ki = 2·Kp/Pu ; Kd = 0.125·Kp·Pu
 // ---------------------------------------------------------------------------
-#define PH_TUNE_GAS_HI                    25     // gas mức cao khi BT<SV_tune (%)
+#ifndef PH_TUNE_GAS_HI
+#define PH_TUNE_GAS_HI                    25     // gas mức cao khi BT<SV_tune (%) — bếp cần 50% mới giữ lửa thì đặt 50 (env 'may3kg')
+#endif
 #define PH_TUNE_GAS_HI_PREMIX             40     // PREMIX: 40% để lửa tune vượt hẳn trần SV_tune, chạm sớm & dao động cân đối
 #define PH_TUNE_GAS_LO                    0      // gas tắt khi BT>SV_tune
 #define PH_TUNE_AIR_HI                    20     // gió nền khi đang đốt (BT<SV_tune)
@@ -569,7 +585,10 @@
 // Mức gas khi MỒI LỬA (%). Mức này dùng cho cả trạng thái IGNITE lẫn mức gas khởi đầu
 // ngay sau khi bắt được lửa (không cho tụt xuống dưới mức vừa mồi được, tránh tắt lửa
 // ngay sau khi mồi). Máy 30kg M03: giữ 30 — đúng con số ghi cứng trong bản đã chạy máy.
+// Máy 3 kg (env 'may3kg'): bếp thường cần 50% mới lên lửa.
+#ifndef PH_IGNITE_GAS
 #define PH_IGNITE_GAS                     30
+#endif
 
 // Chờ tín hiệu lửa tối đa bao nhiêu giây trước khi retry
 #define PH_IGNITE_TMO                     60     // bộ THƯỜNG (mồi nhanh)

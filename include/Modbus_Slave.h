@@ -17,7 +17,6 @@
 #define AIR_artisan_W               10
 #define GAS_artisan_W               11
 #define DRUM_artisan_W              20
-#define vacuumC_show_artisan        21
 #define vacuumC_artisan_W           22
 
 //HMI Button control
@@ -25,7 +24,8 @@
 #define CHARGE_artisan_W            14
 #define DROP_artisan_W              15
 #define ESCAPE_artisan_W            16
-#define MI_COOL_artisan_W           13
+#define MI_COOL_artisan_W           13  // cooling
+#define MIXER_artisan_W             21  // mixer (khuấy khay nguội) — tách khỏi cooling 13 (19/10/2026; ô 21 trước là vacuumC_show bỏ không, áp hút ra ô 9)
 #define START_artisan_W             17 
 
 #define SV_artisan_W                18
@@ -280,6 +280,7 @@ void handle_Modbus_Slave() {
         Drop_btn_PC_CP     = mbs.Hreg(DROP_artisan_W);
         Escape_btn_PC_CP   = mbs.Hreg(ESCAPE_artisan_W);
         MiCool_btn_PC_CP   = mbs.Hreg(MI_COOL_artisan_W);
+        Mixer_btn_PC_CP    = mbs.Hreg(MIXER_artisan_W);
         Start_btn_PC_CP    = mbs.Hreg(START_artisan_W);
 
         if (!manualSetpointTwoWay && !autoSourceActive) {
@@ -316,6 +317,7 @@ void handle_Modbus_Slave() {
 
         SYNC_BTN(Ignition_btn_PC, Ignition_btn_PC_CP, START_GAS_BTN_W);
         SYNC_BTN(MiCool_btn_PC,   MiCool_btn_PC_CP,   COOLING_BTN_W);
+        SYNC_BTN(Mixer_btn_PC,    Mixer_btn_PC_CP,    MIXER_BTN_W);
 
         // Charge: đồng bộ + bật timer tự đóng + buzzer
         if (Charge_btn_PC != Charge_btn_PC_CP) {
@@ -348,6 +350,7 @@ void handle_Modbus_Slave() {
         mbs.Hreg(DROP_artisan_W,     DROP_BTN_R);
         mbs.Hreg(ESCAPE_artisan_W,   ESCAPE_BTN_R);
         mbs.Hreg(MI_COOL_artisan_W,  COOLING_BTN_R);
+        mbs.Hreg(MIXER_artisan_W,    MIXER_BTN_R);
     }
 
     // ── Cập nhật Modbus Slave ────────────────────────────────────
