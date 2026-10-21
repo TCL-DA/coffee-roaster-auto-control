@@ -108,7 +108,7 @@ Nạp lệch thì ô cũ `preheatHoldSettle` (10–30) rơi vào `preheatDeadlin
 | T5 · Hồ sơ có đuôi làm nguội | Nạp file `.csv` từ Artisan còn 60 s làm nguội sau DROP (gas 0, gió 100). Cho mẻ chạy **chậm hơn mẫu** 30 s. | Qua giây xả của mẫu, **Gió (Thực) KHÔNG nhảy lên tối đa**, gas **không về 0**. |
 | T6 · Làm nguội sớm | Cài làm nguội sớm **0,2 °C**. | Quạt làm nguội bật khi BT ≥ nhiệt xả − 0,2 °C, **không** phải − 2,0 °C. |
 | T7 · Hai mẻ liên tiếp | Chạy hai mẻ AUTO liền nhau. | Mẻ thứ hai: thời gian DEV bắt đầu từ **0**. |
-| T8 · Nhiệt xả động | `$M54 = 5` (0,5 °C). Mẻ trễ hơn mẫu > 15 s, DEV > 3 phút. | Máy xả ở **216,5 °C**. Đặt `$M54 = 0` thì xả đúng 217,0 °C. |
+| T8 · Nhiệt xả động | `$M54 = 5` (0,5 °C) — trên HMI v28 từ LO111: **Cài đặt › Rang tự động, an toàn › Bù nhiệt xả theo thời gian** (HMI LO110 trở về trước không có ô này, xem [CS-02](CS-02_cai-dat-tren-hmi-firmware-bo-qua.md)). Mẻ trễ hơn mẫu > 15 s, DEV > 3 phút. | Máy xả ở **216,5 °C**. Đặt `$M54 = 0` thì xả đúng 217,0 °C. |
 | T9 · Không bắt được FCs | Hồ sơ hoặc mẻ **không qua mốc FCs** (FCs = 0 hoặc BT không chạm `$M21`). Giữ BT 216,5 °C. | **Ghi lại máy làm gì.** Chốt cứu chỉ mở khi đang ở `STP_DEV`. Nếu không có 420/421 thì máy treo như lỗi gốc, phải báo lại. |
 
 **Tiêu chí chủ máy chốt:** bơm 5 %, giữ ≥ 10 s, BT nhích ≥ 0,1 °C là đạt. Trên máy thật: trễ so với giờ xả mẫu ≤ ~35 s.

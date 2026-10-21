@@ -684,6 +684,9 @@
 //    nằm lì trong khay nguội mà không báo lỗi gì. Nạp máy khách thì kiểm ô gạt TRƯỚC.
 // Ghi đè lúc build mà không sửa file: PLATFORMIO_BUILD_FLAGS=-DMACHINE_HAS_AUTO_ESCAPE_SWITCH=1
 // → ra bản đi kèm HMI ĐÃ CÓ ô gạt $M53. Mặc định dưới đây = bản cho panel còn HMI đời cũ.
+// 21/10/2026: env genericSTM32F103RC (đi cặp HMI v28 / 110WS, ô "Chế độ xả khay" ở Cài đặt › Hệ thống) nay build = 1
+// trong platformio.ini — trước đó = 0 nên gạt TẮT trên màn mà máy vẫn tự xả (case docs/case-study/CS-02).
+// HMI v28 từ LO111 tự đặt $M53 = 1 lần đầu bật nên nạp bản này không làm máy ngừng xả khay.
 #ifndef MACHINE_HAS_AUTO_ESCAPE_SWITCH
 #define MACHINE_HAS_AUTO_ESCAPE_SWITCH    0  // M03: HMI đời cũ chưa có ô gạt $M53 → luôn tự mở escape
 #endif
