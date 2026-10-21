@@ -117,3 +117,31 @@ client_secret*.json
 token.json
 *_oauth.json
 api_key.txt
+
+# ── Rác cục bộ / tài liệu nội bộ — KHÔNG lên repo PUBLIC (soát 21/10/2026) ──
+# Gói pip tải về, log tự động, thư mục tạm / kết quả chạy thử, bản build exe
+*.whl
+@AutomationLog.txt
+javac.*.args
+tmp_issue.html
+.codex/
+artifacts/
+output/
+outputs/
+tmp/
+tools/build_*/
+tools/dist_*/
+tools/dist-*/
+*.bak
+# Báo giá, manual hãng khác, ghi chú dịch ngược, phản hồi thiết kế — nội bộ
+docs/bao-gia/
+docs/manuals/
+docs/notes/*dich-nguoc*
+claude-design-feedback/
+# Dữ liệu cào về (issue Artisan) — giữ cục bộ, script dựng lại được
+tools/roast_skills/artisan-issues/data/*.jsonl
+# Media lớn để ở F:\Kho-anh, không để trong repo
+docs/ui/backup/
+docs/ui/*.mp4
+docs/ui/*.webm
+docs/ui/*.gif

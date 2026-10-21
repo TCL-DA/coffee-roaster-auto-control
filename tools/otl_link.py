@@ -37,9 +37,9 @@ from serial.tools import list_ports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pc_link_map                                             # noqa: E402
 from pc_link_map import (                                      # noqa: E402
-    R_BASE, R_COUNT, W_BASE, W_COUNT, W_INDEX, W_RANGE, W_SCALE, decode,
+    R_BASE, R_COUNT, R_KEYS, W_BASE, W_COUNT, W_INDEX, W_RANGE, W_SCALE, decode,
     A_BASE, A_COUNT, decode_artisan, AW_INDEX, STP,
-    CFG_BASE, CFG_MAXIDX, CFG_CMD, CFG_STATUS,
+    CFG_BASE, CFG_MAXIDX, CFG_CMD, CFG_STATUS, CFG_RANGE, CFG_META,
 )
 from roast_derive import RoastDeriver                           # noqa: E402
 
@@ -49,6 +49,18 @@ from roast_derive import RoastDeriver                           # noqa: E402
 #                (roast_derive.py). Chạy được trên mọi máy đã bán.
 MODE_PCLINK = "pclink"
 MODE_COMPAT = "tuongthich"
+
+# Hãm nhịp lệnh ghi xuống máy (xem _run). Bo vừa làm slave cho PC vừa làm master
+# hỏi 6 node trên RS485 38400, dội lệnh dày là nó lỡ khung → app tưởng rớt cáp.
+WRITE_MOI_CHU_KY = 3        # tối đa mấy lệnh ghi một chu kỳ poll
+WRITE_CACH_NHAU_S = 0.05    # giãn giữa hai lệnh ghi liền nhau
+
+# Các cỡ khối ĐỌC đã từng xuất xưởng, xếp GIẢM DẦN. App luôn thử R_COUNT trước;
+# máy nào chạy firmware cũ thì lùi từng nấc chứ không rơi thẳng về khối gốc.
+#   23 — thêm vac_en (2026-09-09)
+#   22 — thêm scale / ror_kg / scale_tg
+#   16 — khối gốc PC_Link
+R_NAC = (22, 16)
 
 DEFAULT_CFG = {
     # RỖNG là cố ý: máy mới chưa từng chọn cổng → app phải HỎI thợ, không được
@@ -178,7 +190,11 @@ class SensorGuard:
             return v, None
         if not (self.RANGE_LO <= v <= self.RANGE_HI):
             self._spike_t0 = None
-            return (self.good if self.good is not None else v), "range"
+            # CHƯA TỪNG có giá trị tốt (cặp nhiệt đã hở từ lúc app khởi động) thì
+            # không có gì để giữ → trả None = "không có số", chứ KHÔNG trả số rác.
+            # Trước 12/09/2026 chỗ này trả thẳng v: ET hở đọc 32772 raw (tràn
+            # int16) thành 3277,2 °C và app vẽ nó như nhiệt độ thật.
+            return (self.good if self.good is not None else None), "range"
         if self.good is not None and abs(v - self.good) > self.SPIKE_C:
             if self._spike_t0 is None:
                 self._spike_t0 = now
@@ -205,6 +221,8 @@ def _cfg_reason(status: int) -> str:
         return "máy đang bận (đang rang · mồi lửa · làm nóng · còn lửa) — firmware khoá ghi $M"
     if status == CFG_STATUS["range"]:
         return "giá trị ngoài dải cho phép của tham số (firmware từ chối, KHÔNG tự kẹp)"
+    if status == CFG_STATUS["hmi"]:
+        return "HMI từ chối hoặc không phản hồi lệnh ghi; firmware chưa áp dụng giá trị"
     if status == CFG_STATUS["err"]:
         return "số $M không hợp lệ hoặc lệnh lạ"
     return f"máy từ chối (status={status})"
@@ -242,6 +260,14 @@ class RoasterLink:
         self._cfg_req: tuple | None = None  # (cmd, idx, val) chờ luồng _run xử
         self._cfg_res: dict | None = None   # kết quả handshake gần nhất
         self._cfg_done = threading.Event()
+        # ── Lượt lái của TÁC NHÂN TỰ ĐỘNG (AI/script) — xem agent_open() ──
+        self._ag_lock = threading.Lock()
+        self._ag_on = False       # đang có tác nhân tự động cầm lái?
+        self._ag_beat = 0.0       # lần cuối tác nhân đó lên tiếng
+        self._ag_exp = 0.0        # hạn chót của lượt lái (trần 15 phút)
+        self._ag_stale = 20.0     # im quá ngần này giây = coi như mất tác nhân
+        self._ag_held = False     # đang CỐ TÌNH ngừng nhấp heartbeat?
+        self._ag_why = ""         # vì sao ngừng — để app/API nói lại cho người
 
     # ── vòng đời ────────────────────────────────────────────────────────────
     def start(self):
@@ -288,6 +314,92 @@ class RoasterLink:
             "data": snap,
         }
 
+    # ── LƯỢT LÁI CỦA TÁC NHÂN TỰ ĐỘNG (AI/script) ──────────────────────────
+    #
+    # Vì sao khối này nằm ở ĐÂY chứ không ở tầng HTTP: chính vòng poll này là
+    # nơi nhấp heartbeat cho watchdog firmware. Mà heartbeat là cái van thật —
+    # firmware chỉ biết "app còn sống", nó KHÔNG biết cái AI phía sau app đã
+    # treo hay chưa. Trước bản này, app nhấp heartbeat vô điều kiện mỗi chu kỳ
+    # poll, nên watchdog PCL_AGENT_TMO_S chẳng bao giờ nổ dù AI đã chết cứng:
+    # gas vẫn cháy ở mức lệnh cuối cùng, không ai biết.
+    #
+    # Nay: AI im quá _ag_stale giây (hoặc hết hạn lượt lái) → app NGỪNG nhấp →
+    # trong PCL_AGENT_TMO_S giây firmware tự trả quyền về HMI và hú còi. Dây
+    # chuyền an toàn nối liền từ AI xuống tới van gas, không đứt khúc nào.
+    #
+    # Thợ lái tay thì KHÔNG đụng tới: không có lượt lái nào mở thì nhấp như cũ
+    # (lệnh chủ máy 2026-07-22 — người lái thì không bao giờ tự nhả).
+
+    def agent_open(self, giay: float, stale: float = 20.0) -> dict:
+        """Mở lượt lái cho tác nhân tự động. Khai agent=1 xuống firmware luôn."""
+        now = time.time()
+        with self._ag_lock:
+            self._ag_on = True
+            self._ag_beat = now
+            self._ag_exp = now + float(giay)
+            self._ag_stale = float(stale)
+            self._ag_held = False
+            self._ag_why = ""
+        self.write("agent", 1)      # firmware siết watchdog PCL_AGENT_TMO_S
+        return self.agent_state()
+
+    def agent_beat(self) -> None:
+        """Tác nhân vừa lên tiếng — còn sống. Gọi ở MỌI request của khoá đó."""
+        with self._ag_lock:
+            if self._ag_on:
+                self._ag_beat = time.time()
+
+    def agent_close(self, why: str = "") -> dict:
+        """Đóng lượt lái. KHÔNG hạ agent=0: firmware cài then, chỉ tắt PC
+        control mới xoá — cố ý, để không ai né được watchdog bằng cách ghi 0."""
+        with self._ag_lock:
+            self._ag_on = False
+            self._ag_held = False
+            self._ag_why = why or ""
+        return self.agent_state()
+
+    def agent_state(self) -> dict:
+        now = time.time()
+        with self._ag_lock:
+            return {
+                "dang_lai": self._ag_on,
+                "con_lai_s": max(0, int(self._ag_exp - now)) if self._ag_on else 0,
+                "im_lang_s": round(now - self._ag_beat, 1) if self._ag_on else None,
+                "nhip_toi_da_s": self._ag_stale,
+                "ngung_nhip": self._ag_held,
+                "ly_do": self._ag_why,
+            }
+
+    def _hb_cho_phep(self) -> bool:
+        """Có được nhấp heartbeat xuống máy lúc này không?
+
+        True  — không có tác nhân tự động, hoặc nó còn tươi.
+        False — tác nhân im/hết hạn: ngừng nhấp để firmware nhả quyền về HMI.
+        """
+        now = time.time()
+        with self._ag_lock:
+            if not self._ag_on:
+                return True
+            if now > self._ag_exp:
+                why = "hết hạn lượt lái"
+            elif (now - self._ag_beat) > self._ag_stale:
+                why = "tác nhân tự động im quá %g giây" % self._ag_stale
+            else:
+                return True
+            moi = not self._ag_held
+            self._ag_held, self._ag_why = True, why
+        if moi:
+            print("[link] NGỪNG nhấp heartbeat — %s → firmware sắp trả quyền về HMI" % why)
+        # Firmware đã nhả quyền (pc_control tắt) → dọn lượt lái, app nhấp lại
+        # bình thường cho lần sau thợ bật PC control.
+        snap = (self._snap or {}).get("flags") or {}
+        if snap.get("pc_control") is False:
+            with self._ag_lock:
+                self._ag_on, self._ag_held = False, False
+            print("[link] máy đã về HMI — xoá lượt lái tác nhân tự động")
+            return True
+        return False
+
     def write(self, name: str, value=1) -> dict:
         """Xếp hàng 1 lệnh xuống máy — đơn vị KỸ THUẬT (sv nhận °C, tự nhân hệ số).
 
@@ -327,7 +439,9 @@ class RoasterLink:
         with self._lock:
             self._pending.append((addr, [v]))
         self._kick.set()                    # dậy ngay — trước đây lệnh nằm đợi tới 0.5s
-        return {"ok": True, "name": name, "value": v, "reg": addr, "kind": kind,
+        # Thành công ở đây chỉ là đã xếp hàng; chưa phải phản hồi cơ cấu.
+        return {"ok": True, "status": "queued", "name": name, "value": v,
+                "engineering_value": v / W_SCALE[name], "reg": addr, "kind": kind,
                 "mode": self._mode}
 
     def cfg_op(self, cmd: int, idx: int, val: int = 0, timeout: float = 2.5) -> dict:
@@ -479,24 +593,38 @@ class RoasterLink:
     def _read_pclink(self) -> dict:
         """Đọc khối PC_Link, TỰ LÙI số ô khi máy chạy firmware cũ (ít register hơn).
 
-        Firmware cũ chỉ có 16 ô (100-115); bản mới thêm prof_pct/prof_ok/prof_sel/
-        scale. Đọc quá số ô máy có → exception Modbus mỗi vòng, app tưởng đứt cáp.
-        Gặp lỗi 1 lần thì rút về 16 ô; các trường thiếu trả None để app biết
-        'máy chưa có tính năng này' (khác hẳn số 0)."""
-        try:
-            regs = self.read_regs(R_BASE, self._r_count)
-        except ModbusError:
-            if self._r_count <= 16:
-                raise
-            self._r_count = 16              # firmware cũ — dùng khối gốc
-            regs = self.read_regs(R_BASE, 16)
+        Đọc quá số ô máy có → exception Modbus mỗi vòng, app tưởng đứt cáp. Nên
+        gặp lỗi thì lùi xuống nấc nhỏ hơn trong R_NAC, KHÔNG rơi thẳng về khối
+        gốc: rơi thẳng là mất luôn cân, profile, RoR hồ sơ mà máy CÓ. Các trường
+        máy chưa có trả None để app phân biệt với số 0 — danh sách lấy từ R_KEYS
+        theo vị trí, không chép tay, nên thêm ô mới không phải nhớ sửa chỗ này."""
+        while True:
+            try:
+                regs = self.read_regs(R_BASE, self._r_count)
+                break
+            except ModbusError:
+                nho_hon = [n for n in R_NAC if n < self._r_count]
+                if not nho_hon:
+                    raise
+                self._r_count = nho_hon[0]   # lùi 1 nấc, thử lại vòng sau
         if len(regs) < R_COUNT:
             snap = decode(regs + [0] * (R_COUNT - len(regs)))
-            for k in ("prof_pct", "prof_ok", "prof_sel", "scale", "ror_kg", "scale_tg"):
+            for k in R_KEYS[len(regs):]:
                 if k in snap:
                     snap[k] = None          # máy chưa có ô này
         else:
             snap = decode(regs)
+        # 14/10/2026 (agent OTL Hồng lái máy điện): nhiệt BUỒNG VX4 không có trong khối PC_Link, chỉ ở khối Artisan ô 5 (×10).
+        # Chỉ đọc khi cfg 'doc_buong' bật — app Roast Lab mặc định không tốn thêm khung trên bus.
+        if (getattr(self, "cfg", None) or {}).get("doc_buong"):
+            # Đọc CẢ khối Artisan 0..19 (1 giao dịch) — vừa lấy nhiệt buồng (ô 5), vừa để cầu Modbus TCP phát lại cho Artisan
+            # (tools/cau_artisan.py: agent lái + Artisan xem đồ thị cùng lúc, 1 cổng COM).
+            try:
+                ar = self.read_regs(0, 20)
+                snap["artisan_regs"] = ar
+                snap["chamber"] = ar[5] / 10.0
+            except ModbusError:
+                snap["chamber"] = None
         return snap
 
     # ── Dò khả năng máy: có PC_Link hay chỉ có khối tương thích ─────────────
@@ -550,11 +678,23 @@ class RoasterLink:
                     continue
             try:
                 # lệnh ghi đi trước để nút bấm phản hồi nhanh
+                # HÃM NHỊP GHI. Đây là nguyên nhân gốc của những cú "máy không
+                # trả lời" bắt được ngày 12/09/2026: bắn ~12 lệnh trong 1 giây là
+                # đứt liên lạc. Bo STM32 vừa làm slave cho PC vừa làm master hỏi
+                # 6 node Modbus khác trên RS485 38400 — dội lệnh ghi cách nhau
+                # 10ms là nó lỡ khung, app hết giờ 0,6s rồi tưởng rớt cáp.
+                # Nay mỗi chu kỳ chỉ phát tối đa 3 lệnh, cách nhau 50ms; phần dư
+                # NẰM LẠI hàng đợi đúng thứ tự (không gộp, không bỏ) để nhịp
+                # bật/tắt như charge 1→0 không bao giờ bị nuốt.
                 with self._lock:
-                    todo, self._pending = self._pending, []
+                    todo, self._pending = self._pending[:WRITE_MOI_CHU_KY], \
+                        self._pending[WRITE_MOI_CHU_KY:]
+                    con_lai = len(self._pending)
                 for addr, vals in todo:
                     self.write_regs(addr, vals)
-                    time.sleep(0.01)
+                    time.sleep(WRITE_CACH_NHAU_S)
+                if con_lai:
+                    self._kick.set()        # còn lệnh chờ → đừng ngủ hết chu kỳ
 
                 if self._mode is None:
                     self._mode = self._probe()
@@ -573,7 +713,10 @@ class RoasterLink:
                 # Heartbeat app → máy (chỉ khối PC_Link có ô này): nhấp MỖI CHU KỲ
                 # poll để watchdog firmware biết app còn sống — thưa hơn là dễ rớt
                 # oan khi trúng vài khung nhiễu liên tiếp (mỗi timeout 0.6s).
-                if self._mode == MODE_PCLINK:
+                #
+                # NGOẠI LỆ (2026-09-07): đang có TÁC NHÂN TỰ ĐỘNG cầm lái mà nó
+                # im quá lâu thì CỐ TÌNH NGỪNG nhấp — xem _hb_cho_phep().
+                if self._mode == MODE_PCLINK and self._hb_cho_phep():
                     self._app_hb = (self._app_hb + 1) & 0x7FFF
                     self.write_regs(W_BASE + W_INDEX["hb"], [self._app_hb])
 
@@ -605,7 +748,16 @@ class RoasterLink:
                 fails = 0
             except Exception as e:
                 fails += 1
-                self._set_state("error", str(e))
+                # Lần hụt ĐẦU TIÊN KHÔNG đổi trạng thái. Trước 12/09/2026 một
+                # khung nhiễu 0,6 giây là đủ lật state sang "error", mà tầng trên
+                # coi "không connected" = máy mất, nên ĐÓNG luôn lượt lái của tác
+                # nhân tự động — vĩnh viễn, dù 2 giây sau link đã nối lại. Giữa
+                # mẻ thật, đó là ca "AI mất lái, ngõ ra đứng nguyên mức cuối".
+                # Tiêu chuẩn BÁO lỗi giờ khớp tiêu chuẩn XỬ lỗi: cùng đếm lần hụt.
+                # Snapshot vẫn là bản cũ, nhưng age_ms phình lên nên bên đọc vẫn
+                # biết số đã ôi — không ai bị lừa là dữ liệu còn tươi.
+                if fails >= 2:
+                    self._set_state("error", str(e))
                 if fails >= 3:               # rớt cáp/nhiễu → đóng, vòng sau mở lại
                     self._close()
                     self._mode = None        # máy có thể đã được nạp firmware mới

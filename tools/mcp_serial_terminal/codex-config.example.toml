@@ -1,0 +1,8 @@
+# Thêm khối này vào cấu hình Codex; giữ nguyên các máy chủ đang có.
+[mcp_servers.otl_serial_terminal]
+command = 'C:\Users\truon\AppData\Local\Programs\Python\Python311\python.exe'
+args = ['F:\Project\100_OTL_06ALS - CMS - Cacao\tools\mcp_serial_terminal\server.py']
+tool_timeout_sec = 40
+
+[mcp_servers.otl_serial_terminal.env]
+OTL_SERIAL_API_BASE = 'http://127.0.0.1:8765'

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """MCP server dựng tài liệu manual OTL bằng Illustrator.
 
-Thay cho chuỗi thao tác tay: nối engine + content → PowerShell COM → render PNG →
-đếm chữ từng trang. Gọi một công cụ là xong, và kết quả trả về đã kèm phần rà lỗi.
+Thay cho chuỗi thao tác tay: nối engine + content → PowerShell COM → gắn bookmark →
+render PNG → đếm chữ từng trang. Gọi một công cụ là xong, và kết quả trả về đã kèm phần rà lỗi.
 
 Chạy:
     python tools/mcp_manual/server.py
@@ -15,6 +15,9 @@ KHÔNG tự viết nội dung tài liệu ở đây. Nội dung nằm trong các
 server này chỉ dựng và soi. Quy ước trình bày, API engine và các bẫy đã trả giá
 nằm trong skill `manual-otl` — đọc skill đó trước khi soạn nội dung.
 
+⛔ PDF giao khách BẮT BUỘC có bookmark — Illustrator không tự sinh, server gắn hộ
+bằng bookmark.py của skill. Dòng so_bookmark = 0 là chưa xong, không được giao.
+
 ⚠ Máy chỉ bắt được trang THƯA CHỮ. Chồng chữ, tràn khung, logo chạm tiêu đề thì
 không thấy — dựng xong vẫn phải xem ảnh bằng mắt rồi mới giao.
 """
@@ -25,7 +28,7 @@ import os
 import re
 import sys
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 MAC_DINH_ENGINE = (r"F:\Project\100_OTL_06ALS - CMS - Cacao"
                    r"\.claude\skills\manual-otl\assets\engine.jsx")
@@ -60,6 +63,36 @@ def _nap_make():
 
 
 # ── tiện ích ───────────────────────────────────────────────────────────────
+def _nap_bookmark():
+    """Dùng chung bookmark.py của skill — không nuôi hai bản lệch nhau."""
+    p = os.path.join(os.path.dirname(ENGINE), "bookmark.py")
+    if not os.path.exists(p):
+        raise LoiGoi("không thấy bookmark.py cạnh engine: %s" % p)
+    spec = importlib.util.spec_from_file_location("otl_bookmark", p)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def _gan_bookmark(pdf, tra_muc_luc=False):
+    """Gắn bookmark vào PDF rồi đọc lại trên chính file để xác nhận."""
+    try:
+        bm = _nap_bookmark()
+        so = bm.dat_bookmark(pdf)
+        kq = {"so_bookmark": so, "doc_lai_tren_file": bm.kiem(pdf)}
+        if so == 0:
+            kq["canh_bao"] = ("không tìm thấy tiêu đề nào để làm bookmark — tài liệu "
+                              "có dùng H1()/H2() không?")
+        if tra_muc_luc and so:
+            import fitz
+            d = fitz.open(pdf)
+            kq["muc_luc"] = [{"muc": l, "ten": t, "trang": n} for l, t, n in d.get_toc()]
+            d.close()
+        return kq
+    except Exception as e:
+        return {"so_bookmark": 0, "loi": str(e)}
+
+
 def _duong_dan(p):
     """Cho phép truyền đường dẫn tương đối so với OTL_MANUAL_GOC."""
     if not p:
@@ -141,6 +174,7 @@ def manual_dung(a):
         pdf = mk.tim_pdf(jsx)
         if pdf and os.path.exists(pdf):
             m["pdf"] = pdf
+            m["bookmark"] = _gan_bookmark(pdf)   # trước khi rà: PDF cuối phải có bookmark
             m["ra_soat"] = _ra_soat(pdf, ve_anh, dpi)
         else:
             m["ghi_chu"] = ("không đọc được đường dẫn PDF từ content — file "
@@ -163,6 +197,21 @@ def manual_ra_soat(a):
     pdf = _duong_dan(a.get("pdf"))
     return {"pdf": pdf, "ra_soat": _ra_soat(pdf, a.get("render_anh", True),
                                             int(a.get("dpi", 80)))}
+
+
+def manual_bookmark(a):
+    """Gắn / kiểm bookmark cho một PDF đã dựng sẵn."""
+    pdf = _duong_dan(a.get("pdf"))
+    if not os.path.exists(pdf):
+        raise LoiGoi("không thấy file: %s" % pdf)
+    if a.get("chi_kiem"):
+        bm = _nap_bookmark()
+        import fitz
+        d = fitz.open(pdf)
+        muc = [{"muc": l, "ten": t, "trang": n} for l, t, n in d.get_toc()]
+        d.close()
+        return {"pdf": pdf, "so_bookmark": len(muc), "muc_luc": muc}
+    return dict({"pdf": pdf}, **_gan_bookmark(pdf, tra_muc_luc=True))
 
 
 def manual_kiem_chuoi_cam(a):
@@ -204,15 +253,17 @@ def manual_kiem_tra(a):
 
 HAM = {"manual_dung": manual_dung,
        "manual_ra_soat": manual_ra_soat,
+       "manual_bookmark": manual_bookmark,
        "manual_kiem_chuoi_cam": manual_kiem_chuoi_cam,
        "manual_kiem_tra": manual_kiem_tra}
 
 TOOLS = [
     {"name": "manual_dung",
      "description": "Dựng một tài liệu manual OTL từ file nội dung .jsx: nối engine, "
-                    "chạy Illustrator, xuất .ai + .pdf, render PNG từng trang và rà "
+                    "chạy Illustrator, xuất .ai + .pdf, GẮN BOOKMARK, render PNG từng trang và rà "
                     "máy tìm trang thưa chữ. Thay cho 4 lệnh tay. Trả về số trang, "
-                    "đường dẫn PDF và danh sách cảnh báo. LƯU Ý: rà máy chỉ bắt trang "
+                    "đường dẫn PDF, số bookmark đã gắn và danh sách cảnh báo. "
+                    "so_bookmark = 0 là chưa xong. LƯU Ý: rà máy chỉ bắt trang "
                     "thưa chữ — chồng chữ, tràn khung, logo chạm tiêu đề thì phải xem "
                     "ảnh bằng mắt mới thấy.",
      "inputSchema": {"type": "object", "properties": {
@@ -237,6 +288,15 @@ TOOLS = [
          "pdf": {"type": "string", "description": "đường dẫn file PDF"},
          "render_anh": {"type": "boolean"},
          "dpi": {"type": "integer"}},
+         "required": ["pdf"]}},
+    {"name": "manual_bookmark",
+     "description": "Gắn bookmark (outline) cho một PDF đã dựng, hoặc chỉ đọc xem nó đang có "
+                    "bookmark gì. Illustrator KHÔNG tự sinh bookmark, mà PDF giao khách thì "
+                    "bắt buộc phải có. manual_dung đã tự gọi việc này; công cụ riêng đây "
+                    "dùng cho PDF cũ dựng từ trước.",
+     "inputSchema": {"type": "object", "properties": {
+         "pdf": {"type": "string", "description": "đường dẫn file PDF"},
+         "chi_kiem": {"type": "boolean", "description": "chỉ đọc, không ghi đè bookmark mới"}},
          "required": ["pdf"]}},
     {"name": "manual_kiem_chuoi_cam",
      "description": "Kiểm bản OEM mang thương hiệu đối tác: bóc chữ trong PDF xem còn "

@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/artisan-roaster-scope/artisan",
+  "issues_api": "https://api.github.com/repos/artisan-roaster-scope/artisan/issues",
+  "range": {
+    "since": "2016-01-01T00:00:00+00:00",
+    "until_exclusive": "2027-01-01T00:00:00+00:00"
+  },
+  "downloaded_at": "2026-09-29T02:05:06.658219+00:00",
+  "issue_pages_read": 10,
+  "issue_count": 706,
+  "issue_count_by_year": {
+    "2016": 24,
+    "2017": 32,
+    "2018": 137,
+    "2019": 153,
+    "2020": 74,
+    "2021": 78,
+    "2022": 78,
+    "2023": 93,
+    "2024": 37,
+    "2025": 0,
+    "2026": 0
+  },
+  "comment_count": 2492,
+  "comments_note": "Bình luận được lưu khi chạy với --comments hoặc --comments-only; file đã ghi được giữ để chạy tiếp.",
+  "scope_note": "Chỉ lấy GitHub Issues; pull request bị loại khỏi kho. Năm 2025–2026 không có issue công khai trong API tại thời điểm snapshot nếu thống kê bằng 0."
+}

@@ -19,12 +19,18 @@ Vì vậy toàn bộ kế hoạch này xoay quanh một câu hỏi duy nhất:
 
 ---
 
-## 1. Chốt chặn số 1 — watchdog đang TẮT
+## 1. Chốt chặn số 1 — watchdog ~~đang TẮT~~ ĐÃ BẬT THEO TẦNG (2026-09-06)
 
 ```c
-// include/Config.h:529
-#define PCL_APP_WATCHDOG_EN               0
+// include/Config.h — nay là 1: siết 3 giây, nhưng CHỈ với tác nhân tự động
+#define PCL_APP_WATCHDOG_EN               1
 ```
+
+> **Cập nhật 2026-09-07.** Bật cờ này chưa đủ: app vẫn nhấp heartbeat vô điều kiện
+> mỗi chu kỳ poll, nên firmware chỉ biết *app* còn sống chứ không biết *AI* đã treo.
+> Đã vá ở `otl_link._hb_cho_phep()` — có lượt lái đang mở mà tác nhân im quá 20 giây
+> (hoặc hết hạn lượt) thì app **ngừng nhấp**, firmware nhả quyền trong 3 giây.
+> Dây chuyền nối liền từ AI xuống tới van gas, không đứt khúc nào.
 
 Firmware **có sẵn** watchdog: app phải nhấp `PCL_W_HB` mỗi giây, im quá `PCL_APP_TMO_S = 3`
 giây thì firmware tự nhả quyền PC control về HMI và kêu còi. Nhưng nó đang bị tắt theo lệnh
@@ -135,6 +141,21 @@ MCP server chỉ là bộ chuyển ngữ. Ai đó viết một MCP server khác,
    không phải API siết. Đã có sẵn cơ chế slew rate gas trong `AnalogConfig.h`.
 5. **Nút dừng cứng** — một nút to đỏ trên app, và nút dừng vật lý trên tủ, cắt quyền tức thì.
 
+### Cửa vào thứ hai — đăng nhập tài khoản app (12/09/2026, ĐÃ LÀM)
+
+`POST /api/v1/login {name, pin}` đổi **tài khoản + PIN của app** lấy token 8 giờ,
+thay cho việc bắt buộc phải tạo khoá API. Phạm vi suy ra từ vai trò: Master đủ ba
+tầng; thợ chỉ `read`, thêm `config` nếu được giao quyền calib gas / model nhiệt;
+**thợ không bao giờ có `control` qua đường này**.
+
+Token đăng nhập bị xếp vào nhóm **tác nhân tự động** chứ không phải "người" như
+token PIN web, nên **năm điều kiện T2 ở trên vẫn áp nguyên**. Chủ ý: mật khẩu đi
+qua mạng là thứ dùng lại được, không chứng minh có người đứng cạnh máy — tiện hơn
+khoá API thì được, lỏng hơn thì không.
+
+Chi tiết dùng ở CLI và MCP: `tools/mcp_roaster/README.md`. Bộ kiểm:
+`tools/test_api_login.py`.
+
 **Shadow mode** (theo đúng roadmap cũ) là bước bắt buộc giữa T1 và T2: AI tính ra lệnh, app
 **hiện đề xuất cho thợ duyệt** chứ chưa ghi xuống máy. Chạy shadow đủ số mẻ, đối chiếu lệnh AI
 với lệnh thợ thật, rồi mới mở T2.
@@ -190,6 +211,14 @@ số thì nó đoán.
 
 ## 9. Thứ tự làm
 
+Cập nhật Codex 07/09/2026: bổ sung phần tham số máy của GĐ D. Sửa GET `mc_read`
+thiếu đối số và POST `mc_write` lệch trường `items` trong OpenAPI; giữ nhận `cfg`
+cho client cũ. MCP có `roaster_set_machine_param` sau cờ `OTL_MCP_CONFIG=1`,
+cần khoá `config`. API kiểm danh sách trước khi ghi, ghi nhật ký kết quả từng
+tham số, dừng ở lỗi đầu tiên và báo phần chưa ghi. Kiểm HTTP + MCP bằng cầu giả
+trong `tools/test_config_api_mcp.py`; chưa xác nhận trên máy thật.
+GĐ D còn phần công cụ lưu hồ sơ; GĐ F và extension vẫn chưa hoàn tất.
+
 | GĐ | Nội dung | Ra được gì | Phụ thuộc |
 |---|---|---|---|
 | **A** | Nền an toàn: bật watchdog theo tầng · vá 3 lỗ §3 · nhật ký bất biến | Máy an toàn hơn ngay cả khi chưa có AI | — |
@@ -199,6 +228,21 @@ số thì nó đoán.
 | **E** | Extension + manifest + sandbox | Người khác viết thêm được | B |
 | **F** | Shadow mode — AI đề xuất, thợ duyệt | Đo được AI lái tốt hay không, **không rủi ro** | D |
 | **G** | T2 lease + 5 điều kiện | AI lái thật | F chạy đủ số mẻ |
+
+**Trạng thái 2026-09-07:** A · B · C xong. **G làm trước F** theo lệnh chủ máy — lease T2 và
+5 điều kiện đã chạy (xem bảng dưới), MCP có tầng lái sau cờ `OTL_MCP_CONTROL`. Shadow mode (F)
+vẫn nên chạy trước khi giao AI lái mẻ thật, chỉ là nó không còn chặn đường nữa.
+
+| ĐK §5 | Hiện thực |
+|---|---|
+| 1 · thợ bật tay tại chỗ | nút **PC control trên HMI** (trên tủ máy, không bật được từ xa) + cờ `OTL_MCP_CONTROL` lúc khởi động MCP |
+| 2 · lease có hạn | `POST /api/v1/lease_open`, trần `LEASE_MAX_S` = 15 phút, một tác nhân một lúc |
+| 3 · heartbeat 3 giây | `otl_link._hb_cho_phep()` — nhịp chỉ sinh từ request THẬT của AI (`Api.lease_touch` gọi trong `_ctx`), không có luồng nhấp nền |
+| 4 · giới hạn tốc độ đổi | `LEASE_STEP` (gas 25 điểm/lệnh) + `LEASE_RATE_N` (60 lệnh/phút) + slew rate firmware |
+| 5 · nút dừng cứng | tắt PC control trên HMI (tự huỷ lease) · `lease_close` bằng token thợ · nút dừng vật lý trên tủ |
+
+Còn thiếu: **nút cắt to đỏ ngay trên màn app** — chưa làm vì `OTL Roast Lab.html` đang do
+Codex giữ. Thợ vẫn cắt được bằng nút PC control trên HMI, là đường chắc chắn hơn.
 
 GĐ **C là mốc đáng làm nhất** và nó **không đụng gì tới điều khiển**: AI đọc lịch sử mẻ,
 chỉ ra mẻ nào lệch đường cong, giải thích vì sao, so hai lô nhân. Toàn bộ giá trị đó có được

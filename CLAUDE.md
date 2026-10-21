@@ -4,24 +4,6 @@ Firmware điều khiển máy rang cà phê chạy trên STM32F103RC, dùng Plat
 
 ---
 
-## Build & Flash
-
-```bash
-# Build
-pio run -e genericSTM32F103RC
-
-# Flash qua ST-Link
-pio run -e genericSTM32F103RC --target upload
-
-# Kiểm tra kích thước RAM/Flash
-pio run -e genericSTM32F103RC --target size
-
-# Monitor serial debug (UART4, 9600 baud)
-pio device monitor --baud 9600
-```
-
----
-
 ## Hardware Constraints
 
 | Tài nguyên | Giới hạn | Ghi chú |
@@ -40,18 +22,6 @@ pio device monitor --baud 9600
 ---
 
 ## Kiến trúc file
-
-```
-src/main.cpp          — Entry point, setup() + loop()
-include/Define.h      — Global state: tất cả biến, macro, pin (~2000 dòng)
-include/IOConfig.h    — GPIO init + relay control
-include/AnalogConfig.h — DAC (MCP4725 I2C) + ADC + slew rate gas
-include/PID_Airflow.h — Vacuum PID step controller + FF table + auto-tune
-include/ScaleFeeder.h — Bluetooth scale parser ("GS,NN.N,kg")
-include/Modbus_Slave.h — Artisan PC interface (ModbusRTU slave, 27 regs)
-include/Modbus_Master.h — HMI + sensor + inverter (ModbusMaster library)
-include/Program.h     — Business logic: roasting state machine + SD log
-```
 
 Tài liệu đầy đủ: [ARCHITECTURE.md](ARCHITECTURE.md)
 
@@ -163,14 +133,18 @@ Quy ước đầy đủ nằm trong skill [`manual-otl`](.claude/skills/manual-o
 - **Dựng bằng một lệnh**: `python .claude/skills/manual-otl/assets/make.py <content>.jsx`,
   hoặc qua MCP `otl-manual` (`tools/mcp_manual/`), công cụ `manual_dung`.
 
-⛔ **Ba luật không được bỏ qua:**
+⛔ **Bốn luật không được bỏ qua:**
 
 1. **`OK pages=N` KHÔNG có nghĩa là tài liệu xong.** Dòng đó chỉ nói script chạy trót lọt.
    Máy chỉ rà được trang thưa chữ; chồng chữ, tràn khung, logo chạm tiêu đề thì nó không thấy.
    **Phải render PNG và soi bằng mắt** rồi mới được nói là xong.
-2. **KHÔNG viết tên, địa chỉ hay liên hệ của đối tác vào repo này** — repo từng để PUBLIC.
+2. **PDF giao khách BẮT BUỘC có bookmark.** Illustrator không tự sinh bookmark bao giờ.
+   `make.py` đã tự gắn bằng `assets/bookmark.py` — nhưng phải nhìn dòng `bookmark=N`:
+   `bookmark=0` là **chưa xong**. PDF cũ thì chạy `python assets/bookmark.py <file>.pdf`,
+   hoặc qua MCP `otl-manual` công cụ `manual_bookmark`.
+3. **KHÔNG viết tên, địa chỉ hay liên hệ của đối tác vào repo này** — repo từng để PUBLIC.
    Thông tin thương hiệu từng đối tác để ở `112_Quanly\122_Manual_AI\BAN-OEM-DOI-TAC.md`.
-3. **Bản OEM là bản SINH RA bằng script, không sửa tay.** Sửa bản gốc rồi chạy lại script.
+4. **Bản OEM là bản SINH RA bằng script, không sửa tay.** Sửa bản gốc rồi chạy lại script.
    Script phải tự dừng khi còn sót dấu vết thương hiệu gốc, và phải kiểm lại **trên chính
    file PDF** (`manual_kiem_chuoi_cam`) — đọc mã nguồn là chưa đủ, ảnh bìa cũ vẫn có thể mang
    dấu nhận dập trên tôn máy.

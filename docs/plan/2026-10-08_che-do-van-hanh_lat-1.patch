@@ -1,0 +1,226 @@
+diff --git a/include/Define.h b/include/Define.h
+index f544787..9fabfa9 100644
+--- a/include/Define.h
++++ b/include/Define.h
+@@ -460,6 +460,11 @@ uint32_t loaderDbgPrintMs = 0;  //Timestamp to print loader debug once/1s
+ #define MULTI_W             123  //On off multi screen
+ #define ALARM_LOADER_W      124  //Alarm Feeder
+ #define TUNE_PERCENT_W     125  //Show tune progress %
++// Chế độ VẬN HÀNH (ẩn thông số) — firmware chỉ GHI; lát 1 (08/10/2026) mới khai báo, CHƯA ghi. Kế hoạch §2.3
++#define OP_PROGRESS_W      126  //40126 - tiến độ mẻ 0..100 %
++#define OP_PHASE_W         127  //40127 - mã giai đoạn 0..9 (OperatorMode.h OpPhase)
++#define OP_REMAIN_W        128  //40128 - ước tính còn lại, giây (0 = sắp xong)
++#define OP_ALARM_W         129  //40129 - mã lỗi gọn E1..E9 cho nhân viên, 0 = bình thường
+ 
+ //Auxiliary start
+ #define warnDeleteProfile     151 //Warn before deleting profile
+diff --git a/include/OperatorMode.h b/include/OperatorMode.h
+new file mode 100644
+index 0000000..4e5864c
+--- /dev/null
++++ b/include/OperatorMode.h
+@@ -0,0 +1,113 @@
++#pragma once
++// ============================================================================
++// CHẾ ĐỘ VẬN HÀNH — ẩn thông số mẻ, nhân viên chỉ thấy tiến độ + lỗi gọn E1..E9
++// Kế hoạch: docs/plan/2026-09-11-che-do-van-hanh-an-thong-so.md (Rev 2 — 08/10/2026)
++//
++// LÁT 1 (08/10/2026, chờ chủ máy duyệt): CHỈ hàm tính THUẦN — không đọc/ghi biến toàn cục, không Modbus, không SD,
++// CHƯA được gọi từ loop() / programScan(). Nạp bản này không đổi hành vi máy. Test trên PC: tools/op_mode_test/chay.py.
++// Lát sau mới móc vào luồng: ghi W40126..129, đọc $M62..65, chốt rang lố, ẩn số, oplog.csv.
++//
++// Cần STP_* (Define.h) có trước khi include file này.
++// ============================================================================
++#include <stdint.h>
++
++// ---- Mã giai đoạn ghi lên OP_PHASE_W (HMI đổi ra chữ bằng Text Table) — kế hoạch §3
++enum OpPhase : uint8_t {
++    OP_NGHI = 0,          // Nghỉ
++    OP_CHUAN_BI = 1,      // Đang sấy lồng / lên nhiệt chờ nạp (preheat, STP_DATA, STP_COOL_DOWN, STP_GAS)
++    OP_CHO_NAP = 2,       // Chờ nạp hạt (nạp tay)
++    OP_DANG_NAP = 3,      // Đang nạp hạt (bộ nạp tự động chạy)
++    OP_SAY_HAT = 4,       // STP_TP
++    OP_CHUYEN_VANG = 5,   // STP_YELLOW
++    OP_SAP_NO = 6,        // STP_FCS
++    OP_PHAT_TRIEN = 7,    // STP_DEV
++    OP_XA_NGUOI = 8,      // STP_DROP / STP_COOLING / STP_ESCAPE / bồn nguội chạy
++    OP_XONG_ME = 9        // STP_LOOP_1 / STP_LOOP_2 — chờ mẻ kế
++};
++
++// Ảnh chụp trạng thái máy — lát sau lấy từ START_BTN_R, wuState, aLoaderStep, coolStep, progStep
++struct OpVao {
++    bool    startOn;      // START_BTN_R == 1
++    bool    preheat;      // wuState != WU_IDLE
++    bool    loaderBusy;   // aLoaderStep đang chạy (nạp tự động)
++    bool    cooling;      // coolStep != 0
++    uint8_t progStep;
++};
++
++inline uint8_t opPhase(const OpVao &v) {
++    switch (v.progStep) {
++        case STP_DROP: case STP_COOLING: case STP_ESCAPE:   return OP_XA_NGUOI;
++        case STP_LOOP_1: case STP_LOOP_2:                   return OP_XONG_ME;
++        case STP_TP:                                        return OP_SAY_HAT;
++        case STP_YELLOW:                                    return OP_CHUYEN_VANG;
++        case STP_FCS:                                       return OP_SAP_NO;
++        case STP_DEV:                                       return OP_PHAT_TRIEN;
++        default: break;
++    }
++    if (v.cooling) return OP_XA_NGUOI;                    // bồn nguội còn chạy sau khi mẻ đã về 0
++    if (v.startOn && (v.progStep == STP_CHECK || v.progStep == STP_CHARGE))
++        return v.loaderBusy ? OP_DANG_NAP : OP_CHO_NAP;
++    if (v.preheat || v.startOn) return OP_CHUAN_BI;       // STP_DATA / STP_COOL_DOWN / STP_GAS hoặc sấy lồng riêng
++    return OP_NGHI;
++}
++
++// ---- Tiến độ % và giây còn lại — kế hoạch §3: không bao giờ lùi, neo theo mốc thật, mẻ lê quá giờ thì "sắp xong"
++// mocPct: % thời gian của mốc vừa đạt trong hồ sơ mẫu (0 = chưa có mốc nào / không biết)
++inline uint8_t opProgress(uint16_t tRoast, uint16_t tDropMau, uint8_t daXa, uint8_t pctTruoc, uint8_t mocPct) {
++    if (daXa) return 100;
++    uint32_t p = (tDropMau > 0) ? (uint32_t)tRoast * 100u / tDropMau : 0;
++    if (p < mocPct) p = mocPct;                           // đạt DE / FCs sớm hơn mẫu: kéo lên bằng % mốc đó
++    if (p > 99) p = 99;                                   // chưa xả thật thì không báo 100
++    if (p < pctTruoc) p = pctTruoc;                       // không bao giờ lùi
++    return (uint8_t)p;
++}
++
++inline uint16_t opRemain(uint16_t tRoast, uint16_t tDropMau) {
++    return (tDropMau > tRoast) ? (uint16_t)(tDropMau - tRoast) : 0;   // 0 = "sắp xong", không hiện số âm
++}
++
++// ---- 9 mã lỗi gọn cho nhân viên — kế hoạch §4. 0 = không phải lỗi cho nhân viên.
++// Mã 422 (rang lố, đã xả) là mã MỚI của chế độ này: lát sau thêm STT_ERR_OVER_ROAST 422 + dòng chữ HMI.
++inline uint8_t opAlarmFromStt(uint16_t stt) {
++    switch (stt) {
++        case 401: case 413: case 263: case 264:            return 1;   // QUÁ NHIỆT — đã tắt lửa, GIỮ hạt
++        case 410: case 414: case 403: case 164:            return 2;   // LỬA KHÔNG LÊN
++        case 404: case 405: case 265: case 266: case 271:  return 3;   // HỎNG CẢM BIẾN NHIỆT — XẢ hạt
++        case 406: case 407: case 408:                      return 4;   // MẤT KẾT NỐI THIẾT BỊ
++        case 422:                                          return 5;   // RANG LỐ — đã xả
++        case 421: case 327:                                return 6;   // MẺ LÊ, KHÔNG LÊN NHIỆT
++        case 417:                                          return 7;   // CỬA XẢ KHÔNG ĐÓNG
++        case 103: case 120: case 409:                      return 8;   // LỖI HỒ SƠ / THẺ NHỚ
++        case 416:                                          return 9;   // MẺ ĐANG DÀI HƠN MẪU
++        default: break;
++    }
++    if (stt >= 281 && stt <= 287) return 4;                // mất Modbus HMI / BT / ET / trống / gió / relay / áp hút
++    if (stt >= 381 && stt <= 385) return 8;                // hồ sơ thiếu mốc / sai định dạng
++    return 0;
++}
++
++// Mức: 3 = đỏ (dừng máy), 2 = cam (máy tự xử lý rồi báo), 1 = vàng (theo dõi), 0 = không lỗi
++inline uint8_t opMucE(uint8_t e) {
++    if (e == 0) return 0;
++    if (e == 5 || e == 6) return 2;
++    if (e == 9) return 1;
++    return 3;
++}
++
++// Giữ mã NẶNG NHẤT đang hiệu lực: mức cao hơn thắng; cùng mức thì E nhỏ hơn (theo thứ tự bảng §4) thắng
++inline uint8_t opNangHon(uint8_t a, uint8_t b) {
++    if (opMucE(a) != opMucE(b)) return opMucE(a) > opMucE(b) ? a : b;
++    if (a == 0) return b;
++    if (b == 0) return a;
++    return a < b ? a : b;
++}
++
++// Lỗi đỏ chỉ xoá được khi điều kiện đã hết; cam / vàng xoá ngay khi bấm Xoá lỗi ($M18 = 1) — kế hoạch §4
++inline bool opXoaDuoc(uint8_t e, bool dieuKienConHieuLuc) {
++    return opMucE(e) < 3 || !dieuKienConHieuLuc;
++}
++
++// Quá nhiệt (E1) thì GIỮ hạt (mở cửa lúc cháy = thêm oxy); máy mù / mất kết nối (E3, E4) thì XẢ hạt — chốt #3
++inline bool opCanXaHat(uint8_t e) {
++    return e == 3 || e == 4;
++}
+diff --git a/src/main.cpp b/src/main.cpp
+index 0495e67..4f4b249 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -28,6 +28,7 @@
+ #include "Modbus_Master.h"
+ #include "MachineStatus.h"
+ #include "Program.h"
++#include "OperatorMode.h"      // chế độ vận hành — lát 1: hàm thuần, CHƯA gọi (08/10/2026)
+ 
+ void debug();
+ 
+diff --git a/tools/op_mode_test/chay.py b/tools/op_mode_test/chay.py
+new file mode 100644
+index 0000000..e66494f
+--- /dev/null
++++ b/tools/op_mode_test/chay.py
+@@ -0,0 +1,21 @@
++# -*- coding: utf-8 -*-
++"""Biên dịch + chạy test_op_mode.cpp (zig c++, như tools/fw_sim). STP_* trích thẳng từ include/Define.h.
++    python tools/op_mode_test/chay.py"""
++import os
++import re
++import subprocess
++import sys
++
++HERE = os.path.dirname(os.path.abspath(__file__))
++REPO = os.path.dirname(os.path.dirname(HERE))
++d = open(os.path.join(REPO, 'include', 'Define.h'), encoding='utf-8', errors='replace').read()
++stp = re.findall(r'^#define (STP_[A-Z0-9_]+)\s+(\d+)', d, re.M)
++open(os.path.join(HERE, 'stp_tu_define.h'), 'w', encoding='utf-8').write(
++    '#pragma once\n// SINH TỰ ĐỘNG từ include/Define.h bởi chay.py — không sửa tay\n' +
++    ''.join('#define %s %s\n' % kv for kv in stp))
++exe = os.path.join(HERE, 'test_op_mode.exe')
++r = subprocess.run([sys.executable, '-m', 'ziglang', 'c++', '-std=gnu++17', os.path.join(HERE, 'test_op_mode.cpp'), '-o', exe],
++                   capture_output=True, text=True)
++if r.returncode:
++    sys.exit('biên dịch lỗi:\n' + r.stderr[-2000:])
++sys.exit(subprocess.run([exe]).returncode)
+diff --git a/tools/op_mode_test/test_op_mode.cpp b/tools/op_mode_test/test_op_mode.cpp
+new file mode 100644
+index 0000000..75a9e2f
+--- /dev/null
++++ b/tools/op_mode_test/test_op_mode.cpp
+@@ -0,0 +1,46 @@
++// Test trên PC cho include/OperatorMode.h (chế độ vận hành, lát 1). Chạy: python tools/op_mode_test/chay.py
++#include <cstdio>
++#include "stp_tu_define.h"      // chay.py trích STP_* từ include/Define.h — không chép tay
++#include "../../include/OperatorMode.h"
++
++static int dat = 0, loi = 0;
++#define KIEM(dk, ten) do { if (dk) dat++; else { loi++; printf("LOI %s (dong %d)\n", ten, __LINE__); } } while (0)
++
++int main() {
++    // giai đoạn
++    KIEM(opPhase({false, false, false, false, STP_DATA}) == OP_NGHI, "rảnh = Nghỉ");
++    KIEM(opPhase({false, true, false, false, STP_DATA}) == OP_CHUAN_BI, "sấy lồng riêng = Chuẩn bị");
++    KIEM(opPhase({true, false, false, false, STP_GAS}) == OP_CHUAN_BI, "STP_GAS = Chuẩn bị");
++    KIEM(opPhase({true, false, false, false, STP_CHARGE}) == OP_CHO_NAP, "nạp tay = Chờ nạp");
++    KIEM(opPhase({true, false, true, false, STP_CHECK}) == OP_DANG_NAP, "bộ nạp chạy = Đang nạp");
++    KIEM(opPhase({true, false, false, false, STP_TP}) == OP_SAY_HAT, "TP");
++    KIEM(opPhase({true, false, false, false, STP_YELLOW}) == OP_CHUYEN_VANG, "Yellow");
++    KIEM(opPhase({true, false, false, false, STP_FCS}) == OP_SAP_NO, "FCs");
++    KIEM(opPhase({true, false, false, false, STP_DEV}) == OP_PHAT_TRIEN, "DEV");
++    KIEM(opPhase({true, false, false, false, STP_ESCAPE}) == OP_XA_NGUOI, "Escape");
++    KIEM(opPhase({false, false, false, true, STP_DATA}) == OP_XA_NGUOI, "bồn nguội còn chạy sau mẻ");
++    KIEM(opPhase({true, false, false, false, STP_LOOP_2}) == OP_XONG_ME, "chờ mẻ kế");
++    // tiến độ
++    KIEM(opProgress(300, 600, 0, 0, 0) == 50, "nửa mẻ = 50 %");
++    KIEM(opProgress(700, 600, 0, 0, 0) == 99, "quá giờ mẫu, chưa xả = 99, không 100");
++    KIEM(opProgress(700, 600, 1, 99, 0) == 100, "đã xả = 100");
++    KIEM(opProgress(100, 600, 0, 40, 0) == 40, "không bao giờ lùi");
++    KIEM(opProgress(200, 600, 0, 0, 80) == 80, "neo theo mốc thật (FCs sớm)");
++    KIEM(opProgress(200, 0, 0, 0, 0) == 0, "chưa có hồ sơ mẫu -> 0, không chia 0");
++    KIEM(opRemain(700, 600) == 0 && opRemain(100, 600) == 500, "còn lại không âm");
++    // lỗi gọn
++    KIEM(opAlarmFromStt(413) == 1 && opAlarmFromStt(263) == 1, "báo cháy = E1");
++    KIEM(opAlarmFromStt(414) == 2, "chờ lửa quá lâu = E2");
++    KIEM(opAlarmFromStt(271) == 3, "cảm biến BT = E3");
++    KIEM(opAlarmFromStt(284) == 4 && opAlarmFromStt(281) == 4 && opAlarmFromStt(287) == 4, "mất Modbus = E4");
++    KIEM(opAlarmFromStt(288) == 0, "lỗi CRC lẻ (288) không bắn E4");
++    KIEM(opAlarmFromStt(422) == 5, "rang lố = E5");
++    KIEM(opAlarmFromStt(417) == 7 && opAlarmFromStt(383) == 8 && opAlarmFromStt(416) == 9, "E7 E8 E9");
++    KIEM(opAlarmFromStt(1) == 0 && opAlarmFromStt(59) == 0, "trạng thái thường = 0");
++    KIEM(opMucE(1) == 3 && opMucE(5) == 2 && opMucE(9) == 1 && opMucE(0) == 0, "mức");
++    KIEM(opNangHon(9, 4) == 4 && opNangHon(5, 9) == 5 && opNangHon(3, 1) == 1 && opNangHon(0, 6) == 6, "giữ mã nặng nhất");
++    KIEM(!opXoaDuoc(1, true) && opXoaDuoc(1, false) && opXoaDuoc(5, true), "đỏ chỉ xoá khi hết điều kiện");
++    KIEM(!opCanXaHat(1) && opCanXaHat(3) && opCanXaHat(4), "quá nhiệt GIỮ hạt, máy mù XẢ hạt");
++    printf("KET QUA op_mode: %d/%d dat\n", dat, dat + loi);
++    return loi ? 1 : 0;
++}

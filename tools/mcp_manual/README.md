@@ -7,8 +7,9 @@ trang) thành một lệnh gọi. Dùng chung engine và quy ước trình bày 
 
 | Công cụ | Việc |
 |---|---|
-| `manual_dung` | Dựng một tài liệu từ file `content*.jsx` → `.ai` + `.pdf`, render PNG, rà trang thưa chữ |
+| `manual_dung` | Dựng một tài liệu từ file `content*.jsx` → `.ai` + `.pdf`, **gắn bookmark**, render PNG, rà trang thưa chữ |
 | `manual_ra_soat` | Rà lại PDF đã dựng sẵn mà không dựng lại |
+| `manual_bookmark` | Gắn / đọc bookmark cho một PDF đã dựng từ trước |
 | `manual_kiem_chuoi_cam` | Bản OEM: bóc chữ trong PDF xem còn sót dấu vết thương hiệu gốc không |
 | `manual_kiem_tra` | Kiểm nhanh có engine, có thư mục gốc, có pymupdf chưa |
 
@@ -53,6 +54,12 @@ Trả về số trang, đường dẫn PDF, danh sách cảnh báo trang thưa c
 thiếu dấu cách trước `\u2013` — lỗi dính chữ từng lọt ra tận bìa tài liệu gửi khách.
 
 ## Giới hạn phải nhớ
+
+⛔ **PDF giao khách bắt buộc có bookmark.** Illustrator xuất PDF từ artboard nên
+không bao giờ tự sinh bookmark. `manual_dung` tự gắn bằng `bookmark.py` của skill và
+trả về `bookmark.so_bookmark` kèm lần đọc lại trên chính file. **`so_bookmark = 0` là
+chưa xong**, không được giao — thường do tài liệu tự vẽ tiêu đề bằng `mkText` thay vì
+dùng `H1()` / `H2()`.
 
 ⚠ **Máy chỉ bắt được trang THƯA CHỮ.** Chồng chữ, tràn khung, logo chạm tiêu đề thì nó
 không thấy. Dựng xong **vẫn phải xem ảnh PNG bằng mắt** rồi mới giao — đây là bước bắt

@@ -177,16 +177,19 @@ analogIn()              ← Đọc VR/PID/PC → airflowPercent, gasPercent, dru
 analogOut()             ← DAC gas (slew rate) + DAC airflow
 readTempET()            ← Modbus đọc ET từ nodeET
 readTempBT()            ← Modbus đọc BT từ nodeBT
+rwHMI_Fast()            ← Đọc NHANH 12 word nút lệnh (40001–40012) → đổi relay ngay  [10/10/2026]
 readWriteDrumINV()      ← Modbus đọc/ghi tần số trống [if chDrumFlag]
 readUnder()             ← Modbus đọc Diff_Air (áp suất chân không) [if chAirFlag]
 readWriteAirINV_PID()   ← Modbus cập nhật airflow inverter theo PID [if chAirFlag]
+rwHMI_Fast()            ← lượt đọc nhanh thứ 2
 handle_Modbus_Slave()   ← Artisan: publish telemetry, nhận setpoints/buttons
 readScale()             ← Bluetooth: parse "GS,NN.N,kg" → netW
 rwHMICoil()             ← Đọc coils HMI (B1–B20)
 rwMemHMI()              ← Đọc $M1–$M51 HMI config
-rwHMI_1()               ← Đọc 40001–40033: nút bấm + ghi BT/ET lên HMI
+rwHMI_1()               ← Đọc 40001–40041: nút bấm (đổi relay ngay) + ghi BT/ET lên HMI
 rwHMI_2()               ← Đọc 40060–40086: ghi gas%, drum%, RoR, milestones
 rwIORelayCoil()         ← Cập nhật IO relay Modbus [if chIORelayFlag]
+rwHMI_Fast()            ← lượt đọc nhanh thứ 3 (trước programScan — đoạn dài nhất của vòng)
 programScan()           ← State machine rang cà phê
 controlIO()             ← Map button states → relay outputs
 calTime = millis()-timeMillis  ← Đo loop time

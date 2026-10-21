@@ -33,14 +33,17 @@ dùng duyệt trước khi gọi:
     youtube_tra_loi_binh_luan  đăng bình luận dưới tên kênh (cần thêm quyền)
     youtube_dang_video         ĐĂNG VIDEO MỚI (cần quyền youtube.upload)
 
-Quyền: hai công cụ cuối của bảng dưới cần youtube.force-ssl, chưa có trong QUYEN.
-Muốn dùng thì thêm scope đó vào cap_quyen.py, xoá token.json rồi cấp quyền lại.
+Quyền: gắn phụ đề rời và trả lời bình luận cần youtube.force-ssl. Scope đã có
+trong QUYEN và cap_quyen.py, nhưng token cấp TRƯỚC 01/10/2026 thì chưa mang nó —
+youtube_dang_video soát trước khi tải nên báo ngay, không để tải xong mới 403.
+Thiếu thì: xoá token.json, chạy lại python cap_quyen.py.
 Biết trước: app để chế độ Testing thì token chỉ sống 7 ngày.
 """
 import io
 import json
 import os
 import sys
+import time
 
 # Windows mặc định để stdout ở bảng mã cp1252, mà giao thức MCP lẫn chữ tiếng
 # Việt đều là UTF-8. Không ép lại thì ngay bước tools/list đã ném
@@ -58,7 +61,9 @@ TOKEN = os.path.join(THUMUC, "token.json")
 
 QUYEN = ["https://www.googleapis.com/auth/youtube.readonly",
          "https://www.googleapis.com/auth/yt-analytics.readonly",
-         "https://www.googleapis.com/auth/youtube"]
+         "https://www.googleapis.com/auth/youtube",
+         "https://www.googleapis.com/auth/youtube.upload",
+         "https://www.googleapis.com/auth/youtube.force-ssl"]
 
 _dv = {}     # dịch vụ đã dựng, dùng lại cho các lần gọi sau
 
@@ -618,6 +623,48 @@ def youtube_phu_de(a):
 
 
 # ── gộp từ youtube-studio-mcp (MIT) ────────────────────────────────────────
+def youtube_phu_de_them(a):
+    """Gắn một file phụ đề .srt/.vtt vào video ĐÃ đăng.
+
+    Trước 01/10/2026 chỉ youtube_dang_video gắn được phụ đề, mà gắn đúng một lần
+    ngay lúc đăng — hỏng là coi như mất, phải đăng lại cả file. Tách riêng ra đây
+    để gắn lại được bất cứ lúc nào, kể cả cho video đăng từ lâu.
+
+    Cần quyền youtube.force-ssl.
+    """
+    ma = _ma_video(a.get("video"))
+    duong = a.get("tep")
+    if not duong:
+        raise LoiGoi("thiếu 'tep' — đường dẫn file phụ đề .srt hoặc .vtt")
+    if not os.path.exists(duong):
+        raise LoiGoi("không thấy file phụ đề: %s" % duong)
+    if os.path.splitext(duong)[1].lower() not in (".srt", ".vtt", ".sbv"):
+        raise LoiGoi("phụ đề phải là .srt, .vtt hoặc .sbv")
+    if not any("force-ssl" in q for q in _quyen_token()):
+        raise LoiGoi("token thiếu quyền youtube.force-ssl nên không gắn được phụ đề. "
+                     "Thêm scope đó vào QUYEN trong cap_quyen.py, xoá token.json, "
+                     "chạy lại: python cap_quyen.py")
+
+    nn = a.get("ngon_ngu") or "vi"
+    from googleapiclient.http import MediaFileUpload
+    try:
+        r = _yt().captions().insert(
+            part="snippet",
+            body={"snippet": {"videoId": ma, "language": nn,
+                              "name": a.get("ten") or nn.upper(),
+                              "isDraft": False}},
+            media_body=MediaFileUpload(duong, resumable=False)).execute()
+    except Exception as e:      # noqa: BLE001
+        ro = _dich_loi_google(e)
+        if ro:
+            raise ro
+        raise LoiGoi("gắn phụ đề không được: %s" % e)
+    return {"video": ma, "link": "https://youtu.be/" + ma, "phu_de": r.get("id"),
+            "ngon_ngu": nn, "tep": duong,
+            "ghi_chu": "Đã gắn. Người xem bật/tắt được, và YouTube dịch tự động "
+                       "sang tiếng khác từ bản này."}
+
+
 def youtube_anh_bia(a):
     """Đặt ảnh bìa (thumbnail) mới cho video, lấy từ file ảnh trên máy."""
     ma = _ma_video(a.get("video"))
@@ -641,8 +688,18 @@ def youtube_anh_bia(a):
         ro = _dich_loi_google(e)
         if ro:
             raise ro
-        raise LoiGoi("đặt ảnh bìa không được: %s. Kênh phải được XÁC MINH "
-                     "(youtube.com/verify) thì YouTube mới cho đặt ảnh bìa riêng." % e)
+        # Đứt mạng ≠ chưa xác minh. Bản cũ đổ hết cho "chưa xác minh" nên
+        # 01/10/2026 báo sai khi SSL đứt lúc đường lên đang kẹt vì tải video.
+        t = str(e)
+        if any(k in t for k in ("EOF occurred", "timed out", "Connection",
+                                "SSLError", "BrokenPipe")):
+            raise LoiGoi("đặt ảnh bìa đứt giữa chừng (%s). Đây là lỗi MẠNG, "
+                         "không phải chưa xác minh — hay gặp khi đang tải "
+                         "video khác chiếm hết đường lên. Chờ tải xong rồi "
+                         "gọi lại." % t)
+        raise LoiGoi("đặt ảnh bìa không được: %s. Nếu là lỗi 403 thì kênh "
+                     "phải được XÁC MINH (youtube.com/verify) mới đặt được "
+                     "ảnh bìa riêng." % t)
     return {"video": ma, "link": "https://youtu.be/" + ma, "anh_da_dat": duong,
             "co_file_byte": co, "ban_youtube_luu": (r.get("items") or [{}])[0],
             "ghi_chu": "đã ghi lên kênh thật. Ảnh mới có thể mất vài phút mới hiện đủ "
@@ -739,6 +796,31 @@ DUOI_VIDEO = (".mp4", ".mov", ".avi", ".wmv", ".flv", ".webm", ".mpeg", ".mpg",
 CHE_DO_HOP_LE = ("private", "unlisted", "public")
 
 
+def _quyen_token():
+    """Scope THẬT đang có trong token.json. Biết trước thì báo thiếu quyền ngay,
+    khỏi tải xong 3 GB mới ăn 403 như lần đăng 01/10/2026."""
+    try:
+        return json.load(io.open(TOKEN, encoding="utf-8")).get("scopes") or []
+    except Exception:      # noqa: BLE001
+        return []
+
+
+def _trang_thai_dai():
+    """Kênh có được đăng video dài quá 15 phút không — HỎI YouTube, không đoán.
+
+    channels.list(part="status").longUploadsStatus trả một trong:
+        allowed     đã xác minh, đăng dài bao nhiêu cũng được
+        eligible    đủ điều kiện nhưng CHƯA xác minh ở youtube.com/verify
+        disallowed  không được phép (kênh bị gậy bản quyền...)
+    Hỏi không được thì trả None để bên gọi cảnh báo nhẹ, đừng chặn oan.
+    """
+    try:
+        r = _yt().channels().list(part="status", mine=True).execute()
+        return r["items"][0]["status"].get("longUploadsStatus")
+    except Exception:      # noqa: BLE001
+        return None
+
+
 def _do_dai_video(duong):
     """Giây của file, lấy bằng ffprobe. Không có ffprobe thì trả None."""
     import subprocess
@@ -790,15 +872,36 @@ def youtube_dang_video(a):
     co = os.path.getsize(duong)
     canh_bao = []
 
-    # Kênh chưa xác minh chỉ được đăng video tối đa 15 phút. Bắt trước ở đây,
-    # vì tải 2 GB lên rồi mới bị Google trả về thì mất cả tiếng.
+    # Video dài quá 15 phút thì kênh phải xác minh. Hỏi thẳng YouTube chứ đừng
+    # đoán theo độ dài file — bản cũ kêu "CHƯA XÁC MINH" cả khi đã xác minh rồi.
     giay = _do_dai_video(duong)
     if giay and giay > 15 * 60:
+        tt = _trang_thai_dai()
+        phut = "%d phút %02d giây" % (int(giay) // 60, int(giay) % 60)
+        if tt == "eligible":
+            raise LoiGoi(
+                "Video dài %s mà kênh CHƯA xác minh — YouTube sẽ nuốt hết %.2f GB "
+                "rồi mới báo lỗi. Vào youtube.com/verify xác minh bằng số điện "
+                "thoại (vài phút), xong chạy lại lệnh này."
+                % (phut, co / 1e9))
+        if tt == "disallowed":
+            raise LoiGoi("Video dài %s nhưng kênh KHÔNG được phép đăng video dài "
+                         "(longUploadsStatus=disallowed). Kiểm cảnh cáo bản quyền "
+                         "trong YouTube Studio." % phut)
+        if tt is None:
+            canh_bao.append("Video dài %s; hỏi trạng thái xác minh của kênh không "
+                            "được nên vẫn đăng. Chưa xác minh thì YouTube báo lỗi "
+                            "sau khi xử lý." % phut)
+
+    # Phụ đề rời cần force-ssl. Soát TRƯỚC khi tải, đừng để tải xong mới 403.
+    bo_phu_de = False
+    if a.get("phu_de") and not any("force-ssl" in q for q in _quyen_token()):
+        bo_phu_de = True
         canh_bao.append(
-            "Video dài %d phút %02d giây. Kênh CHƯA XÁC MINH chỉ đăng được video "
-            "tối đa 15 phút — YouTube sẽ nhận file rồi báo lỗi sau khi xử lý. "
-            "Xác minh ở youtube.com/verify (mất vài phút, cần số điện thoại)."
-            % (int(giay) // 60, int(giay) % 60))
+            "Token thiếu quyền youtube.force-ssl nên BỎ QUA bước gắn phụ đề rời "
+            "(video vẫn đăng, chữ đã nung sẵn trong hình). Muốn gắn được: thêm "
+            "scope đó vào QUYEN trong cap_quyen.py, xoá token.json, chạy lại "
+            "python cap_quyen.py, rồi dùng youtube_phu_de cho video này.")
 
     if che_do == "public":
         canh_bao.append("Đăng CÔNG KHAI ngay — ai cũng xem được lập tức, không rút lại được.")
@@ -817,9 +920,19 @@ def youtube_dang_video(a):
     tai = MediaFileUpload(duong, chunksize=8 * 1024 * 1024, resumable=True)
     try:
         yc = _yt().videos().insert(part="snippet,status", body=than, media_body=tai)
-        tra = None
+        tra, dem, t0 = None, 0, time.time()
         while tra is None:
-            _, tra = yc.next_chunk()
+            tt, tra = yc.next_chunk()
+            # stdout là đường JSON-RPC của MCP — in vào đó là gãy giao thức.
+            if tt is not None:
+                dem += 1
+                if dem % 4 == 0:        # ~mỗi 32 MB, đủ theo dõi mà không ngập log
+                    da = tt.resumable_progress
+                    toc = da / max(time.time() - t0, 1e-6)
+                    sys.stderr.write(
+                        "   tai len %5.1f%%  %.2f MB/s  con khoang %.0f phut\n"
+                        % (da * 100.0 / co, toc / 1e6, (co - da) / max(toc, 1) / 60))
+                    sys.stderr.flush()
     except Exception as e:      # noqa: BLE001
         ro = _dich_loi_google(e)
         if ro:
@@ -835,7 +948,7 @@ def youtube_dang_video(a):
         kq["dai_giay"] = round(giay, 1)
 
     # Phụ đề rời: có thì gắn luôn, để YouTube bật/tắt và tự dịch được.
-    if a.get("phu_de"):
+    if a.get("phu_de") and not bo_phu_de:
         pd = a["phu_de"]
         if not os.path.exists(pd):
             canh_bao.append("Không thấy file phụ đề %s — video đã đăng, phụ đề CHƯA gắn." % pd)
@@ -869,6 +982,7 @@ HAM = {"youtube_kiem_tra": youtube_kiem_tra,
        "youtube_phu_de": youtube_phu_de,
        "youtube_danh_sach_phat": youtube_danh_sach_phat,
        "youtube_thay_hang_loat": youtube_thay_hang_loat,
+       "youtube_phu_de_them": youtube_phu_de_them,
        "youtube_anh_bia": youtube_anh_bia,
        "youtube_tra_loi_binh_luan": youtube_tra_loi_binh_luan,
        "youtube_tim_cong_khai": youtube_tim_cong_khai}
@@ -997,6 +1111,18 @@ TOOLS = [
          "thuc_thi": {"type": "boolean", "description": "true mới GHI THẬT lên kênh. "
                       "Bỏ trống hoặc false là chỉ xem trước"}},
          "required": ["tim", "thay"]}},
+    {"name": "youtube_phu_de_them",
+     "description": "GHI LÊN KÊNH THẬT: gắn file phụ đề .srt/.vtt vào một video đã "
+                    "đăng, để người xem bật/tắt được và YouTube dịch tự động sang "
+                    "tiếng khác. Dùng cả cho video đăng từ lâu. Cần quyền "
+                    "youtube.force-ssl — thiếu thì công cụ báo ngay, không gọi API.",
+     "inputSchema": {"type": "object", "properties": {
+         "video": {"type": "string", "description": "mã video hoặc link"},
+         "tep": {"type": "string", "description": "đường dẫn file .srt/.vtt trên máy"},
+         "ngon_ngu": {"type": "string", "description": "mã ngôn ngữ của phụ đề, "
+                      "vd vi hoặc en. Mặc định vi"},
+         "ten": {"type": "string", "description": "tên hiện trong trình chọn phụ đề"}},
+         "required": ["video", "tep"]}},
     {"name": "youtube_anh_bia",
      "description": "GHI LÊN KÊNH THẬT: đặt ảnh bìa (thumbnail) mới cho một video, lấy "
                     "từ file ảnh trên máy. Tối đa 2 MB, định dạng jpg/png/gif/bmp. Kênh "

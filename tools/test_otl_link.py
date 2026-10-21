@@ -138,6 +138,100 @@ def main():
     chk("firmware + tool + giao diện khớp pc_link.json", r.returncode == 0,
         (r.stdout or "").strip().replace("\n", " | "))
 
+    print("9) nhịp tim có điều kiện — tác nhân tự động im thì NGỪNG nhấp")
+    # Đây là cái van thật của cả tầng lái T2: firmware chỉ biết "app còn sống".
+    # Nếu app cứ nhấp vô điều kiện thì AI treo mà gas vẫn cháy ở mức lệnh cuối.
+    HB = L.W_BASE + L.W_INDEX["hb"]
+    lk3 = L.RoasterLink({"port": "FAKE", "baud": 9600, "slave": 1, "enabled": True,
+                         "poll_hz": 20})
+    fk = FakeSerial(make_regs())
+    lk3._open = lambda: (setattr(lk3, "_ser", fk) or True)
+
+    def dem_hb():
+        return len([x for x in fk.log if x[0] == HB])
+
+    lk3.start(); time.sleep(0.4)
+    n0 = dem_hb(); time.sleep(0.3); n1 = dem_hb()
+    chk("thợ lái tay: vẫn nhấp nhịp như cũ", n1 > n0, f"{n0}→{n1}")
+
+    lk3.agent_open(60, stale=1.0)          # tác nhân tự động vào cầm lái
+    time.sleep(0.15)                       # chờ vòng poll rút lệnh khỏi hàng đợi
+    chk("khai agent=1 xuống máy", any(a == L.W_BASE + L.W_INDEX["agent"] and v == [1]
+                                      for a, v in fk.log), fk.log[-3:])
+    n2 = dem_hb(); time.sleep(0.3); lk3.agent_beat(); time.sleep(0.3); n3 = dem_hb()
+    chk("tác nhân còn tươi: vẫn nhấp", n3 > n2, f"{n2}→{n3}")
+
+    time.sleep(1.3)                        # im quá stale=1.0s
+    n4 = dem_hb(); time.sleep(0.4); n5 = dem_hb()
+    chk("tác nhân im → NGỪNG nhấp (firmware sẽ trả quyền)", n5 == n4, f"{n4}→{n5}")
+    chk("nói rõ vì sao ngừng", "im quá" in lk3.agent_state()["ly_do"],
+        lk3.agent_state()["ly_do"])
+
+    lk3.agent_beat()                       # tác nhân sống lại
+    time.sleep(0.3)
+    chk("tác nhân lên tiếng lại → nhấp tiếp", dem_hb() > n5, dem_hb())
+
+    # Firmware nhả quyền (pc_control tắt) → dọn lượt lái, app về nếp cũ
+    lk3.agent_open(60, stale=0.3)
+    time.sleep(0.6)                        # để nó rơi vào trạng thái ngừng nhấp
+    fk.regs[L.R_BASE + 13] = 0x03          # bỏ bit PCCTRL — máy đã về HMI
+    time.sleep(0.5)
+    chk("máy về HMI → xoá lượt lái", lk3.agent_state()["dang_lai"] is False,
+        lk3.agent_state())
+    n6 = dem_hb(); time.sleep(0.3)
+    chk("và nhấp lại bình thường cho lần sau", dem_hb() > n6, dem_hb())
+
+    # Hết hạn lượt lái cũng ngừng nhấp, dù tác nhân vẫn nói
+    fk.regs[L.R_BASE + 13] = 0x43
+    time.sleep(0.3)
+    lk3.agent_open(1, stale=30)            # hạn 1 giây, nhịp thoải mái
+    time.sleep(1.4)
+    lk3.agent_beat()                       # vẫn còn sống, nhưng HẾT HẠN
+    n7 = dem_hb(); time.sleep(0.4)
+    chk("hết hạn lượt lái → ngừng nhấp dù tác nhân còn nói", dem_hb() == n7,
+        lk3.agent_state()["ly_do"])
+    lk3.agent_close("xong")
+    lk3.stop()
+
+    # N) Lùi số ô đọc khi gặp firmware cũ — LÙI TỪNG NẤC, không rơi thẳng về gốc.
+    #    Rơi thẳng là app mất cân/profile/RoR hồ sơ trên máy VỐN CÓ những ô đó.
+    print("")
+    print("N) Firmware cu it o hon -> lui tung nac")
+
+    class LinkCut(L.RoasterLink):
+        """Máy giả chỉ có `co` ô đọc: xin nhiều hơn là ném ModbusError."""
+        def __init__(self, co):
+            self.co = co
+            self.doc = []
+            self._r_count = L.R_COUNT
+
+        def read_regs(self, addr, count):
+            self.doc.append(count)
+            if count > self.co:
+                raise L.ModbusError("exception 02 - dia chi khong co")
+            return [0] * count
+
+    def doc_lui(lk):
+        for _ in range(5):                   # mỗi vòng lùi đúng 1 nấc
+            try:
+                return L.RoasterLink._read_pclink(lk)
+            except L.ModbusError:
+                continue
+        return None
+
+    lk4 = LinkCut(22)                        # firmware 22 ô đang chạy ngoài xưởng
+    s4 = doc_lui(lk4)
+    chk("22 o: lui dung 1 nac roi doc duoc", lk4.doc == [L.R_COUNT, 22], lk4.doc)
+    chk("o may chua co tra None, khong phai 0",
+        s4 is not None and s4.get("vac_en") is None and s4.get("scale_tg") is not None,
+        (s4 or {}).get("vac_en"))
+
+    lk5 = LinkCut(16)                        # máy đời đầu, chỉ có khối gốc
+    s5 = doc_lui(lk5)
+    chk("16 o: lui qua 22 roi moi toi 16", lk5.doc == [L.R_COUNT, 22, 16], lk5.doc)
+    chk("khoi goc: can van bao None", s5 is not None and s5.get("scale") is None,
+        (s5 or {}).get("scale"))
+
     print("\n" + ("TẤT CẢ ĐẠT" if not fails else f"{len(fails)} MỤC HỎNG: {fails}"))
     return 1 if fails else 0
 

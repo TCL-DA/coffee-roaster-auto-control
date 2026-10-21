@@ -221,3 +221,12 @@ Mọi việc Photoshop / thiết kế / manual / banner của O Tesla lấy tài
 - Quy ước đầy đủ: `F:\Kho-anh\AGENTS.md`. Tra nguồn gốc từng ảnh: `F:\Kho-anh\_index.csv`.
 - Script gom lại khi có ảnh mới: `tools/gom_kho_anh.ps1` (chế độ COPY, không MOVE).
 - Repo này PUBLIC — **không commit ảnh từ kho vào repo**.
+
+
+## Ảnh và video dung lượng lớn — quy tắc chung cho toàn bộ AI (03/10/2026)
+
+- Áp dụng cho Codex, Claude Code và mọi AI làm việc trên máy. Ảnh/video nguồn, video tải về, bản dựng, render, frame trích xuất và tài sản media dung lượng lớn phải lưu ở `F:\Kho-anh`, không lưu lâu dài trong `F:\Project` hoặc repository mã nguồn.
+- Video và bộ tài sản YouTube: `F:\Kho-anh\10_Video\<ten-du-an>`. Ảnh theo nhóm nội dung trong kho; kết quả Photoshop vẫn theo `99_Xuat-Photoshop` và quy tắc sao chép ảnh xuất hiện có. Đọc `F:\Kho-anh\AGENTS.md` trước khi chọn nơi lưu.
+- Project giữ mã nguồn, cấu hình, tài liệu phát triển và asset nhỏ cần để ứng dụng chạy/đóng gói. Media lớn dùng đường dẫn đến kho; khi chuyển phải kiểm tra tham chiếu và giữ đường dẫn tương thích nếu cần. Không tự xoá/di chuyển hàng loạt tài sản khác.
+- `F:\Project\114_Youtube` đã chuyển vật lý sang `F:\Kho-anh\10_Video\114_Youtube`. Đường dẫn cũ là junction để phần mềm tiếp tục hoạt động; không tạo lại một bản dữ liệu độc lập tại vị trí cũ. Token/OAuth trong bộ này là dữ liệu riêng, không đưa vào repository công khai.
+- Không mặc định kho ảnh được Google Drive sao lưu: hiện `F:\Kho-anh` chưa đăng ký đồng bộ. Junction chỉ giữ tương thích đường dẫn; chưa xác nhận Google Drive có theo liên kết này hay không.

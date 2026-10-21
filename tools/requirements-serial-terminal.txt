@@ -1,0 +1,8 @@
+# Phụ thuộc runtime cho otl_serial_terminal.py + build PyInstaller
+# (tools/OTLSerialTerminal.spec). Ghim đúng bản đang cài trên máy build
+# 11/09/2026 — trước đây KHÔNG có file nào ghim phiên bản, nghĩa là build lại
+# trên máy khác/ngày khác có thể ra binary khác mà không ai biết đã đổi gì.
+pyserial==3.5
+customtkinter==5.2.2
+pillow==12.2.0
+darkdetect==0.8.0

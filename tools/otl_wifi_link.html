@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTL WiFi Link</title>
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABNCAYAAABZqmHQAAATK0lEQVR42u1de3SdVZX//fY5382rSQEpWqxgm5spArLQSBNeXjIKTCgKjCbOtOoCUXFQR0VdozMO7V0+mDXojPhYjg+EZcFHgorSR8qrXMC2KVYsINLmUREEbAFJmvd3ztnzx71felPS0rSlJE2/rpt25a57b+/5fXv/9t5n798B9vNSgAoYzWSsAsQ0uArf1RyI73vAF0zT6Vkjqq9Lkcd68ugQwgwhzVRc6KDqRaRPVZ+zqk9B9Ql2d28b832bmgxaW5VAOKgAjKJ//PGvRhS9JZBvg+pZCtQYciZIgIeIQagCqvAh9ILsNMBaAKthTI6bN+8orIcBEAjoywZAU4ua1iYEkKqAAFCk02/35GpjDOE9AMCpKoCA/N9T/yIJQCxAkIAIoIqg+meotoox3+fmzZsTIAj4AwuAKrEURJZ5M1uigiyDAkIgDM+de4o1ZpmInOK8j0FaHoJ8oPm7W6EaQIolBSIIIQwCuGEI+EpFR8dfJmIN8pKfukQFpCLLUHenNta26ExkGTJr1BIICpiSrVsf6o3jTFD9ubU2AqBhgqY4JQwh71SF+RtMnKo65xxUy0TkylLgdy6d/gABz7zjkv2ygKYWNa3N9LXf1XI7F9+IKnC568dGH2PRAwu5JbNGba6BrtjsRtLpqyORLFThQvCcogQ8YctQ9VbEgkQIYZn093+ETz898FIuiXu887MMb7pVj02V45e2HAtcD2JTjkgdng8Ol7U38tcJLyiJVkCaAR9XV18k5A9F5CjnvSNpp0V4mgBhrQ3ebxgy5pKKzZuf2hMIstvFXwqtW6WvT5XhblOSX3wQkRuAV8VRksKv6lbpf7Y204PU5haVZsBrJmOjrq5fxc6dEULYaK21qur0EHRJ47oo0jrnYhFZUOL9PTpv3nEE/O7cEXdDunJiK2zlDLSnXoVTh7djiAalo0sYoBCorYL4fvw87sHlG5vZM+qSMhnLXM7p7NnloaLiO2LM+533CkC5N7xzSESu6qwx1oew2YichS1bnkOeQ8LeAMAlAFe14Uwx+IEpxd/FO+BI2F3CYxdVwvohPBqGsWjDO7ipiBck+TBXXX2VEbkWgEwXXhgDgvf3mjlz3oZcTneNjjhOcpVHSZUg9dQWnVV6JG4wZVjoeuGhEHDn6zTAmXJY9egLDh/e0MifYIkKAGiWijwQPq6pebuo/khEZk8rXlCNrbWR8/6rUWfnZ3flA9nFHDQJLUFqU4ua3zdz+/pzeaHrwzWmDIYWVN35BhRYPwgPjxm2DD+uX63/hSwDsgzNLSpMeKGj485h504PIdxnrbWa94uHPC+AtN57Z8jPjMybd2aBD8z4FjBnThlSqZPY3f3bJNOlKpYAzJKhboW+hyl8nwaVfgCOUuSSFKpEiKpg/ABWcQcuXfcubts1VNXa2ij09l4n5L/4EFSnAS8o4K2Icd5vtF1ddQUuDKMWsAaFhSwrawxRtN5VV1/Fgq9SklnmE6/2hfwZRnCmejwSzYRVhSsyHxIwcQ+clKBRK7FuwUqtzzXQ5ZM2DQoINm50pqPjSq96BYHYkqKqsaq6yfoA4HQfi22Fu9w47701phY1NRcRCJrJ2FELSAjTVVffa4w5GwCc9zfbvr4r+Ne/9idRTXI3L1imVXwNvm9L0ex2IEABcOddrApnSmAVGEaMj61v5A+SckaBFwwBN1JdfYYhbxJj5mIylo2SYmKhGBerBuYXTfbRCsSHsNZ2dp6VrDmTf+i8eScHkU2aJ45grbUhhAeFXMQtWx5LQEiyYwCoX6X/zhS+rB4IMTy507epIlAgtgJwA/h26Tp8Mpfl6OtHQ9W5c18Nay/y3hPGTKZSNEU1InAMgBOUXGBEjtvPDF8JqIRwKru7H1ZAmCyEq6n5ghH5onPOkbRJCBVU/xa8vzzq7v5lMS80tUJam+lPW6EXmhRuEIujXf/uecENIuf78L7fXsInxgtVJ70fP/HEGX54+AKKXC3kSS4EzyIy3euw1Frrvb/adnZ+UTMZO2oBLp1eY0TOKX5jVfVGxJCE8z4bdXUtLS65JgtZd4vWyEzcJKVYEPfCETC7hqp2BqzG+Isfwfs3LOTdxSUMZDKTOy/I5TQJHfWUUyrCwMBNInKx8z6QlImSsfc+Z7u6zimsPaDz51c657ZakVc5VS0uJYeC2VhjxHt/qxkZ+QD//Oe/7coL9V/TMpyMb5tyXOZ2QFWhHMsLXlL5Mq06XNXeyOuSrBtkmAKRDJHJGOZy7pETT0ydMDKywZCnxKoqe8kJCqgl6UJ4zlo7l5s378gDMG/eySrycNiLrC6E8JgAi9jZ+WACQvEi1q3STzDC16gwfmQcXiBoK0HfjxvxB1y5/tMcTEDEFNkPZi7n4nT6XCtyuwshTJSUBQBDeCO7ux8RAHDkHIpA91Q2Ja3z3gl5QiDvc+n0e5nLucKTAapsalHT3sjrwhDOBfAXWwGjYWeoSkKgQNwLZypwKd6IXN1tWpOEqlMir8rlnAK0nZ13uxA6LSkTCVEV8BSBI+eM5gEEZoHES20hkrSxaoBqhRFZ5tPpa3XOnDIFBKS2NtNn1qjdcCHX+Bj1fhi56AhYBTy0kPUSJGHjHjiJcBpLsfa0FXphriEfIUF18u+kNTUJAQ/V9sK67b0LVVWQ+TUfLUWQMyZgPhIAdd7HYu1n4pKSq4oTi2QhN1zAJ0vX4u2uH9+KKmAgoOrOO4UC6wbgoTjaluK2ujb9j6S03dSik5uUt20jAAj5+D43HhTWXAqomInWvQEQqp5AatfnW5vpsUQltxS+/Xx+PO7HBxlh2JRAirNnEkZjhDCMYGfgS3W3a8uCZVqVWNJkNwQPDO1Hlc4AwP5+SaMi8bjPZBmQVRYI9vq65foISnCzrUS1Ky5tFyKluAcuqkKTfw3eUL9CF+Ua+HBmjdpjtu9fwW7bLPCY7dAkeZxslz0A9dY92CA114AkVG0/tUVPL52JG6OZuCDuhWdRaTvhBVOOk1GC++tW6IdzDfzZAf22hW3WQwuAvcljGkZLENsBLKxfrdfYcnwuDAHB7wxVk9K2RKiSFH5at0LfAUCUqCiECJxAGUdpMKREtwB3rTuPdyHLUFxKmTYAFPMClgLryc/XrdRNjPA9kxpb2i7wgioAMwOLWejv2OewUQB1+Hz9HXpf6MXHW9/FTZMJhINbh88yICltX8Cf6gDOUoc/RFWwKIqQwPwf1wcX74Bz/fD79OiDi3vhXN6qzjYzcW/dr/Ws1mb6Jaoy/QAockmZNWrbL+JD8Qs40w/hFimFjAGhwAskLPO1p4k/il7v+uBAVCHCz09frcdkk1LhdASgmBc2NrNn/XlsCiNYbiogOoG+ygm6IuuHEEdVOCZ4fBKkZu6BmbYAFPNCU4saBMzWAEBfvp5SEsYPQqG4CKqSa4Cf1gBAlcgy/OlIHAGgRuPRJO/lKmlSPQjgtafdiSMBvuJuaFIQUehFCoA5KD0S+c+wwb04g5+2AEjJNGhPmcwATOfrMACHATgMwOHrMACHATh8Tes8YBicDp85aQGIKjCsQHxQliQ/HRHbCgwfBoD5UsD6dXgBxBO0hTnclysJJoLk89/ND5zL5ybD5v8rbgGZe2CQZaDiF6Z07PDHAcdbIX4YQVKYX9eml41uyix55fYGXnEAcufAQ5XsxzfiXjxhKxBBEb9M7ofwEAQcYcrww/o2vQ7NkGSrcnpyAKkAuL6ZzzPGxcFhu61ElJdigDsgj+I9BgLqoK4f3szAv9Z/CHfU36avfaVaYWSSDEKEJaqy/p38HQZwhh/GSpOCRFWwUeV+PKryD1sGo4owpjsPMPELcFKCBpRifd1tek6uga5JD2533qRpfsoWQMiSnQAW1rfpAjeIBiqq1aN0n3A1GFKHP4B4c1SF9xe6tkPStU2BdX3wJoU5KMUdC9r0U63ktw5m1/ak6j7LkiGZ0l9PbgCw4UC9d90q3cQUrqVCQlHXNgnjRxBImGgGvlnXpqc+8zQ+9jg5dDC6tidf+1+WAdm8UMi2WQcmMzhmO7S1kf9Tv1wfQgl+ZCsw2/WNaYURKDTeARdV4fLZr8XJR/9CF+ca2LUnEEKev8KhBQCK9osPZLibX8g733SLnl5ShWXRETh7THdenhds3ANnK1AXVWJd3Uq9NNfAlcVCVRjTl6mlIAWqMfZx8FwKSO7zlzVA2VSouSQE++C7+Xi8FW/z/fhONGOPXduzpAQr6tr0cy/q2s7lggL05M3Bud9ba0smLEjCvFVJ4ceOfWo/y//PX5/MUU12EFqZ78LY+GG49efzSjeIKxhhpNC17cft2q7ANfW360/OuFUrk1A1GSws7ej4o/T0nB1Uf2yttYUmvrBXGnTAjlEAVHV7kTba3iIohfnZeq2tjQq+cPIPVxSaczNr1Lafz+9xCA1Q/MnOGDvNU+jalrgXzpThn0I57j/tV3rSzsHzvCIWt2/vMx0di733/yYFGTNV9bsvh+SH+gywbacLAp4MIehExi4JiFf11pi5rqfnfAKqtbV2iug3aLKQ6y7k2jCA+jCC1S+a5inq2qbFKbYCv1mwXJtyDXRLVIWqmuim2s7O//YhNAZgmzXGFCbsx3PZ4kNQkE+OApAqKXk8qD5rSEzEjynAkJ+qvFZnzy7nxo2x1tZGU0XANenOa7+If11/LhpdH6615TA0L+YFPwivHjNtBVrq2/SLWTIkQlXcKVTVNgKcHlTXjSdUpYBKfo23oa/v8UJ9Kj8nPJJO3xWJ/P1EB5BVNVhjJKjeIcb8Mx977LlE/gCZzOTf8MnlPJcolwDIZhnqV+pipPBdEhV+aBeNpOLB8wHcFvpw2QP/yOeKBs8tAbclnS6pBr4pIh8qFiQpmhO+3XZ1nT9mUn6kuvrzkbVfSSbl90UNJISwVVW/Yoy5lVu2PAtMGTUTIRgya4LNNdC95VZ9U1SBm6UUb4h79yBUNYwOP4JFDyzkb/MgiFPo6PT/SHX1R43I1wWwcf7GVmutjZ37bKqr66tjJuW1puYNQfXhghwB90mMgjQg4b1/FsDvlNysIWwTY4Yn04KHnUWwwacGB68/7sknB5O7N7mb33izHlk+C9fbclziehGghWyhWJCkFBYBg8HhyvZG3lgsSHJPJmMacjk3UlPzVgMsE/I4nxeq0jiEk0q7uzt2TsrvdENrIpFMYfjY7AMIAapqRcykly5WBUgE7x+IQ1hc2t3dMa4gSZsuYQpLNQaCG2fw3EBMGeCH8PX2tfh08RRO8n798+cfWxrCDWLteT6O22xnZ+OoWkqx9oPW1CwEudx5v1+6bgXimQrSxWqNiUIIzwbgA1Fn522jqreqaGptldbmZr9ghV4sKfxQLI7ckyCJH8DdMoD3rb2YT42jqUpfU/MtAVawo2Nl8nsW+0EA6tPp+4zImfuiBoKpqenmrYgBAA98wXZ0fHk8QZLaX+sJthQ32zK8ebeCJJWwYQRP+GG894ELeW9mjdrcOfBKcneqMLKLPJEa1U8E1SAFmSIc8pJuNE41ONVgRL7k0+mW5+fNm5mElkm+sPGdfGzwGbzV9+OmqAoWki9tjylh9METeJ0pwV0LVulHcw10IJX5UB0t45w5sKtqomFe+TZrrb3aOReTjIBpoXoL7NRIesQ5t7hk69aHxhUkadNPi8G1quC4QlUE7QzQDeAH7nFcufEKxokK5UvtiAVtajK2q2up977NWhupajwdAOBYQZKTrTH3a3X1ewriHKKFDo6mFjXt/8CvhRGcD+KZ3QqS9MHZcnzQvh7tpy/X43c3U/0i2Uq0toalAA3wHh/Cg9aYKOwmrT5EXZIt8F8ljPmpr66+pkjAUJKCXPtC3qF9ON2P4DfREbCquwiSKFQ9QEXpiMHIXu8JE9ClANjZ2TvoXKMPYVOUT6vjaQMCYDygLgQv1n7Op9MretPpWbvyQvsl/JPbigbXj/+LKmFQONcBithWIQoxNsUjeOvGRj6NpRjXBXHP2SGCzplzVCgru0VEGpz3vkDW06antEg7r8sDi1MdHe2ayVjJ5ZwWtk9Bav0K/QhLcB2AlJQAbgh38W9oXt/M5/e0v8yXTtERtLY2Cj09/ysiHy2oBjqQhtPl1CRVZ0VsAIZU9WO2s/P6UZlnVc3cA5NroHvLcj0jKseNIcbq9h58Es30L7W5z72pkyRyi3E6/W4hvyoix8N7OFUHUqaDRSgQBBDJH1nyTens/FRBhpgENMl+Mzdoae4yDu2tOAgncGKSEPAvzJlzVGVJyWdBXiHGHIkQEKsqVX1y2E2RptAhB0IhVE2FENZICFegu7sz4c5CW81oZ8d4Pn+/TlEqVv4eqK5+XYq8FMAiQ56QnCxUOF0IIZ/56ZQ/SSl/U1EAkeL6lgiCc6sllXo3Hn10IPESu4v3D9g5YsXWAABaWxvFPT1nGOA8VT0T5AkAXm1Exsr/TuUzxAC4/I7hMwT+KOT9cQht0fDw7/Hkk0Pcj4oBD4SO5pjfz59fCeBY59xsiBzFECpQqLVMuSsEryL9qvpc5P3TKCt7io8+2jfpBE2LzpKcDmQsB/Isyf8HsKUI1SPLrlsAAAAASUVORK5CYII=">
+<!--
+  Giao diện của tools/otl_wifi_link.py (máy chủ 127.0.0.1). Mở trực tiếp file này sẽ không chạy được:
+  trình duyệt không gửi được UDP dò module — phải chạy qua otl_wifi_link.py / OTL WiFi Link.exe.
+  BẢN GIAO KHÁCH: không ghi tên hãng module, thanh ghi, chữ "board"; sự cố ⇒ liên hệ O Tesla.
+  Bộ áo OTL V7: xám đá + đỏ, xanh dương ít (số BT, viền focus); không đen, không gradient, không bóng,
+  không vạch màu ở mép nút/thẻ. Chuyển động chỉ transform / opacity.
+-->
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M12 18.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM12 13c2 0 3.8.8 5.2 2.1l-1.9 1.9A4.7 4.7 0 0 0 12 15.6c-1.3 0-2.5.5-3.3 1.4l-1.9-1.9A7.4 7.4 0 0 1 12 13Zm0-5.2c3.4 0 6.5 1.3 8.8 3.6l-1.9 1.9A9.8 9.8 0 0 0 12 10.4c-2.7 0-5.1 1.1-6.9 2.9l-1.9-1.9A12.4 12.4 0 0 1 12 7.8Zm0-5.3c4.9 0 9.3 1.9 12.5 5.1l-1.9 1.9A15 15 0 0 0 12 5.1c-4.1 0-7.9 1.7-10.6 4.4L-.5 7.6C2.7 4.4 7.1 2.5 12 2.5Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M10.5 2a8.5 8.5 0 0 1 6.8 13.6l4.6 4.6-2 2-4.6-4.6A8.5 8.5 0 1 1 10.5 2Zm0 3a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><path d="M8 7V4.5A1.5 1.5 0 0 1 9.5 3h10A1.5 1.5 0 0 1 21 4.5v10a1.5 1.5 0 0 1-1.5 1.5H17V8.5A1.5 1.5 0 0 0 15.5 7H8Z"/><rect x="3" y="8.5" width="12.5" height="12.5" rx="1.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M9.5 15.6 19.1 6l2.1 2.1L9.5 19.8 2.8 13.1 4.9 11z"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2.5 23 21.5H1L12 2.5Zm-1.3 6.5h2.6l-.3 6.4h-2l-.3-6.4Zm1.3 8.2a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8Z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M7 10V7.5a5 5 0 0 1 10 0V10h1.5A1.5 1.5 0 0 1 20 11.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 20.5v-9A1.5 1.5 0 0 1 5.5 10H7Zm3 0h4V7.5a2 2 0 1 0-4 0V10Z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5Z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6.4 8.6 12 14.2l5.6-5.6 2.1 2.1-7.7 7.7-7.7-7.7z"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M8.6 17.6 14.2 12 8.6 6.4l2.1-2.1 7.7 7.7-7.7 7.7z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 5c5 0 9 3.6 10.5 7-1.5 3.4-5.5 7-10.5 7S3 15.4 1.5 12C3 8.6 7 5 12 5Zm0 3.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M10.5 2h3v10h-3z"/><path d="M6.3 5.3 8.4 7.4a6.5 6.5 0 1 0 7.2 0l2.1-2.1A9.5 9.5 0 1 1 6.3 5.3Z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.6 2.5 9.8 6l-2 2.6a13 13 0 0 0 7.6 7.6l2.6-2 3.5 3.2-1.6 3.3c-.3.6-1 1-1.7.9C9.6 20.8 3.2 14.4 2.4 5.8c-.1-.7.3-1.4.9-1.7z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M12 2.5a9.5 9.5 0 0 0-8.3 14.1L2.5 21.5l5-1.2A9.5 9.5 0 1 0 12 2.5Z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><path d="M2.5 5.5h19v1.2L12 13 2.5 6.7z"/><path d="M2.5 9.1 12 15.4l9.5-6.3v9.4h-19z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm-2.2 2.4A8 8 0 0 0 4.1 11h3.5c.2-2.5.9-4.8 2.2-6.6Zm4.4 0c1.3 1.8 2 4.1 2.2 6.6h3.5a8 8 0 0 0-5.7-6.6ZM12 4.5c-1.4 1.6-2.2 3.9-2.4 6.5h4.8c-.2-2.6-1-4.9-2.4-6.5ZM4.1 13a8 8 0 0 0 5.7 6.6c-1.3-1.8-2-4.1-2.2-6.6H4.1Zm5.5 0c.2 2.6 1 4.9 2.4 6.5 1.4-1.6 2.2-3.9 2.4-6.5H9.6Zm6.8 0c-.2 2.5-.9 4.8-2.2 6.6a8 8 0 0 0 5.7-6.6h-3.5Z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M5 2.5h9.5L20 8v13.5H5zm9 1.8V9h4.7z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm-.1 4.5c-2 0-3.5 1.2-3.7 3h2.4c.1-.6.6-1 1.3-1 .8 0 1.3.5 1.3 1.1 0 .6-.3.9-1.2 1.5-1 .6-1.5 1.3-1.4 2.6v.5h2.3v-.4c0-.7.3-1 1.2-1.6 1-.6 1.6-1.4 1.6-2.6 0-1.9-1.6-3.1-3.8-3.1Zm-.1 9.3a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8Z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M15 2.5 21.5 9l-2.1.7-3.6 3.6.4 4.6-1.6 1.6-4-4-5.1 5.1-1.5-1.5 5.1-5.1-4-4 1.6-1.6 4.6.4 3.6-3.6z"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <img class="mark" alt="OTL" src="data:image/png;base64,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">
+    <div>
+      <h1 data-i18n="app.title"></h1>
+      <p data-i18n="app.sub"></p>
+    </div>
+    <nav class="seg tabs" role="tablist" aria-label="View">
+      <button type="button" role="tab" data-view="main" aria-selected="true"><svg class="i"><use href="#i-wifi"/></svg><span data-i18n="tab.main"></span></button>
+      <button type="button" role="tab" data-view="help" aria-selected="false"><svg class="i"><use href="#i-help"/></svg><span data-i18n="tab.help"></span></button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="seg" role="group" aria-label="Language">
+      <button type="button" data-lang="vi">VI</button>
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="fr">FR</button>
+    </div>
+    <button class="btn ghost sm" id="quit" type="button"><svg class="i"><use href="#i-power"/></svg><span data-i18n="quit"></span></button>
+  </div>
+</header>
+
+<main class="layout view" id="view-main">
+  <!-- Cột trái: danh sách module -->
+  <aside class="col">
+    <section class="card enter" style="--k:0" aria-labelledby="t-list">
+      <div class="card-head">
+        <h2 id="t-list"><svg class="i"><use href="#i-wifi"/></svg><span data-i18n="list.title"></span></h2>
+        <span class="count num" id="count">0</span>
+      </div>
+      <button class="btn primary block" id="scan" type="button"></button>
+      <div class="prog" id="prog" aria-hidden="true"><i></i></div>
+      <div class="mods" id="mods"></div>
+      <div class="empty" id="empty" hidden>
+        <b data-i18n="empty.title"></b>
+        <ol><li data-i18n="empty.tip1"></li><li data-i18n="empty.tip2"></li><li data-i18n="empty.tip3"></li><li data-i18n="empty.tip4"></li></ol>
+      </div>
+      <details class="help">
+        <summary><svg class="i"><use href="#i-chev-r"/></svg><span data-i18n="lost.title"></span></summary>
+        <p data-i18n="lost.body"></p>
+      </details>
+    </section>
+
+    <section class="card co enter" style="--k:1" aria-labelledby="t-co">
+      <div class="co-head">
+        <img alt="" src="data:image/png;base64,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">
+        <div><h2 id="t-co" data-i18n="co.name"></h2><div class="muted" data-i18n="co.name2"></div></div>
+      </div>
+      <p class="co-help" data-i18n="co.help"></p>
+      <ul class="co-list">
+        <li><svg class="i"><use href="#i-phone"/></svg><a href="tel:+84936198938">0936 198 938</a><span class="muted">· +84 936 198 938</span></li>
+        <li><svg class="i"><use href="#i-chat"/></svg><a href="https://wa.me/84936198938" target="_blank" rel="noopener">WhatsApp</a><span class="muted">· +84 936 198 938</span></li>
+        <li><svg class="i"><use href="#i-mail"/></svg><a href="mailto:otlpro.com@gmail.com">otlpro.com@gmail.com</a></li>
+        <li><svg class="i"><use href="#i-globe"/></svg><a href="https://otlpro.com" target="_blank" rel="noopener">otlpro.com</a></li>
+      </ul>
+      <div class="co-ver muted">OTL WiFi Link · v1.4</div>
+    </section>
+
+    <section class="card enter" style="--k:2" aria-labelledby="t-rs">
+      <div class="card-head"><h2 id="t-rs"><svg class="i"><use href="#i-help"/></svg><span data-i18n="rs.title"></span></h2></div>
+      <p class="co-help" style="margin-top:0" data-i18n="rs.body"></p>
+      <div class="rs-act">
+        <button class="btn sm" id="diag-copy" type="button"><svg class="i"><use href="#i-copy"/></svg><span data-i18n="rs.copy"></span></button>
+        <button class="btn sm" id="diag-save" type="button"><svg class="i"><use href="#i-file"/></svg><span data-i18n="rs.save"></span></button>
+      </div>
+      <p class="co-help" data-i18n="rs.remote"></p>
+      <button class="btn ghost sm" id="tech-open" type="button"><svg class="i"><use href="#i-lock"/></svg><span data-i18n="rs.tech"></span></button>
+    </section>
+  </aside>
+
+  <!-- Cột phải: module đang chọn -->
+  <div class="col" id="detail">
+    <section class="card" id="setup" hidden aria-live="polite"></section>
+    <section class="card nosel" id="nosel">
+      <svg class="i"><use href="#i-search"/></svg>
+      <b data-i18n="nosel.title"></b>
+      <span data-i18n="nosel.body"></span>
+    </section>
+
+    <div class="col" id="sel" hidden>
+      <section class="card hero enter" style="--k:1" aria-labelledby="t-ip">
+        <div>
+          <div class="label" id="t-ip" data-i18n="hero.label"></div>
+          <div class="big num" id="h-ip">—</div>
+          <div class="chips" id="h-chips"></div>
+        </div>
+        <div class="hero-act">
+          <button class="btn sm" type="button" data-copy="ip"><svg class="i"><use href="#i-copy"/></svg><span data-i18n="copy"></span></button>
+          <button class="btn sm" type="button" id="pin" hidden><svg class="i"><use href="#i-pin"/></svg><span data-i18n="pin.btn"></span></button>
+        </div>
+      </section>
+
+      <section class="card enter" style="--k:2" id="auto" aria-live="polite"></section>
+
+      <div class="row2">
+        <section class="card enter" style="--k:2" aria-labelledby="t-art">
+          <div class="card-head"><h2 id="t-art" data-i18n="art.title"></h2></div>
+          <p class="where" data-i18n="art.where"></p>
+          <div class="kv">
+            <div class="kv-row"><span class="k" data-i18n="art.k_type">Type</span><span class="v">TCP</span>
+              <button class="btn ghost sm" type="button" data-copy="type" aria-label="Copy Type"><svg class="i"><use href="#i-copy"/></svg></button></div>
+            <div class="kv-row"><span class="k" data-i18n="art.k_host">Host</span><span class="v num" id="a-host">—</span>
+              <button class="btn ghost sm" type="button" data-copy="ip" aria-label="Copy Host"><svg class="i"><use href="#i-copy"/></svg></button></div>
+            <div class="kv-row"><span class="k" data-i18n="art.k_port">Port</span><span class="v num" id="a-port">8899</span>
+              <button class="btn ghost sm" type="button" data-copy="port" aria-label="Copy Port"><svg class="i"><use href="#i-copy"/></svg></button></div>
+            <div class="kv-row"><span class="k" data-i18n="art.k_dev">Device</span><span class="v num" id="a-dev">1</span>
+              <button class="btn ghost sm" type="button" data-copy="dev" aria-label="Copy Device"><svg class="i"><use href="#i-copy"/></svg></button></div>
+          </div>
+          <div class="temps">
+            <div class="temp bt"><div class="k">BT</div><div class="v num" id="t-bt">—</div></div>
+            <div class="temp et"><div class="k">ET</div><div class="v num" id="t-et">—</div></div>
+          </div>
+          <div class="test-row">
+            <button class="btn" type="button" id="test"></button>
+            <span class="muted" id="t-stat" role="status"></span>
+          </div>
+          <p class="note" data-i18n="art.note"></p>
+        </section>
+
+        <section class="card enter" style="--k:3" aria-labelledby="t-det">
+          <div class="card-head"><h2 id="t-det" data-i18n="det.title"></h2></div>
+          <dl class="info" id="info"></dl>
+          <div class="alert" id="ap-open" hidden><svg class="i"><use href="#i-warn"/></svg><span data-i18n="warn.ap_open"></span></div>
+        </section>
+      </div>
+
+      <section class="card enter" style="--k:4" id="guide" aria-labelledby="t-guide">
+        <div class="card-head"><h2 id="t-guide"><svg class="i"><use href="#i-help"/></svg><span data-i18n="g.title"></span></h2></div>
+        <ol class="steps">
+          <li><b data-i18n="g.s1t"></b><p data-i18n="g.s1"></p>
+            <a class="btn sm" href="https://artisan-scope.org/" target="_blank" rel="noopener"><svg class="i"><use href="#i-globe"/></svg><span data-i18n="g.s1b"></span></a></li>
+          <li><b data-i18n="g.s2t"></b><p data-i18n="g.s2"></p>
+            <a class="btn primary sm" id="aset-dl" href="#" download><svg class="i"><use href="#i-file"/></svg><span data-i18n="g.dl"></span></a>
+            <details class="aset-opts" id="aset-opts">
+              <summary><svg class="i"><use href="#i-chev-r"/></svg><span data-i18n="ao.title"></span><span class="muted" data-i18n="ao.sub"></span></summary>
+              <div class="ao-grid" id="ao-grid"></div>
+              <div class="ao-foot"><span class="muted" id="ao-sum"></span><button class="btn ghost sm" type="button" id="ao-reset"><span data-i18n="ao.reset"></span></button></div>
+            </details>
+            <p class="muted" style="margin-top:10px" data-i18n="g.or"></p>
+            <label class="drop" id="drop"><input type="file" accept=".aset" id="aset" hidden><svg class="i"><use href="#i-file"/></svg><span data-i18n="g.drop"></span></label>
+            <p class="aset-ok" id="aset-res" aria-live="polite"></p></li>
+          <li><b data-i18n="g.s3t"></b><p id="g-s3"></p></li>
+          <li><b data-i18n="g.s4t"></b><p data-i18n="g.s4"></p></li>
+        </ol>
+      </section>
+
+      <section class="card enter" style="--k:5" id="settings">
+        <button class="set-toggle" type="button" id="set-toggle" aria-expanded="false" aria-controls="set-body">
+          <h2 data-i18n="set.title"></h2><span class="muted" data-i18n="set.sub"></span>
+          <svg class="i chev"><use href="#i-chev"/></svg>
+        </button>
+        <div class="set-body" id="set-body">
+          <fieldset class="fs">
+            <legend data-i18n="set.ip"></legend>
+            <div class="seg" role="group" id="wan-seg">
+              <button type="button" data-wan="dhcp" data-i18n="set.dhcp"></button>
+              <button type="button" data-wan="static" data-i18n="set.static"></button>
+            </div>
+            <div class="fields">
+              <div class="field"><label for="f-ip" data-i18n="f.ip"></label><div class="box"><input id="f-ip" inputmode="decimal" autocomplete="off" spellcheck="false"></div><div class="err"></div></div>
+              <div class="field"><label for="f-mask" data-i18n="f.mask"></label><div class="box"><input id="f-mask" inputmode="decimal" autocomplete="off" spellcheck="false"></div><div class="err"></div></div>
+              <div class="field"><label for="f-gw" data-i18n="f.gw"></label><div class="box"><input id="f-gw" inputmode="decimal" autocomplete="off" spellcheck="false"></div><div class="err"></div></div>
+            </div>
+            <p class="helper" data-i18n="set.ip_help"></p>
+          </fieldset>
+
+          <fieldset class="fs">
+            <legend data-i18n="set.sta"></legend>
+            <div id="wifi-box">
+              <div class="wifi-head">
+                <button class="btn sm" id="wifi-scan" type="button"><span class="radar" aria-hidden="true"><svg class="i"><use href="#i-wifi"/></svg><i></i><i></i></span><span data-i18n="w.scan"></span></button>
+                <span class="muted" id="wifi-stat" aria-live="polite"></span>
+              </div>
+              <div class="wifi-list" id="wifi-list" role="listbox" aria-label="Wi-Fi"></div>
+            </div>
+            <div class="fields two">
+              <div class="field"><label for="f-ssid" data-i18n="f.sta_ssid"></label><div class="box"><input id="f-ssid" maxlength="32" autocomplete="off" spellcheck="false"></div><div class="err"></div></div>
+              <div class="field"><label for="f-skey" data-i18n="f.sta_key"></label><div class="box"><input id="f-skey" class="pw" type="password" maxlength="63" autocomplete="new-password">
+                <button class="eye" type="button" data-eye="f-skey"><svg class="i"><use href="#i-eye"/></svg></button></div><div class="err"></div></div>
+            </div>
+            <label class="check"><input type="checkbox" id="wifi-remember" checked><span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4.5"/></svg></span><span data-i18n="w.remember"></span></label>
+            <p class="key-src" id="key-src" aria-live="polite"></p>
+            <p class="helper" data-i18n="set.sta_help"></p>
+            <p class="helper warn-line"><svg class="i"><use href="#i-warn"/></svg><span data-i18n="w.risk"></span></p>
+          </fieldset>
+
+          <fieldset class="fs">
+            <legend data-i18n="set.ap"></legend>
+            <div class="fields two">
+              <div class="field"><label for="f-akey" data-i18n="f.ap_key"></label><div class="box"><input id="f-akey" class="pw" type="password" maxlength="63" autocomplete="new-password">
+                <button class="eye" type="button" data-eye="f-akey"><svg class="i"><use href="#i-eye"/></svg></button></div><div class="err"></div></div>
+            </div>
+            <p class="helper" data-i18n="set.ap_help"></p>
+          </fieldset>
+
+          <fieldset class="fs">
+            <legend data-i18n="set.mode"></legend>
+            <div class="seg" role="group" id="mode-seg">
+              <button type="button" data-mode="AP">AP</button>
+              <button type="button" data-mode="STA">STA</button>
+            </div>
+            <p class="helper" id="mode-help"></p>
+          </fieldset>
+
+          <div class="sum" id="sum" aria-live="polite"></div>
+          <div class="hold-wrap">
+            <button class="btn primary hold" type="button" id="apply" disabled><span class="fill"></span><span><svg class="i"><use href="#i-check"/></svg><span data-i18n="hold.btn"></span></span></button>
+            <span class="hold-hint" id="hold-hint" data-i18n="hold.hint"></span>
+          </div>
+          <div class="result" id="result" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="card" id="tech" hidden aria-labelledby="t-tech">
+        <div class="card-head"><h2 id="t-tech"><svg class="i"><use href="#i-lock"/></svg><span data-i18n="tc.title"></span></h2></div>
+        <fieldset class="fs" style="margin-top:0;padding-top:0;border:0">
+          <legend data-i18n="tc.baud"></legend>
+          <div class="seg" role="group" id="baud-seg"></div>
+          <p class="helper" data-i18n="tc.baud_help"></p>
+          <div class="test-row"><button class="btn sm" id="tc-baud" type="button"><span data-i18n="tc.baud_btn"></span></button><span class="muted" id="tc-baud-res"></span></div>
+        </fieldset>
+        <fieldset class="fs">
+          <legend data-i18n="tc.read"></legend>
+          <div class="fields four">
+            <div class="field"><label for="tc-id">ID</label><div class="box"><input id="tc-id" inputmode="numeric" value="1"></div></div>
+            <div class="field"><label for="tc-addr" data-i18n="tc.addr"></label><div class="box"><input id="tc-addr" inputmode="numeric" value="0"></div></div>
+            <div class="field"><label for="tc-count" data-i18n="tc.count"></label><div class="box"><input id="tc-count" inputmode="numeric" value="2"></div></div>
+            <button class="btn" id="tc-read" type="button"><span data-i18n="tc.read_btn"></span></button>
+          </div>
+          <pre class="out" id="tc-read-out"></pre>
+        </fieldset>
+        <fieldset class="fs">
+          <legend data-i18n="tc.at"></legend>
+          <div class="fields four" style="grid-template-columns:minmax(0,1fr) auto">
+            <div class="field"><label for="tc-cmd" class="sr">AT</label><div class="box"><input id="tc-cmd" spellcheck="false" autocomplete="off" placeholder="AT+UART"></div></div>
+            <button class="btn" id="tc-send" type="button"><span data-i18n="tc.at_btn"></span></button>
+          </div>
+          <pre class="out" id="tc-at-out"></pre>
+        </fieldset>
+      </section>
+    </div>
+  </div>
+</main>
+
+<main class="view help-view" id="view-help" hidden>
+  <aside class="help-toc">
+    <div class="card">
+      <h2 data-i18n="h.toc"></h2>
+      <nav class="toc" id="help-toc-list"></nav>
+      <a class="btn sm block" id="h-pdf" href="/guide.pdf" target="_blank" rel="noopener"><svg class="i"><use href="#i-file"/></svg><span data-i18n="h.pdf"></span></a>
+    </div>
+  </aside>
+  <article class="help-body" id="help-body"></article>
+</main>
+
+<div class="modal" id="tech-modal" hidden role="dialog" aria-modal="true" aria-labelledby="t-tm">
+  <div class="modal-box">
+    <h2 id="t-tm" data-i18n="tm.title"></h2>
+    <p class="co-help" data-i18n="tm.body"></p>
+    <div class="ch-row"><span class="muted" data-i18n="tm.ch"></span><b class="ch" id="tm-ch">—</b>
+      <button class="btn ghost sm" id="tm-copy" type="button" aria-label="Copy"><svg class="i"><use href="#i-copy"/></svg></button></div>
+    <div class="field"><label for="tm-code" data-i18n="tm.code"></label><textarea id="tm-code" spellcheck="false" autocomplete="off"></textarea><div class="err"></div></div>
+    <div class="modal-act"><button class="btn" id="tm-cancel" type="button"><span data-i18n="tm.cancel"></span></button>
+      <button class="btn primary" id="tm-ok" type="button"><span data-i18n="tm.ok"></span></button></div>
+  </div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="down" id="down" role="alert"><div><b data-i18n="down.title"></b><span data-i18n="down.body"></span></div></div>
+
+<script src="/i18n.js"></script>
+<script src="/motion.js"></script>
+<script src="/guide.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

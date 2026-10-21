@@ -72,6 +72,14 @@ CREATE TABLE IF NOT EXISTS orders(
   note        TEXT    DEFAULT '',
   created_at  TEXT    NOT NULL
 );
+-- Sổ "mẻ nào đã cộng bao nhiêu kg vào đơn nào". Có sổ này thì (1) chốt mẻ gọi đúp
+-- không cộng hai lần, (2) thợ sửa kg sau mẻ chỉnh lại ĐÚNG phần mẻ đó đã cộng.
+CREATE TABLE IF NOT EXISTS order_credits(
+  batch_id  INTEGER PRIMARY KEY,
+  order_id  INTEGER NOT NULL,
+  kg_out    REAL    NOT NULL,
+  ts        TEXT    NOT NULL
+);
 -- Cupping / chấm điểm (§3.2). Gắn LINH HOẠT: lot | batch | profile (§3.2#3).
 CREATE TABLE IF NOT EXISTS cuppings(
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -376,15 +384,20 @@ class InventoryDb:
         except Exception as e:
             return {"ok": False, "err": str(e)}
 
-    def order_progress(self, prof_no, kg_out):
+    def order_progress(self, prof_no, kg_out, batch_id=None):
         """Rang xong 1 mẻ hồ sơ prof_no → cộng vào đơn OPEN gần hạn nhất cùng hồ sơ.
-        Tự chuyển 'done' khi đủ. Không có đơn khớp → bỏ qua (rang tự do)."""
+        Tự chuyển 'done' khi đủ. Không có đơn khớp → bỏ qua (rang tự do).
+        Có batch_id thì ghi sổ order_credits: cùng mẻ gọi lại không cộng lần hai."""
         kg_out = _f(kg_out)
         pno = _i(prof_no)
+        bid = _i(batch_id)
         if kg_out <= 0 or pno <= 0:
             return {"ok": False, "err": "thiếu hồ sơ/kg"}
         try:
             with self._lock:
+                if bid and self._con.execute(
+                        "SELECT 1 FROM order_credits WHERE batch_id=?", (bid,)).fetchone():
+                    return {"ok": True, "matched": True, "skipped": True}
                 row = self._con.execute(
                     "SELECT id,qty_kg,roasted_kg FROM orders WHERE status='open' AND "
                     "prof_no=? ORDER BY (due_date=''), due_date ASC, id ASC LIMIT 1",
@@ -396,9 +409,76 @@ class InventoryDb:
                 self._con.execute(
                     "UPDATE orders SET roasted_kg=?, status=? WHERE id=?",
                     (round(new_out, 2), "done" if done else "open", row["id"]))
+                if bid:
+                    self._con.execute(
+                        "INSERT INTO order_credits(batch_id,order_id,kg_out,ts) VALUES(?,?,?,?)",
+                        (bid, row["id"], round(kg_out, 2), _now()))
                 self._con.commit()
             return {"ok": True, "matched": True, "order_id": row["id"], "done": done}
         except Exception as e:
+            return {"ok": False, "err": str(e)}
+
+    def rebase_batch(self, batch_id, kg_in, kg_out, user=""):
+        """Thợ sửa khối lượng SAU mẻ → đưa KHO và ĐƠN về đúng số thật.
+
+        Lúc chốt mẻ app chưa có số kg nên trừ kho/cộng đơn theo định mức. Hàm này
+        tính CHÊNH LỆCH với sổ đang có của chính mẻ đó rồi ghi đúng một dòng điều
+        chỉnh, nên gọi lại cùng số là không làm gì (idempotent) — không bao giờ trừ
+        hay cộng hai lần. Dòng điều chỉnh kho giữ kind='me' + batch_id để
+        batch_economics (đọc −SUM theo mẻ) ra đúng số mới.
+        Mẻ chưa từng trừ kho / chưa từng cộng đơn thì KHÔNG tự tạo mới: lúc chốt đã
+        không có lô đang mở hay đơn khớp, bây giờ gắn bừa là sai sổ."""
+        bid = _i(batch_id)
+        kg_in = _f(kg_in)
+        kg_out = _f(kg_out)
+        if bid <= 0 or kg_in <= 0:
+            return {"ok": False, "err": "thiếu mẻ/kg"}
+        out = {"ok": True, "stock": None, "order": None}
+        try:
+            with self._lock:
+                first = self._con.execute(
+                    "SELECT lot_id FROM lot_movements WHERE batch_id=? AND kind='me' "
+                    "ORDER BY id LIMIT 1", (bid,)).fetchone()
+                if first:
+                    da_tru = -_f(self._con.execute(
+                        "SELECT COALESCE(SUM(kg),0) FROM lot_movements "
+                        "WHERE batch_id=? AND kind='me'", (bid,)).fetchone()[0])
+                    delta = round(kg_in - da_tru, 3)
+                    if abs(delta) >= 0.001:
+                        self._con.execute(
+                            "INSERT INTO lot_movements(lot_id,ts,kind,kg,batch_id,note,user)"
+                            " VALUES(?,?, 'me', ?, ?, ?, ?)",
+                            (first["lot_id"], _now(), -delta, bid,
+                             "điều chỉnh theo kg thợ nhập sau mẻ", str(user)[:40]))
+                    out["stock"] = {"lot_id": first["lot_id"], "delta_kg": delta}
+                cr = self._con.execute(
+                    "SELECT order_id, kg_out FROM order_credits WHERE batch_id=?",
+                    (bid,)).fetchone()
+                if cr and kg_out > 0:
+                    d_out = round(kg_out - _f(cr["kg_out"]), 2)
+                    if abs(d_out) >= 0.01:
+                        o = self._con.execute(
+                            "SELECT qty_kg, roasted_kg, status FROM orders WHERE id=?",
+                            (cr["order_id"],)).fetchone()
+                        if o:
+                            new_out = max(0.0, round(_f(o["roasted_kg"]) + d_out, 2))
+                            status = o["status"]
+                            if status in ("open", "done"):      # đơn đã huỷ thì giữ nguyên
+                                status = "done" if new_out >= _f(o["qty_kg"]) > 0 else "open"
+                            self._con.execute(
+                                "UPDATE orders SET roasted_kg=?, status=? WHERE id=?",
+                                (new_out, status, cr["order_id"]))
+                        self._con.execute(
+                            "UPDATE order_credits SET kg_out=?, ts=? WHERE batch_id=?",
+                            (round(kg_out, 2), _now(), bid))
+                    out["order"] = {"order_id": cr["order_id"], "delta_kg": d_out}
+                self._con.commit()
+            if out["stock"] or out["order"]:
+                self._log("[KHO] mẻ #%s chỉnh theo kg thật: kho %s · đơn %s",
+                          bid, out["stock"], out["order"])
+            return out
+        except Exception as e:
+            self._log("[KHO] chỉnh kho/đơn theo kg lỗi: %s", e)
             return {"ok": False, "err": str(e)}
 
     def orders_list(self, status=None, n=100):
@@ -481,6 +561,10 @@ class InventoryDb:
         if target not in ("lot", "batch", "profile"):
             return {"ok": False, "err": "target phải là lot/batch/profile"}
         flavors = d.get("flavors")
+        # Quá dài thì TỪ CHỐI cho giao diện báo, không cắt lặng lẽ rồi vẫn trả ok —
+        # thợ tưởng đã lưu đủ mà mất nửa ghi chú (review 14/09 RF-08). UI giới hạn 400.
+        if len(str(d.get("notes") or "")) > 400:
+            return {"ok": False, "err": "ghi chú dài quá 400 ký tự"}
         try:
             with self._lock:
                 cur = self._con.execute(

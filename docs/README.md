@@ -19,6 +19,7 @@ vẫn nằm ở thư mục gốc vì công cụ cần đọc chúng ở đó.
 - [analysis-autotuning-theory.md](analysis/analysis-autotuning-theory.md)
 
 ## plan/ — Kế hoạch, roadmap, redesign
+- [Quy trình kiểm thử phát hành OTL Roast Lab](plan/plan-kiem-thu-phat-hanh-roast-lab.md) — các tầng kiểm thử, ca trọng yếu và tiêu chí phát hành.
 - [plan-roadmap-quocte-ai.md](plan/plan-roadmap-quocte-ai.md)
 - [plan-preheat-redesign.md](plan/plan-preheat-redesign.md)
 - [plan-auto-profile-replay.md](plan/plan-auto-profile-replay.md)
