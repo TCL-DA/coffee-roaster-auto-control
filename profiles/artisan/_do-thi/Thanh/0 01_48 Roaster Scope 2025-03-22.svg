@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="462" viewBox="0 0 960 462" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<rect x="0.5" y="0.5" width="959" height="461" rx="10" fill="#FFFFFF" stroke="#D6D3D1"/>
+<text x="64" y="30" font-size="17" font-weight="700" fill="#292524">0 01_48 Roaster Scope 2025-03-22</text>
+<text x="64" y="50" font-size="12" fill="#78716C">2025-03-22 13:24</text>
+<line x1="615" y1="26" x2="633" y2="26" stroke="#1565C0" stroke-width="3" stroke-linecap="round"/>
+<text x="639" y="30" font-size="12" fill="#292524">BT hạt</text>
+<line x1="696" y1="26" x2="714" y2="26" stroke="#C62828" stroke-width="2" stroke-linecap="round"/>
+<text x="720" y="30" font-size="12" fill="#292524">ET khí</text>
+<line x1="776" y1="26" x2="794" y2="26" stroke="#7C3AED" stroke-width="1.6" stroke-linecap="round"/>
+<text x="800" y="30" font-size="12" fill="#292524">RoR °C/phút</text>
+<line x1="64" y1="428.0" x2="890" y2="428.0" stroke="#E7E5E4"/>
+<text x="56" y="432.0" font-size="11" text-anchor="end" fill="#78716C">0</text>
+<line x1="64" y1="378.0" x2="890" y2="378.0" stroke="#E7E5E4"/>
+<text x="56" y="382.0" font-size="11" text-anchor="end" fill="#78716C">50</text>
+<line x1="64" y1="328.0" x2="890" y2="328.0" stroke="#E7E5E4"/>
+<text x="56" y="332.0" font-size="11" text-anchor="end" fill="#78716C">100</text>
+<line x1="64" y1="278.0" x2="890" y2="278.0" stroke="#E7E5E4"/>
+<text x="56" y="282.0" font-size="11" text-anchor="end" fill="#78716C">150</text>
+<line x1="64" y1="228.0" x2="890" y2="228.0" stroke="#E7E5E4"/>
+<text x="56" y="232.0" font-size="11" text-anchor="end" fill="#78716C">200</text>
+<line x1="64" y1="178.0" x2="890" y2="178.0" stroke="#E7E5E4"/>
+<text x="56" y="182.0" font-size="11" text-anchor="end" fill="#78716C">250</text>
+<line x1="64" y1="128.0" x2="890" y2="128.0" stroke="#E7E5E4"/>
+<text x="56" y="132.0" font-size="11" text-anchor="end" fill="#78716C">300</text>
+<text x="898" y="432.0" font-size="11" fill="#7C3AED">0</text>
+<text x="898" y="372.0" font-size="11" fill="#7C3AED">10</text>
+<text x="898" y="312.0" font-size="11" fill="#7C3AED">20</text>
+<text x="898" y="252.0" font-size="11" fill="#7C3AED">30</text>
+<text x="898" y="192.0" font-size="11" fill="#7C3AED">40</text>
+<text x="898" y="132.0" font-size="11" fill="#7C3AED">50</text>
+<text x="56" y="122" font-size="11" text-anchor="end" fill="#78716C">°C</text>
+<text x="896" y="122" font-size="11" fill="#7C3AED">°C/ph</text>
+<line x1="-89.0" y1="128" x2="-89.0" y2="428" stroke="#E7E5E4"/>
+<text x="-89.0" y="446" font-size="11" text-anchor="middle" fill="#78716C">-1</text>
+<line x1="217.0" y1="128" x2="217.0" y2="428" stroke="#E7E5E4"/>
+<text x="217.0" y="446" font-size="11" text-anchor="middle" fill="#78716C">0</text>
+<line x1="522.9" y1="128" x2="522.9" y2="428" stroke="#E7E5E4"/>
+<text x="522.9" y="446" font-size="11" text-anchor="middle" fill="#78716C">1</text>
+<line x1="828.8" y1="128" x2="828.8" y2="428" stroke="#E7E5E4"/>
+<text x="828.8" y="446" font-size="11" text-anchor="middle" fill="#78716C">2</text>
+<text x="890" y="446" font-size="11" text-anchor="end" fill="#78716C">phút</text>
+<rect x="64" y="128" width="826" height="300" fill="none" stroke="#D6D3D1"/>
+<polyline fill="none" stroke="#C62828" stroke-width="2" stroke-linejoin="round" points="64.0,389.3 75.5,389.3 86.9,389.3 98.4,389.3 109.9,389.3 121.4,389.3 132.8,389.3 144.3,389.3 155.8,389.3 167.3,389.3 178.7,389.3 190.2,389.3 201.7,389.3 213.1,389.3 224.6,389.3 236.1,389.3 247.6,389.3 259.0,389.3 270.5,389.3 282.0,389.3 293.4,389.3 304.9,389.3 316.4,389.3 327.9,389.3 339.3,389.3 350.8,389.3 362.3,389.3 373.7,389.3 385.2,389.3 396.7,389.3 408.2,389.3 419.6,389.3 431.1,389.3 442.6,389.3 454.1,389.3 465.5,389.3 477.0,389.3 488.5,389.3 499.9,389.3 511.4,389.3 522.9,389.3 534.4,389.3 545.8,389.3 557.3,389.3 568.8,389.3 580.3,389.3 591.7,389.3 603.2,389.3 614.7,389.3 626.1,389.3 637.6,389.3 649.1,389.3 660.6,389.3 672.0,389.3 683.5,389.3 695.0,389.3 706.4,389.3 717.9,389.3 729.4,389.3 740.9,389.3 752.3,389.3 763.8,389.3 775.3,389.3 786.8,389.3 798.2,389.3 809.7,389.3 821.2,389.3 832.6,389.3 844.1,389.3 855.6,389.3 867.1,389.3 878.5,389.3 890.0,389.3"/>
+<polyline fill="none" stroke="#7C3AED" stroke-width="1.6" stroke-linejoin="round" stroke-opacity="0.9" points="614.7,245.8 626.1,181.8 637.6,128.0 649.1,128.0 660.6,128.0 672.0,128.0 683.5,128.0 695.0,128.0 706.4,128.0 717.9,128.0 729.4,128.0 740.9,128.0 752.3,128.0 763.8,128.0"/>
+<polyline fill="none" stroke="#1565C0" stroke-width="3" stroke-linejoin="round" points="64.0,218.0 75.5,204.0 86.9,191.0 98.4,180.0 109.9,174.0 121.4,177.0 132.8,191.0 144.3,205.0 155.8,219.0 167.3,233.0 178.7,247.0 190.2,259.0 201.7,262.0 213.1,250.0 224.6,255.0 236.1,267.0 247.6,279.0 259.0,293.0 270.5,305.0 282.0,317.0 293.4,330.0 304.9,343.0 316.4,348.0 327.9,353.0 339.3,353.0 350.8,353.0 362.3,353.0 373.7,353.0 385.2,353.0 396.7,353.0 408.2,353.0 419.6,353.0 431.1,353.0 442.6,353.0 454.1,353.0 465.5,353.0 477.0,353.0 488.5,353.0 499.9,353.0 511.4,353.0 522.9,353.0 534.4,353.0 545.8,353.0 557.3,353.0 568.8,348.0 580.3,344.0 591.7,343.0 603.2,341.0 614.7,337.0 626.1,331.0 637.6,328.0 649.1,317.0 660.6,310.0 672.0,301.0 683.5,291.0 695.0,282.0 706.4,271.0 717.9,263.0 729.4,252.0 740.9,243.0 752.3,234.0 763.8,230.0 775.3,229.0 786.8,229.0 798.2,229.0 809.7,229.0 821.2,229.0 832.6,229.0 844.1,229.0 855.6,229.0 867.1,229.0 878.5,229.0 890.0,229.0"/>
+<line x1="217.0" y1="86" x2="217.0" y2="428" stroke="#78716C" stroke-dasharray="4 4"/>
+<circle cx="217.0" cy="247.0" r="4.5" fill="#1565C0" stroke="#fff" stroke-width="1.5"/>
+<text x="222.0" y="70" font-size="12" font-weight="700" text-anchor="start" fill="#292524">CHARGE</text>
+<text x="222.0" y="84" font-size="11" text-anchor="start" fill="#78716C">0:00 · 181.0°C</text>
+<line x1="557.6" y1="86" x2="557.6" y2="428" stroke="#78716C" stroke-dasharray="4 4"/>
+<circle cx="557.6" cy="353.0" r="4.5" fill="#1565C0" stroke="#fff" stroke-width="1.5"/>
+<text x="562.6" y="70" font-size="12" font-weight="700" text-anchor="start" fill="#292524">TP</text>
+<text x="562.6" y="84" font-size="11" text-anchor="start" fill="#78716C">1:07 · 75.0°C</text>
+<line x1="710.3" y1="86" x2="710.3" y2="428" stroke="#78716C" stroke-dasharray="4 4"/>
+<circle cx="710.3" cy="268.0" r="4.5" fill="#1565C0" stroke="#fff" stroke-width="1.5"/>
+<text x="715.3" y="70" font-size="12" font-weight="700" text-anchor="start" fill="#292524">DRY</text>
+<text x="715.3" y="84" font-size="11" text-anchor="start" fill="#78716C">1:37 · 160.0°C</text>
+<line x1="760.0" y1="114" x2="760.0" y2="428" stroke="#78716C" stroke-dasharray="4 4"/>
+<circle cx="760.0" cy="231.0" r="4.5" fill="#1565C0" stroke="#fff" stroke-width="1.5"/>
+<text x="765.0" y="98" font-size="12" font-weight="700" text-anchor="start" fill="#292524">FCs</text>
+<text x="765.0" y="112" font-size="11" text-anchor="start" fill="#78716C">1:47 · 197.0°C</text>
+<line x1="771.5" y1="114" x2="771.5" y2="428" stroke="#78716C" stroke-dasharray="4 4"/>
+<circle cx="771.5" cy="229.0" r="4.5" fill="#1565C0" stroke="#fff" stroke-width="1.5"/>
+<text x="776.5" y="98" font-size="12" font-weight="700" text-anchor="start" fill="#292524">DROP</text>
+<text x="776.5" y="112" font-size="11" text-anchor="start" fill="#78716C">1:49 · 199.0°C</text>
+</svg>

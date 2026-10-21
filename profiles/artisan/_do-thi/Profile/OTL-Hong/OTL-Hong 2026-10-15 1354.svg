@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="462" viewBox="0 0 960 462" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<rect x="0.5" y="0.5" width="959" height="461" rx="10" fill="#FFFFFF" stroke="#D6D3D1"/>
+<text x="64" y="30" font-size="17" font-weight="700" fill="#292524">OTL-Hong 2026-10-15 1354</text>
+<text x="64" y="50" font-size="12" fill="#78716C">2026-10-15 13:54</text>
+<line x1="615" y1="26" x2="633" y2="26" stroke="#1565C0" stroke-width="3" stroke-linecap="round"/>
+<text x="639" y="30" font-size="12" fill="#292524">BT hạt</text>
+<line x1="696" y1="26" x2="714" y2="26" stroke="#C62828" stroke-width="2" stroke-linecap="round"/>
+<text x="720" y="30" font-size="12" fill="#292524">ET khí</text>
+<line x1="776" y1="26" x2="794" y2="26" stroke="#7C3AED" stroke-width="1.6" stroke-linecap="round"/>
+<text x="800" y="30" font-size="12" fill="#292524">RoR °C/phút</text>
+<line x1="64" y1="428.0" x2="890" y2="428.0" stroke="#E7E5E4"/>
+<text x="56" y="432.0" font-size="11" text-anchor="end" fill="#78716C">0</text>
+<line x1="64" y1="368.0" x2="890" y2="368.0" stroke="#E7E5E4"/>
+<text x="56" y="372.0" font-size="11" text-anchor="end" fill="#78716C">50</text>
+<line x1="64" y1="308.0" x2="890" y2="308.0" stroke="#E7E5E4"/>
+<text x="56" y="312.0" font-size="11" text-anchor="end" fill="#78716C">100</text>
+<line x1="64" y1="248.0" x2="890" y2="248.0" stroke="#E7E5E4"/>
+<text x="56" y="252.0" font-size="11" text-anchor="end" fill="#78716C">150</text>
+<line x1="64" y1="188.0" x2="890" y2="188.0" stroke="#E7E5E4"/>
+<text x="56" y="192.0" font-size="11" text-anchor="end" fill="#78716C">200</text>
+<line x1="64" y1="128.0" x2="890" y2="128.0" stroke="#E7E5E4"/>
+<text x="56" y="132.0" font-size="11" text-anchor="end" fill="#78716C">250</text>
+<text x="898" y="432.0" font-size="11" fill="#7C3AED">0</text>
+<text x="898" y="332.0" font-size="11" fill="#7C3AED">10</text>
+<text x="898" y="232.0" font-size="11" fill="#7C3AED">20</text>
+<text x="898" y="132.0" font-size="11" fill="#7C3AED">30</text>
+<text x="56" y="122" font-size="11" text-anchor="end" fill="#78716C">°C</text>
+<text x="896" y="122" font-size="11" fill="#7C3AED">°C/ph</text>
+<line x1="64.0" y1="128" x2="64.0" y2="428" stroke="#E7E5E4"/>
+<text x="64.0" y="446" font-size="11" text-anchor="middle" fill="#78716C">0</text>
+<text x="890" y="446" font-size="11" text-anchor="end" fill="#78716C">phút</text>
+<rect x="64" y="128" width="826" height="300" fill="none" stroke="#D6D3D1"/>
+<polyline fill="none" stroke="#C62828" stroke-width="2" stroke-linejoin="round" points="64.0,183.1 107.5,180.4 136.5,179.0 179.9,176.8 223.4,174.3 252.4,173.1 281.4,171.8 324.8,170.1 368.3,168.2 411.8,166.5 455.3,165.0 498.7,163.2 527.7,162.4 571.2,161.0 600.2,160.3 643.6,158.7 672.6,157.8 701.6,156.8 745.1,155.7 788.6,154.4 817.5,153.7 846.5,153.0 890.0,152.1"/>
+<polyline fill="none" stroke="#1565C0" stroke-width="3" stroke-linejoin="round" points="64.0,204.6 107.5,201.9 136.5,200.4 179.9,197.7 223.4,195.1 252.4,193.3 281.4,192.1 324.8,190.2 368.3,188.1 411.8,186.6 455.3,184.6 498.7,183.0 527.7,182.0 571.2,180.2 600.2,179.4 643.6,177.9 672.6,176.8 701.6,175.8 745.1,174.0 788.6,172.3 817.5,171.6 846.5,170.8 890.0,170.1"/>
+</svg>

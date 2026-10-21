@@ -14,6 +14,14 @@ Toàn bộ profile Artisan (`.alog`) gom từ các máy làm việc của O Tesl
 
 Theo năm rang: **2020** 9 · **2021** 13 · **2022** 35 · **2023** 71 · **2024** 71 · **2025** 17 · **2026** 134 (không tính file thiếu ngày).
 
+## Xem giản đồ ngay trên GitHub
+
+Mỗi profile có sẵn **giản đồ rang** (BT, ET, RoR, dải gas, các mốc CHARGE · TP · DRY · FCs · DROP). Bấm **📈 Xem** ở bảng thư mục bên dưới để xem cả thư mục trên một trang, không cần cài Artisan.
+
+<p align="center"><img src="_do-thi/1-3kg-auto-QN/1.5kg-xo-honey-14p46.svg" width="100%" alt="Giản đồ mẫu: BT, ET, RoR, gas và các mốc rang"></p>
+
+Giản đồ sinh tự động bằng [`tools/ve_gian_do_alog.py`](../../tools/ve_gian_do_alog.py) — thêm profile mới thì chạy lại lệnh đó.
+
 ## Dùng thế nào
 
 - **Mở trong Artisan:** `File → Open` chọn tệp `.alog`.
@@ -25,61 +33,61 @@ Theo năm rang: **2020** 9 · **2021** 13 · **2022** 35 · **2023** 71 · **202
 
 Thư mục đánh số (`45_120_Auto`, `74_CMS_60`…) là thư mục theo **công trình / máy**, đặt tên như lúc làm. `_tu-du-an/` là profile nằm rải trong các dự án khác, `_o-D/` và `_may-ca-nhan/` là bản chỉ có ở ổ D và thư mục người dùng.
 
-| Thư mục | Số profile | Từ | Đến | Có DROP | DROP trung vị |
-|:--|--:|:--|:--|--:|--:|
-| `1-3kg-auto-QN` | 2 | 2022-11-28 | 2022-11-28 | 2 | 12:44 |
-| `10-OTL-03-EU-JPN` | 3 | 2023-04-13 | 2023-04-13 | 3 | 11:09 |
-| `11_OTL-03-Auto-LanBuonMe` | 5 | 2023-04-17 | 2023-04-18 | 5 | 13:36 |
-| `18_5kg_QN_APHAP` | 1 | 2023-05-24 | 2023-05-24 | 1 | 13:39 |
-| `2-1kg-auto-TB` | 3 | 2022-11-29 | 2022-11-29 | 3 | 12:24 |
-| `20_Test_Multi` | 9 | 2023-05-30 | 2023-06-12 | 9 | 13:24 |
-| `22_OTL-03-Dalat` | 1 | 2023-06-07 | 2023-06-07 | 1 | 12:00 |
-| `26-1KG-AUTO-PHILIPPINES` | 7 | 2023-06-27 | 2023-06-29 | 7 | 14:56 |
-| `28_OTL_03_VN_DAKNONG` | 1 | 2023-07-07 | 2023-07-07 | 1 | 13:06 |
-| `3-auto-15kg-ductrong` | 1 | 2022-12-31 | 2022-12-31 | 1 | 8:37 |
-| `31_OTL_01_EU_CYLINDER` | 2 | 2023-08-29 | 2023-08-29 | 2 | 13:33 |
-| `32_OTL_06_EU_AUTO` | 1 | 2023-07-18 | 2023-07-18 | 1 | 11:44 |
-| `33_OTL_01_EU` | 4 | 2023-07-21 | 2023-08-16 | 4 | 13:09 |
-| `34_OTL_03_HCM` | 1 | 2023-08-10 | 2023-08-10 | 1 | 13:46 |
-| `35_OTL_01_EU_PRESSURE` | 1 | 2023-09-10 | 2023-09-10 | 1 | 12:30 |
-| `38_OTL_06_HAO_HN` | 1 | 2023-10-03 | 2023-10-03 | 1 | 13:51 |
-| `4-12kg-athang` | 2 | 2023-01-06 | 2023-01-06 | 2 | 13:32 |
-| `4-1kg-lamha-MrsQuynh` | 2 | 2023-01-05 | 2023-01-05 | 2 | 15:29 |
-| `40_OTL-06-AUS-CYLINDER` | 1 | 2023-10-08 | 2023-10-08 | 1 | 11:42 |
-| `41_OTL-30-AUS-CYLINDER` | 1 | 2023-10-09 | 2023-10-09 | 1 | 16:50 |
-| `44_120KG_Manual` | 2 | 2023-10-28 | 2023-10-28 | 1 | 13:13 |
-| `45_120_Auto` | 11 | 2023-12-11 | 2023-12-20 | 11 | 12:22 |
-| `46_3KG_EU_171123` | 2 | 2023-11-17 | 2023-11-17 | 2 | 13:36 |
-| `5-3kg-eu-auto` | 8 | 2023-01-12 | 2023-02-07 | 8 | 15:57 |
-| `51_OTL_03_EU_DALAT` | 1 | 2024-01-02 | 2024-01-02 | 1 | 12:52 |
-| `52_OTL_01_AROVIN` | 2 | 2024-01-04 | 2024-01-04 | 2 | 16:06 |
-| `55_1KG_VU_DAO` | 1 | 2024-01-24 | 2024-01-24 | 1 | 11:58 |
-| `56_OTL-01-Phil-310124` | 2 | 2024-01-31 | 2024-01-31 | 2 | 15:22 |
-| `57_OTL_AUTO` | 5 | 2024-04-07 | 2025-03-22 | 5 | 10:13 |
-| `58_OTL_6KG_AUTO` | 1 | 2024-03-14 | 2024-03-14 | 1 | 15:14 |
-| `60_1kg_aTrung` | 5 | 2024-03-17 | 2024-03-17 | 5 | 15:12 |
-| `61_1kg_LongXuyen` | 2 | 2024-03-21 | 2024-03-21 | 2 | 15:56 |
-| `62_Auto_test` | 3 | 2024-04-03 | 2024-04-11 | 3 | 9:20 |
-| `63_3KG_EU` | 1 | 2024-04-03 | 2024-04-03 | 1 | 14:24 |
-| `64_15kg_Phil` | 3 | 2024-04-10 | 2024-04-10 | 3 | 12:40 |
-| `65_OTL_06_Auto_Mr_Park` | 2 | 2024-04-11 | 2024-04-11 | 2 | 14:00 |
-| `68_OTL_03_Auto` | 2 | 2024-05-12 | 2024-09-07 | 2 | 6:41 |
-| `69_OTL_AUTO_15` | 1 | 2024-06-19 | 2024-06-19 | 1 | 13:21 |
-| `70_OTL_VIXI` | 4 | 2024-06-21 | 2024-06-22 | 4 | 13:29 |
-| `72_VCC_1KG` | 4 | 2024-07-29 | 2024-07-29 | 4 | 13:42 |
-| `74_CMS_60` | 7 | 2024-08-23 | 2024-08-26 | 6 | 9:30 |
-| `8-Artisan-CMS` | 3 | 2023-04-19 | 2023-04-21 | 3 | 16:18 |
-| `89_OTL_01_Intenso_25` | 1 | 2025-10-10 | 2025-10-10 | 1 | 15:06 |
-| `94_120_SIE` | 2 | 2026-03-05 | 2026-03-05 | 2 | 16:12 |
-| `95_OTL-01-EU` | 1 | 2026-04-22 | 2026-04-22 | 1 | 16:43 |
-| `99_CMS_12A_0826` | 2 | 2026-08-13 | 2026-08-13 | 2 | 20:49 |
-| `_may-ca-nhan` | 2 | 2024-05-03 | 2026-10-17 | 1 | 12:40 |
-| `_o-D` | 3 | 2024-07-29 | 2025-05-07 | 2 | 15:30 |
-| `_tu-du-an` | 19 | 2021-11-22 | 2026-10-12 | 16 | 13:26 |
-| `Linh-tinh` | 45 | 2020-07-15 | 2024-03-06 | 42 | 13:16 |
-| `Profile` | 53 | 2026-10-14 | 2026-10-17 | 15 | 16:39 |
-| `Profile-aDanh` | 11 |  |  | 0 |  |
-| `Thanh` | 101 | 2024-09-10 | 2026-08-13 | 81 | 7:16 |
+| Thư mục | Số profile | Từ | Đến | Có DROP | DROP trung vị | Giản đồ |
+|:--|--:|:--|:--|--:|--:|:--|
+| `1-3kg-auto-QN` | 2 | 2022-11-28 | 2022-11-28 | 2 | 12:44 | [📈 Xem](1-3kg-auto-QN/XEM-GIAN-DO.md) |
+| `10-OTL-03-EU-JPN` | 3 | 2023-04-13 | 2023-04-13 | 3 | 11:09 | [📈 Xem](10-OTL-03-EU-JPN/XEM-GIAN-DO.md) |
+| `11_OTL-03-Auto-LanBuonMe` | 5 | 2023-04-17 | 2023-04-18 | 5 | 13:36 | [📈 Xem](11_OTL-03-Auto-LanBuonMe/XEM-GIAN-DO.md) |
+| `18_5kg_QN_APHAP` | 1 | 2023-05-24 | 2023-05-24 | 1 | 13:39 | [📈 Xem](18_5kg_QN_APHAP/XEM-GIAN-DO.md) |
+| `2-1kg-auto-TB` | 3 | 2022-11-29 | 2022-11-29 | 3 | 12:24 | [📈 Xem](2-1kg-auto-TB/XEM-GIAN-DO.md) |
+| `20_Test_Multi` | 9 | 2023-05-30 | 2023-06-12 | 9 | 13:24 | [📈 Xem](20_Test_Multi/XEM-GIAN-DO.md) |
+| `22_OTL-03-Dalat` | 1 | 2023-06-07 | 2023-06-07 | 1 | 12:00 | [📈 Xem](22_OTL-03-Dalat/XEM-GIAN-DO.md) |
+| `26-1KG-AUTO-PHILIPPINES` | 7 | 2023-06-27 | 2023-06-29 | 7 | 14:56 | [📈 Xem](26-1KG-AUTO-PHILIPPINES/XEM-GIAN-DO.md) |
+| `28_OTL_03_VN_DAKNONG` | 1 | 2023-07-07 | 2023-07-07 | 1 | 13:06 | [📈 Xem](28_OTL_03_VN_DAKNONG/XEM-GIAN-DO.md) |
+| `3-auto-15kg-ductrong` | 1 | 2022-12-31 | 2022-12-31 | 1 | 8:37 | [📈 Xem](3-auto-15kg-ductrong/XEM-GIAN-DO.md) |
+| `31_OTL_01_EU_CYLINDER` | 2 | 2023-08-29 | 2023-08-29 | 2 | 13:33 | [📈 Xem](31_OTL_01_EU_CYLINDER/XEM-GIAN-DO.md) |
+| `32_OTL_06_EU_AUTO` | 1 | 2023-07-18 | 2023-07-18 | 1 | 11:44 | [📈 Xem](32_OTL_06_EU_AUTO/XEM-GIAN-DO.md) |
+| `33_OTL_01_EU` | 4 | 2023-07-21 | 2023-08-16 | 4 | 13:09 | [📈 Xem](33_OTL_01_EU/XEM-GIAN-DO.md) |
+| `34_OTL_03_HCM` | 1 | 2023-08-10 | 2023-08-10 | 1 | 13:46 | [📈 Xem](34_OTL_03_HCM/XEM-GIAN-DO.md) |
+| `35_OTL_01_EU_PRESSURE` | 1 | 2023-09-10 | 2023-09-10 | 1 | 12:30 | [📈 Xem](35_OTL_01_EU_PRESSURE/XEM-GIAN-DO.md) |
+| `38_OTL_06_HAO_HN` | 1 | 2023-10-03 | 2023-10-03 | 1 | 13:51 | [📈 Xem](38_OTL_06_HAO_HN/XEM-GIAN-DO.md) |
+| `4-12kg-athang` | 2 | 2023-01-06 | 2023-01-06 | 2 | 13:32 | [📈 Xem](4-12kg-athang/XEM-GIAN-DO.md) |
+| `4-1kg-lamha-MrsQuynh` | 2 | 2023-01-05 | 2023-01-05 | 2 | 15:29 | [📈 Xem](4-1kg-lamha-MrsQuynh/XEM-GIAN-DO.md) |
+| `40_OTL-06-AUS-CYLINDER` | 1 | 2023-10-08 | 2023-10-08 | 1 | 11:42 | [📈 Xem](40_OTL-06-AUS-CYLINDER/XEM-GIAN-DO.md) |
+| `41_OTL-30-AUS-CYLINDER` | 1 | 2023-10-09 | 2023-10-09 | 1 | 16:50 | [📈 Xem](41_OTL-30-AUS-CYLINDER/XEM-GIAN-DO.md) |
+| `44_120KG_Manual` | 2 | 2023-10-28 | 2023-10-28 | 1 | 13:13 | [📈 Xem](44_120KG_Manual/XEM-GIAN-DO.md) |
+| `45_120_Auto` | 11 | 2023-12-11 | 2023-12-20 | 11 | 12:22 | [📈 Xem](45_120_Auto/XEM-GIAN-DO.md) |
+| `46_3KG_EU_171123` | 2 | 2023-11-17 | 2023-11-17 | 2 | 13:36 | [📈 Xem](46_3KG_EU_171123/XEM-GIAN-DO.md) |
+| `5-3kg-eu-auto` | 8 | 2023-01-12 | 2023-02-07 | 8 | 15:57 | [📈 Xem](5-3kg-eu-auto/XEM-GIAN-DO.md) |
+| `51_OTL_03_EU_DALAT` | 1 | 2024-01-02 | 2024-01-02 | 1 | 12:52 | [📈 Xem](51_OTL_03_EU_DALAT/XEM-GIAN-DO.md) |
+| `52_OTL_01_AROVIN` | 2 | 2024-01-04 | 2024-01-04 | 2 | 16:06 | [📈 Xem](52_OTL_01_AROVIN/XEM-GIAN-DO.md) |
+| `55_1KG_VU_DAO` | 1 | 2024-01-24 | 2024-01-24 | 1 | 11:58 | [📈 Xem](55_1KG_VU_DAO/XEM-GIAN-DO.md) |
+| `56_OTL-01-Phil-310124` | 2 | 2024-01-31 | 2024-01-31 | 2 | 15:22 | [📈 Xem](56_OTL-01-Phil-310124/XEM-GIAN-DO.md) |
+| `57_OTL_AUTO` | 5 | 2024-04-07 | 2025-03-22 | 5 | 10:13 | [📈 Xem](57_OTL_AUTO/XEM-GIAN-DO.md) |
+| `58_OTL_6KG_AUTO` | 1 | 2024-03-14 | 2024-03-14 | 1 | 15:14 | [📈 Xem](58_OTL_6KG_AUTO/XEM-GIAN-DO.md) |
+| `60_1kg_aTrung` | 5 | 2024-03-17 | 2024-03-17 | 5 | 15:12 | [📈 Xem](60_1kg_aTrung/XEM-GIAN-DO.md) |
+| `61_1kg_LongXuyen` | 2 | 2024-03-21 | 2024-03-21 | 2 | 15:56 | [📈 Xem](61_1kg_LongXuyen/XEM-GIAN-DO.md) |
+| `62_Auto_test` | 3 | 2024-04-03 | 2024-04-11 | 3 | 9:20 | [📈 Xem](62_Auto_test/XEM-GIAN-DO.md) |
+| `63_3KG_EU` | 1 | 2024-04-03 | 2024-04-03 | 1 | 14:24 | [📈 Xem](63_3KG_EU/XEM-GIAN-DO.md) |
+| `64_15kg_Phil` | 3 | 2024-04-10 | 2024-04-10 | 3 | 12:40 | [📈 Xem](64_15kg_Phil/XEM-GIAN-DO.md) |
+| `65_OTL_06_Auto_Mr_Park` | 2 | 2024-04-11 | 2024-04-11 | 2 | 14:00 | [📈 Xem](65_OTL_06_Auto_Mr_Park/XEM-GIAN-DO.md) |
+| `68_OTL_03_Auto` | 2 | 2024-05-12 | 2024-09-07 | 2 | 6:41 | [📈 Xem](68_OTL_03_Auto/XEM-GIAN-DO.md) |
+| `69_OTL_AUTO_15` | 1 | 2024-06-19 | 2024-06-19 | 1 | 13:21 | [📈 Xem](69_OTL_AUTO_15/XEM-GIAN-DO.md) |
+| `70_OTL_VIXI` | 4 | 2024-06-21 | 2024-06-22 | 4 | 13:29 | [📈 Xem](70_OTL_VIXI/XEM-GIAN-DO.md) |
+| `72_VCC_1KG` | 4 | 2024-07-29 | 2024-07-29 | 4 | 13:42 | [📈 Xem](72_VCC_1KG/XEM-GIAN-DO.md) |
+| `74_CMS_60` | 7 | 2024-08-23 | 2024-08-26 | 6 | 9:30 | [📈 Xem](74_CMS_60/XEM-GIAN-DO.md) |
+| `8-Artisan-CMS` | 3 | 2023-04-19 | 2023-04-21 | 3 | 16:18 | [📈 Xem](8-Artisan-CMS/XEM-GIAN-DO.md) |
+| `89_OTL_01_Intenso_25` | 1 | 2025-10-10 | 2025-10-10 | 1 | 15:06 | [📈 Xem](89_OTL_01_Intenso_25/XEM-GIAN-DO.md) |
+| `94_120_SIE` | 2 | 2026-03-05 | 2026-03-05 | 2 | 16:12 | [📈 Xem](94_120_SIE/XEM-GIAN-DO.md) |
+| `95_OTL-01-EU` | 1 | 2026-04-22 | 2026-04-22 | 1 | 16:43 | [📈 Xem](95_OTL-01-EU/XEM-GIAN-DO.md) |
+| `99_CMS_12A_0826` | 2 | 2026-08-13 | 2026-08-13 | 2 | 20:49 | [📈 Xem](99_CMS_12A_0826/XEM-GIAN-DO.md) |
+| `_may-ca-nhan` | 2 | 2024-05-03 | 2026-10-17 | 1 | 12:40 | [📈 Xem](_may-ca-nhan/XEM-GIAN-DO.md) |
+| `_o-D` | 3 | 2024-07-29 | 2025-05-07 | 2 | 15:30 | [📈 Xem](_o-D/XEM-GIAN-DO.md) |
+| `_tu-du-an` | 19 | 2021-11-22 | 2026-10-12 | 16 | 13:26 | [📈 Xem](_tu-du-an/XEM-GIAN-DO.md) |
+| `Linh-tinh` | 45 | 2020-07-15 | 2024-03-06 | 42 | 13:16 | [📈 Xem](Linh-tinh/XEM-GIAN-DO.md) |
+| `Profile` | 53 | 2026-10-14 | 2026-10-17 | 15 | 16:39 | [📈 Xem](Profile/XEM-GIAN-DO.md) |
+| `Profile-aDanh` | 11 |  |  | 0 |  | [📈 Xem](Profile-aDanh/XEM-GIAN-DO.md) |
+| `Thanh` | 101 | 2024-09-10 | 2026-08-13 | 81 | 7:16 | [📈 Xem](Thanh/XEM-GIAN-DO.md) |
 
 ## File hỏng không đưa lên
 

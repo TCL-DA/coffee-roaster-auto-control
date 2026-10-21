@@ -7,6 +7,13 @@
 > Dùng case này để **thử máy trước khi giao** và **thử lại sau mỗi lần sửa bộ bù gas / đọc hồ sơ**.
 > Mục 5 là bài thử, làm được trên bàn thử (board + panel + mạch giả lập BT/ET), không cần lửa.
 
+<p align="center"><img src="CS-01_minh-hoa.svg" width="100%"
+alt="Minh hoạ: BT kẹt 216,5 °C trong vùng mù 0,6 °C dưới nhiệt xả; chốt cứu bơm gas khi ETA quá 30 s và mẻ tự DROP"></p>
+
+<p align="center"><sub>Minh hoạ cơ chế (không phải số đo). Đường xám: bản cũ — hồ sơ vuốt gas về 0 %, BT tiệm cận 216,5 °C
+trong vùng mù nên bộ bù không kích, máy không bao giờ xả. Đường xanh: từ v3.10.0 — ETA vượt 30 s thì bơm gas,
+sau ~30 s trễ nhiệt BT lấy lại đà và máy tự DROP. Vẽ lại: <code>python docs/case-study/ve_minh_hoa_cs01.py</code>.</sub></p>
+
 ---
 
 ## 1. Khách báo gì

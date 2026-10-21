@@ -18,6 +18,12 @@
   <sub>Firmware for OTL industrial coffee roasters · <a href="https://www.otlpro.com/">O Tesla Industry Co., Ltd</a></sub>
 </p>
 
+<p align="center">
+  <a href="https://github.com/TCL-DA/coffee-roaster-auto-control/releases"><b>📦 Các bản phát hành</b></a> &nbsp;·&nbsp;
+  <a href="profiles/artisan/README.md"><b>📈 Giản đồ rang (361 profile Artisan)</b></a> &nbsp;·&nbsp;
+  <a href="docs/case-study/README.md"><b>🧪 Case study lỗi máy thật</b></a>
+</p>
+
 ---
 
 ## Máy này làm gì
@@ -164,6 +170,9 @@ data/        nội dung thẻ SD
 | [FEATURES.md](FEATURES.md) | Mô tả từng tính năng |
 | [CLAUDE.md](CLAUDE.md) | Quy ước, giới hạn phần cứng, luật an toàn khi sửa code |
 | [docs/](docs/) | Hồ sơ cấu hình từng máy, ghi chú cân chỉnh, tài liệu tra cứu |
+| [Giản đồ rang](profiles/artisan/README.md) | Kho profile Artisan: giản đồ xem ngay trên GitHub, bảng tra `INDEX.csv` |
+| [Case study](docs/case-study/README.md) | Lỗi gặp trên máy khách: nguyên nhân, bản sửa, bài thử nghiệm thu |
+| [Releases](https://github.com/TCL-DA/coffee-roaster-auto-control/releases) | Lịch sử phiên bản firmware v3.5 → nay, ghi chú thay đổi từng bản |
 
 ---
 

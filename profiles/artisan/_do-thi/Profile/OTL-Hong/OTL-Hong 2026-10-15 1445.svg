@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="462" viewBox="0 0 960 462" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<rect x="0.5" y="0.5" width="959" height="461" rx="10" fill="#FFFFFF" stroke="#D6D3D1"/>
+<text x="64" y="30" font-size="17" font-weight="700" fill="#292524">OTL-Hong 2026-10-15 1445</text>
+<text x="64" y="50" font-size="12" fill="#78716C">2026-10-15 14:45</text>
+<line x1="615" y1="26" x2="633" y2="26" stroke="#1565C0" stroke-width="3" stroke-linecap="round"/>
+<text x="639" y="30" font-size="12" fill="#292524">BT hạt</text>
+<line x1="696" y1="26" x2="714" y2="26" stroke="#C62828" stroke-width="2" stroke-linecap="round"/>
+<text x="720" y="30" font-size="12" fill="#292524">ET khí</text>
+<line x1="776" y1="26" x2="794" y2="26" stroke="#7C3AED" stroke-width="1.6" stroke-linecap="round"/>
+<text x="800" y="30" font-size="12" fill="#292524">RoR °C/phút</text>
+<line x1="64" y1="428.0" x2="890" y2="428.0" stroke="#E7E5E4"/>
+<text x="56" y="432.0" font-size="11" text-anchor="end" fill="#78716C">0</text>
+<line x1="64" y1="368.0" x2="890" y2="368.0" stroke="#E7E5E4"/>
+<text x="56" y="372.0" font-size="11" text-anchor="end" fill="#78716C">50</text>
+<line x1="64" y1="308.0" x2="890" y2="308.0" stroke="#E7E5E4"/>
+<text x="56" y="312.0" font-size="11" text-anchor="end" fill="#78716C">100</text>
+<line x1="64" y1="248.0" x2="890" y2="248.0" stroke="#E7E5E4"/>
+<text x="56" y="252.0" font-size="11" text-anchor="end" fill="#78716C">150</text>
+<line x1="64" y1="188.0" x2="890" y2="188.0" stroke="#E7E5E4"/>
+<text x="56" y="192.0" font-size="11" text-anchor="end" fill="#78716C">200</text>
+<line x1="64" y1="128.0" x2="890" y2="128.0" stroke="#E7E5E4"/>
+<text x="56" y="132.0" font-size="11" text-anchor="end" fill="#78716C">250</text>
+<text x="898" y="432.0" font-size="11" fill="#7C3AED">0</text>
+<text x="898" y="282.0" font-size="11" fill="#7C3AED">10</text>
+<text x="898" y="132.0" font-size="11" fill="#7C3AED">20</text>
+<text x="56" y="122" font-size="11" text-anchor="end" fill="#78716C">°C</text>
+<text x="896" y="122" font-size="11" fill="#7C3AED">°C/ph</text>
+<line x1="64.0" y1="128" x2="64.0" y2="428" stroke="#E7E5E4"/>
+<text x="64.0" y="446" font-size="11" text-anchor="middle" fill="#78716C">0</text>
+<line x1="398.9" y1="128" x2="398.9" y2="428" stroke="#E7E5E4"/>
+<text x="398.9" y="446" font-size="11" text-anchor="middle" fill="#78716C">1</text>
+<line x1="733.7" y1="128" x2="733.7" y2="428" stroke="#E7E5E4"/>
+<text x="733.7" y="446" font-size="11" text-anchor="middle" fill="#78716C">2</text>
+<text x="890" y="446" font-size="11" text-anchor="end" fill="#78716C">phút</text>
+<rect x="64" y="128" width="826" height="300" fill="none" stroke="#D6D3D1"/>
+<polyline fill="none" stroke="#C62828" stroke-width="2" stroke-linejoin="round" points="64.0,158.5 75.2,159.7 86.3,160.6 103.1,161.5 114.2,161.1 131.0,160.0 147.7,159.0 158.9,158.7 170.0,159.7 186.8,162.4 197.9,164.2 214.7,166.2 225.9,166.3 242.6,164.8 259.3,163.2 276.1,162.9 292.8,163.9 304.0,165.7 320.7,168.9 331.9,170.6 348.6,171.6 359.8,171.6 376.5,170.8 393.3,170.5 410.0,170.1 426.8,170.0 443.5,170.6 454.7,171.2 465.8,171.8 477.0,172.0 488.2,172.3 504.9,173.0 516.1,173.6 532.8,174.3 544.0,174.6 560.7,174.8 577.5,175.4 594.2,176.0 605.4,176.4 616.5,176.4 633.3,176.8 650.0,177.8 666.8,178.5 683.5,179.0 700.2,180.3 711.4,180.9 728.1,181.3 744.9,181.3 756.1,181.5 772.8,182.2 784.0,182.5 795.1,182.5 811.9,182.5 823.0,183.1 834.2,183.6 845.4,184.0 862.1,184.6 873.3,184.8 890.0,185.2"/>
+<polyline fill="none" stroke="#1565C0" stroke-width="3" stroke-linejoin="round" points="64.0,171.0 75.2,171.4 86.3,171.8 103.1,172.0 114.2,172.2 131.0,172.0 147.7,171.6 158.9,171.6 170.0,171.9 186.8,173.1 197.9,174.2 214.7,175.4 225.9,175.6 242.6,175.4 259.3,174.8 276.1,174.7 292.8,175.2 304.0,176.0 320.7,177.6 331.9,178.6 348.6,179.6 359.8,179.8 376.5,180.1 393.3,180.2 410.0,180.2 426.8,180.3 443.5,180.7 454.7,181.2 465.8,181.4 477.0,181.5 488.2,181.9 504.9,182.5 516.1,183.0 532.8,183.4 544.0,183.7 560.7,184.2 577.5,184.6 594.2,185.1 605.4,185.4 616.5,185.7 633.3,186.0 650.0,186.6 666.8,187.0 683.5,187.4 700.2,188.1 711.4,188.6 728.1,189.2 744.9,189.6 756.1,189.8 772.8,190.3 784.0,190.5 795.1,190.8 811.9,191.0 823.0,191.4 834.2,191.7 845.4,192.1 862.1,192.6 873.3,192.9 890.0,193.4"/>
+</svg>
