@@ -360,6 +360,7 @@ void preheat() {
             SerialComputer.print(" kdH=");       SerialComputer.println(phKdH);
         }
         gasPercent = 0;
+        wuIgniteRetry = 0;                    // đếm lần mồi từ đầu mỗi lượt làm nóng
         nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 0);
 
         if (bt10 > targetBT10 + preheatTargetBand10()) {
@@ -400,8 +401,7 @@ void preheat() {
         airflowPercent = PH_AIR_PURGE;
         if (now - phIgniteMs >= PH_PURGE_MS) {
             wuState = WU_IGNITE;
-            wuIgniteTimer = 0;
-            wuIgniteRetry = 0;
+            wuIgniteTimer = 0;                // wuIgniteRetry KHÔNG xoá ở đây: lần mồi lại cũng đi qua bước thổi sạch này
             nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 1);  // mở van gas
             if (enPhDebug) SerialComputer.println("PRE_IGNITE: done -> IGNITE");
         }
@@ -486,9 +486,13 @@ void preheat() {
                 nodeHMI.writeSingleRegister(WU_W - 1, 0);
                 return;
             }
-            nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 1);
+            // 21/10/2026 (panel + board thật, không lửa): trước đây đóng rồi MỞ LẠI gas ngay trong cùng nhịp -> van không
+            // đóng thật, khí chưa cháy không được thổi đi, chốt 75 s (PC_Link) thấy gas mở liền và cắt kèm 414. Nay đóng gas,
+            // quay về PRE_IGNITE thổi sạch PH_PURGE_MS rồi mới mồi lần sau.
+            wuState = WU_PRE_IGNITE;
+            phIgniteMs = 0;
             setMachineStatus(STT_PREHEAT_IGNITE_RETRY);
-            if (enPhDebug) { SerialComputer.print("PREHEAT-PID: retry #"); SerialComputer.println(wuIgniteRetry + 1); }
+            if (enPhDebug) { SerialComputer.print("PREHEAT-PID: purge then retry #"); SerialComputer.println(wuIgniteRetry + 1); }
         }
     }
     break;

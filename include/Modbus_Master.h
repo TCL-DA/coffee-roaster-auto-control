@@ -711,8 +711,12 @@ void rwHMI_1(){
         //Xoá 1 profile (kết hợp macro trên HMI)
         if(DEL_PROFILE_R != DEL_PROFILE_R_CP){//Kiểm tra thay đổi của biến HMI
             DEL_PROFILE_R = DEL_PROFILE_R_CP;
-            //Xoá file chỉ định
-            sdLogStartEn = 1;
+            //Xoá file của ô đang chọn. 21/10/2026: trước đây bật sdLogStartEn -> tạo lại tệp rỗng mang ngày HÔM NAY (ô đã
+            //xoá vẫn hiện ngày), còn nhánh xoá thật sdDeleteProfileEn không ai gọi.
+            if(START_BTN_R == 0 && SELECT_FILE_R > 0){
+                sdDeleteProfileIndex = SELECT_FILE_R;
+                sdDeleteProfileEn = 1;
+            }
             nodeHMI.writeSingleRegister(DEL_PROFILE_W-1, 0); delay(1);
         }
 

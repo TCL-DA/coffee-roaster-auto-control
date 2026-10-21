@@ -1228,9 +1228,11 @@ void preheat() {
                 nodeHMI.writeSingleRegister(WU_W - 1, 0);
                 return;
             }
-            nodeHMI.writeSingleRegister(START_GAS_BTN_W - 1, 1);
+            // 21/10/2026: không mở lại gas ngay — thổi sạch buồng đốt (PRE_IGNITE) rồi mới mồi lần sau (như Preheat_PID.h)
+            phPreIgniteStartMs = 0;
+            wuState = WU_PRE_IGNITE;
             setMachineStatus(STT_PREHEAT_IGNITE_RETRY);
-            if (enDebug) { SerialComputer.print("PREHEAT: retry #"); SerialComputer.println(wuDeadTimer+1); }
+            if (enDebug) { SerialComputer.print("PREHEAT: purge then retry #"); SerialComputer.println(wuDeadTimer+1); }
         }
     }
     break;

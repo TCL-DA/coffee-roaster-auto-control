@@ -381,8 +381,10 @@ static uint32_t sttLastFlushMs = 0;
 inline bool sttIsOperatorVisible(uint16_t code) {
     if (code == 1) return true;
     if (code == 2 || code == 3 || code == 8 || code == 9 || code == 11) return true;
+    // 21/10/2026 (soát panel thật): 24 (mồi hụt, đang thổi sạch rồi mồi lại), 51 (đã dừng), 53 (chờ BT nguội rồi mới bật
+    // gas), 54 (chờ lửa) nay LÊN HMI — trước đây bị lọc, thợ thấy "52 Đang reset dữ liệu" suốt lúc máy tắt gas chờ nguội.
     if (code >= 21 && code <= 44) {
-        if (code == 22 || code == 24 || code == 35 || code == 36 ||
+        if (code == 22 || code == 35 || code == 36 ||
             (code >= 38 && code <= 43)) return false;
         return true;
     }
@@ -391,8 +393,7 @@ inline bool sttIsOperatorVisible(uint16_t code) {
     // Trước 04/10/2026 dải làm nóng dừng ở 44 nên cả ba mã bị lọc mất.
     if (code >= 48 && code <= 50) return true;
     if (code >= 51 && code <= 67) {
-        if (code == 51 || code == 53 || code == 54 || code == 56 ||
-            code == 64 || code == 65) return false;
+        if (code == 64 || code == 65) return false;     // 56 (chờ thợ bấm nạp, nhiệt nạp = 0) cũng lên HMI từ 21/10/2026
         return true;
     }
     if (code >= 81 && code <= 96) {             // 96 (14/10/2026): mẻ đang lưu quá giới hạn hồ sơ

@@ -263,12 +263,58 @@ bool sdEnsure(){
     return sdOK;
 }
 
+// Đóng mọi tệp của mẻ lưu (tệp đang ghi + tệp hồ sơ đang chép), về trạng thái không ghi
+static void sdRecCloseAll(){
+    if(sdLogFile) sdLogFile.close();
+    if(sdRecSlot) sdRecSlot.close();
+    sdLogFile = File();
+    sdRecSlot = File();
+    sdRecMode = SD_REC_NONE;
+}
+
+// Chép tệp tạm sang tệp hồ sơ, SD_REC_CHUNK byte mỗi lần (hetMot = true: chép tới hết ngay).
+// Chép xong: tệp hồ sơ thành tệp ghi tiếp, xoá tệp tạm. Mẻ vẫn ghi dòng mới vào tệp tạm trong lúc chép (O_APPEND
+// tự nhảy về cuối khi ghi) nên vòng chép đuổi theo cuối tệp — ~60 byte/giây ghi so với ~1 KB/giây chép.
+static void sdRecCopyStep(bool hetMot){
+    uint8_t buf[SD_REC_CHUNK];
+    do {
+        if(!sdLogFile || !sdRecSlot){
+            SDLogSTEP = "COPY FAIL";
+            setMachineStatus(STT_SD_SAVE_FAIL);
+            sdRecCloseAll();
+            return;
+        }
+        const uint32_t size = sdLogFile.size();
+        if(sdRecCopyPos >= size){
+            sdRecSlot.flush();
+            sdLogFile.close();
+            SD.remove(SD_REC_TMP);
+            sdLogFile = sdRecSlot;            // từ đây ghi thẳng tệp hồ sơ
+            sdRecSlot = File();
+            sdRecMode = SD_REC_SLOT;
+            SDLogSTEP = "COPY OK";
+            return;
+        }
+        uint32_t n = size - sdRecCopyPos;
+        if(n > SD_REC_CHUNK) n = SD_REC_CHUNK;
+        sdLogFile.seek(sdRecCopyPos);
+        const int doc = sdLogFile.read(buf, (uint16_t)n);
+        if(doc <= 0 || sdRecSlot.write(buf, (size_t)doc) != (size_t)doc){
+            SDLogSTEP = "COPY IO FAIL";
+            setMachineStatus(STT_SD_SAVE_FAIL);
+            sdRecCloseAll();
+            return;
+        }
+        sdRecCopyPos += (uint32_t)doc;
+    } while(hetMot);
+}
+
 void sdLogWrite(){
     snprintf(strProfileName, sizeof(strProfileName), "%u.csv", (unsigned)SELECT_FILE_R);
 
     // --- HANDLE DEDICATED DELETE REQUEST (from HMI)
     if(sdDeleteProfileEn){
-        if(sdLogFile) sdLogFile.close();
+        sdRecCloseAll();
         if(sdDeleteProfileIndex > 0 && sdDeleteProfileIndex <= 31){
             char delNameCsv[12];
             char delNameTxt[12];
@@ -288,11 +334,11 @@ void sdLogWrite(){
         loadAllProfileDates();  // Cập nhật lại danh sách date trên HMI sau khi xóa
     }
 
-    // Xoá file cũ, mở file mới, ghi header Artisan CSV cố định 110 bytes
-    if(sdLogStartEn){
-        if(sdLogFile) sdLogFile.close();
-        SD.remove(strProfileName);
-        sdLogFile = SD.open(strProfileName, FILE_WRITE);
+    // Start mẻ lưu: mở TỆP TẠM, ghi header Artisan CSV cố định 110 bytes. Tệp hồ sơ của ô chưa bị đụng tới nạp hạt.
+    if(sdRecStartEn){
+        sdRecCloseAll();
+        SD.remove(SD_REC_TMP);
+        sdLogFile = SD.open(SD_REC_TMP, FILE_WRITE);
         if(sdLogFile) {
             // Lưu date lúc START trước khi ghi placeholder
             sdStartDD   = (uint8_t)DAY_R;
@@ -311,6 +357,7 @@ void sdLogWrite(){
             sdLogFile.flush();
             SDLogSTEP = "OPEN OK";
             setMachineStatus(STT_SD_LOG_STARTED);
+            sdRecMode = SD_REC_TEMP;
             // Reset bộ đếm wall time
             timeAbsolute = 0;
             timeChargeAbsolute = 0;
@@ -322,12 +369,41 @@ void sdLogWrite(){
             SDLogSTEP = "OPEN FAIL";
             setMachineStatus(STT_SD_SAVE_FAIL);
         }
-        sdLogStartEn = 0;
+        sdRecStartEn = 0;
     }
+
+    // Huỷ mẻ: chưa nạp hạt -> bỏ tệp tạm, hồ sơ cũ còn nguyên. Đã nạp -> chép nốt rồi đóng (giữ phần đã rang như trước).
+    if(sdRecCancelEn){
+        if(sdRecMode == SD_REC_TEMP){
+            sdRecCloseAll();
+            SD.remove(SD_REC_TMP);
+            SDLogSTEP = "CANCEL TMP";
+        } else {
+            if(sdRecMode == SD_REC_COPY) sdRecCopyStep(true);
+            sdRecCloseAll();
+        }
+        sdRecCancelEn = 0;
+    }
+
+    // Đã nạp hạt: bắt đầu chép tệp tạm sang tệp hồ sơ (xoá tệp hồ sơ cũ ĐÚNG lúc này), mỗi vòng một đoạn
+    if(sdRecMode == SD_REC_TEMP && sdChargeHappened){
+        SD.remove(strProfileName);
+        sdRecSlot = SD.open(strProfileName, FILE_WRITE);
+        sdRecCopyPos = 0;
+        if(sdRecSlot){
+            sdRecMode = SD_REC_COPY;
+        } else {
+            SDLogSTEP = "SLOT OPEN FAIL";
+            setMachineStatus(STT_SD_SAVE_FAIL);
+            sdRecMode = SD_REC_NONE;      // ghi tiếp vào tệp tạm cũng vô ích: không có tệp hồ sơ để thay
+        }
+    }
+    if(sdRecMode == SD_REC_COPY) sdRecCopyStep(false);
 
     if(sdRemoveAll){
         setMachineStatus(STT_SD_DELETING_ALL);
-        if(sdLogFile) sdLogFile.close();
+        sdRecCloseAll();
+        SD.remove(SD_REC_TMP);
         for(int i=0;i<31;i++){
             char fileName[12];
             snprintf(fileName, sizeof(fileName), "%d.csv", i);
@@ -392,10 +468,18 @@ void sdLogWrite(){
     }
 
     // Overwrite header với milestone thực rồi đóng file
+    if(sdLogEndEn && sdRecMode == SD_REC_COPY) sdRecCopyStep(true);   // mẻ ngắn: chép nốt trước khi ghi đè header
+    if(sdLogEndEn && sdRecMode != SD_REC_SLOT){                        // chưa nạp hạt (hoặc mở tệp hồ sơ hỏng): không đụng hồ sơ
+        sdRecCloseAll();
+        SD.remove(SD_REC_TMP);
+        sdCsvPendingEvent[0] = '\0';
+        SDLogSTEP = "END NO CHARGE";
+        sdLogEndEn = 0;
+    }
     if(sdLogEndEn){
         // FILE_WRITE dùng O_AT_END (append) — seek(0) không ghi đúng vị trí
         // Phải close rồi mở lại bằng O_READ|O_WRITE (random access, không AT_END)
-        if(sdLogFile) sdLogFile.close();
+        sdRecCloseAll();
 
         // If there is a pending event that hasn't been flushed to the arrays yet,
         // record its wall-time into the corresponding absolute time variable so
@@ -451,9 +535,8 @@ void sdLogWrite(){
         } else {
             SDLogSTEP = "FAIL";
         }
-        sdLogStartEn = 0;
-            setMachineStatus(STT_SD_LOG_ENDED);
-sdLogEndEn = 0;
+        setMachineStatus(STT_SD_LOG_ENDED);
+        sdLogEndEn = 0;
     }
 }
 
@@ -1153,7 +1236,29 @@ void calibProgram(){
 //   base+5 = roastTimeMin  (phút tổng rang CHARGE→DROP)
 //   base+6 = roastTimeSec  (giây tổng rang CHARGE→DROP)
 // ============================================================
+// 21/10/2026 (panel thật: bấm "Làm mới" Hồ sơ mất > 12 s mới điền 10 dòng, vòng quét đứng suốt lúc đó): trước đây ghi
+// 210 lần writeSingleRegister (30 ô × 7). Nay gom 9 ô (63 thanh ghi, vừa bộ đệm 64 từ của ModbusMaster) một lệnh FC16.
+#define PROFILE_DATE_SLOTS_PER_TX  9
+static uint8_t  pdNo = 0;            // số ô đang gom
+static uint16_t pdBase = 0;          // thanh ghi đầu của nhóm
+
+static void profileDateFlush() {
+    if (pdNo == 0) return;
+    if (nodeHMI.writeMultipleRegisters(pdBase, pdNo * PROFILE_REGS_PER_SLOT) != nodeHMI.ku8MBSuccess && enDebug)
+        SerialComputer.println("ERRO HMI PROFILE DATES");
+    pdNo = 0;
+    delay(2);
+}
+
+static void profileDatePush(uint16_t base, const uint16_t v[PROFILE_REGS_PER_SLOT]) {
+    if (pdNo == 0) pdBase = base;
+    for (uint8_t r = 0; r < PROFILE_REGS_PER_SLOT; r++)
+        nodeHMI.setTransmitBuffer(pdNo * PROFILE_REGS_PER_SLOT + r, v[r]);
+    if (++pdNo >= PROFILE_DATE_SLOTS_PER_TX) profileDateFlush();
+}
+
 void loadAllProfileDates() {
+    pdNo = 0;
     for (int slot = 1; slot <= MAX_PROFILE_SLOTS; slot++) {
         uint16_t base = PROFILE_DATE_BASE_W + (slot - 1) * PROFILE_REGS_PER_SLOT;
 
@@ -1162,10 +1267,8 @@ void loadAllProfileDates() {
 
         File f = SD.open(fname);
         if (!f) {
-            for (uint8_t r = 0; r < PROFILE_REGS_PER_SLOT; r++) {
-                nodeHMI.writeSingleRegister(base + r, 0);
-                delay(1);
-            }
+            const uint16_t khong[PROFILE_REGS_PER_SLOT] = {0, 0, 0, 0, 0, 0, 0};
+            profileDatePush(base, khong);
             continue;
         }
 
@@ -1223,15 +1326,11 @@ void loadAllProfileDates() {
             }
         }
 
-        // --- Ghi 7 registers lên HMI
-        nodeHMI.writeSingleRegister(base + 0, dd);           delay(1);
-        nodeHMI.writeSingleRegister(base + 1, mm);           delay(1);
-        nodeHMI.writeSingleRegister(base + 2, yy);           delay(1);
-        nodeHMI.writeSingleRegister(base + 3, chHH);         delay(1);
-        nodeHMI.writeSingleRegister(base + 4, chMM);         delay(1);
-        nodeHMI.writeSingleRegister(base + 5, roastTimeMin); delay(1);
-        nodeHMI.writeSingleRegister(base + 6, roastTimeSec); delay(1);
+        // --- 7 registers của ô này vào nhóm ghi
+        const uint16_t v[PROFILE_REGS_PER_SLOT] = {dd, mm, yy, chHH, chMM, roastTimeMin, roastTimeSec};
+        profileDatePush(base, v);
     }
+    profileDateFlush();
 
     // if (enDebug) 
     // SerialComputer.println("=> Profile dates loaded to HMI");
@@ -1744,6 +1843,10 @@ static inline bool autoEscapeEnabled(){
 #endif
 }
 
+// 21/10/2026: mã 53 (chờ BT nguội) chỉ báo khi THẬT SỰ chờ nguội, một lần mỗi mẻ (setMachineStatus không gộp mã thường
+// trùng trong hàng đợi — gọi mỗi vòng sẽ lấp đầy hàng đợi)
+static bool roastCoolSttSent = false;
+
 void programScan(){
     // PRIORITY 1: keep drum/fan on when BT or ET is hotter than 80C
     if (forceDrumFanOnFlag) {
@@ -1849,9 +1952,9 @@ void programScan(){
                     maxGasSet_R = sdMaxGasLoaded;
                     nodeHMI.writeSingleRegister(maxGasSet_W + 2000, sdMaxGasLoaded);
                 }
-                //Xoá profile đã chọn trên SD, nếu chương trình rang là manual save
+                //Mẻ lưu: ghi vào tệp tạm; hồ sơ của ô đã chọn chỉ bị thay lúc nạp hạt (sdLogWrite)
                 if(progStatus == STT_PROGRAM_SAVE){
-                    sdLogStartEn = 1;
+                    sdRecStartEn = 1;
                     setMachineStatus(STT_SD_LOG_STARTED);
                     timeAbsolute = 0;
                     timeAbsoluteEn = 1;
@@ -1908,7 +2011,10 @@ void programScan(){
                 //Debug
                 STEP_STRING = "RESET DATA";
 
-                setMachineStatus(STT_ROAST_COOLDOWN); progStep = STP_COOL_DOWN;   //Chuyển trạng thái
+                // 21/10/2026 (panel thật, nhiệt nạp = 0 = nạp tay): trước đây báo 53 "chờ BT nguội" ở đây cho MỌI mẻ -> HMI hiện
+                // "lồng nóng hơn nhiệt nạp" cả khi máy đang chờ thợ bấm nạp. Mã 53 nay đặt trong STP_COOL_DOWN khi thật sự chờ.
+                roastCoolSttSent = false;
+                progStep = STP_COOL_DOWN;   //Chuyển trạng thái
             break;
 
             //Kiểm tra auto charge
@@ -1932,8 +2038,10 @@ void programScan(){
                         setMachineStatus(STT_ROAST_WAITGAS); progStep = STP_GAS; //Chuyển trạng thái kiểm tra gas 
                         
                     }else{
-                        nodeHMI.writeSingleRegister(START_GAS_BTN_W-1, 0);  //Turn off gas    
-                    }  
+                        if(!roastCoolSttSent){ setMachineStatus(STT_ROAST_COOLDOWN); roastCoolSttSent = true; }
+                        // 21/10/2026: chỉ ghi khi relay đang bật — trước đây ghi W40002 = 0 MỌI vòng quét suốt lúc chờ nguội
+                        if(START_GAS_BTN_R != 0) nodeHMI.writeSingleRegister(START_GAS_BTN_W-1, 0);  //Turn off gas
+                    }
                 }else{
                     setMachineStatus(STT_ROAST_WAIT_CHARGE); progStep = STP_CHARGE; //Chuyển trạng thái kiểm tra charge   
                 }
@@ -2411,6 +2519,8 @@ void programScan(){
             }
             //Các bước rang về 0
             progStep = 0;       //Program step off
+            sdRecCancelEn = 1;  //Huỷ trước khi nạp hạt: bỏ tệp tạm, hồ sơ cũ còn nguyên
+            setMachineStatus(STT_ROAST_IDLE);   //21/10/2026: không để mã bước cũ (52/53…) đứng trên HMI sau khi dừng
 
             //Reset chốt an toàn của mẻ
             gasWaitTiEn = false; gasWaitTi = 0;

@@ -1084,10 +1084,23 @@ char strProfileName[12] = "";
 const char* strLog = "";
 const char* SDLogSTEP = "";
 
-boolean sdLogStartEn = false;
 boolean sdLogDataEn = false;
 boolean sdLogEndEn = false;
 boolean sdRemoveAll = false;
+
+// 21/10/2026 (soát panel thật: bấm Bắt đầu rồi Dừng trước khi nạp hạt -> hồ sơ của ô đã chọn bị xoá trắng):
+// mẻ lưu ghi vào tệp TẠM, tới lúc nạp hạt mới chép dần sang tệp hồ sơ (SD 1.2.4 không có rename).
+#define SD_REC_TMP      "rec.csv"
+#define SD_REC_CHUNK    128          // byte chép mỗi lần gọi sdLogWrite() — không làm khựng vòng quét lúc nạp hạt
+#define SD_REC_NONE     0
+#define SD_REC_TEMP     1            // đang ghi tệp tạm, tệp hồ sơ còn nguyên
+#define SD_REC_COPY     2            // đã nạp hạt: chép dần tệp tạm sang tệp hồ sơ
+#define SD_REC_SLOT     3            // ghi thẳng tệp hồ sơ
+boolean  sdRecStartEn  = false;      // Start mẻ lưu
+boolean  sdRecCancelEn = false;      // huỷ mẻ lưu
+uint8_t  sdRecMode     = SD_REC_NONE;
+File     sdRecSlot;                  // tệp hồ sơ trong lúc chép
+uint32_t sdRecCopyPos  = 0;
 
 uint16_t timeAbsolute = 0;         // Seconds counted from log start (Start button)
 uint16_t timeChargeAbsolute = 0;   // timeAbsolute at CHARGE
