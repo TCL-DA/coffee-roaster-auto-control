@@ -5,7 +5,7 @@ trước mỗi lần giao máy hoặc sửa phần liên quan. Tên khách khôn
 
 | Mã | Lỗi | Máy | Sửa ở | Bài thử |
 |:--|:--|:--|:--|:--|
-| [**CS-01**](CS-01_auto-dung-sat-nhiet-xa-khong-drop.md) | Mẻ AUTO đứng sát nhiệt xả, máy **không tự DROP** | OTL-30, gas NP, không áp hút | [v3.10.0](https://github.com/TCL-DA/coffee-roaster-auto-control/releases/tag/v3.10.0) | 9 ca T1–T9, làm được trên bàn thử không lửa |
+| [**CS-01**](CS-01_auto-dung-sat-nhiet-xa-khong-drop.md) | Mẻ AUTO đứng sát nhiệt xả, máy **không tự DROP** | OTL-30, gas NP, không áp hút | [v3.10.0](https://github.com/TCL-DA/coffee-roaster-auto-control/releases/tag/v3.10.0) | 9 ca T1–T9 + [hồ sơ mẫu thật](CS-01_ho-so-mau.csv), làm được trên bàn thử không lửa |
 
 <p align="center"><a href="CS-01_auto-dung-sat-nhiet-xa-khong-drop.md"><img src="CS-01_minh-hoa.svg" width="100%"
 alt="CS-01 — vùng mù 0,6 °C dưới nhiệt xả và chốt cứu"></a></p>

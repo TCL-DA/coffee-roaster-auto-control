@@ -28,6 +28,25 @@ sau ~30 s trễ nhiệt BT lấy lại đà và máy tự DROP. Vẽ lại: <cod
 - Mẻ xảy ra khi trời lạnh: nhiệt độ môi trường ~8 °C, trong khi mẻ mẫu ghi ở ~25 °C.
   Máy mất nhiệt nhiều hơn mẫu khoảng 9 %.
 
+### Hồ sơ mẫu thật của case
+
+[`CS-01_ho-so-mau.csv`](CS-01_ho-so-mau.csv) — hồ sơ thẻ SD (định dạng `.csv` của máy OTL), bản sửa ngày 10/09/2026,
+khớp đúng số liệu case: **FCs 10:02 · 199,0 °C → DROP 14:02 · 217,0 °C, DEV 4:00**.
+
+<p align="center"><img src="CS-01_ho-so-mau.svg" width="100%"
+alt="Giản đồ hồ sơ mẫu CS-01: BT, ET, RoR, gas; gas về 0 % từ 12:09, RoR cuối mẻ ~4,4 °C/phút"></p>
+
+Điểm cần thấy trên giản đồ:
+
+- **Gas về 0 % từ 12:09** (BT 208,9 °C) cho tới lúc xả — gần 2 phút cuối mẻ chỉ còn nhiệt tích trong lồng đẩy hạt lên.
+- **RoR cuối mẻ ~4,4 °C/phút** (60 s cuối), BT nhích 0,1 °C mỗi 1–2 giây sát nhiệt xả.
+- Ngày mẻ mẫu được ghi, chừng đó nhiệt là đủ. Ngày lạnh hơn (môi trường ~8 °C so với ~25 °C lúc ghi mẫu),
+  máy mất thêm khoảng 9 % nhiệt → BT dừng ở ~216,5 °C, và vì hồ sơ đã cho gas = 0 nên bộ bù không có nền để cộng lên.
+- File **kết thúc đúng tại DROP** (không có đuôi làm nguội) — tức là lỗi A ở mục 2 vẫn xảy ra với file sạch.
+  Muốn thử lỗi B (ca T5) thì dùng một bản xuất từ Artisan còn đuôi sau DROP.
+
+Vẽ lại giản đồ: `python docs/case-study/ve_ho_so_cs01.py`.
+
 ## 2. Vì sao máy không xả
 
 Bốn lỗi **độc lập**, cho ra cùng một triệu chứng. Vá một lỗi rồi tưởng xong là lý do mẻ vẫn treo.
@@ -69,8 +88,8 @@ Nạp lệch thì ô cũ `preheatHoldSettle` (10–30) rơi vào `preheatDeadlin
 
 ### Chuẩn bị
 
-- Board + panel đúng **cặp** firmware/HMI sắp giao, chế độ **AUTO**, một hồ sơ có đủ mốc FCs và DROP
-  (ví dụ FCs 199,0 °C, DROP 217,0 °C).
+- Board + panel đúng **cặp** firmware/HMI sắp giao, chế độ **AUTO**, nạp hồ sơ mẫu của case
+  [`CS-01_ho-so-mau.csv`](CS-01_ho-so-mau.csv) vào thẻ SD (FCs 199,0 °C, DROP 217,0 °C, gas về 0 % từ 12:09).
 - Mạch giả lập BT/ET (ESP32, COM3, 9600 baud, DTR/RTS tắt; lệnh `B<x10>\nE<x10>\n`).
   Mở COM3 có thể làm board báo 403, nên báo người đứng máy trước.
 - Bàn thử không có lửa: theo dõi **Gas (Thực)**, **mã trạng thái** và **cửa trống**, không cần lửa thật.
