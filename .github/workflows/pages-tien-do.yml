@@ -1,6 +1,6 @@
-name: Trang tien do (GitHub Pages)
+name: Trang tien do lap 30kg + silo 4 bon (GitHub Pages)
 
-# Dua docs/tien-do-30kg-silo len GitHub Pages.
+# Dua docs/tien-do-lap-30kg-silo-4-bon len GitHub Pages.
 # Lan chay dau tien tu bat Pages cho repo (configure-pages: enablement).
 # URL: https://tcl-da.github.io/coffee-roaster-auto-control/
 
@@ -8,7 +8,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'docs/tien-do-30kg-silo/**'
+      - 'docs/tien-do-lap-30kg-silo-4-bon/**'
       - '.github/workflows/pages-tien-do.yml'
   workflow_dispatch:
 
@@ -39,7 +39,7 @@ jobs:
       - name: Dong goi thu muc trang
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/tien-do-30kg-silo
+          path: docs/tien-do-lap-30kg-silo-4-bon
 
       - name: Trien khai
         id: deploy
