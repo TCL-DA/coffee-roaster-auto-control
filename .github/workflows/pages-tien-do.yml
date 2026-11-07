@@ -1,0 +1,46 @@
+name: Trang tien do (GitHub Pages)
+
+# Dua docs/tien-do-30kg-silo len GitHub Pages.
+# Lan chay dau tien tu bat Pages cho repo (configure-pages: enablement).
+# URL: https://tcl-da.github.io/coffee-roaster-auto-control/
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/tien-do-30kg-silo/**'
+      - '.github/workflows/pages-tien-do.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Lay ma nguon
+        uses: actions/checkout@v4
+
+      - name: Bat / cau hinh Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Dong goi thu muc trang
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/tien-do-30kg-silo
+
+      - name: Trien khai
+        id: deploy
+        uses: actions/deploy-pages@v4
