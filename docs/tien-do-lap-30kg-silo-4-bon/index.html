@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f6f8f7">
-<meta name="description" content="Tien do lap may rang 30 kg va he silo 4 bon - theo doi theo ngay, tu thu 2 den thu 7.">
+<meta name="description" content="Tiến độ lắp máy rang 30 kg và hệ silo 4 bồn — nhật ký thi công thật theo ngày, giờ làm, ảnh hiện trường.">
 <title>Tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn — O Tesla</title>
 <meta property="og:title" content="Tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn">
-<meta property="og:description" content="Theo dõi tiến độ 44 việc trong 6 ngày thi công, từ thứ 2 đến thứ 7.">
+<meta property="og:description" content="Nhật ký thi công thật 09/11 → 16/11/2026: việc đã làm từng ngày, giờ làm thực tế, ảnh hiện trường.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -52,6 +52,12 @@
   55 ton trong prefers-reduced-motion  56 mo chi tiet truot cao
   57 hairline trai day len khi hover   58 ring mini tung ngay
   59 sticky day header trong danh sach 60 so lieu KPI roll khi cuon toi
+  -- cap nhat 16/11/2026: chuyen tu ke hoach sang NHAT KY THAT --
+  40-42 (dong ho, countdown 20:00) thay bang 63 bieu do gio lam thuc te
+  61 luoi anh lazy + mo dan          62 lightbox anh (phim mui ten, quet ngang)
+  63 bieu do gio lam (Gantt) + tooltip   64 nhan trang thai giai doan
+  Anh: anh/<DDMM>/NN.jpg + tNN.jpg, danh sach o anh/anh.js - sinh bang
+  docs/tien-do-lap-30kg-silo-4-bon/lam_anh_web.py tren nhanh main.
   ============================================================================
 -->
 
@@ -518,6 +524,104 @@ footer .cap{color:var(--graphite)}
   .rv{opacity:1;transform:none}.rvx{clip-path:none}.hr-draw{transform:scaleX(1)}
 }
 @media print{#pre,#sp,.ch,#top,#toast,.ticker{display:none}}
+
+/* ===== NHAT KY THAT (ban cap nhat 16/11) ================================== */
+li.task.log .box{background:var(--ink)}
+li.task.log .box path{stroke-dashoffset:0}
+li.task.empty{color:#555}
+li.task.lock .box{background:var(--ink);border-color:var(--ink)}
+li.pgh{display:flex;justify-content:space-between;gap:var(--s15);padding:var(--s22) 0 8px;
+  border-bottom:1px solid var(--ink);font-size:var(--t-cap);text-transform:uppercase;
+  letter-spacing:.14em}
+li.pgh.hide{display:none}
+.ghi{margin:var(--s15) 0 0;font-size:14px;color:#3c3c3c;font-weight:300;max-width:70ch}
+
+/* FX-61 luoi anh lazy + mo dan */
+.gal-h{margin-top:var(--s33)}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:var(--s15)}
+@media(min-width:620px){.gal{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:980px){.gal{grid-template-columns:repeat(6,1fr)}}
+.gal h4{grid-column:1/-1;margin:var(--s15) 0 4px;font-weight:400;font-size:var(--t-cap);
+  text-transform:uppercase;letter-spacing:.14em}
+.gal h4:first-child{margin-top:0}
+.ph{position:relative;aspect-ratio:1;overflow:hidden;background:var(--steel);padding:0}
+.ph img{width:100%;height:100%;object-fit:cover;opacity:0;
+  transition:opacity .45s var(--ease),transform .6s var(--ease)}
+.ph img.ok{opacity:1}
+@media(hover:hover){.ph:hover img{transform:scale(1.05)}}
+
+/* FX-62 lightbox */
+#lb{position:fixed;inset:0;z-index:400;background:rgba(15,14,18,.97);display:flex;
+  align-items:center;justify-content:center;opacity:0;visibility:hidden;
+  transition:opacity .3s var(--ease),visibility .3s}
+#lb.on{opacity:1;visibility:visible}
+#lb img{max-width:calc(100vw - 140px);max-height:calc(100vh - 96px);object-fit:contain;
+  transition:opacity .25s var(--ease)}
+#lb .lb-bar{position:absolute;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));
+  display:flex;justify-content:space-between;gap:var(--s15);color:var(--graphite);
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+#lb button{position:absolute;width:46px;height:46px;border:1px solid #3a3a40;color:var(--canvas);
+  background:var(--carbon);font-size:20px;font-weight:200;display:grid;place-content:center;
+  transition:background .2s,color .2s}
+#lb .lb-x{top:calc(16px + env(safe-area-inset-top));right:16px}
+#lb .lb-p{left:16px;top:50%;margin-top:-23px}
+#lb .lb-n{right:16px;top:50%;margin-top:-23px}
+@media(hover:hover){#lb button:hover{background:var(--canvas);color:var(--ink)}}
+@media(max-width:699px){
+  #lb img{max-width:calc(100vw - 24px);max-height:calc(100vh - 190px)}
+  #lb .lb-p,#lb .lb-n{top:auto;margin-top:0;bottom:calc(48px + env(safe-area-inset-bottom))}
+}
+
+/* FX-63 bieu do gio lam (Gantt) */
+.gantt{border:1px solid var(--steel);padding:var(--s15)}
+.g-row,.g-axis{display:grid;grid-template-columns:62px 1fr 58px;gap:10px;align-items:center}
+.g-row{min-height:40px;border-bottom:1px solid var(--steel);transition:background .2s}
+.g-row.g-head{min-height:24px;border-bottom:0}
+.g-row:not(.g-head):hover,.g-row:focus-visible{background:#eef0ef}
+.g-lb{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#555;white-space:nowrap}
+.g-lb b{display:inline;font-weight:400;font-size:12px;color:var(--ink);letter-spacing:.04em;
+  margin-left:5px}
+.g-tr{position:relative;height:40px}
+.g-head .g-tr{height:24px}
+.g-tr .gl{position:absolute;top:0;bottom:0;width:1px;background:var(--steel)}
+.g-tr .ref{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed #7a7a7a}
+.g-ref{position:absolute;bottom:4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:#555;white-space:nowrap;padding-left:5px}
+.g-bar{position:absolute;top:50%;height:10px;margin-top:-5px;background:var(--ink);
+  transform:scaleX(0);transform-origin:left;transition:transform 1s var(--ease)}
+.in .g-bar{transform:scaleX(1)}
+.g-v{font-size:13px;text-align:right;white-space:nowrap}
+.g-axis{padding-top:7px}
+.g-axis .ax{position:relative;height:14px}
+.g-axis .ax span{position:absolute;transform:translateX(-50%);font-size:10px;letter-spacing:.06em;
+  color:#666}
+.g-sum{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px var(--s15);
+  margin-top:var(--s15);font-size:var(--t-cap);letter-spacing:.06em}
+@media(max-width:560px){.g-row,.g-axis{grid-template-columns:44px 1fr 46px;gap:8px}
+  .g-lb b{display:block;margin:0}.g-v{font-size:12px}}
+#gtip{position:fixed;z-index:280;left:0;top:0;background:var(--carbon);color:var(--canvas);
+  font-size:12px;line-height:1.5;letter-spacing:.03em;padding:8px 10px;pointer-events:none;
+  opacity:0;transition:opacity .15s;max-width:260px}
+#gtip.on{opacity:1}
+#gtip b{font-weight:400}
+
+/* bang so lieu gio lam */
+.tbl{margin-top:var(--s15)}
+.tbl summary{cursor:pointer;font-size:var(--t-cap);text-transform:uppercase;letter-spacing:.14em;
+  min-height:44px;display:flex;align-items:center}
+.tbl .sc{overflow-x:auto}
+.tbl table{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th,.tbl td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--steel);
+  font-weight:300;white-space:nowrap}
+.tbl th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#555;font-weight:400}
+.tbl .r{text-align:right}
+.tbl tfoot td{font-weight:400;border-bottom:1px solid var(--ink)}
+
+/* FX-64 nhan trang thai giai doan */
+.vt .st{display:inline-block;margin-left:8px;border:1px solid currentColor;font-size:10px;
+  letter-spacing:.14em;padding:1px 6px;vertical-align:1px;font-weight:400}
+.vt .st.ok{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.plan-intro{margin:0 0 var(--s15);max-width:70ch;font-weight:300;color:#3c3c3c}
 </style>
 </head>
 <body>
@@ -526,7 +630,7 @@ footer .cap{color:var(--graphite)}
 <div id="pre"><div class="wrap" style="padding:0">
   <div class="n mono"><span id="preN">0</span>%</div>
   <div class="bar"><i id="preB"></i></div>
-  <div class="lb">Đang dựng bảng tiến độ công trình</div>
+  <div class="lb">Đang dựng nhật ký công trình</div>
 </div></div>
 
 <div id="sp"></div>
@@ -537,9 +641,10 @@ footer .cap{color:var(--graphite)}
     <div class="brand">O&nbsp;<b>TESLA</b> <span>Tiến độ lắp 30 kg &amp; silo 4 bồn</span></div>
     <nav>
       <a href="#tongquan" class="on">Tổng quan</a>
-      <a href="#congviec">Công việc</a>
-      <a href="#sinhhoat">Sinh hoạt</a>
-      <a href="#luu">Lưu &amp; chia sẻ</a>
+      <a href="#congviec">Nhật ký</a>
+      <a href="#giolam">Giờ làm</a>
+      <a href="#kehoach">Kế hoạch</a>
+      <a href="#luu">Lưu</a>
     </nav>
     <div class="hdr-pct mono" id="hdrPct">0% • 0/0</div>
   </div>
@@ -552,15 +657,16 @@ footer .cap{color:var(--graphite)}
   <div class="wrap">
     <div class="hero-grid">
       <div>
-        <div class="sub">Lắp đặt &amp; nghiệm thu · <span style="white-space:nowrap">6 ngày · T2 → T7</span></div>
+        <div class="sub">Nhật ký thi công thật · <span style="white-space:nowrap">09/11 → 16/11/2026</span></div>
         <h1 class="tw" id="h1">Lắp máy rang <em>30 kg</em> &amp; hệ silo 4 bồn</h1>
         <div class="big mono" style="display:flex;align-items:flex-start">
           <span class="odo" id="odo"></span><span class="pc">%</span>
         </div>
-        <div class="sub" style="margin-top:var(--s15)" id="heroLine">0 / 0 việc đã xong</div>
-        <p class="lead">Công trình đã khoán gọn phần thi công. Ăn sáng · ăn trưa ·
-          giặt đồ anh em tự túc. Tăng ca tới <b style="font-weight:400">20:00</b> hằng ngày,
-          xong mới đi ăn tối; khoảng <b style="font-weight:400">17:00</b> ăn xế nhẹ mua ở tạp hoá.</p>
+        <div class="sub" style="margin-top:var(--s15)" id="heroLine">0 / 0 việc kế hoạch đã xong</div>
+        <p class="lead">Đội lắp tới công trình sáng 09/11. Sau 7 ca đã dựng xong máy rang 30 kg,
+          máy tách đá, afterburner và cả 4 bồn silo; máy 6 kg đã dời chỗ, nâng firmware, rang thử.
+          Đang treo và lắp dàn đường ống. Còn lại: đường ống vào silo, test dàn silo, rang test,
+          hướng dẫn vận hành.</p>
       </div>
       <div>
         <div class="ring-wrap">
@@ -569,13 +675,13 @@ footer .cap{color:var(--graphite)}
             <circle class="fg" id="ringFg" cx="50" cy="50" r="46"
               transform="rotate(-90 50 50)"></circle>
           </svg>
-          <div class="mid"><b class="mono" id="ringPct">0%</b><span>Toàn dự án</span></div>
+          <div class="mid"><b class="mono" id="ringPct">0%</b><span>Theo kế hoạch</span></div>
         </div>
         <div class="hero-stats">
-          <div><b class="mono" data-count="44" id="kTotal">0</b><span>Việc</span></div>
-          <div><b class="mono" data-count="6">0</b><span>Ngày</span></div>
-          <div><b class="mono" id="kLeft">0</b><span>Còn lại</span></div>
-          <div><b class="mono" id="kClock">--:--</b><span>Đồng hồ</span></div>
+          <div><b class="mono" id="kCa">0</b><span>Ca đã làm</span></div>
+          <div><b class="mono" id="kHours">0h00</b><span>Giờ làm thực</span></div>
+          <div><b class="mono" id="kLog">0</b><span>Việc đã làm</span></div>
+          <div><b class="mono" id="kPhoto">0</b><span>Ảnh</span></div>
         </div>
       </div>
     </div>
@@ -595,7 +701,7 @@ footer .cap{color:var(--graphite)}
     <div class="hr-draw rv" style="margin-bottom:var(--s22)"></div>
     <div class="kpi rv">
       <div class="c"><svg class="mini" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" id="m1" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/></svg>
-        <div><b class="mono" id="v1">0%</b><small>Tiến độ dự án</small></div></div>
+        <div><b class="mono" id="v1">0%</b><small>Kế hoạch 44 việc</small></div></div>
       <div class="c"><svg class="mini" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" id="m2" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/></svg>
         <div><b class="mono" id="v2">0%</b><small>Phần cơ khí — lắp ráp</small></div></div>
       <div class="c"><svg class="mini" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" id="m3" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/></svg>
@@ -610,7 +716,7 @@ footer .cap{color:var(--graphite)}
 <section class="tight">
   <div class="wrap">
     <div class="sec-h rv">
-      <h2>Sáu ngày thi công</h2>
+      <h2>Từng ngày ở công trình</h2>
       <div class="idx">02 — LỊCH NGÀY</div>
     </div>
   </div>
@@ -618,22 +724,91 @@ footer .cap{color:var(--graphite)}
     <div class="strip-outer">
       <div class="strip" id="strip"></div>
     </div>
-    <div class="cap mut" style="font-size:11px;margin-top:var(--s15)">Kéo ngang để xem · bấm một ngày để mở danh sách việc</div>
+    <div class="cap mut" style="font-size:11px;margin-top:var(--s15)">Kéo ngang để xem · bấm một ngày để mở nhật ký và ảnh · vạch dưới mỗi ngày là số giờ làm</div>
   </div>
 </section>
 
-<!-- ============================== TASKS ============================== -->
+<!-- ============================== NHAT KY ============================== -->
 <section id="congviec">
   <div class="wrap">
     <div class="sec-h rv">
-      <h2>Danh sách việc theo ngày</h2>
-      <div class="idx">03 — CÔNG VIỆC</div>
+      <h2>Nhật ký &amp; ảnh theo ngày</h2>
+      <div class="idx">03 — NHẬT KÝ</div>
     </div>
     <div class="tabs" id="tabs" role="tablist"><span class="ind" id="ind"></span></div>
     <div class="panel-head">
       <div>
         <h3 id="pTitle">—</h3>
         <div class="meta mono" id="pMeta">—</div>
+      </div>
+    </div>
+    <ul class="tasks" id="tasks"></ul>
+    <p class="ghi" id="ghi" hidden></p>
+    <div class="cap gal-h" id="galH"></div>
+    <div class="gal" id="gal"></div>
+    <div class="btns" style="margin-top:var(--s22)">
+      <button class="btn" id="bPrev">Ngày trước</button>
+      <button class="btn tip" id="bNext">Ngày kế tiếp <span class="ar">→</span><em>Trên điện thoại: quét ngang danh sách</em></button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== GIO LAM ============================== -->
+<section id="giolam">
+  <div class="wrap">
+    <div class="sec-h rv">
+      <h2>Giờ làm thực tế</h2>
+      <div class="idx">04 — GIỜ LÀM</div>
+    </div>
+    <div class="rv"><div class="gantt" id="gantt"></div></div>
+    <div class="g-sum mono" id="gSum"></div>
+    <details class="tbl"><summary>Xem dạng bảng</summary>
+      <div class="sc"><table>
+        <thead><tr><th>Ngày</th><th>Vào</th><th>Ra</th><th class="r">Nghỉ</th><th class="r">Làm thực</th></tr></thead>
+        <tbody id="gTb"></tbody><tfoot id="gTf"></tfoot>
+      </table></div>
+    </details>
+
+    <div class="life">
+      <div class="c rv"><div class="h">7 ca · 09 → 15/11</div><div class="t" id="lTot">—</div>
+        <div class="w" id="lAvg">—</div></div>
+      <div class="c rv"><div class="h">Vào ca</div><div class="t">8:25 – 8:56</div>
+        <div class="w">Từ 10/11 ca nào cũng vào việc trước 9:00. Ngày đầu 9:53 vì vừa bay ra tới nơi.</div></div>
+      <div class="c rv"><div class="h">Ra về</div><div class="t">20:00 → 4:40 sáng</div>
+        <div class="w">Sớm nhất 20:00 (09/11), muộn nhất 4:40 sáng 16/11 sau ca treo dây lên trần.</div></div>
+      <div class="c rv"><div class="h">Nghỉ</div><div class="t">Trưa 1 giờ · tối 30 phút</div>
+        <div class="w">Ca 15/11 nghỉ tối 1 giờ. Ngày 09/11 nhật ký không ghi giờ nghỉ.</div></div>
+      <div class="c rv"><div class="h">Tự túc</div><div class="t">Ăn sáng · ăn trưa · giặt đồ</div>
+        <div class="w">Công trình đã khoán gọn nên anh em tự lo phần này.</div></div>
+      <div class="c rv"><div class="h">Di chuyển</div><div class="t">3:29 rời xưởng</div>
+        <div class="w">Sáng 09/11 bay ra Hà Nội, 9:53 tới công trình là bắt tay vào việc.</div></div>
+    </div>
+
+    <div class="note rv" style="margin-top:var(--s22)">
+      <svg class="tri" viewBox="0 0 48 44" aria-hidden="true">
+        <polygon points="24,2 47,42 1,42"/><rect x="22.6" y="15" width="2.8" height="15"/>
+        <rect x="22.6" y="33" width="2.8" height="2.8"/>
+      </svg>
+      <p><b>So với kế hoạch:</b> kế hoạch chốt tăng ca tới 20:00, thực tế
+        <span class="late">6 / 7 ca làm quá 20:00</span>. Ca 15/11 làm thông đêm tới 4:40 sáng
+        vì phải ráp – tháo dàn giáo 3 lần (mỗi dàn 8 bộ) để treo 5 dây lên trần.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== KE HOACH ============================== -->
+<section id="kehoach">
+  <div class="wrap">
+    <div class="sec-h rv">
+      <h2>So với kế hoạch 44 việc</h2>
+      <div class="idx">05 — KẾ HOẠCH</div>
+    </div>
+    <p class="plan-intro rv">Việc ghi “nhật ký N…” là đã thấy trong nhật ký, tick sẵn và khoá.
+      Việc còn trống là chưa thấy ghi — xong thì bấm tick, tick lưu trong máy này.</p>
+    <div class="panel-head">
+      <div>
+        <h3>Kế hoạch T2 → T7</h3>
+        <div class="meta mono" id="planMeta">—</div>
       </div>
       <div class="chips" id="chips">
         <button class="chip on" data-f="all">Tất cả</button>
@@ -642,68 +817,20 @@ footer .cap{color:var(--graphite)}
       </div>
     </div>
     <div class="pbar" style="height:3px;margin:0"><i id="pFill"></i></div>
-    <ul class="tasks" id="tasks"></ul>
-    <div class="btns" style="margin-top:var(--s22)">
-      <button class="btn" id="bAllDay">Tick hết ngày này <span class="ar">→</span></button>
-      <button class="btn" id="bClrDay">Bỏ tick ngày này</button>
-      <button class="btn tip" id="bNext">Ngày kế tiếp <span class="ar">→</span><em>Trên điện thoại: quét ngang danh sách</em></button>
-    </div>
-  </div>
-</section>
-
-<!-- ============================== SINH HOAT ============================== -->
-<section id="sinhhoat">
-  <div class="wrap">
-    <div class="sec-h rv">
-      <h2>Nhịp một ngày &amp; phần tự túc</h2>
-      <div class="idx">04 — SINH HOẠT</div>
-    </div>
-    <div class="rv"><div class="clockbar rvx">
-      <div class="tl" id="tl"></div>
-      <div class="cap mut" style="font-size:11px;margin-top:12px">
-        Hai mốc đã chốt: <b style="font-weight:400">17:00</b> ăn xế ·
-        <b style="font-weight:400">20:00</b> hết tăng ca rồi đi ăn tối.
-        <span id="cd" class="mono" style="text-transform:none;letter-spacing:.02em"></span>
-      </div>
-    </div></div>
-
-    <div class="life">
-      <div class="c rv"><div class="h">Tự túc</div><div class="t">Ăn sáng</div>
-        <div class="w">Anh em tự lo bữa sáng trước khi vào việc.</div></div>
-      <div class="c rv"><div class="h">Tự túc</div><div class="t">Ăn cơm trưa</div>
-        <div class="w">Công trình đã khoán gọn nên cơm trưa tự túc.</div></div>
-      <div class="c rv"><div class="h">~17:00</div><div class="t">Ăn xế nhẹ</div>
-        <div class="w">Mua ở tạp hoá gần công trình, ăn nhanh rồi làm tiếp.</div></div>
-      <div class="c rv"><div class="h">Tới 20:00</div><div class="t">Tăng ca hằng ngày</div>
-        <div class="w">Làm tới 20:00, xong mới rủ nhau đi ăn tối.</div></div>
-      <div class="c rv"><div class="h">Tối thứ 4</div><div class="t">Giặt đồ</div>
-        <div class="w">Giặt đồ tự túc — tính ít nhất một lần vào tối thứ 4.</div></div>
-      <div class="c rv"><div class="h">Khoán</div><div class="t">Phần công trình</div>
-        <div class="w">Công ty đã khoán phần công trình này: ăn uống, giặt giũ tự lo.</div></div>
-    </div>
-
-    <div class="note rv" style="margin-top:var(--s22)">
-      <svg class="tri" viewBox="0 0 48 44" aria-hidden="true">
-        <polygon points="24,2 47,42 1,42"/><rect x="22.6" y="15" width="2.8" height="15"/>
-        <rect x="22.6" y="33" width="2.8" height="2.8"/>
-      </svg>
-      <p><b>Việc cần nhớ:</b> tối thứ 4 phải chen được một lần giặt đồ
-        <span class="late" id="lateNote">trước khi hết tăng ca</span>; mua sẵn đồ ăn xế
-        từ sáng để 17:00 không phải rời công trình.</p>
-    </div>
+    <ul class="tasks" id="plan"></ul>
 
     <div class="vt rv" style="margin-top:var(--s33)">
       <div class="line"><i id="vtFill"></i></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 1 — Dựng khung &amp; đặt máy (T2)</h4>
-        <p>Tháo kiện, đưa máy 30 kg và dàn chân bồn vào vị trí, cẩu 4 silo lên, siết ốc, ráp cyclone · khay làm mát · động cơ cooling.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 2 — Hoàn thiện silo &amp; đấu nối (T3)</h4>
-        <p>Van nạp · van xả, khung phễu hút liệu, ống mềm giữa các silo, tủ điện silo, điện và khí nén máy rang.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 3 — Đường ống &amp; lên điện thử (T4)</h4>
-        <p>Pad treo ống, ráp toàn bộ đường ống vào silo, căn chỉnh, đường ống khói, cân chỉnh afterburner, lên điện thử từng thiết bị.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 4 — Gas &amp; test chức năng (T5)</h4>
-        <p>Đường ống gas máy rang và đốt khói, test chức năng, kết nối máy rang với dàn silo, fix lỗi hở gió.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 5 — Rang test &amp; hướng dẫn (T6–T7)</h4>
-        <p>Rang test, thử dàn silo, hướng dẫn vận hành cho người của khách.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 1 — Dựng khung &amp; đặt máy <span class="st ok">XONG</span></h4>
+        <p>N1–N5: tháo kiện, sửa móp afterburner và máy 30 kg, đặt máy, ráp cyclone · cooling · tủ điện, hạ chân và ráp dàn chân bồn, lên đủ 4 bồn.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 2 — Hoàn thiện silo &amp; đấu nối <span class="st">GẦN XONG</span></h4>
+        <p>N4–N6: tách đá, khí nén máy rang, van khí nén dàn bồn, máng điện, đấu điện dàn bồn, đầu cân. Chưa thấy ghi: khung phễu hút liệu, ống mềm giữa các silo, phễu nạp liệu máy rang.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 3 — Đường ống &amp; lên điện thử <span class="st">ĐANG LÀM</span></h4>
+        <p>N6: treo full khung đường ống, treo 5 dây lên trần, bắt đầu lắp dàn ống; đã lên điện máy rang, tách đá, dàn silo. Còn ráp đường ống vào silo và căn chỉnh.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 4 — Gas &amp; test chức năng <span class="st">MỘT PHẦN</span></h4>
+        <p>Máy rang 30 kg đã đốt thử (N3, N4), test từng tính năng (N5) và nối điện với dàn bồn (N6). Chưa thấy ghi: gas và test đốt khói, test dàn silo, fix hở gió.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 5 — Rang test &amp; hướng dẫn <span class="st">CHƯA GHI</span></h4>
+        <p>16/11 đã có ảnh ở máy rang 30 kg, nhật ký ngày này chưa ghi.</p></div>
     </div>
   </div>
 </section>
@@ -711,16 +838,16 @@ footer .cap{color:var(--graphite)}
 <!-- ============================== FAQ / ACC ============================== -->
 <section class="tight">
   <div class="wrap">
-    <div class="sec-h rv"><h2>Ghi chú thi công</h2><div class="idx">05 — GHI CHÚ</div></div>
+    <div class="sec-h rv"><h2>Ghi chú</h2><div class="idx">06 — GHI CHÚ</div></div>
     <div class="acc" id="acc">
       <div class="acc-i"><button class="acc-b"><span class="k">Trang này tính % thế nào</span><span class="s">+</span></button>
-        <div class="acc-p"><div><p>Mỗi việc trong lịch T2–T7 đếm 1 điểm bằng nhau. % dự án = số việc đã tick chia tổng số việc. Ba vòng tròn nhóm (cơ khí · điện–khí–gas · chạy thử) tính riêng theo nhãn của từng việc.</p></div></div></div>
+        <div class="acc-p"><div><p>% = số việc trong kế hoạch 44 việc đã xong ÷ 44. Việc đã thấy trong nhật ký được tick sẵn và khoá (ghi ngày N1…N6). Ba vòng nhóm (cơ khí · điện–khí–gas · chạy thử) tính riêng theo nhãn từng việc. Việc của máy 6 kg không nằm trong kế hoạch nên chỉ có ở nhật ký.</p></div></div></div>
+      <div class="acc-i"><button class="acc-b"><span class="k">Vì sao ngày 6 có hai ca</span><span class="s">+</span></button>
+        <div class="acc-p"><div><p>Nhật ký ghi chung “ngày 6” cho 14/11 và 15/11: ảnh 14/11 là van khí nén và dàn giáo, ảnh 15/11 là treo dây lên trần. Giờ làm vẫn tách riêng từng ca. Ca 15/11 làm tới 4:40 sáng 16/11.</p></div></div></div>
+      <div class="acc-i"><button class="acc-b"><span class="k">Ảnh trên trang</span><span class="s">+</span></button>
+        <div class="acc-p"><div><p>Ảnh đã nén lại cho nhẹ, không còn thông tin máy chụp hay vị trí. Ảnh có biển hiệu, tên quán, đường phố hoặc đồng phục nhân viên của khách thì không đưa lên. Bấm vào ảnh để xem to, dùng phím mũi tên hoặc quét ngang để qua ảnh khác.</p></div></div></div>
       <div class="acc-i"><button class="acc-b"><span class="k">Tick ở máy này có hiện trên máy khác không</span><span class="s">+</span></button>
         <div class="acc-p"><div><p>Không. Trang tĩnh nên tick chỉ lưu trong máy đang mở (localStorage). Muốn đồng bộ sang điện thoại thì bấm “Sao chép link kèm tiến độ” ở mục Lưu &amp; chia sẻ rồi mở link đó ở máy kia.</p></div></div></div>
-      <div class="acc-i"><button class="acc-b"><span class="k">Đổi ngày bắt đầu</span><span class="s">+</span></button>
-        <div class="acc-p"><div><p>Mục Lưu &amp; chia sẻ có ô chọn ngày thứ 2. Chọn xong, sáu ngày T2–T7 tự nhảy theo và nhãn “HÔM NAY” gắn đúng cột.</p></div></div></div>
-      <div class="acc-i"><button class="acc-b"><span class="k">Việc phát sinh ngoài lịch</span><span class="s">+</span></button>
-        <div class="acc-p"><div><p>Hai việc sửa lỗi đã có trong lịch: sửa chân máy rang (T2) và fix lỗi hở gió (T5). Phát sinh khác thì ghi vào sổ công trình, trang này chỉ theo đúng lịch đã chốt.</p></div></div></div>
     </div>
   </div>
 </section>
@@ -728,17 +855,15 @@ footer .cap{color:var(--graphite)}
 <!-- ============================== LUU / CHIA SE ============================== -->
 <section id="luu">
   <div class="wrap">
-    <div class="sec-h rv"><h2>Lưu &amp; chia sẻ</h2><div class="idx">06 — DỮ LIỆU</div></div>
+    <div class="sec-h rv"><h2>Lưu &amp; chia sẻ</h2><div class="idx">07 — DỮ LIỆU</div></div>
     <div class="io rv">
       <div>
-        <label class="fld"><span>Ngày thứ 2 (bắt đầu)</span>
-          <input type="date" id="dStart"></label>
-        <div class="btns" style="margin-top:var(--s22)">
+        <div class="btns">
           <button class="btn solid" id="bShare">Sao chép link kèm tiến độ <span class="ar">→</span></button>
-          <button class="btn" id="bReset">Xoá hết tick</button>
+          <button class="btn" id="bReset">Xoá tick tự đánh</button>
         </div>
         <div class="cap mut" style="font-size:11px;margin-top:var(--s15)">
-          Tick được lưu ngay trong máy này<span class="blinker"></span>
+          Tick tự đánh được lưu ngay trong máy này<span class="blinker"></span>
         </div>
       </div>
       <div>
@@ -755,7 +880,7 @@ footer .cap{color:var(--graphite)}
 
 <footer>
   <div class="wrap">
-    <div class="cap">O Tesla · tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn</div>
+    <div class="cap">O Tesla · tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn · cập nhật 16/11/2026</div>
     <div class="cap mono" id="footPct">0%</div>
   </div>
 </footer>
@@ -765,94 +890,172 @@ footer .cap{color:var(--graphite)}
     <path d="M9 15V3M3.5 8.5L9 3l5.5 5.5"/></svg>
 </button>
 <div id="toast" aria-live="polite"></div>
+<div id="gtip" aria-hidden="true"></div>
 
+<!-- FX-62 -->
+<div id="lb" role="dialog" aria-modal="true" aria-label="Xem ảnh" aria-hidden="true">
+  <img id="lbImg" alt="">
+  <button class="lb-x" id="lbX" aria-label="Đóng">✕</button>
+  <button class="lb-p" id="lbP" aria-label="Ảnh trước">←</button>
+  <button class="lb-n" id="lbNx" aria-label="Ảnh sau">→</button>
+  <div class="lb-bar"><span id="lbCap"></span><span class="mono" id="lbN"></span></div>
+</div>
+
+<script src="anh/anh.js"></script>
 <script>
 'use strict';
 /* ============================== DU LIEU ============================== */
-/* g: nhom -> co = co khi lap rap | dk = dien/khi/gas | tt = chay thu/nghiem thu */
+var YEAR = 2026;
+/* NHAT KY THAT. ngay: 'DDMM'. gio: [ngay, vao, ra, phut nghi, ghi chu].
+   k: [viec, nhom] — co = co khi lap rap | dk = dien/khi/gas | tt = chay thu | m6 = may 6 kg */
 var DAYS = [
- {d:'T2', t:'Thứ hai', s:'Dựng khung · đặt máy', k:[
-  ['Tháo kiện','co'],
-  ['Xếp máy 30 kg và dàn chân bồn vào đúng vị trí','co'],
-  ['Cẩu 4 silo lên dàn chân bồn','co'],
-  ['Siết ốc','co'],
-  ['Lắp ráp dàn khung bồn','co'],
-  ['Ráp máng điện bồn','dk'],
-  ['Ráp cyclone máy 30 kg','co'],
-  ['Ráp khay làm mát 30 kg','co'],
-  ['Ráp động cơ cooling 30 kg','co'],
-  ['Đặt tủ điện 30 kg đúng vị trí','dk'],
-  ['Sửa lỗi chân máy rang 30 kg','co']]},
- {d:'T3', t:'Thứ ba', s:'Hoàn thiện silo · đấu nối', k:[
-  ['Ráp tiếp 4 silo bồn','co'],
-  ['Ráp van nạp','co'],
-  ['Ráp van xả','co'],
-  ['Ráp khung phễu hút liệu','co'],
-  ['Gắn ống mềm giữa các silo','co'],
-  ['Ráp tủ điện silo','dk'],
-  ['Kết nối tách đá vào máy rang','co'],
-  ['Ráp phễu nạp liệu máy rang','co'],
-  ['Ráp điện máy rang','dk'],
-  ['Ráp khí nén máy rang','dk']]},
- {d:'T4', t:'Thứ tư', s:'Đường ống · lên điện thử', k:[
-  ['Gắn pad treo đường ống','co'],
-  ['Căn chỉnh pad treo và đường ống','co'],
-  ['Ráp toàn bộ đường ống vào silo','co'],
-  ['Căn chỉnh silo máy rang và đường ống','co'],
-  ['Gắn đường ống khói','co'],
-  ['Cân chỉnh afterburner và đường ống khói','co'],
-  ['Lên điện thử máy rang','tt'],
-  ['Lên điện thử máy tách đá','tt'],
-  ['Lên điện thử đốt khói (afterburner)','tt'],
-  ['Lên điện thử dàn silo','tt']]},
- {d:'T5', t:'Thứ năm', s:'Gas · test chức năng', k:[
-  ['Gắn đường ống gas máy rang','dk'],
-  ['Gắn đường ống gas đốt khói','dk'],
-  ['Test chức năng máy rang','tt'],
-  ['Test chức năng đốt khói','tt'],
-  ['Kết nối máy rang với dàn silo','dk'],
-  ['Test dàn silo','tt'],
-  ['Fix lỗi hở gió','tt']]},
- {d:'T6', t:'Thứ sáu', s:'Rang test · hướng dẫn', k:[
-  ['Rang test','tt'],
-  ['Thử dàn silo','tt'],
-  ['Hướng dẫn vận hành','tt']]},
- {d:'T7', t:'Thứ bảy', s:'Rang test · nghiệm thu', k:[
-  ['Rang test','tt'],
-  ['Thử dàn silo','tt'],
-  ['Hướng dẫn vận hành (nghiệm thu)','tt']]}
+ {d:'N1', ngay:['0911'], s:'Tới công trình · afterburner · dời máy 6 kg',
+  gio:[['0911','09:53','20:00',0,'nhật ký không ghi giờ nghỉ']],
+  ghi:'3:29 rời xưởng, bay ra Hà Nội, 9:53 tới công trình.',
+  k:[['Tháo kiện','co'],
+     ['Khung afterburner bị móp, trầy — tháo ra sửa','co'],
+     ['Ráp chân afterburner','co'],
+     ['Gắn đường ống khói, nối vào đường ống khói cũ','co'],
+     ['Tháo và dời máy 6 kg','m6']]},
+ {d:'N2', ngay:['1011'], s:'Tháo kiện 30 kg · cyclone · cooling · tủ điện',
+  gio:[['1011','08:30','22:37',90]],
+  k:[['Tháo kiện máy 30 kg','co'],
+     ['Sửa chỗ cấn móp trên máy 30 kg','co'],
+     ['Sửa 2 chân máy','co'],
+     ['Ráp cyclone và cooling','co'],
+     ['Ráp tủ điện','dk'],
+     ['Ráp máy 30 kg vào đường ống khói','co'],
+     ['Ráp lại máy 6 kg','m6'],
+     ['Nâng cấp firmware máy 6 kg','m6'],
+     ['Cấp nguồn máy 30 kg','dk']]},
+ {d:'N3', ngay:['1111'], s:'Đốt thử 30 kg · rang thử 6 kg · dàn chân bồn',
+  gio:[['1111','08:30','20:22',90]],
+  k:[['Gắn đường ống khói cho máy 30 kg và máy 6 kg','co'],
+     ['Dặm sơn máy 30 kg','co'],
+     ['Ráp full dàn điện máy 30 kg','dk'],
+     ['Đốt thử máy 30 kg','tt'],
+     ['Dặm sơn cyclone máy 6 kg','m6'],
+     ['Căn chỉnh, rang thử máy 6 kg','m6'],
+     ['Đi lại đường ống cứng cho 2 máy rang','dk'],
+     ['Hạ chân dàn bồn — hàn, cắt, dặm sơn','co'],
+     ['Ráp dàn chân bồn','co']]},
+ {d:'N4', ngay:['1211'], s:'Cyclone 30 kg · tách đá · dựng bồn đầu tiên',
+  gio:[['1211','08:25','21:45',90]],
+  k:[['Ráp cyclone máy 30 kg','co'],
+     ['Đi ống khí nén hoàn chỉnh','dk'],
+     ['Ráp máy tách đá và ống khí của tách đá','co'],
+     ['Lau máy rang, ống khói','co'],
+     ['Đốt test, chạy thử','tt'],
+     ['Sửa ống xoắn của bồn','co'],
+     ['Lau chùi, vệ sinh','co'],
+     ['Dựng bồn đầu tiên lên dàn','co']]},
+ {d:'N5', ngay:['1311'], s:'Lên đủ 4 bồn · dặm sơn · test từng tính năng',
+  gio:[['1311','08:56','22:47',90]],
+  k:[['Lên toàn bộ 4 bồn lên dàn','co'],
+     ['Ráp khung dàn bồn','co'],
+     ['Hạ chân dàn bồn thành công','co'],
+     ['Dặm sơn dàn chân bồn, máy rang, máy tách đá','co'],
+     ['Chạy test từng tính năng của máy rang','tt']]},
+ {d:'N6', ngay:['1411','1511'], s:'Van khí nén · đấu điện dàn bồn · treo đường ống',
+  gio:[['1411','08:47','20:31',90],['1511','08:26','04:40',120,'làm tới 4:40 sáng 16/11']],
+  ghi:'Nhật ký ghi chung “ngày 6” cho hai ca 14 và 15/11. Ca 15/11 làm tới 4:40 sáng 16/11 mới về.',
+  k:[['Ráp full van khí nén cho dàn bồn','dk'],
+     ['Kết nối khí nén dàn bồn','dk'],
+     ['Ráp máng điện, đấu điện dàn bồn','dk'],
+     ['Lắp các đầu cân, cân chỉnh cân','dk'],
+     ['Đấu nguồn máy tách đá 30 kg','dk'],
+     ['Sửa lại đường dây điện máy 30 kg cho gọn, đẹp','dk'],
+     ['Kéo dây điện, dây mạng, khí nén từ phòng rang sang khu bồn chứa','dk'],
+     ['Đấu điện nối máy rang 30 kg với dàn bồn','dk'],
+     ['Sửa lỗi kẹt van, xì khí van','tt'],
+     ['Treo full khung đường ống trong phòng chứa silo','co'],
+     ['Bắt đầu lắp các dàn ống','co'],
+     ['Treo 5 dây lên trần nhà — ráp dàn giáo 3 lần, mỗi dàn 8 bộ, tháo ra ráp lại rất mất thời gian','co']]},
+ {d:'N7', ngay:['1611'], s:'Ảnh mới ở máy rang 30 kg', gio:[], k:[]}
 ];
-var GNAME = {co:'Cơ khí · lắp ráp', dk:'Điện · khí · gas', tt:'Chạy thử · nghiệm thu'};
 
-var KEY = 'otl-tiendo-30kg-silo-v1';
-var TOTAL = DAYS.reduce(function(n,d){return n+d.k.length},0);
+/* KE HOACH 44 VIEC (chot 07/11). Phan tu thu 3 = ngay nhat ky co ghi viec nay ('' = chua thay) */
+var PLAN = [
+ {d:'T2', s:'Dựng khung · đặt máy', k:[
+  ['Tháo kiện','co','N1–N2'],
+  ['Xếp máy 30 kg và dàn chân bồn vào đúng vị trí','co','N2–N3'],
+  ['Cẩu 4 silo lên dàn chân bồn','co','N4–N5'],
+  ['Siết ốc','co','N5'],
+  ['Lắp ráp dàn khung bồn','co','N5'],
+  ['Ráp máng điện bồn','dk','N6'],
+  ['Ráp cyclone máy 30 kg','co','N4'],
+  ['Ráp khay làm mát 30 kg','co','N2'],
+  ['Ráp động cơ cooling 30 kg','co','N2'],
+  ['Đặt tủ điện 30 kg đúng vị trí','dk','N2'],
+  ['Sửa lỗi chân máy rang 30 kg','co','N2']]},
+ {d:'T3', s:'Hoàn thiện silo · đấu nối', k:[
+  ['Ráp tiếp 4 silo bồn','co','N5'],
+  ['Ráp van nạp','co','N6'],
+  ['Ráp van xả','co','N6'],
+  ['Ráp khung phễu hút liệu','co',''],
+  ['Gắn ống mềm giữa các silo','co',''],
+  ['Ráp tủ điện silo','dk','N6'],
+  ['Kết nối tách đá vào máy rang','co','N4'],
+  ['Ráp phễu nạp liệu máy rang','co',''],
+  ['Ráp điện máy rang','dk','N3'],
+  ['Ráp khí nén máy rang','dk','N4']]},
+ {d:'T4', s:'Đường ống · lên điện thử', k:[
+  ['Gắn pad treo đường ống','co','N6'],
+  ['Căn chỉnh pad treo và đường ống','co',''],
+  ['Ráp toàn bộ đường ống vào silo','co',''],
+  ['Căn chỉnh silo máy rang và đường ống','co',''],
+  ['Gắn đường ống khói','co','N1–N3'],
+  ['Cân chỉnh afterburner và đường ống khói','co','N1–N3'],
+  ['Lên điện thử máy rang','tt','N2–N3'],
+  ['Lên điện thử máy tách đá','tt','N6'],
+  ['Lên điện thử đốt khói (afterburner)','tt',''],
+  ['Lên điện thử dàn silo','tt','N6']]},
+ {d:'T5', s:'Gas · test chức năng', k:[
+  ['Gắn đường ống gas máy rang','dk','N3'],
+  ['Gắn đường ống gas đốt khói','dk',''],
+  ['Test chức năng máy rang','tt','N5'],
+  ['Test chức năng đốt khói','tt',''],
+  ['Kết nối máy rang với dàn silo','dk','N6'],
+  ['Test dàn silo','tt',''],
+  ['Fix lỗi hở gió','tt','']]},
+ {d:'T6', s:'Rang test · hướng dẫn', k:[
+  ['Rang test','tt',''],
+  ['Thử dàn silo','tt',''],
+  ['Hướng dẫn vận hành','tt','']]},
+ {d:'T7', s:'Rang test · nghiệm thu', k:[
+  ['Rang test','tt',''],
+  ['Thử dàn silo','tt',''],
+  ['Hướng dẫn vận hành (nghiệm thu)','tt','']]}
+];
+var GNAME = {co:'Cơ khí · lắp ráp', dk:'Điện · khí · gas', tt:'Chạy thử · nghiệm thu', m6:'Máy 6 kg'};
+var TH  = ['CN','T2','T3','T4','T5','T6','T7'];
+var THL = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+
+var KEY = 'otl-tiendo-30kg-silo-v2';
+var PTOTAL = PLAN.reduce(function(n,d){return n+d.k.length},0);
 var RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ============================== STATE ============================== */
-var state = {start:'', done:{}};
-function defStart(){            /* thu 2 cua tuan nay/tuan toi */
-  var n=new Date(), w=n.getDay(), add=(w===0?1:(w===6?2:(w===1?0:8-w)));
-  n.setDate(n.getDate()+add); return iso(n);
-}
+/* state.done chi giu tick TU DANH; viec co trong nhat ky luon tinh la xong */
+var state = {done:{}};
 function iso(d){var m=('0'+(d.getMonth()+1)).slice(-2),x=('0'+d.getDate()).slice(-2);
   return d.getFullYear()+'-'+m+'-'+x}
 function load(){
   try{
     var h=location.hash.match(/p=([A-Za-z0-9+/=_-]+)/);
     if(h){var j=JSON.parse(decodeURIComponent(escape(atob(h[1].replace(/-/g,'+').replace(/_/g,'/')))));
-      if(j&&j.done){state=j; save(); return}}
+      if(j&&j.done){state={done:j.done}; save(); return}}
   }catch(e){}
-  try{var s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.done) state=s}catch(e){}
-  if(!state.start) state.start=defStart();
+  try{var s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.done) state={done:s.done}}catch(e){}
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 function enc(){
   try{return btoa(unescape(encodeURIComponent(JSON.stringify(state))))
     .replace(/\+/g,'-').replace(/\//g,'_')}catch(e){return ''}
 }
-function id(di,ki){return 'd'+di+'-'+ki}
-function isDone(di,ki){return !!state.done[id(di,ki)]}
-
+function id(di,ki){return 'p'+di+'-'+ki}
+function isLog(di,ki){return !!PLAN[di].k[ki][2]}
+function isDone(di,ki){return isLog(di,ki)||!!state.done[id(di,ki)]}
 /* ============================== HELPERS ============================== */
 var $=function(s,r){return (r||document).querySelector(s)};
 var $$=function(s,r){return [].slice.call((r||document).querySelectorAll(s))};
@@ -920,29 +1123,51 @@ function scramble(el,txt){
 
 /* ============================== TINH TOAN ============================== */
 function stats(){
-  var done=0,g={co:[0,0],dk:[0,0],tt:[0,0]},per=[];
-  DAYS.forEach(function(d,di){
-    var c=0;
+  var done=0,g={co:[0,0],dk:[0,0],tt:[0,0]};
+  PLAN.forEach(function(d,di){
     d.k.forEach(function(k,ki){
-      var dn=isDone(di,ki);
-      g[k[1]][1]++; if(dn){g[k[1]][0]++;c++;done++}
+      g[k[1]][1]++; if(isDone(di,ki)){g[k[1]][0]++;done++}
     });
-    per.push({done:c,total:d.k.length});
   });
-  return {done:done,total:TOTAL,pct:TOTAL?Math.round(done/TOTAL*100):0,per:per,g:g};
+  return {done:done,total:PTOTAL,pct:PTOTAL?Math.round(done/PTOTAL*100):0,g:g};
 }
 function gp(a){return a[1]?Math.round(a[0]/a[1]*100):0}
 
-/* ============================== NGAY ============================== */
-function dayDate(i){
-  var p=(state.start||defStart()).split('-');
-  var d=new Date(+p[0],+p[1]-1,+p[2]); d.setDate(d.getDate()+i); return d;
+/* ============================== NGAY & GIO ============================== */
+function hm(s){var p=s.split(':');return (+p[0])*60+(+p[1])}
+function ca(c){                       /* ra <= vao nghia la qua nua dem */
+  var a=hm(c[1]),b=hm(c[2]); if(b<=a) b+=1440;
+  return {ngay:c[0],vao:a,ra:b,nghi:c[3],lam:b-a-c[3],ghi:c[4]||''};
 }
-function fmt(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)}
+function hhmm(m){m=m%1440;return Math.floor(m/60)+':'+('0'+m%60).slice(-2)}
+function dur(m){return Math.floor(m/60)+'h'+('0'+m%60).slice(-2)}
+function caList(){var r=[];DAYS.forEach(function(d){d.gio.forEach(function(c){r.push(ca(c))})});return r}
+function lamNgay(d){return d.gio.reduce(function(n,c){return n+ca(c).lam},0)}
+function tongLam(){return caList().reduce(function(n,c){return n+c.lam},0)}
+function ddmm(s){return s.slice(0,2)+'/'+s.slice(2)}
+function dateOf(s){return new Date(YEAR,+s.slice(2)-1,+s.slice(0,2))}
+function ngayText(d){
+  if(d.ngay.length===1) return ddmm(d.ngay[0]);
+  var a=d.ngay[0],b=d.ngay[d.ngay.length-1];
+  return a.slice(2)===b.slice(2)? a.slice(0,2)+'–'+ddmm(b) : ddmm(a)+'–'+ddmm(b);
+}
+function thuText(d,ngan){
+  var a=dateOf(d.ngay[0]).getDay(),b=dateOf(d.ngay[d.ngay.length-1]).getDay();
+  if(d.ngay.length===1) return (ngan?TH:THL)[a];
+  return TH[a]+' – '+TH[b];
+}
 function todayIdx(){
   var t=iso(new Date());
-  for(var i=0;i<6;i++) if(iso(dayDate(i))===t) return i;
+  for(var i=0;i<DAYS.length;i++)
+    if(DAYS[i].ngay.some(function(s){return iso(dateOf(s))===t})) return i;
   return -1;
+}
+function anh(s){return (window.ANH&&window.ANH[s])||[]}
+function nAnhDay(d){return d.ngay.reduce(function(n,s){return n+anh(s).length},0)}
+function nAnh(){return DAYS.reduce(function(n,d){return n+nAnhDay(d)},0)}
+function nLog(){return DAYS.reduce(function(n,d){return n+d.k.length},0)}
+function caText(c,motNgay){
+  return (motNgay?'':ddmm(c.ngay)+' ')+hhmm(c.vao)+' → '+hhmm(c.ra)+(c.ra>=1440?' sáng hôm sau':'');
 }
 
 /* ============================== RENDER ============================== */
@@ -950,27 +1175,34 @@ var cur=0, filt='all';
 
 function buildStrip(){
   var s=$('#strip'); s.innerHTML='';
+  var maxL=Math.max.apply(null,DAYS.map(lamNgay).concat([1]));
   DAYS.forEach(function(d,i){
-    var b=document.createElement('button');
-    b.className='day'; b.setAttribute('data-i',i);
+    var b=document.createElement('button'),L=lamNgay(d);
+    b.className='day'+(d.k.length?' full':''); b.setAttribute('data-i',i);
     b.innerHTML='<div class="dt">'+d.d+'</div>'+
-      '<div class="dsub">'+d.t+' · <span class="mono j0">'+fmt(dayDate(i))+'</span></div>'+
+      '<div class="dsub">'+thuText(d)+' · <span class="mono">'+ngayText(d)+'</span></div>'+
       '<div class="dd">'+d.s+'</div>'+
-      '<div class="dp"><span class="mono j1">0/'+d.k.length+' việc</span>'+
-      '<span class="mono j2">0%</span></div>'+
+      '<div class="dp"><span class="mono">'+(L?'làm '+dur(L):'chưa ghi giờ')+'</span>'+
+      '<span class="mono">'+nAnhDay(d)+' ảnh</span></div>'+
       '<div class="pbar"><i></i></div>'+
-      '<span class="stamp">HOÀN TẤT</span>';
+      '<span class="stamp">ĐÃ GHI</span>';
     b.addEventListener('click',function(e){
       if(sDrag.moved) return; ripple(b,e); go(i,true);
     });
     s.appendChild(b);
+    (function(bar,w){setTimeout(function(){bar.style.width=w+'%'},200)})($('.pbar i',b),L/maxL*100);
   });
+  var ti=todayIdx();
+  if(ti>=0&&!DAYS[ti].k.length){
+    var t=document.createElement('span');t.className='today';t.textContent='HÔM NAY';
+    s.children[ti].appendChild(t);
+  }
 }
 function buildTabs(){
   var t=$('#tabs');
   DAYS.forEach(function(d,i){
     var b=document.createElement('button');
-    b.textContent=d.d; b.setAttribute('role','tab'); b.setAttribute('data-i',i);
+    b.textContent=d.d+' · '+ngayText(d); b.setAttribute('role','tab'); b.setAttribute('data-i',i);
     b.addEventListener('click',function(e){ripple(b,e);go(i,false)});
     t.appendChild(b);
   });
@@ -981,20 +1213,184 @@ function moveInd(){
   ind.style.width=b.offsetWidth+'px';
   ind.style.transform='translateX('+b.offsetLeft+'px)';
 }
-function buildTasks(){
+var TICK='<span class="box"><svg viewBox="0 0 16 16"><path d="M3 8.4l3.2 3.2L13 4.6"/></svg>';
+function buildLog(){
   var d=DAYS[cur],ul=$('#tasks');ul.innerHTML='';
+  if(!d.k.length){
+    var e=document.createElement('li');e.className='task empty';
+    e.innerHTML='<span class="tx">Nhật ký ngày này chưa ghi — mới có ảnh hiện trường.</span>';
+    ul.appendChild(e);
+  }
   d.k.forEach(function(k,ki){
     var li=document.createElement('li');
-    li.className='task'+(isDone(cur,ki)?' done':'');
-    li.setAttribute('data-k',ki); li.setAttribute('data-g',k[1]);
-    li.innerHTML='<span class="box"><svg viewBox="0 0 16 16"><path d="M3 8.4l3.2 3.2L13 4.6"/></svg>'+
-      '<button class="hit" aria-label="Tick việc: '+k[0].replace(/"/g,'')+'"></button></span>'+
-      '<span class="no mono">'+('0'+(ki+1)).slice(-2)+'</span>'+
-      '<span class="tx"><s>'+k[0]+'</s><span class="tg">'+GNAME[k[1]]+'</span></span>';
-    $('.hit',li).addEventListener('click',function(e){
-      ripple($('.box',li),e); toggle(cur,ki,li);
-    });
+    li.className='task log'+(RM?'':' enter'); li.style.animationDelay=(ki*32)+'ms';
+    li.innerHTML=TICK+'</span><span class="no mono">'+('0'+(ki+1)).slice(-2)+'</span>'+
+      '<span class="tx">'+k[0]+'<span class="tg">'+GNAME[k[1]]+'</span></span>';
     ul.appendChild(li);
+  });
+  var g=$('#ghi'); g.textContent=d.ghi||''; g.hidden=!d.ghi;
+  buildGal(d);
+}
+
+/* ============================== FX-61 LUOI ANH ============================== */
+var LB=[],lbi=0,lbFrom=null;
+function buildGal(d){
+  var g=$('#gal'),tot=nAnhDay(d); g.innerHTML=''; LB=[];
+  $('#galH').textContent=tot?'Ảnh hiện trường · '+tot:'';
+  d.ngay.forEach(function(s){
+    var list=anh(s); if(!list.length) return;
+    if(d.ngay.length>1){
+      var h=document.createElement('h4');h.textContent='Ca '+ddmm(s)+' · '+list.length+' ảnh';
+      g.appendChild(h);
+    }
+    list.forEach(function(wh,j){
+      var no=('0'+(j+1)).slice(-2),idx=LB.length;
+      LB.push({src:'anh/'+s+'/'+no+'.jpg',cap:d.d+' · '+ddmm(s)+' · ảnh '+(j+1)+'/'+list.length});
+      var b=document.createElement('button');b.className='ph';
+      b.setAttribute('aria-label','Mở ảnh '+(j+1)+' ngày '+ddmm(s));
+      var im=document.createElement('img');im.alt='';im.decoding='async';im.loading='lazy';
+      im.onload=im.onerror=function(){im.classList.add('ok')};
+      im.src='anh/'+s+'/t'+no+'.jpg';
+      b.appendChild(im);
+      b.addEventListener('click',function(){openLb(idx,b)});
+      g.appendChild(b);
+    });
+  });
+}
+
+/* ============================== FX-62 LIGHTBOX ============================== */
+function showLb(){
+  var p=LB[lbi],im=$('#lbImg'); if(!p) return;
+  if(im.getAttribute('src')!==p.src){
+    im.style.opacity=0;
+    im.onload=im.onerror=function(){im.style.opacity=1};
+    im.src=p.src;
+  }
+  $('#lbCap').textContent=p.cap;
+  $('#lbN').textContent=(lbi+1)+' / '+LB.length;
+  var nx=LB[(lbi+1)%LB.length]; if(nx){var pre=new Image();pre.src=nx.src}
+}
+function openLb(i,from){
+  lbi=i; lbFrom=from; showLb();
+  var lb=$('#lb'); lb.classList.add('on'); lb.setAttribute('aria-hidden','false');
+  document.documentElement.style.overflow='hidden';
+  setTimeout(function(){$('#lbX').focus()},30);
+}
+function closeLb(){
+  var lb=$('#lb'); if(!lb.classList.contains('on')) return;
+  lb.classList.remove('on'); lb.setAttribute('aria-hidden','true');
+  document.documentElement.style.overflow='';
+  if(lbFrom&&lbFrom.focus) lbFrom.focus();
+}
+function stepLb(k){if(!LB.length) return; lbi=(lbi+k+LB.length)%LB.length; showLb()}
+(function(){
+  var lb=$('#lb'),x0=0,y0=0;
+  $('#lbX').addEventListener('click',closeLb);
+  $('#lbP').addEventListener('click',function(){stepLb(-1)});
+  $('#lbNx').addEventListener('click',function(){stepLb(1)});
+  lb.addEventListener('click',function(e){if(e.target===lb) closeLb()});
+  addEventListener('keydown',function(e){
+    if(!lb.classList.contains('on')) return;
+    if(e.key==='Escape') closeLb();
+    else if(e.key==='ArrowLeft') stepLb(-1);
+    else if(e.key==='ArrowRight') stepLb(1);
+  });
+  lb.addEventListener('touchstart',function(e){x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+  lb.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.4) stepLb(dx<0?1:-1);
+    else if(dy>90&&Math.abs(dy)>Math.abs(dx)*1.4) closeLb();
+  },{passive:true});
+})();
+
+/* ============================== FX-63 BIEU DO GIO LAM ============================== */
+var GS=8*60, GE=29*60;                 /* truc 08:00 -> 05:00 sang hom sau */
+function gx(m){return (m-GS)/(GE-GS)*100}
+function buildGantt(){
+  var rows=caList(),h='',grid='',ax='',i;
+  [12,16,24,28].forEach(function(t){grid+='<span class="gl" style="left:'+gx(t*60)+'%"></span>'});
+  grid+='<span class="ref" style="left:'+gx(20*60)+'%"></span>';
+  h+='<div class="g-row g-head" aria-hidden="true"><span></span><div class="g-tr">'+
+    '<span class="ref" style="left:'+gx(20*60)+'%"></span>'+
+    '<span class="g-ref" style="left:'+gx(20*60)+'%">20:00 theo kế hoạch</span></div><span></span></div>';
+  rows.forEach(function(c,i){
+    h+='<div class="g-row" tabindex="0" data-i="'+i+'">'+
+      '<span class="g-lb">'+TH[dateOf(c.ngay).getDay()]+'<b class="mono">'+ddmm(c.ngay)+'</b></span>'+
+      '<div class="g-tr">'+grid+'<i class="g-bar" style="left:'+gx(c.vao).toFixed(2)+'%;width:'+
+        (gx(c.ra)-gx(c.vao)).toFixed(2)+'%;transition-delay:'+(i*90)+'ms"></i></div>'+
+      '<span class="g-v mono">'+dur(c.lam)+'</span></div>';
+  });
+  [[8,'08'],[12,'12'],[16,'16'],[20,'20'],[24,'00'],[28,'04']].forEach(function(t){
+    ax+='<span class="mono" style="left:'+gx(t[0]*60)+'%">'+t[1]+'</span>';
+  });
+  h+='<div class="g-axis" aria-hidden="true"><span></span><div class="ax">'+ax+'</div><span class="g-lb">giờ</span></div>';
+  $('#gantt').innerHTML=h;
+
+  var tot=tongLam(),tb='';
+  rows.forEach(function(c){
+    tb+='<tr><td>'+TH[dateOf(c.ngay).getDay()]+' '+ddmm(c.ngay)+'</td><td class="mono">'+hhmm(c.vao)+
+      '</td><td class="mono">'+hhmm(c.ra)+(c.ra>=1440?' (+1)':'')+'</td><td class="r mono">'+
+      (c.nghi?dur(c.nghi):'—')+'</td><td class="r mono">'+dur(c.lam)+'</td></tr>';
+  });
+  $('#gTb').innerHTML=tb;
+  $('#gTf').innerHTML='<tr><td colspan="4">Tổng '+rows.length+' ca</td><td class="r mono">'+dur(tot)+'</td></tr>';
+  $('#gSum').innerHTML='<span>Tổng '+rows.length+' ca · <b style="font-weight:400">'+dur(tot)+'</b> làm thực</span>'+
+    '<span>Trung bình '+dur(Math.round(tot/rows.length))+' / ca · ca dài nhất '+
+    dur(Math.max.apply(null,rows.map(function(c){return c.lam})))+'</span>';
+  $('#lTot').textContent=dur(tot).replace('h',' giờ ')+' phút làm thực';
+  $('#lAvg').textContent='Đã trừ giờ nghỉ trưa, nghỉ tối. Trung bình '+
+    dur(Math.round(tot/rows.length)).replace('h',' giờ ')+' phút mỗi ca.';
+
+  /* tooltip theo hang — vung bam = ca hang, lon hon thanh */
+  var tip=$('#gtip'),hide=0;
+  function txt(c){
+    return '<b>'+THL[dateOf(c.ngay).getDay()]+' '+ddmm(c.ngay)+'</b><br>'+
+      hhmm(c.vao)+' → '+hhmm(c.ra)+(c.ra>=1440?' sáng hôm sau':'')+'<br>'+
+      'Nghỉ '+(c.nghi?dur(c.nghi):'—')+' · làm <b>'+dur(c.lam)+'</b>'+(c.ghi?'<br>'+c.ghi:'');
+  }
+  function put(x,y){
+    var w=tip.offsetWidth,hh=tip.offsetHeight;
+    tip.style.transform='translate('+Math.max(8,Math.min(innerWidth-w-8,x+14))+'px,'+
+      Math.max(8,y-hh-12)+'px)';
+  }
+  $$('#gantt .g-row[data-i]').forEach(function(r){
+    var c=rows[+r.getAttribute('data-i')];
+    r.addEventListener('pointerenter',function(e){clearTimeout(hide);tip.innerHTML=txt(c);tip.classList.add('on');put(e.clientX,e.clientY)});
+    r.addEventListener('pointermove',function(e){put(e.clientX,e.clientY)});
+    r.addEventListener('pointerleave',function(){tip.classList.remove('on')});
+    r.addEventListener('pointerdown',function(e){
+      if(e.pointerType==='mouse') return;
+      clearTimeout(hide);tip.innerHTML=txt(c);tip.classList.add('on');put(e.clientX,e.clientY);
+      hide=setTimeout(function(){tip.classList.remove('on')},2600);
+    });
+    r.addEventListener('focus',function(){
+      var b=r.getBoundingClientRect();tip.innerHTML=txt(c);tip.classList.add('on');put(b.left+b.width/2,b.top);
+    });
+    r.addEventListener('blur',function(){tip.classList.remove('on')});
+  });
+  addEventListener('scroll',function(){tip.classList.remove('on')},{passive:true});
+}
+
+/* ============================== KE HOACH ============================== */
+function buildPlan(){
+  var ul=$('#plan');ul.innerHTML='';
+  PLAN.forEach(function(d,di){
+    var h=document.createElement('li');h.className='pgh';h.setAttribute('data-di',di);
+    h.innerHTML='<span>'+d.d+' · '+d.s+'</span><span class="mono pc"></span>';
+    ul.appendChild(h);
+    d.k.forEach(function(k,ki){
+      var li=document.createElement('li'),lock=isLog(di,ki);
+      li.className='task'+(isDone(di,ki)?' done':'')+(lock?' lock':'');
+      li.setAttribute('data-di',di);
+      li.innerHTML=TICK+(lock?'':'<button class="hit" aria-label="Tick việc: '+k[0].replace(/"/g,'')+'"></button>')+
+        '</span><span class="no mono">'+('0'+(ki+1)).slice(-2)+'</span>'+
+        '<span class="tx"><s>'+k[0]+'</s><span class="tg">'+GNAME[k[1]]+
+        (lock?' · nhật ký '+k[2]:'')+'</span></span>';
+      if(!lock) $('.hit',li).addEventListener('click',function(e){
+        ripple($('.box',li),e); toggle(di,ki,li);
+      });
+      ul.appendChild(li);
+    });
   });
   applyFilter(false);
 }
@@ -1007,28 +1403,34 @@ function toggle(di,ki,li){
 /* FX-49/50 */
 function applyFilter(anim){
   var n=0;
-  $$('#tasks .task').forEach(function(li){
+  $$('#plan .task').forEach(function(li){
     var dn=li.classList.contains('done');
     var show = filt==='all' || (filt==='done'&&dn) || (filt==='todo'&&!dn);
     li.classList.toggle('hide',!show);
     if(show&&anim&&!RM){
       li.classList.remove('enter');
-      li.style.animationDelay=(n*36)+'ms';
+      li.style.animationDelay=(n*30)+'ms';
       void li.offsetWidth; li.classList.add('enter');
     }
     if(show) n++;
   });
-  if(!n&&filt==='done') $('#pMeta').textContent='Chưa có việc nào xong trong ngày này';
+  $$('#plan .pgh').forEach(function(h){
+    var di=h.getAttribute('data-di');
+    h.classList.toggle('hide',!$$('#plan .task[data-di="'+di+'"]:not(.hide)').length);
+  });
 }
 function go(i,scroll){
-  cur=i; filt='all';
-  $$('#chips .chip').forEach(function(c){c.classList.toggle('on',c.getAttribute('data-f')==='all')});
+  cur=i;
   $$('.tabs button').forEach(function(b){
     var on=+b.getAttribute('data-i')===i; b.classList.toggle('on',on);
     if(on) b.setAttribute('aria-selected','true'); else b.removeAttribute('aria-selected');
   });
   $$('#strip .day').forEach(function(b){b.classList.toggle('on',+b.getAttribute('data-i')===i)});
-  moveInd(); buildTasks(); paint();
+  moveInd(); buildLog();
+  var d=DAYS[i],mot=d.gio.length===1;
+  $('#pTitle').textContent=d.d+' · '+thuText(d)+' '+ngayText(d)+' — '+d.s;
+  $('#pMeta').textContent=(d.gio.length?d.gio.map(function(c){return caText(ca(c),mot)}).join(' · ')+
+    ' · làm '+dur(lamNgay(d)):'Chưa ghi giờ')+' · '+d.k.length+' việc · '+nAnhDay(d)+' ảnh';
   var b=$('.tabs button.on'); if(b&&b.scrollIntoView) try{b.scrollIntoView({block:'nearest',inline:'center',behavior:RM?'auto':'smooth'})}catch(e){}
   if(scroll){
     var y=$('#congviec').getBoundingClientRect().top+scrollY-56;
@@ -1039,24 +1441,20 @@ function go(i,scroll){
 /* ============================== PAINT ============================== */
 var lastPct=-1;
 function paint(){
-  var st=stats(),d=DAYS[cur],p=st.per[cur];
-
-  /* hero */
+  var st=stats();
   odo($('#odo'),st.pct);
   if(st.pct!==lastPct){
     var big=$('#odo').parentNode; big.classList.remove('pulse');
     void big.offsetWidth; if(!RM) big.classList.add('pulse');
     lastPct=st.pct;
   }
-  $('#heroLine').textContent=st.done+' / '+st.total+' việc đã xong';
+  $('#heroLine').textContent=st.done+' / '+st.total+' việc kế hoạch đã xong · còn '+(st.total-st.done);
   $('#ringPct').textContent=st.pct+'%';
   setRing($('#ringFg'),st.pct);
   $('#hdrPct').textContent=st.pct+'% • '+st.done+'/'+st.total;
-  $('#footPct').textContent=st.pct+'% hoàn thành';
+  $('#footPct').textContent=st.pct+'% kế hoạch';
   $('#ghost').textContent=st.pct;
-  countTo($('#kLeft'),st.total-st.done,'',700);
 
-  /* KPI */
   var vals=[st.pct,gp(st.g.co),gp(st.g.dk),gp(st.g.tt)];
   [1,2,3,4].forEach(function(n,i){
     var e=$('#v'+n);
@@ -1067,30 +1465,14 @@ function paint(){
     setRing($('#m'+n),vals[i]);
   });
 
-  /* day strip */
-  $$('#strip .day').forEach(function(b,i){
-    var q=st.per[i],pc=q.total?Math.round(q.done/q.total*100):0;
-    $('.j1',b).textContent=q.done+'/'+q.total+' việc';
-    $('.j2',b).textContent=pc+'%';
-    $('.pbar i',b).style.width=pc+'%';
-    b.classList.toggle('full',q.done===q.total);
-    var old=$('.today',b); if(old) old.remove();
-    if(i===todayIdx()&&q.done!==q.total){
-      var t=document.createElement('span');t.className='today';t.textContent='HÔM NAY';
-      b.appendChild(t);
-    }
-    $('.j0',b).textContent=fmt(dayDate(i));
+  $('#planMeta').textContent=st.done+'/'+st.total+' việc · '+st.pct+'% · còn '+(st.total-st.done);
+  $('#pFill').style.width=st.pct+'%';
+  $$('#plan .pgh').forEach(function(h){
+    var di=+h.getAttribute('data-di'),d=PLAN[di];
+    $('.pc',h).textContent=d.k.filter(function(k,ki){return isDone(di,ki)}).length+'/'+d.k.length;
   });
-
-  /* panel */
-  $('#pTitle').textContent=d.d+' · '+d.t+' — '+d.s;
-  $('#pMeta').textContent=fmt(dayDate(cur))+' · '+p.done+'/'+p.total+' việc · '+
-    (p.total?Math.round(p.done/p.total*100):0)+'%';
-  $('#pFill').style.width=(p.total?p.done/p.total*100:0)+'%';
   $('#code').value=enc();
-  $('#dStart').value=state.start;
 }
-
 /* ============================== FX-01 preloader ============================== */
 (function(){
   var n=0,e=$('#preN'),b=$('#preB');
@@ -1129,9 +1511,10 @@ function revealInit(){
 
 /* ============================== FX-10 ticker ============================== */
 (function(){
-  var items=['Công trình đã khoán gọn','Ăn sáng · ăn trưa tự túc','Giặt đồ tối thứ 4',
-    'Ăn xế ~17:00 mua ở tạp hoá','Tăng ca tới 20:00','Rồi mới đi ăn tối',
-    '6 ngày · T2 → T7','Máy rang 30 kg · hệ silo 4 bồn'];
+  var items=['Nhật ký thật 09/11 → 16/11',caList().length+' ca · '+dur(tongLam())+' làm thực',
+    '4 bồn silo đã lên dàn','Máy rang 30 kg đã đốt thử · test từng tính năng',
+    'Máy 6 kg dời chỗ · nâng firmware · rang thử','Ca 15/11 làm tới 4:40 sáng',
+    nAnh()+' ảnh hiện trường','Máy rang 30 kg · hệ silo 4 bồn'];
   var one=items.map(function(x){return '<em>'+x+'<s>◦</s></em>'}).join('');
   $('#tk').innerHTML=one+one;
 })();
@@ -1152,7 +1535,7 @@ function revealInit(){
       var p=Math.max(0,Math.min(1,(innerHeight*.72-r.top)/r.height));
       vt.style.height=(p*100)+'%';
     }
-    var secs=['tongquan','congviec','sinhhoat','luu'],act='tongquan';
+    var secs=['tongquan','congviec','giolam','kehoach','luu'],act='tongquan';
     secs.forEach(function(s){var e=document.getElementById(s);
       if(e&&e.getBoundingClientRect().top<innerHeight*.4) act=s});
     $$('nav a').forEach(function(a){a.classList.toggle('on',a.hash==='#'+act)});
@@ -1185,53 +1568,6 @@ function revealInit(){
     b.addEventListener('pointerleave',function(){b.style.transform=''});
     b.addEventListener('click',function(e){ripple(b,e)});
   });
-})();
-
-/* ============================== FX-40/41/42 gio ============================== */
-(function(){
-  var S=5*60,E=22*60,tl=$('#tl');               /* thanh gio 05:00 - 22:00 */
-  var narrow=innerWidth<700;
-  /* man hep thi bot nhan gio de hai nhan su kien khong de chu len nhau */
-  var hours=narrow?[5,22]:[5,8,11,14,17,20,22];
-  function px(m){return (m-S)/(E-S)*100}
-  function place(el,p){
-    el.style.left=p+'%';
-    if(p<2) el.style.transform='none';
-    else if(p>98) el.style.transform='translateX(-100%)';
-  }
-  for(var h=5;h<=22;h++){
-    var t=document.createElement('span');
-    t.className='tick'+(hours.indexOf(h)>=0?' maj':'');
-    t.style.left=px(h*60)+'%'; tl.appendChild(t);
-  }
-  hours.forEach(function(h){
-    var l=document.createElement('span');l.className='lb';
-    place(l,px(h*60));
-    if(narrow&&h===22) l.style.bottom='62px';   /* day len tang tren, tranh "Het tang ca" */
-    l.innerHTML='<b>'+('0'+h).slice(-2)+':00</b>'; tl.appendChild(l);
-  });
-  [[17*60,'Ăn xế',narrow?62:42],[20*60,'Hết tăng ca',narrow?32:42]].forEach(function(m){
-    var l=document.createElement('span');l.className='lb';
-    place(l,px(m[0])); l.style.bottom=m[2]+'px';
-    /* man hep khong co nhan gio rieng -> ghi luon gio duoi ten moc */
-    l.innerHTML='<b>'+m[1]+'</b>'+(narrow?(m[0]/60)+':00':''); tl.appendChild(l);
-    var k=document.createElement('span');k.className='tick maj';
-    k.style.left=px(m[0])+'%';k.style.height=(m[2]-12)+'px';tl.appendChild(k);
-  });
-  var now=document.createElement('span');now.className='now';tl.appendChild(now);
-  function tick(){
-    var d=new Date(),mins=d.getHours()*60+d.getMinutes();
-    $('#kClock').textContent=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
-    var p=Math.max(0,Math.min(100,(mins-S)/(E-S)*100));
-    now.style.left=p+'%';
-    now.style.display=(mins<S||mins>E)?'none':'block';
-    var left=20*60-mins;                       /* FX-41 countdown */
-    $('#cd').textContent = left>0&&mins>=S
-      ? ' · còn '+Math.floor(left/60)+'h'+('0'+(left%60)).slice(-2)+' là hết tăng ca'
-      : (mins>20*60?' · đã hết tăng ca hôm nay':'');
-    setTimeout(tick,1000-d.getMilliseconds()%1000);
-  }
-  tick();
 })();
 
 /* ============================== FX-24 accordion ============================== */
@@ -1276,30 +1612,18 @@ var sDrag={on:false,moved:false,x:0,l:0};
 })();
 
 /* ============================== NUT ============================== */
-$('#bAllDay').addEventListener('click',function(){
-  DAYS[cur].k.forEach(function(k,ki){state.done[id(cur,ki)]=1});
-  save();buildTasks();paint();toast('Đã tick hết '+DAYS[cur].k.length+' việc của '+DAYS[cur].d);
-});
-$('#bClrDay').addEventListener('click',function(){
-  DAYS[cur].k.forEach(function(k,ki){delete state.done[id(cur,ki)]});
-  save();buildTasks();paint();toast('Đã bỏ tick ngày '+DAYS[cur].d);
-});
 $('#bNext').addEventListener('click',function(){go((cur+1)%DAYS.length,false)});
+$('#bPrev').addEventListener('click',function(){go((cur-1+DAYS.length)%DAYS.length,false)});
 $$('#chips .chip').forEach(function(c){
   c.addEventListener('click',function(){
     filt=c.getAttribute('data-f');
     $$('#chips .chip').forEach(function(x){x.classList.toggle('on',x===c)});
     applyFilter(true);
-    if(filt!=='done') paint();
   });
 });
-$('#dStart').addEventListener('change',function(){
-  if(!this.value) return; state.start=this.value; save(); paint();
-  toast('Ngày bắt đầu: '+fmt(dayDate(0)));
-});
 $('#bReset').addEventListener('click',function(){
-  if(!confirm('Xoá hết tick của cả 6 ngày?')) return;
-  state.done={};save();buildTasks();paint();toast('Đã xoá hết tick');
+  if(!confirm('Xoá các tick tự đánh? Việc đã có trong nhật ký vẫn giữ nguyên.')) return;
+  state.done={};save();buildPlan();paint();toast('Đã xoá tick tự đánh');
 });
 function clip(txt,ok){
   if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -1320,18 +1644,20 @@ $('#bLoad').addEventListener('click',function(){
   try{
     var j=JSON.parse(decodeURIComponent(escape(atob(v.replace(/-/g,'+').replace(/_/g,'/')))));
     if(!j||!j.done) throw 0;
-    state=j; if(!state.start) state.start=defStart();
-    save();buildTasks();paint();toast('Đã nạp mã tiến độ');
+    state={done:j.done}; save();buildPlan();paint();toast('Đã nạp mã tiến độ');
   }catch(e){toast('Mã không đọc được')}
 });
 
 /* ============================== START ============================== */
 load();
-buildStrip(); buildTabs();
-var ti=todayIdx(); go(ti>=0?ti:0,false);
+buildStrip(); buildTabs(); buildGantt(); buildPlan();
+var ti=todayIdx(); go(ti>=0?ti:DAYS.length-1,false);
+paint();
 revealInit();
-countTo($('#kTotal'),TOTAL,'',900);
-$$('[data-count]').forEach(function(e){countTo(e,+e.getAttribute('data-count'),'',1000)});
+countTo($('#kCa'),caList().length,'',900);
+countTo($('#kLog'),nLog(),'',1000);
+countTo($('#kPhoto'),nAnh(),'',1100);
+$('#kHours').textContent=dur(tongLam());
 setTimeout(function(){scramble($('#ringPct'),stats().pct+'%')},900);
 moveInd(); setTimeout(moveInd,400);
 </script>
