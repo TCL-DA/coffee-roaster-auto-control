@@ -57,6 +57,7 @@
   61 luoi anh lazy + mo dan          62 lightbox anh (phim mui ten, quet ngang)
   63 bieu do gio lam (Gantt) + tooltip   64 nhan trang thai giai doan
   65 tang ca theo quy dinh 8 gio/ngay: the tong tung nguoi + thanh chuan/tang ca tung ngay
+  66 quy trinh lap dat chuan: 9 giai doan / 9 cong duyet (du lieu QT, QT_LICH, QT_BH, QT_VT)
   -- cap nhat 20/11/2026: N7 (16-17/11, ca doi 32 tieng + 2 ca rieng cua Thanh), N8 (18/11,
      xong 100% luc 23:17). Truc Gantt tu gian theo ca dai nhat; ca rieng ve vien rong;
      ca chua ghi gio vao chi danh dau gio xong. Khung hinh trich tu video: [w,h,1] trong anh.js --
@@ -169,6 +170,7 @@ nav a:hover::after,nav a.on::after{transform:scaleX(1)}
 .hdr-pct{font-size:var(--t-cap);letter-spacing:.1em;border:1px solid var(--ink);
   padding:6px 10px;white-space:nowrap;flex:0 0 auto}
 @media(max-width:760px){nav{display:none}}
+@media(max-width:1180px){.brand span{display:none}}   /* nhuong cho menu 7 muc */
 @media(max-width:560px){.brand span{display:none}.brand{font-size:19px}
   header.shrunk .brand{font-size:17px}}
 
@@ -635,6 +637,56 @@ li.pgh.hide{display:none}
 .tc-v.no{font-size:12px;color:#555;white-space:normal}
 .tc-row.thieu .tc-b{height:0}
 @media(max-width:560px){.tc-row{grid-template-columns:76px 1fr 58px;gap:8px}.tc-v{font-size:15px}}
+
+/* FX-66 quy trinh lap dat chuan: dai 9 giai doan + khoi giai doan mo/dong */
+.qt-rule{border:1px solid var(--ink);padding:var(--s22);font-weight:300;max-width:80ch}
+.qt-rule b{font-weight:400}
+.qt-h{margin:var(--s33) 0 var(--s15);font-weight:300;font-size:var(--t-sub)}
+.qt-sc{overflow-x:auto}
+.qt-flow{display:grid;grid-template-columns:repeat(9,minmax(116px,1fr));gap:1px;
+  background:var(--steel);border:1px solid var(--steel);min-width:1060px}
+.qt-flow .s{background:var(--canvas);padding:14px 12px;display:flex;flex-direction:column}
+.qt-flow .s.ct{background:#eef0ef}
+.qt-flow .n{font-size:11px;letter-spacing:.14em;color:#555}
+.qt-flow .t{font-size:15px;font-weight:300;margin:6px 0 4px;line-height:1.25}
+.qt-flow .o{font-size:11px;color:#555;flex:1}
+.qt-flow .g{font-size:10px;letter-spacing:.08em;text-transform:uppercase;border-top:1px solid var(--ink);
+  padding-top:6px;margin-top:10px}
+.qt-tip{font-size:11px;margin:var(--s15) 0;display:flex;justify-content:space-between;
+  align-items:center;gap:var(--s15);flex-wrap:wrap}
+.qt-all{background:none;border:1px solid var(--ink);padding:6px 12px;font:inherit;font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;color:var(--ink)}
+.qt-all:hover{background:var(--ink);color:var(--canvas)}
+.qt-list{border-top:1px solid var(--ink)}
+.qt-p{border-bottom:1px solid var(--steel)}
+.qt-p summary{display:grid;grid-template-columns:52px 1fr 24px;gap:12px;align-items:baseline;
+  padding:14px 0;cursor:pointer;list-style:none}
+.qt-p summary::-webkit-details-marker{display:none}
+.qt-p summary .n{font-size:12px;letter-spacing:.1em}
+.qt-p summary .t{font-size:17px;font-weight:300}
+.qt-p summary small{display:block;font-size:12px;color:#555;margin-top:3px;letter-spacing:.02em}
+.qt-p summary .pm{text-align:right;font-size:18px;font-weight:200;transition:transform .3s var(--ease)}
+.qt-p[open] summary .pm{transform:rotate(45deg)}
+.qt-p summary:hover .t{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.qt-b{display:grid;gap:var(--s22);padding:0 0 var(--s15) 64px}
+@media(min-width:900px){.qt-b{grid-template-columns:3fr 2fr}}
+@media(max-width:560px){.qt-b{padding-left:0}}
+.qt-b h4{margin:0 0 8px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:400;color:#555}
+.qt-b h4+ol,.qt-b h4+ul{margin:0 0 var(--s15)}
+.qt-b ol,.qt-b ul,.qt-ul,.qt-ol{padding-left:20px;font-weight:300;font-size:14px;line-height:1.55}
+.qt-b li,.qt-ul li{margin-bottom:6px}
+.qt-ul b{font-weight:400}
+.qt-g{margin:0 0 var(--s22) 64px;padding:10px 12px;border:1px solid var(--ink);font-size:13px;font-weight:300}
+.qt-g b{font-weight:400}
+@media(max-width:560px){.qt-g{margin-left:0}}
+.qt-ol{columns:2;column-gap:var(--s33)}
+.qt-ol li{break-inside:avoid;margin-bottom:6px}
+@media(max-width:620px){.qt-ol{columns:1}}
+.tbl td.nw{white-space:nowrap}
+#quytrinh .tbl td{vertical-align:top;white-space:normal;min-width:120px;line-height:1.45}
+#quytrinh .tbl td.nw{white-space:nowrap;min-width:0}
+@media(max-width:560px){#quytrinh .tbl td{min-width:0;font-size:12px;padding:8px 4px}
+  #quytrinh .tbl td.nw{white-space:normal}#quytrinh .tbl th{white-space:normal}}
 .g-v{font-size:13px;text-align:right;white-space:nowrap}
 .g-axis{padding-top:7px}
 .g-axis .ax{position:relative;height:14px}
@@ -690,6 +742,7 @@ li.pgh.hide{display:none}
       <a href="#giolam">Giờ làm</a>
       <a href="#tangca">Tăng ca</a>
       <a href="#kehoach">Kế hoạch</a>
+      <a href="#quytrinh">Quy trình</a>
       <a href="#luu">Lưu</a>
     </nav>
     <div class="hdr-pct mono" id="hdrPct">0% • 0/0</div>
@@ -916,10 +969,100 @@ li.pgh.hide{display:none}
   </div>
 </section>
 
+<!-- ============================== QUY TRINH CHUAN ============================== -->
+<section id="quytrinh">
+  <div class="wrap">
+    <div class="sec-h rv">
+      <h2>Quy trình lắp đặt chuẩn</h2>
+      <div class="idx">07 — QUY TRÌNH</div>
+    </div>
+    <p class="plan-intro rv">Rút ra từ công trình 30 kg + silo 4 bồn (09 → 18/11/2026). Áp dụng cho mọi
+      công trình lắp máy rang có hệ hút liệu, silo. Kế hoạch là 6 ngày tại công trình, thực tế mất 10 ngày.
+      Phần lớn chênh lệch đến từ việc phải sửa, chế, căn chỉnh ngay tại chỗ.</p>
+    <div class="qt-rule rv">
+      <b>Nguyên tắc:</b> lỗi phải bắt ở xưởng, không mang ra công trình. Mỗi giai đoạn kết thúc bằng
+      một <b>cổng duyệt</b> có người ký; chưa qua cổng thì không sang giai đoạn sau. Tại công trình chỉ
+      còn ba việc: <b>lắp – nối – chạy thử</b>.
+    </div>
+
+    <h3 class="qt-h">9 giai đoạn · 9 cổng duyệt</h3>
+    <div class="sc qt-sc rv"><div class="qt-flow" id="qtFlow"></div></div>
+    <div class="cap mut qt-tip">Bấm từng giai đoạn bên dưới để xem việc phải làm, tiêu chí đạt và hồ sơ.
+      <button class="qt-all" id="qtAll">Mở tất cả</button></div>
+    <div class="qt-list" id="qtList"></div>
+
+    <h3 class="qt-h">Lịch mẫu 6 ngày tại công trình · 30 kg + 4 bồn · 4 người</h3>
+    <div class="tbl rv"><div class="sc"><table>
+      <thead><tr><th>Ngày</th><th>Việc</th><th>Xong khi</th></tr></thead>
+      <tbody id="qtLich"></tbody></table></div></div>
+
+    <h3 class="qt-h">Bài học từ công trình này → chặn ở đâu</h3>
+    <div class="tbl rv"><div class="sc"><table>
+      <thead><tr><th>Ngày</th><th>Việc đã xảy ra</th><th>Chặn bằng</th><th>Giai đoạn</th></tr></thead>
+      <tbody id="qtBh"></tbody></table></div></div>
+
+    <h3 class="qt-h">Ai chịu trách nhiệm</h3>
+    <div class="tbl rv"><div class="sc"><table>
+      <thead><tr><th>Vai trò</th><th>Chịu trách nhiệm</th><th>Ký cổng</th></tr></thead>
+      <tbody id="qtVt"></tbody></table></div></div>
+
+    <h3 class="qt-h">Sổ lỗi · 3 loại · leo thang</h3>
+    <div class="life">
+      <div class="c rv"><div class="h">Loại A · dừng</div><div class="t">An toàn, máy không chạy</div>
+        <div class="w">Dừng khâu đang làm, báo trưởng công trình ngay. Quá 24 giờ chưa có cách xử lý
+          thì tự lên Giám đốc. Còn lỗi A thì không qua cổng nào.</div></div>
+      <div class="c rv"><div class="h">Loại B · có hạn</div><div class="t">Chạy được, sai chức năng</div>
+        <div class="w">Đọng hạt, vỡ hạt cao, sai nhiệt, kẹt van. Có người nhận, có hạn. Phải đóng trước
+          G2 (tại xưởng) hoặc G6 (tại công trình).</div></div>
+      <div class="c rv"><div class="h">Loại C · danh sách tồn</div><div class="t">Thẩm mỹ, hoàn thiện</div>
+        <div class="w">Trầy sơn, bulông thiếu nắp, dây chưa bó. Ghi vào danh sách tồn, đóng hết trước G8.</div></div>
+    </div>
+    <p class="ghi">Mỗi lỗi ghi đủ: ngày, khâu, mô tả + ảnh, người phát hiện, người nhận, hạn, cách xử lý,
+      ngày đóng. Lỗi đã báo mà chưa có người nhận thì trưởng công trình là người nhận. Xử lý lỗi theo
+      nguyên nhân gốc ở khâu nào, sửa quy trình ở khâu đó (ISO 9001 §10.2); không quy lỗi cá nhân.</p>
+
+    <h3 class="qt-h">Giờ làm &amp; an toàn tại công trình</h3>
+    <ul class="qt-ul rv">
+      <li><b>Ca chuẩn 8 giờ.</b> Tăng ca tối đa 4 giờ/ngày (tổng ≤ 12 giờ/ngày) và ≤ 40 giờ/tháng —
+        Bộ luật Lao động 2019, Điều 107. Lịch thi công lập sẵn trong giới hạn này.</li>
+      <li><b>Không làm thông đêm.</b> Sau 22:00 không làm việc trên cao, không hàn cắt, không đấu điện.</li>
+      <li><b>Trên cao:</b> tháp di động có lan can, chân khoá (EN 1004-1), dây an toàn, luôn 2 người
+        (QCVN 18:2021/BXD). Gom việc trên cao một đợt cho mỗi vùng trần.</li>
+      <li><b>Điện:</b> khoá – treo thẻ (LOTO) trước khi đấu; đo không điện trước khi chạm.</li>
+      <li><b>Gas:</b> thử kín trước khi đốt; máy dò rò gas tại khu đầu đốt; bình chữa cháy trong tầm tay
+        (hệ LPG nơi tiêu thụ: TCVN 7441).</li>
+      <li><b>Hàn cắt:</b> che chắn tia lửa, bình chữa cháy tại chỗ, có người canh lửa sau khi hàn.</li>
+      <li><b>Họp an toàn 10 phút đầu ca:</b> việc trong ngày, rủi ro, ai làm gì.</li>
+    </ul>
+
+    <h3 class="qt-h">Bộ hồ sơ một công trình</h3>
+    <ol class="qt-ol rv">
+      <li>Biên bản khảo sát + ảnh mặt bằng</li>
+      <li>Bản vẽ bố trí 2D/3D đã duyệt</li>
+      <li>Bảng cấu hình + file thông số (có phiên bản)</li>
+      <li>Yêu cầu chuẩn bị mặt bằng + ảnh khách xác nhận</li>
+      <li>Checklist 13 bước tủ điện (số đo, ảnh)</li>
+      <li>Biên bản FAT + giản đồ rang thử</li>
+      <li>Danh sách kiện + ảnh kiện + biên bản giao nhận</li>
+      <li>Nhật ký ngày (giờ từng người, việc, ảnh, lỗi)</li>
+      <li>Biên bản đo kiểm điện + thử kín gas</li>
+      <li>Biên bản SAT + giản đồ rang test</li>
+      <li>Biên bản đào tạo (danh sách người học)</li>
+      <li>Biên bản bàn giao + danh sách tồn</li>
+      <li>Bản vẽ hoàn công, manual, danh sách phụ tùng</li>
+      <li>Biên bản rút kinh nghiệm</li>
+    </ol>
+    <p class="ghi">Cơ sở: VDI 2519 (yêu cầu – đặc tả kỹ thuật) · IEC 62381 (FAT, SAT) · EN 60204-1 §18
+      (kiểm điện máy) · IEC 60364-6 (kiểm lưới điện tại chỗ) · EN 746-2 (đầu đốt, đường gas) · TCVN 7441
+      (hệ LPG nơi tiêu thụ) · EN 1004-1, QCVN 18:2021/BXD (làm việc trên cao) · ISO 9001 §8.6, §10.2
+      (thả hàng, xử lý không phù hợp) · Bộ luật Lao động 2019, Điều 107 (làm thêm giờ).</p>
+  </div>
+</section>
+
 <!-- ============================== FAQ / ACC ============================== -->
 <section class="tight">
   <div class="wrap">
-    <div class="sec-h rv"><h2>Ghi chú</h2><div class="idx">07 — GHI CHÚ</div></div>
+    <div class="sec-h rv"><h2>Ghi chú</h2><div class="idx">08 — GHI CHÚ</div></div>
     <div class="acc" id="acc">
       <div class="acc-i"><button class="acc-b"><span class="k">Trang này tính % thế nào</span><span class="s">+</span></button>
         <div class="acc-p"><div><p>% = số việc trong kế hoạch 44 việc đã xong ÷ 44. Việc đã thấy trong nhật ký được tick sẵn và khoá (ghi ngày N1…N8). 5 việc nhật ký không kể riêng (khung phễu hút liệu, ống mềm giữa các silo, phễu nạp liệu máy rang, ống gas đốt khói, test đốt khói) được tính xong theo xác nhận hoàn thành 100% công việc lúc 23:17 ngày 18/11. Ba vòng nhóm (cơ khí · điện–khí–gas · chạy thử) tính riêng theo nhãn từng việc. Việc của máy 6 kg không nằm trong kế hoạch nên chỉ có ở nhật ký.</p></div></div></div>
@@ -940,7 +1083,7 @@ li.pgh.hide{display:none}
 <!-- ============================== LUU / CHIA SE ============================== -->
 <section id="luu">
   <div class="wrap">
-    <div class="sec-h rv"><h2>Lưu &amp; chia sẻ</h2><div class="idx">08 — DỮ LIỆU</div></div>
+    <div class="sec-h rv"><h2>Lưu &amp; chia sẻ</h2><div class="idx">09 — DỮ LIỆU</div></div>
     <div class="io rv">
       <div>
         <div class="btns">
@@ -1582,6 +1725,173 @@ function buildTangCa(){
     (thieuNgay.length?'. Ngày '+thieuNgay.join(', ')+' có giờ vào là trang tự tính.':'.');
 }
 
+/* ============================== FX-66 QUY TRINH LAP DAT CHUAN ============================== */
+/* Moi giai doan: viec phai lam -> tieu chi dat -> ho so -> cong duyet [ma, ten, nguoi ky, luat] */
+var QT = [
+ {ma:'GĐ0', ngan:'Khảo sát', ten:'Khảo sát & chốt thiết kế', noi:'Văn phòng · công trình',
+  tg:'1 ngày khảo sát + 3–5 ngày bản vẽ', ai:'Trưởng công trình · Kinh doanh',
+  viec:['Khảo sát tại chỗ, đo bằng thước laser: kích thước phòng, chiều cao trần thông thủy, kèo/trần để treo ống, cửa và lối đưa máy, tải sàn.',
+        'Chụp ảnh, quay video toàn mặt bằng; đánh dấu điểm treo, vị trí tủ điện, nguồn gas, khí nén, mạng, hướng ống khói.',
+        'Lập bản vẽ bố trí 2D + 3D: máy rang, tách đá, đốt khói, dàn bồn, tuyến ống hút, ống khói, điểm treo. Chiều cao dàn chân bồn tính theo trần đo thật.',
+        'Chốt cấu hình với khách: cảm biến, kết nối, đồng bộ hồ sơ rang với máy khách đang dùng, số bồn, khối lượng mỗi bồn, cách phối trộn.',
+        'Vẽ tuyến ống gas, ống khí nén từ nguồn tới từng máy.',
+        'Gửi "Yêu cầu chuẩn bị mặt bằng" (điện, gas, khí nén, mạng, ống khói, thông gió, nâng hạ). Hạng mục OTL cung cấp ghi rõ để khách không mua thừa.',
+        'Hạng mục do đơn vị khác làm (ống khói, quạt khói, điện tổng): OTL duyệt bản vẽ và công suất trước khi thi công.'],
+  dat:['Bản vẽ bố trí dùng kích thước đo thật, khách ký duyệt.','Bảng cấu hình không còn mục "chờ".',
+       'Khách xác nhận yêu cầu chuẩn bị mặt bằng và hạn hoàn thành.'],
+  hs:['Biên bản khảo sát + ảnh, video','Bản vẽ bố trí đã duyệt (có số phiên bản)','Bảng cấu hình','Yêu cầu chuẩn bị mặt bằng'],
+  cong:['G0','Duyệt thiết kế','Giám đốc','Chưa qua G0 thì không cắt phôi.']},
+ {ma:'GĐ1', ngan:'Chế tạo', ten:'Chế tạo & lắp hoàn chỉnh tại xưởng', noi:'Xưởng',
+  tg:'Theo tiến độ sản xuất', ai:'Tổ cơ khí · Tổ điện – tự động',
+  viec:['Tủ điện, đấu dây, cài đặt theo quy trình 13 bước của xưởng: dòng có phép đo thì ghi số đo, dòng an toàn thì kèm ảnh.',
+        'Dàn chân bồn chế tạo đúng chiều cao chốt ở G0 — không cắt, không hạ chân tại công trình.',
+        'Ống hút chế sẵn theo bản vẽ 3D, cắt đúng chiều dài; đánh mã từng đoạn và từng điểm nối.',
+        'Máng xoắn trong bồn: mối hàn mài phẳng, bề mặt đánh bóng (không đánh nhám) để hạt không bám.',
+        'Ron, gioăng mặt bích và cửa thăm gắn sẵn tại xưởng.',
+        'Ráp thử cụm ống, khung treo với dàn bồn; tháo theo cụm, giữ nguyên mã.',
+        'Cảm biến, đồng bộ hồ sơ rang theo cấu hình đã chốt — làm xong tại xưởng.',
+        'Nạp bộ thông số chuẩn (xả mẻ, cấp liệu, hút bồn, cân) và lưu file có ngày, số phiên bản.'],
+  dat:['13 bước tủ điện đủ số đo và ảnh.','Mọi đoạn ống có mã khớp bản vẽ.',
+       'Không còn mối hàn sắc, ba via trên đường hạt đi.'],
+  hs:['Checklist 13 bước (Trello)','Danh sách đoạn ống có mã','Ảnh ráp thử','File thông số bản 1'],
+  cong:['G1','Sẵn sàng FAT','QC','']},
+ {ma:'GĐ2', ngan:'FAT tại xưởng', ten:'FAT — nghiệm thu tại xưởng', noi:'Xưởng',
+  tg:'2 ngày', ai:'QC chủ trì · Trưởng công trình · mời khách chứng kiến',
+  viec:['Kiểm điện nguội (EN 60204-1 §18): thông mạch PE từng thiết bị, điện trở cách điện mạch động lực; ghi số đo.',
+        'Đầu đốt (EN 746-2): thử kín đường gas trên máy; mất lửa, mất gió, mất điện → van gas phải đóng; quét gió trước khi đánh lửa.',
+        'Từng van khí nén chạy ≥ 50 chu kỳ đóng – mở: không kẹt, không xì khí.',
+        'Rang thử ≥ 2 mẻ đầy tải bằng cà thật; nhiệt xả mẻ đúng thông số cài.',
+        'Hút – xả cà thật qua từng bồn, đầy tải. Xả xong mở cửa thăm kiểm máng xoắn.',
+        'Đo tỉ lệ vỡ hạt sau một chu trình hút – xả: lấy mẫu 1 kg, sàng và cân.',
+        'Đo áp chân không hệ hút; kiểm hở gió tại mọi mối nối.'],
+  dat:['0 lỗi loại A, 0 lỗi loại B.','Điện trở cách điện ≥ 1 MΩ ở 500 V DC.',
+       'Không còn hạt đọng trong cả 4 bồn.','Vỡ hạt ≤ 5 %.','Mọi số đo nằm trong biên bản.'],
+  hs:['Biên bản FAT có số đo','Giản đồ rang thử','Ảnh lòng bồn sau khi xả','Sổ lỗi đã đóng'],
+  cong:['G2','Đạt FAT','Giám đốc','Chưa đạt thì không đóng kiện. Lỗi đã biết không mang ra công trình.']},
+ {ma:'GĐ3', ngan:'Đóng gói', ten:'Đóng gói & vận chuyển', noi:'Xưởng → công trình',
+  tg:'1 ngày đóng kiện', ai:'Tổ cơ khí · Trưởng công trình kiểm',
+  viec:['Tháo theo cụm đã đánh mã; lập danh sách kiện: mã kiện, nội dung, khối lượng, kích thước.',
+        'Kiện gỗ có khung chịu lực, chèn góc; cố định chân máy, tay đòn; bọc chống trầy mặt sơn, mặt inox.',
+        'Bịt kín đầu ống, mặt bích. Tủ điện, cảm biến, màn hình đóng kiện riêng, có chống ẩm.',
+        'Chụp ảnh từng kiện lúc mở và lúc đã đóng; gửi nhóm công trình.',
+        'Khi nhận: kiểm ngoại quan từng kiện trước khi ký. Móp, trầy → chụp ảnh và lập biên bản với bên vận chuyển ngay.'],
+  dat:['Danh sách kiện khớp 100 % bản vẽ.','Mọi kiện có ảnh trước khi xuất.'],
+  hs:['Danh sách kiện','Ảnh từng kiện','Biên bản giao nhận'],
+  cong:['G3','Nhận hàng nguyên vẹn','Trưởng công trình','']},
+ {ma:'GĐ4', ngan:'Xuất quân', ten:'Chuẩn bị xuất quân', noi:'Văn phòng',
+  tg:'Xong trước ngày đi ≥ 5 ngày', ai:'Trưởng công trình · Kinh doanh',
+  viec:['Khách gửi ảnh xác nhận từng hạng mục: điện tới vị trí tủ, gas, khí nén, mạng LAN, ống khói, mặt sàn, lối đưa máy.',
+        'Lịch thi công từng ngày theo lịch mẫu bên dưới, cộng 20 % dự phòng; mỗi việc có tên người làm.',
+        'Làm việc trên cao: tháp nhôm di động có lan can hoặc xe nâng người, đủ số bộ để mỗi vùng trần chỉ dựng một lần.',
+        'Nâng hạ: xe nâng đủ tải tại chiều cao nâng (đối chiếu biểu đồ tải của xe).',
+        'Đồ nghề + vật tư dự phòng theo danh sách mang đi: ốc, ron, ống khí, đầu cos, cáp tín hiệu, cảm biến dự phòng. Chụp ảnh trước khi đóng thùng.',
+        'Thiết bị đo: đồng hồ vạn năng, đồng hồ đo cách điện, ampe kìm, máy dò rò gas, đồng hồ áp, thước laser, thước thuỷ.'],
+  dat:['Mặt bằng khách đạt 100 % hạng mục bắt buộc, có ảnh.','Lịch và phân công đã gửi cả đội.'],
+  hs:['Checklist mặt bằng có ảnh','Lịch thi công','Danh sách đồ nghề, vật tư'],
+  cong:['G4','Sẵn sàng xuất quân','Giám đốc','Mặt bằng chưa đạt thì dời ngày đi, không ra công trình ngồi chờ.']},
+ {ma:'GĐ5', ngan:'Lắp đặt', ten:'Lắp đặt tại công trình', noi:'Công trình',
+  tg:'4 ngày', ai:'Trưởng công trình (điều phối mọi tổ) · Tổ cơ khí · Tổ điện – tự động',
+  viec:['Nhận mặt bằng với khách; họp an toàn đầu ca; rào khu vực; bình chữa cháy tại chỗ hàn cắt.',
+        'Bật mốc định vị theo bản vẽ; đặt và cân bằng máy rang, cyclone, khay làm nguội, tách đá, đốt khói.',
+        'Dựng dàn chân bồn, cẩu bồn, siết bulông đủ lực.',
+        'Việc trên cao gom một đợt cho mỗi vùng: điểm treo, cáp treo, khung ống, ống khói.',
+        'Lắp ống hút theo mã đoạn, gắn ron; căn thẳng và gia cố ngay khi lắp, không để cuối đợt.',
+        'Đấu gas, khí nén; thử kín trước khi đóng điện.',
+        'Đấu điện theo thứ tự tủ nguồn → tủ máy rang → tủ silo; kéo mạng LAN; khoá – treo thẻ khi đấu.',
+        'Kiểm nguội tại chỗ: PE, cách điện, chiều quay động cơ, thông mạch tín hiệu.',
+        'Cuối ngày gửi nhật ký ngày trước 22:00: giờ vào, ra, nghỉ của từng người; việc xong; ảnh; lỗi.'],
+  dat:['Lắp đúng bản vẽ, đúng mã.','Thử kín gas, khí nén đạt.','PE, cách điện đạt; có số đo.'],
+  hs:['Nhật ký ngày','Biên bản đo kiểm điện','Biên bản thử kín gas'],
+  cong:['G5','Cho phép đóng điện','Trưởng công trình','']},
+ {ma:'GĐ6', ngan:'SAT tại công trình', ten:'SAT — chạy thử & nghiệm thu tại công trình', noi:'Công trình',
+  tg:'1,5 ngày', ai:'Trưởng công trình · Tổ điện – tự động · khách chứng kiến',
+  viec:['Đóng điện từng cụm; kiểm ngõ vào, ngõ ra, chiều quay, liên động.',
+        'Đầu đốt máy rang và đầu đốt khói: kiểm an toàn như FAT; kiểm khói tại miệng xả, thông gió phòng rang.',
+        'Đối chiếu bộ thông số đang chạy với file thông số đã duyệt ở FAT.',
+        'Rang test ≥ 3 mẻ cà của khách; lưu giản đồ; so độ lặp nhiệt xả giữa các mẻ.',
+        'Hút đầy từng bồn, xả, phối trộn; kiểm đọng hạt, đo vỡ hạt; hiệu chỉnh cân từng bồn.',
+        'Chạy liên tục cả hệ thống tối thiểu 2 giờ.'],
+  dat:['0 lỗi loại A.','Lỗi loại B có người nhận, có hạn, ghi trong biên bản.','Khách ký biên bản SAT.'],
+  hs:['Biên bản SAT','Giản đồ rang test','Biên bản hiệu chỉnh cân'],
+  cong:['G6','Đạt SAT','Khách + Trưởng công trình','']},
+ {ma:'GĐ7', ngan:'Bàn giao', ten:'Đào tạo & bàn giao', noi:'Công trình',
+  tg:'0,5 ngày', ai:'Trưởng công trình',
+  viec:['Đào tạo theo hai cấp Chuyên gia và Tiêu chuẩn: vận hành, an toàn gas, xử lý cảnh báo, vệ sinh, bảo trì định kỳ.',
+        'Người vận hành của khách tự chạy trọn 1 mẻ rang và 1 chu trình hút – xả, có giám sát.',
+        'Bàn giao bản vẽ hoàn công, manual, file thông số, giản đồ rang test, danh sách phụ tùng thay thế.',
+        'Lập danh sách tồn: mỗi mục có người nhận, có hạn.',
+        'Vệ sinh, thu dọn, trả mặt bằng.'],
+  dat:['Danh sách người học có chữ ký.','Biên bản bàn giao đã ký.'],
+  hs:['Biên bản đào tạo','Biên bản bàn giao + danh sách tồn'],
+  cong:['G7','Bàn giao','Giám đốc + khách','']},
+ {ma:'GĐ8', ngan:'Sau bàn giao', ten:'Theo dõi sau bàn giao', noi:'Từ xa · công trình',
+  tg:'30 ngày', ai:'Trưởng công trình · Kinh doanh',
+  viec:['Liên hệ khách sau 1, 7 và 30 ngày; đọc giản đồ rang và nhật ký lỗi từ xa khi có kết nối.',
+        'Đóng hết danh sách tồn đúng hạn.',
+        'Họp rút kinh nghiệm trong 7 ngày sau khi về: lỗi nào lọt qua FAT, vì sao; cập nhật lại quy trình này.'],
+  dat:['Danh sách tồn còn 0.','Có biên bản rút kinh nghiệm.'],
+  hs:['Biên bản rút kinh nghiệm','Quy trình bản mới'],
+  cong:['G8','Đóng công trình','Giám đốc','']}
+];
+var QT_LICH = [
+ ['N1','Nhận mặt bằng, họp an toàn; bật mốc; đặt máy rang, cyclone, khay làm nguội, tách đá, đốt khói, tủ điện.','Thiết bị đứng đúng mốc, đã cân bằng'],
+ ['N2','Dàn chân bồn, cẩu 4 bồn, khung dàn bồn; ống khói máy rang và đốt khói.','4 bồn trên dàn, ống khói xong'],
+ ['N3','Việc trên cao một đợt: điểm treo, cáp treo, khung ống; bắt đầu lắp ống hút theo mã.','Xong toàn bộ việc trên cao, tháo tháp'],
+ ['N4','Hoàn thiện ống hút, ron; gas, khí nén, thử kín; đấu điện tủ nguồn → tủ máy → tủ silo, mạng; kiểm nguội.','Qua cổng G5 — cho phép đóng điện'],
+ ['N5','Đóng điện; kiểm ngõ vào/ra; an toàn đầu đốt; rang thử; hút thử từng bồn; hiệu chỉnh cân.','Mọi chức năng chạy; lỗi B có danh sách'],
+ ['N6','Rang test ≥ 3 mẻ; phối trộn; chạy liên tục 2 giờ; đào tạo; bàn giao; dọn dẹp.','Qua cổng G6 + G7']
+];
+var QT_BH = [
+ ['09–10/11 · N1–N2','Khung đốt khói móp, trầy; máy 30 kg cấn móp; sửa 2 chân máy','Kiện gỗ khung chịu lực, chèn góc, cố định chân; ảnh từng kiện; kiểm ngoại quan khi nhận','GĐ3'],
+ ['11–13/11 · N3–N5','Hạ chân dàn bồn tại công trình: hàn, cắt, dặm sơn','Chiều cao dàn chốt theo trần đo thật; ráp thử tại xưởng','GĐ0 · GĐ1'],
+ ['11/11 · N3','Đi lại đường ống cứng cho 2 máy rang','Tuyến ống gas, khí nén vẽ và duyệt trước','GĐ0'],
+ ['12/11 · N4','Sửa ống xoắn của bồn','Mài phẳng mối hàn, đánh bóng máng xoắn; chạy hạt thử từng bồn ở FAT','GĐ1 · GĐ2'],
+ ['14–15/11 · N6','Sửa lỗi kẹt van, xì khí van','Mỗi van chạy thử ≥ 50 chu kỳ tại xưởng','GĐ2'],
+ ['15/11 · N6','Ráp – tháo dàn giáo 3 lần để treo 5 dây; làm tới 4:40 sáng','Vẽ điểm treo khi khảo sát; đủ tháp di động; gom việc trên cao một đợt','GĐ0 · GĐ4 · GĐ5'],
+ ['16–17/11 · N7','Thay cảm biến máy 30 kg để đồng bộ hồ sơ rang với máy 6 kg','Chốt cấu hình cảm biến, đồng bộ hồ sơ từ khảo sát; làm xong tại xưởng','GĐ0 · GĐ1'],
+ ['16–17/11 · N7','Cắt, dán ron tại công trình','Ron gắn sẵn tại xưởng; đo áp chân không hệ hút ở FAT','GĐ1 · GĐ2'],
+ ['16–17/11 · N7','Ca liên tục 32 tiếng','Lịch có 20 % dự phòng; ca tối đa 12 giờ; không làm thông đêm','GĐ4'],
+ ['17–18/11 · N7–N8','Đường ống dồn 2 ngày cuối: cắt sửa, chỉnh lỗi, gia cố','Ống chế sẵn có mã đoạn, ráp thử tại xưởng; gia cố ngay khi lắp','GĐ1 · GĐ5'],
+ ['09/11 · 16–18/11','Nhật ký thiếu giờ nghỉ, thiếu giờ vào ca 18/11','Nhật ký ngày bắt buộc, gửi trước 22:00','GĐ5'],
+ ['Cả công trình','Kế hoạch 6 ngày, thực tế 10 ngày','Qua đủ cổng G0–G4 thì tại công trình chỉ còn lắp – nối – chạy thử','Toàn quy trình']
+];
+var QT_VT = [
+ ['Giám đốc','Duyệt thiết kế, kết quả FAT, ngày xuất quân, bàn giao; nhận lỗi loại A quá 24 giờ.','G0 · G2 · G4 · G7 · G8'],
+ ['Trưởng công trình','Chịu trách nhiệm từ khảo sát tới đóng công trình; có quyền điều phối mọi tổ tại công trình — quyền đi đôi với trách nhiệm; giữ nhật ký ngày.','G3 · G5 · G6'],
+ ['Tổ cơ khí','Chế tạo, ráp thử, đóng kiện, lắp cơ khí; chịu trách nhiệm đường hạt đi: máng xoắn, ống hút, bồn.','—'],
+ ['Tổ điện – tự động','Tủ điện theo quy trình 13 bước, cài đặt, file thông số, ngõ vào/ra, mạng.','—'],
+ ['QC','Chủ trì FAT, giữ sổ lỗi, đo kiểm và ghi số đo.','G1'],
+ ['Kinh doanh','Đầu mối với khách: yêu cầu chuẩn bị mặt bằng, lịch, ảnh xác nhận mặt bằng.','—'],
+ ['Khách hàng','Chuẩn bị mặt bằng đúng hạn; chứng kiến SAT; cử người học vận hành; ký bàn giao.','G6 · G7']
+];
+function buildQuyTrinh(){
+  var f='',l='';
+  QT.forEach(function(p,i){
+    var cong=p.cong;
+    f+='<div class="s'+(p.noi.indexOf('Công trình')===0?' ct':'')+'"><div class="n mono">'+p.ma+'</div>'+
+      '<div class="t">'+p.ngan+'</div><div class="o">'+p.noi+'</div>'+
+      '<div class="g mono">'+cong[0]+' · '+cong[1]+'</div></div>';
+    function ds(a,tag){return '<'+tag+'>'+a.map(function(x){return '<li>'+x+'</li>'}).join('')+'</'+tag+'>'}
+    l+='<details class="qt-p"><summary><span class="n mono">'+p.ma+'</span>'+
+      '<span class="t">'+p.ten+'<small>'+p.tg+' · '+p.ai+'</small></span><span class="pm" aria-hidden="true">+</span></summary>'+
+      '<div class="qt-b"><div><h4>Việc phải làm</h4>'+ds(p.viec,'ol')+'</div>'+
+      '<div><h4>Tiêu chí đạt</h4>'+ds(p.dat,'ul')+'<h4>Hồ sơ</h4>'+ds(p.hs,'ul')+'</div></div>'+
+      '<div class="qt-g"><b class="mono">Cổng '+cong[0]+' — '+cong[1]+'</b> · người ký: '+cong[2]+
+        (cong[3]?' · '+cong[3]:'')+'</div></details>';
+  });
+  $('#qtFlow').innerHTML=f; $('#qtList').innerHTML=l;
+  $('#qtLich').innerHTML=QT_LICH.map(function(r){
+    return '<tr><td class="mono">'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>'}).join('');
+  $('#qtBh').innerHTML=QT_BH.map(function(r){
+    return '<tr><td class="nw">'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td class="nw mono">'+r[3]+'</td></tr>'}).join('');
+  $('#qtVt').innerHTML=QT_VT.map(function(r){
+    return '<tr><td class="nw">'+r[0]+'</td><td>'+r[1]+'</td><td class="nw mono">'+r[2]+'</td></tr>'}).join('');
+  $('#qtAll').addEventListener('click',function(){
+    var ds=$$('#qtList details'),mo=ds.some(function(d){return !d.open});
+    ds.forEach(function(d){d.open=mo}); this.textContent=mo?'Thu gọn tất cả':'Mở tất cả';
+  });
+}
+
 /* ============================== KE HOACH ============================== */
 function buildPlan(){
   var ul=$('#plan');ul.innerHTML='';
@@ -1749,7 +2059,7 @@ function revealInit(){
       var p=Math.max(0,Math.min(1,(innerHeight*.72-r.top)/r.height));
       vt.style.height=(p*100)+'%';
     }
-    var secs=['tongquan','congviec','giolam','tangca','kehoach','luu'],act='tongquan';
+    var secs=['tongquan','congviec','giolam','tangca','kehoach','quytrinh','luu'],act='tongquan';
     secs.forEach(function(s){var e=document.getElementById(s);
       if(e&&e.getBoundingClientRect().top<innerHeight*.4) act=s});
     $$('nav a').forEach(function(a){a.classList.toggle('on',a.hash==='#'+act)});
@@ -1864,7 +2174,7 @@ $('#bLoad').addEventListener('click',function(){
 
 /* ============================== START ============================== */
 load();
-buildStrip(); buildTabs(); buildGantt(); buildTangCa(); buildPlan();
+buildStrip(); buildTabs(); buildGantt(); buildTangCa(); buildPlan(); buildQuyTrinh();
 var ti=todayIdx(); go(ti>=0?ti:DAYS.length-1,false);
 paint();
 revealInit();
