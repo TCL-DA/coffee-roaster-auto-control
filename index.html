@@ -56,6 +56,7 @@
   40-42 (dong ho, countdown 20:00) thay bang 63 bieu do gio lam thuc te
   61 luoi anh lazy + mo dan          62 lightbox anh (phim mui ten, quet ngang)
   63 bieu do gio lam (Gantt) + tooltip   64 nhan trang thai giai doan
+  65 tang ca theo quy dinh 8 gio/ngay: the tong tung nguoi + thanh chuan/tang ca tung ngay
   -- cap nhat 20/11/2026: N7 (16-17/11, ca doi 32 tieng + 2 ca rieng cua Thanh), N8 (18/11,
      xong 100% luc 23:17). Truc Gantt tu gian theo ca dai nhat; ca rieng ve vien rong;
      ca chua ghi gio vao chi danh dau gio xong. Khung hinh trich tu video: [w,h,1] trong anh.js --
@@ -603,6 +604,37 @@ li.pgh.hide{display:none}
   background:var(--ink)}
 .tbl tr.rieng td{color:#555}
 .tbl td small{font-size:11px;letter-spacing:.04em;color:#555}
+
+/* FX-65 tang ca: the tong tung nguoi + thanh chuan/tang ca tung ngay */
+.tc-sum{display:grid;gap:1px;background:var(--steel);border:1px solid var(--steel)}
+@media(min-width:620px){.tc-sum{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.tc-sum{grid-template-columns:repeat(4,1fr)}}
+.tc-sum .c{background:var(--canvas);padding:var(--s22)}
+.tc-sum .k{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#555}
+.tc-sum b{display:block;font-weight:200;font-size:40px;line-height:1;letter-spacing:-.02em;
+  margin:10px 0 8px}
+.tc-sum b span{font-size:14px;letter-spacing:.06em;margin-left:6px;font-weight:300}
+.tc-sum .w{font-weight:300;font-size:13px;color:#3c3c3c}
+.tc-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;
+  margin:var(--s33) 0 var(--s15)}
+.tc-h h3{margin:0;font-weight:300;font-size:var(--t-sub)}
+.tc-lg{display:flex;gap:var(--s15);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#555}
+.tc-lg i{display:inline-block;width:14px;height:8px;margin-right:6px;vertical-align:middle}
+.tc-lg .c,.tc-b .c{background:#c9c9c9}
+.tc-lg .t,.tc-b .t{background:var(--ink)}
+.tc-row{display:grid;grid-template-columns:118px 1fr 74px;gap:12px;align-items:center;
+  padding:12px 0;border-bottom:1px solid var(--steel)}
+.tc-row:first-child{border-top:1px solid var(--ink)}
+.tc-d{font-size:12px;letter-spacing:.04em;line-height:1.35}
+.tc-d small{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#555}
+.tc-b{display:flex;height:10px;transform:scaleX(0);transform-origin:left;
+  transition:transform 1s var(--ease)}
+.tc-row.in .tc-b{transform:none}
+.tc-m{font-size:12px;color:#555;margin-top:6px;letter-spacing:.02em}
+.tc-v{text-align:right;font-size:18px;font-weight:300;white-space:nowrap}
+.tc-v.no{font-size:12px;color:#555;white-space:normal}
+.tc-row.thieu .tc-b{height:0}
+@media(max-width:560px){.tc-row{grid-template-columns:76px 1fr 58px;gap:8px}.tc-v{font-size:15px}}
 .g-v{font-size:13px;text-align:right;white-space:nowrap}
 .g-axis{padding-top:7px}
 .g-axis .ax{position:relative;height:14px}
@@ -656,6 +688,7 @@ li.pgh.hide{display:none}
       <a href="#tongquan" class="on">Tổng quan</a>
       <a href="#congviec">Nhật ký</a>
       <a href="#giolam">Giờ làm</a>
+      <a href="#tangca">Tăng ca</a>
       <a href="#kehoach">Kế hoạch</a>
       <a href="#luu">Lưu</a>
     </nav>
@@ -815,12 +848,40 @@ li.pgh.hide{display:none}
   </div>
 </section>
 
+<!-- ============================== TANG CA ============================== -->
+<section id="tangca">
+  <div class="wrap">
+    <div class="sec-h rv">
+      <h2>Tăng ca</h2>
+      <div class="idx">05 — TĂNG CA</div>
+    </div>
+    <p class="plan-intro rv"><b>Quy định:</b> mỗi ngày làm 8 giờ. Giờ làm thực (đã trừ giờ nghỉ)
+      quá 8 giờ thì phần dư là tăng ca. Ca làm qua nửa đêm vẫn tính cho ngày vào ca. Ca 16 → 17/11
+      làm liên tục 32 tiếng nên tính 2 ngày công, chuẩn 16 giờ.</p>
+    <div class="tc-sum rv" id="tcSum"></div>
+
+    <div class="tc-h">
+      <h3>Từng ngày</h3>
+      <div class="tc-lg"><span><i class="c"></i>giờ chuẩn</span><span><i class="t"></i>tăng ca</span></div>
+    </div>
+    <div class="tc-list" id="tcList"></div>
+    <details class="tbl"><summary>Xem dạng bảng (để tính lương)</summary>
+      <div class="sc"><table>
+        <thead><tr><th>Ngày</th><th>Người</th><th>Vào → ra</th><th class="r">Nghỉ</th>
+          <th class="r">Làm thực</th><th class="r">Chuẩn</th><th class="r">Tăng ca</th></tr></thead>
+        <tbody id="tcTb"></tbody><tfoot id="tcTf"></tfoot>
+      </table></div>
+    </details>
+    <p class="ghi" id="tcGhi"></p>
+  </div>
+</section>
+
 <!-- ============================== KE HOACH ============================== -->
 <section id="kehoach">
   <div class="wrap">
     <div class="sec-h rv">
       <h2>So với kế hoạch 44 việc</h2>
-      <div class="idx">05 — KẾ HOẠCH</div>
+      <div class="idx">06 — KẾ HOẠCH</div>
     </div>
     <p class="plan-intro rv">Việc ghi “nhật ký N…” là đã thấy trong nhật ký, tick sẵn và khoá.
       Việc ghi “xong theo chốt 100%” là nhật ký không kể riêng, nhưng đã xong theo xác nhận
@@ -858,7 +919,7 @@ li.pgh.hide{display:none}
 <!-- ============================== FAQ / ACC ============================== -->
 <section class="tight">
   <div class="wrap">
-    <div class="sec-h rv"><h2>Ghi chú</h2><div class="idx">06 — GHI CHÚ</div></div>
+    <div class="sec-h rv"><h2>Ghi chú</h2><div class="idx">07 — GHI CHÚ</div></div>
     <div class="acc" id="acc">
       <div class="acc-i"><button class="acc-b"><span class="k">Trang này tính % thế nào</span><span class="s">+</span></button>
         <div class="acc-p"><div><p>% = số việc trong kế hoạch 44 việc đã xong ÷ 44. Việc đã thấy trong nhật ký được tick sẵn và khoá (ghi ngày N1…N8). 5 việc nhật ký không kể riêng (khung phễu hút liệu, ống mềm giữa các silo, phễu nạp liệu máy rang, ống gas đốt khói, test đốt khói) được tính xong theo xác nhận hoàn thành 100% công việc lúc 23:17 ngày 18/11. Ba vòng nhóm (cơ khí · điện–khí–gas · chạy thử) tính riêng theo nhãn từng việc. Việc của máy 6 kg không nằm trong kế hoạch nên chỉ có ở nhật ký.</p></div></div></div>
@@ -879,7 +940,7 @@ li.pgh.hide{display:none}
 <!-- ============================== LUU / CHIA SE ============================== -->
 <section id="luu">
   <div class="wrap">
-    <div class="sec-h rv"><h2>Lưu &amp; chia sẻ</h2><div class="idx">07 — DỮ LIỆU</div></div>
+    <div class="sec-h rv"><h2>Lưu &amp; chia sẻ</h2><div class="idx">08 — DỮ LIỆU</div></div>
     <div class="io rv">
       <div>
         <div class="btns">
@@ -1202,7 +1263,8 @@ function ca(c){            /* ra <= vao: qua nua dem · ra 'DDMM HH:MM': keo san
   var r=c[2],them=0;
   if(r.indexOf(' ')>0){var p=r.split(' ');
     them=Math.round((dateOf(p[0])-dateOf(c[0]))/864e5)*1440; r=p[1]}
-  var b=hm(r)+them,o={ngay:c[0],ra:b,nghi:c[3],ghi:c[4]||'',ai:c[5]||'',rieng:!!c[6]};
+  var b=hm(r)+them,o={ngay:c[0],ra:b,nghi:c[3],ghi:c[4]||'',ai:c[5]||'',rieng:!!c[6],
+    cong:them/1440+1};            /* so ngay cong: ca ghi ro ngay ra -> moi ngay lich 1 cong */
   if(!c[1]){o.vao=null;o.thieu=true;o.lam=0;return o}
   o.vao=hm(c[1]); if(!them&&b<=o.vao) o.ra=b+=1440;
   o.lam=b-o.vao-c[3]; return o;
@@ -1459,6 +1521,67 @@ function buildGantt(){
   addEventListener('scroll',function(){tip.classList.remove('on')},{passive:true});
 }
 
+/* ============================== FX-65 TANG CA ============================== */
+/* Quy dinh: 8 gio/ngay cong; lam thuc (da tru nghi) qua chuan la tang ca.
+   Ca khong ghi nguoi (09-15/11) = ca 4 nguoi lam chung. */
+var CHUAN=8*60, DOI=['Thành','Nam','Ánh','Trưởng'];
+function nguoiCa(c){return c.ai?c.ai.split(' · '):DOI}
+function tcCa(c){return c.thieu?null:Math.max(0,c.lam-c.cong*CHUAN)}
+function buildTangCa(){
+  var rows=caList(),maxL=Math.max.apply(null,rows.map(function(c){return c.lam})),
+      ds='',tb='',nhom={},thuTu=[];
+  rows.forEach(function(c){
+    var ai=c.ai||'Cả 4 người',tc=tcCa(c),ch=c.cong*CHUAN,
+        ngay=c.cong>1?TH[dateOf(c.ngay).getDay()]+'–'+TH[(dateOf(c.ngay).getDay()+c.cong-1)%7]+
+          ' <b class="mono">'+ddmm(c.ngay).slice(0,2)+'→'+congNgay(c.ngay,c.cong-1)+'</b>':
+          TH[dateOf(c.ngay).getDay()]+' <b class="mono">'+ddmm(c.ngay)+'</b>',
+        gio=(c.thieu?'vào chưa ghi':hhmm(c.vao))+' → '+raText(c),
+        nghi=c.nghi?dur(c.nghi):(c.thieu?'—':'không ghi');
+    ds+='<div class="tc-row rv'+(c.thieu?' thieu':'')+'">'+
+      '<div class="tc-d">'+ngay+'<small>'+ai+'</small></div>'+
+      '<div>'+(c.thieu?'':'<div class="tc-b"><i class="c" style="width:'+(Math.min(c.lam,ch)/maxL*100).toFixed(2)+
+        '%"></i><i class="t" style="width:'+(tc/maxL*100).toFixed(2)+'%"></i></div>')+
+        '<div class="tc-m">'+gio+' · nghỉ '+nghi+(c.thieu?'':' · làm '+dur(c.lam)+
+        ' · chuẩn '+dur(ch)+(c.cong>1?' ('+c.cong+' ngày)':''))+'</div></div>'+
+      '<div class="tc-v mono'+(c.thieu?' no':'')+'">'+(c.thieu?'chưa tính':(tc?'+'+dur(tc):'0'))+'</div></div>';
+    tb+='<tr><td>'+ngay.replace(/<[^>]+>/g,'')+'</td><td>'+ai+'</td><td class="mono">'+gio+
+      '</td><td class="r mono">'+(c.nghi?dur(c.nghi):'—')+'</td><td class="r mono">'+(c.thieu?'—':dur(c.lam))+
+      '</td><td class="r mono">'+dur(ch)+'</td><td class="r mono">'+(c.thieu?'chưa tính':dur(tc))+'</td></tr>';
+  });
+  $('#tcList').innerHTML=ds; $('#tcTb').innerHTML=tb;
+
+  /* tong tung nguoi, nguoi co cung so lieu thi gop mot the */
+  DOI.forEach(function(p){
+    var t={lam:0,ch:0,tc:0,cong:0,thieu:0};
+    rows.forEach(function(c){
+      if(nguoiCa(c).indexOf(p)<0) return;
+      if(c.thieu){t.thieu++;return}
+      t.lam+=c.lam; t.ch+=c.cong*CHUAN; t.tc+=tcCa(c); t.cong+=c.cong;
+    });
+    var k=[t.lam,t.ch,t.tc,t.cong,t.thieu].join('/');
+    if(!nhom[k]){nhom[k]={t:t,ten:[]};thuTu.push(k)} nhom[k].ten.push(p);
+  });
+  var sum='',tf='',tong=0,thieuNgay=rows.filter(function(c){return c.thieu}).map(function(c){return ddmm(c.ngay)});
+  thuTu.forEach(function(k){
+    var g=nhom[k],t=g.t,ten=g.ten.join(' · ');
+    tong+=t.tc*g.ten.length;
+    sum+='<div class="c"><div class="k">'+ten+(g.ten.length>1?' · mỗi người':'')+'</div>'+
+      '<b class="mono">'+dur(t.tc)+'<span>tăng ca</span></b>'+
+      '<div class="w">'+t.cong+' ngày công · làm thực '+dur(t.lam)+' · chuẩn '+dur(t.ch)+'</div></div>';
+    tf+='<tr><td colspan="4">Tổng '+ten+(g.ten.length>1?' (mỗi người)':'')+' · '+t.cong+' ngày công</td>'+
+      '<td class="r mono">'+dur(t.lam)+'</td><td class="r mono">'+dur(t.ch)+'</td><td class="r mono">'+dur(t.tc)+'</td></tr>';
+  });
+  sum+='<div class="c"><div class="k">Cả đội cộng lại</div><b class="mono">'+dur(tong)+'<span>tăng ca</span></b>'+
+    '<div class="w">Cộng giờ tăng ca của cả '+DOI.length+' người.</div></div>';
+  if(thieuNgay.length) sum+='<div class="c"><div class="k">Chưa tính</div><b class="mono">'+thieuNgay.join(', ')+'</b>'+
+    '<div class="w">Nhật ký chưa ghi giờ vào ca nên chưa tính được tăng ca ngày này.</div></div>';
+  $('#tcSum').innerHTML=sum;
+  $('#tcTf').innerHTML=tf+'<tr><td colspan="6">Cả đội cộng lại</td><td class="r mono">'+dur(tong)+'</td></tr>';
+  $('#tcGhi').textContent='09 → 15/11 nhật ký ghi giờ chung cho cả đội nên tính như nhau cho 4 người. '+
+    'Ngày 09/11 và hai ca riêng của Thành 16 → 17/11 không ghi giờ nghỉ nên chưa trừ nghỉ'+
+    (thieuNgay.length?'. Ngày '+thieuNgay.join(', ')+' có giờ vào là trang tự tính.':'.');
+}
+
 /* ============================== KE HOACH ============================== */
 function buildPlan(){
   var ul=$('#plan');ul.innerHTML='';
@@ -1602,7 +1725,8 @@ function revealInit(){
 (function(){
   var items=['Nhật ký thật 09/11 → 18/11','23:17 ngày 18/11 hoàn thành 100% công việc',
     caDoi().length+' ca · '+dur(tongLam())+' làm thực',
-    'Ca 16/11 làm thông 32 tiếng tới 22:00 ngày 17/11','Test 4 hệ hút · hút thử 4 bồn',
+    'Ca 16/11 làm thông 32 tiếng tới 22:00 ngày 17/11','Tăng ca tính theo 8 giờ/ngày',
+    'Test 4 hệ hút · hút thử 4 bồn',
     'Hướng dẫn sử dụng máy rang & hệ silo','Máy 6 kg dời chỗ · nâng firmware · rang thử',
     nAnh()+' ảnh hiện trường','Máy rang 30 kg · hệ silo 4 bồn'];
   var one=items.map(function(x){return '<em>'+x+'<s>◦</s></em>'}).join('');
@@ -1625,7 +1749,7 @@ function revealInit(){
       var p=Math.max(0,Math.min(1,(innerHeight*.72-r.top)/r.height));
       vt.style.height=(p*100)+'%';
     }
-    var secs=['tongquan','congviec','giolam','kehoach','luu'],act='tongquan';
+    var secs=['tongquan','congviec','giolam','tangca','kehoach','luu'],act='tongquan';
     secs.forEach(function(s){var e=document.getElementById(s);
       if(e&&e.getBoundingClientRect().top<innerHeight*.4) act=s});
     $$('nav a').forEach(function(a){a.classList.toggle('on',a.hash==='#'+act)});
@@ -1740,7 +1864,7 @@ $('#bLoad').addEventListener('click',function(){
 
 /* ============================== START ============================== */
 load();
-buildStrip(); buildTabs(); buildGantt(); buildPlan();
+buildStrip(); buildTabs(); buildGantt(); buildTangCa(); buildPlan();
 var ti=todayIdx(); go(ti>=0?ti:DAYS.length-1,false);
 paint();
 revealInit();
