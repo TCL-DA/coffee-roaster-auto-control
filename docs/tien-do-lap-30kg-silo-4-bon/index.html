@@ -7,7 +7,7 @@
 <meta name="description" content="Tiến độ lắp máy rang 30 kg và hệ silo 4 bồn — nhật ký thi công thật theo ngày, giờ làm, ảnh hiện trường.">
 <title>Tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn — O Tesla</title>
 <meta property="og:title" content="Tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn">
-<meta property="og:description" content="Nhật ký thi công thật 09/11 → 16/11/2026: việc đã làm từng ngày, giờ làm thực tế, ảnh hiện trường.">
+<meta property="og:description" content="Nhật ký thi công thật 09/11 → 18/11/2026: hoàn thành 100% công việc, việc đã làm từng ngày, giờ làm thực tế, ảnh hiện trường.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,6 +56,9 @@
   40-42 (dong ho, countdown 20:00) thay bang 63 bieu do gio lam thuc te
   61 luoi anh lazy + mo dan          62 lightbox anh (phim mui ten, quet ngang)
   63 bieu do gio lam (Gantt) + tooltip   64 nhan trang thai giai doan
+  -- cap nhat 20/11/2026: N7 (16-17/11, ca doi 32 tieng + 2 ca rieng cua Thanh), N8 (18/11,
+     xong 100% luc 23:17). Truc Gantt tu gian theo ca dai nhat; ca rieng ve vien rong;
+     ca chua ghi gio vao chi danh dau gio xong. Khung hinh trich tu video: [w,h,1] trong anh.js --
   Anh: anh/<DDMM>/NN.jpg + tNN.jpg, danh sach o anh/anh.js - sinh bang
   docs/tien-do-lap-30kg-silo-4-bon/lam_anh_web.py tren nhanh main.
   ============================================================================
@@ -590,6 +593,16 @@ li.pgh.hide{display:none}
 .g-bar{position:absolute;top:50%;height:10px;margin-top:-5px;background:var(--ink);
   transform:scaleX(0);transform-origin:left;transition:transform 1s var(--ease)}
 .in .g-bar{transform:scaleX(1)}
+.g-tr .gl.nd{background:#9a9a9a}               /* vach nua dem */
+.g-bar.rieng{background:transparent;border:1px solid var(--ink)}
+.has-ai .g-bar{margin-top:1px}
+.has-ai .g-end{margin-top:-5px}
+.g-ai{position:absolute;top:3px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:#555;white-space:nowrap}
+.g-end{position:absolute;top:50%;width:2px;height:14px;margin-top:-7px;margin-left:-1px;
+  background:var(--ink)}
+.tbl tr.rieng td{color:#555}
+.tbl td small{font-size:11px;letter-spacing:.04em;color:#555}
 .g-v{font-size:13px;text-align:right;white-space:nowrap}
 .g-axis{padding-top:7px}
 .g-axis .ax{position:relative;height:14px}
@@ -657,16 +670,16 @@ li.pgh.hide{display:none}
   <div class="wrap">
     <div class="hero-grid">
       <div>
-        <div class="sub">Nhật ký thi công thật · <span style="white-space:nowrap">09/11 → 16/11/2026</span></div>
+        <div class="sub">Nhật ký thi công thật · <span style="white-space:nowrap">09/11 → 18/11/2026</span></div>
         <h1 class="tw" id="h1">Lắp máy rang <em>30 kg</em> &amp; hệ silo 4 bồn</h1>
         <div class="big mono" style="display:flex;align-items:flex-start">
           <span class="odo" id="odo"></span><span class="pc">%</span>
         </div>
         <div class="sub" style="margin-top:var(--s15)" id="heroLine">0 / 0 việc kế hoạch đã xong</div>
-        <p class="lead">Đội lắp tới công trình sáng 09/11. Sau 7 ca đã dựng xong máy rang 30 kg,
-          máy tách đá, afterburner và cả 4 bồn silo; máy 6 kg đã dời chỗ, nâng firmware, rang thử.
-          Đang treo và lắp dàn đường ống. Còn lại: đường ống vào silo, test dàn silo, rang test,
-          hướng dẫn vận hành.</p>
+        <p class="lead">Đội lắp tới công trình sáng 09/11. 23:17 tối 18/11 đã hoàn thành 100% công việc:
+          máy rang 30 kg, máy tách đá, afterburner, hệ silo 4 bồn và toàn bộ đường ống; đã bật điện
+          cả hệ thống, test 4 hệ hút, hút thử 4 bồn, rang thử và hướng dẫn sử dụng. Máy 6 kg đã dời
+          chỗ, nâng firmware, rang thử. Riêng 16 → 17/11 đội làm liên tục 32 tiếng.</p>
       </div>
       <div>
         <div class="ring-wrap">
@@ -770,18 +783,23 @@ li.pgh.hide{display:none}
     </details>
 
     <div class="life">
-      <div class="c rv"><div class="h">7 ca · 09 → 15/11</div><div class="t" id="lTot">—</div>
+      <div class="c rv"><div class="h">Giờ đội lắp · 09 → 17/11</div><div class="t" id="lTot">—</div>
         <div class="w" id="lAvg">—</div></div>
       <div class="c rv"><div class="h">Vào ca</div><div class="t">8:25 – 8:56</div>
-        <div class="w">Từ 10/11 ca nào cũng vào việc trước 9:00. Ngày đầu 9:53 vì vừa bay ra tới nơi.</div></div>
-      <div class="c rv"><div class="h">Ra về</div><div class="t">20:00 → 4:40 sáng</div>
-        <div class="w">Sớm nhất 20:00 (09/11), muộn nhất 4:40 sáng 16/11 sau ca treo dây lên trần.</div></div>
+        <div class="w">Từ 10/11 ca nào cũng vào việc trước 9:00. Ngày đầu 9:53 vì vừa bay ra tới nơi.
+          16/11 vào 13:59 vì ca trước làm xuyên đêm, mọi người về ngủ tới trưa.</div></div>
+      <div class="c rv"><div class="h">Ra về</div><div class="t">20:00 → làm thông 32 tiếng</div>
+        <div class="w">Sớm nhất 20:00 (09/11). Ca 15/11 về lúc 4:40 sáng 16/11; ca 16/11 làm liên tục
+          tới 22:00 ngày 17/11; ngày cuối 18/11 xong lúc 23:17.</div></div>
       <div class="c rv"><div class="h">Nghỉ</div><div class="t">Trưa 1 giờ · tối 30 phút</div>
-        <div class="w">Ca 15/11 nghỉ tối 1 giờ. Ngày 09/11 nhật ký không ghi giờ nghỉ.</div></div>
-      <div class="c rv"><div class="h">Tự túc</div><div class="t">Ăn sáng · ăn trưa · giặt đồ</div>
-        <div class="w">Công trình đã khoán gọn nên anh em tự lo phần này.</div></div>
-      <div class="c rv"><div class="h">Di chuyển</div><div class="t">3:29 rời xưởng</div>
-        <div class="w">Sáng 09/11 bay ra Hà Nội, 9:53 tới công trình là bắt tay vào việc.</div></div>
+        <div class="w">Ca 15/11 nghỉ tối 1 giờ. Ca 16 → 17/11 (32 tiếng) Nam, Ánh, Trưởng tổng cộng chỉ nghỉ
+          2 giờ để ăn uống, ngủ nghỉ. Ngày 09/11 nhật ký không ghi giờ nghỉ.</div></div>
+      <div class="c rv"><div class="h">Thành · 16 → 17/11</div><div class="t">13:59 → 6:15 · 14:00 → 22:47</div>
+        <div class="w">Làm xuyên đêm tới 6:15 sáng 17/11, mệt quá về khách sạn ngủ trước, 14:00 quay lại
+          làm tiếp tới 22:47. Hai ca này vẽ viền rỗng trên biểu đồ, không cộng vào tổng giờ đội.</div></div>
+      <div class="c rv"><div class="h">Di chuyển · tự túc</div><div class="t">3:29 rời xưởng</div>
+        <div class="w">Sáng 09/11 bay ra Hà Nội, 9:53 tới công trình là bắt tay vào việc. Công trình
+          khoán gọn nên ăn sáng, ăn trưa, giặt đồ anh em tự lo.</div></div>
     </div>
 
     <div class="note rv" style="margin-top:var(--s22)">
@@ -790,8 +808,9 @@ li.pgh.hide{display:none}
         <rect x="22.6" y="33" width="2.8" height="2.8"/>
       </svg>
       <p><b>So với kế hoạch:</b> kế hoạch chốt tăng ca tới 20:00, thực tế
-        <span class="late">6 / 7 ca làm quá 20:00</span>. Ca 15/11 làm thông đêm tới 4:40 sáng
-        vì phải ráp – tháo dàn giáo 3 lần (mỗi dàn 8 bộ) để treo 5 dây lên trần.</p>
+        <span class="late">8 / 9 ca làm quá 20:00</span>. Ca 15/11 làm thông đêm tới 4:40 sáng
+        vì phải ráp – tháo dàn giáo 3 lần (mỗi dàn 8 bộ) để treo 5 dây lên trần. Ca 16/11 làm
+        liên tục 32 tiếng tới 22:00 ngày 17/11, ngày cuối 18/11 làm tới 23:17 mới xong 100%.</p>
     </div>
   </div>
 </section>
@@ -804,7 +823,8 @@ li.pgh.hide{display:none}
       <div class="idx">05 — KẾ HOẠCH</div>
     </div>
     <p class="plan-intro rv">Việc ghi “nhật ký N…” là đã thấy trong nhật ký, tick sẵn và khoá.
-      Việc còn trống là chưa thấy ghi — xong thì bấm tick, tick lưu trong máy này.</p>
+      Việc ghi “xong theo chốt 100%” là nhật ký không kể riêng, nhưng đã xong theo xác nhận
+      hoàn thành 100% công việc lúc 23:17 ngày 18/11.</p>
     <div class="panel-head">
       <div>
         <h3>Kế hoạch T2 → T7</h3>
@@ -823,14 +843,14 @@ li.pgh.hide{display:none}
       <div class="line"><i id="vtFill"></i></div>
       <div class="step"><div class="dot"></div><h4>Giai đoạn 1 — Dựng khung &amp; đặt máy <span class="st ok">XONG</span></h4>
         <p>N1–N5: tháo kiện, sửa móp afterburner và máy 30 kg, đặt máy, ráp cyclone · cooling · tủ điện, hạ chân và ráp dàn chân bồn, lên đủ 4 bồn.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 2 — Hoàn thiện silo &amp; đấu nối <span class="st">GẦN XONG</span></h4>
-        <p>N4–N6: tách đá, khí nén máy rang, van khí nén dàn bồn, máng điện, đấu điện dàn bồn, đầu cân. Chưa thấy ghi: khung phễu hút liệu, ống mềm giữa các silo, phễu nạp liệu máy rang.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 3 — Đường ống &amp; lên điện thử <span class="st">ĐANG LÀM</span></h4>
-        <p>N6: treo full khung đường ống, treo 5 dây lên trần, bắt đầu lắp dàn ống; đã lên điện máy rang, tách đá, dàn silo. Còn ráp đường ống vào silo và căn chỉnh.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 4 — Gas &amp; test chức năng <span class="st">MỘT PHẦN</span></h4>
-        <p>Máy rang 30 kg đã đốt thử (N3, N4), test từng tính năng (N5) và nối điện với dàn bồn (N6). Chưa thấy ghi: gas và test đốt khói, test dàn silo, fix hở gió.</p></div>
-      <div class="step"><div class="dot"></div><h4>Giai đoạn 5 — Rang test &amp; hướng dẫn <span class="st">CHƯA GHI</span></h4>
-        <p>16/11 đã có ảnh ở máy rang 30 kg, nhật ký ngày này chưa ghi.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 2 — Hoàn thiện silo &amp; đấu nối <span class="st ok">XONG</span></h4>
+        <p>N4–N7: tách đá, khí nén máy rang, van khí nén dàn bồn, máng điện, đấu điện dàn bồn, đầu cân; kéo điện, khí nén, mạng cho silo, đấu tủ nguồn và tủ silo (N7). Khung phễu hút liệu, ống mềm giữa các silo, phễu nạp liệu máy rang: nhật ký không kể riêng, xong theo chốt 100% tối 18/11.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 3 — Đường ống &amp; lên điện thử <span class="st ok">XONG</span></h4>
+        <p>N6–N8: treo khung đường ống, treo 5 dây lên trần, ráp và thả dây cáp căn chỉnh từng tý một, dựng ống hút silo biểu diễn (N7); hoàn thiện 100% đường ống, gia cố cho thẳng và đẹp (N8). Bật điện toàn bộ hệ thống, kiểm test lỗi thiết bị (N7).</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 4 — Gas &amp; test chức năng <span class="st ok">XONG</span></h4>
+        <p>Đốt thử (N3, N4), test từng tính năng (N5), nối điện với dàn bồn (N6); cắt dán ron, đấu nối khí nén, thay cảm biến máy 30 kg để đồng bộ hồ sơ rang với máy 6 kg (N7); test 4 hệ thống hút, canh chỉnh cân 4 bồn, hút thử 4 bồn (N8). Gas và test đốt khói: xong theo chốt 100%.</p></div>
+      <div class="step"><div class="dot"></div><h4>Giai đoạn 5 — Rang test &amp; hướng dẫn <span class="st ok">XONG</span></h4>
+        <p>N7–N8: chạy test thử máy, rang thử, hướng dẫn sử dụng máy rang và hệ silo. 23:17 ngày 18/11 hoàn thành 100% công việc, cả đội soạn đồ về khách sạn.</p></div>
     </div>
   </div>
 </section>
@@ -841,11 +861,15 @@ li.pgh.hide{display:none}
     <div class="sec-h rv"><h2>Ghi chú</h2><div class="idx">06 — GHI CHÚ</div></div>
     <div class="acc" id="acc">
       <div class="acc-i"><button class="acc-b"><span class="k">Trang này tính % thế nào</span><span class="s">+</span></button>
-        <div class="acc-p"><div><p>% = số việc trong kế hoạch 44 việc đã xong ÷ 44. Việc đã thấy trong nhật ký được tick sẵn và khoá (ghi ngày N1…N6). Ba vòng nhóm (cơ khí · điện–khí–gas · chạy thử) tính riêng theo nhãn từng việc. Việc của máy 6 kg không nằm trong kế hoạch nên chỉ có ở nhật ký.</p></div></div></div>
+        <div class="acc-p"><div><p>% = số việc trong kế hoạch 44 việc đã xong ÷ 44. Việc đã thấy trong nhật ký được tick sẵn và khoá (ghi ngày N1…N8). 5 việc nhật ký không kể riêng (khung phễu hút liệu, ống mềm giữa các silo, phễu nạp liệu máy rang, ống gas đốt khói, test đốt khói) được tính xong theo xác nhận hoàn thành 100% công việc lúc 23:17 ngày 18/11. Ba vòng nhóm (cơ khí · điện–khí–gas · chạy thử) tính riêng theo nhãn từng việc. Việc của máy 6 kg không nằm trong kế hoạch nên chỉ có ở nhật ký.</p></div></div></div>
       <div class="acc-i"><button class="acc-b"><span class="k">Vì sao ngày 6 có hai ca</span><span class="s">+</span></button>
         <div class="acc-p"><div><p>Nhật ký ghi chung “ngày 6” cho 14/11 và 15/11: ảnh 14/11 là van khí nén và dàn giáo, ảnh 15/11 là treo dây lên trần. Giờ làm vẫn tách riêng từng ca. Ca 15/11 làm tới 4:40 sáng 16/11.</p></div></div></div>
+      <div class="acc-i"><button class="acc-b"><span class="k">Vì sao 16/11 và 17/11 gộp một ngày</span><span class="s">+</span></button>
+        <div class="acc-p"><div><p>Nam, Ánh, Trưởng làm liên tục từ 13:59 ngày 16/11 tới 22:00 ngày 17/11, nên đây là một ca 32 tiếng (đã trừ 2 giờ nghỉ). Thành làm cùng ca tới 6:15 sáng 17/11, về khách sạn ngủ, 14:00 quay lại làm tới 22:47. Hai ca của Thành vẽ viền rỗng và không cộng vào tổng giờ, vì trùng thời gian với ca của đội.</p></div></div></div>
+      <div class="acc-i"><button class="acc-b"><span class="k">Giờ ngày 18/11</span><span class="s">+</span></button>
+        <div class="acc-p"><div><p>Nhật ký mới ghi giờ xong (23:17), chưa ghi giờ vào ca, nên ca này có trên biểu đồ nhưng chưa cộng vào tổng giờ làm.</p></div></div></div>
       <div class="acc-i"><button class="acc-b"><span class="k">Ảnh trên trang</span><span class="s">+</span></button>
-        <div class="acc-p"><div><p>Ảnh đã nén lại cho nhẹ, không còn thông tin máy chụp hay vị trí. Ảnh có biển hiệu, tên quán, đường phố hoặc đồng phục nhân viên của khách thì không đưa lên. Bấm vào ảnh để xem to, dùng phím mũi tên hoặc quét ngang để qua ảnh khác.</p></div></div></div>
+        <div class="acc-p"><div><p>Ảnh đã nén lại cho nhẹ, không còn thông tin máy chụp hay vị trí. Ảnh có biển hiệu, tên quán, đường phố hoặc đồng phục nhân viên của khách thì không đưa lên. Ngày 17/11 chủ yếu quay video, nên ảnh ngày đó (và một số ảnh 16/11, 18/11) là khung hình trích từ video — khi mở to có ghi chú. Bấm vào ảnh để xem to, dùng phím mũi tên hoặc quét ngang để qua ảnh khác.</p></div></div></div>
       <div class="acc-i"><button class="acc-b"><span class="k">Tick ở máy này có hiện trên máy khác không</span><span class="s">+</span></button>
         <div class="acc-p"><div><p>Không. Trang tĩnh nên tick chỉ lưu trong máy đang mở (localStorage). Muốn đồng bộ sang điện thoại thì bấm “Sao chép link kèm tiến độ” ở mục Lưu &amp; chia sẻ rồi mở link đó ở máy kia.</p></div></div></div>
     </div>
@@ -880,7 +904,7 @@ li.pgh.hide{display:none}
 
 <footer>
   <div class="wrap">
-    <div class="cap">O Tesla · tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn · cập nhật 16/11/2026</div>
+    <div class="cap">O Tesla · tiến độ lắp máy rang 30 kg &amp; hệ silo 4 bồn · cập nhật 20/11/2026</div>
     <div class="cap mono" id="footPct">0%</div>
   </div>
 </footer>
@@ -906,8 +930,13 @@ li.pgh.hide{display:none}
 'use strict';
 /* ============================== DU LIEU ============================== */
 var YEAR = 2026;
-/* NHAT KY THAT. ngay: 'DDMM'. gio: [ngay, vao, ra, phut nghi, ghi chu].
-   k: [viec, nhom] — co = co khi lap rap | dk = dien/khi/gas | tt = chay thu | m6 = may 6 kg */
+/* NHAT KY THAT. ngay: 'DDMM'.
+   gio: [ngay, vao, ra, phut nghi, ghi chu, nguoi, rieng]
+     ra 'HH:MM' (nho hon vao = qua nua dem) hoac 'DDMM HH:MM' khi ca keo sang ngay khac
+     vao '' = chua ghi gio vao (ca van hien, khong cong vao tong gio)
+     rieng = 1: ca rieng cua mot nguoi, trung gio voi ca doi -> ve vien rong, khong cong tong
+   k: [viec, nhom, nguoi] — co = co khi lap rap | dk = dien/khi/gas | tt = chay thu |
+      m6 = may 6 kg | dd = thu don */
 var DAYS = [
  {d:'N1', ngay:['0911'], s:'Tới công trình · afterburner · dời máy 6 kg',
   gio:[['0911','09:53','20:00',0,'nhật ký không ghi giờ nghỉ']],
@@ -971,10 +1000,41 @@ var DAYS = [
      ['Treo full khung đường ống trong phòng chứa silo','co'],
      ['Bắt đầu lắp các dàn ống','co'],
      ['Treo 5 dây lên trần nhà — ráp dàn giáo 3 lần, mỗi dàn 8 bộ, tháo ra ráp lại rất mất thời gian','co']]},
- {d:'N7', ngay:['1611'], s:'Ảnh mới ở máy rang 30 kg', gio:[], k:[]}
+ {d:'N7', ngay:['1611','1711'], s:'Lên điện cả hệ thống · điện, khí, mạng cho silo · làm thông 32 tiếng',
+  gio:[['1611','13:59','1711 22:00',120,'làm liên tục tới 22:00 ngày 17/11 · cả ca chỉ nghỉ 2 giờ để ăn uống, ngủ nghỉ','Nam · Ánh · Trưởng'],
+       ['1611','13:59','06:15',0,'làm xuyên đêm tới 6:15 sáng 17/11 thì về khách sạn ngủ · không ghi giờ nghỉ','Thành',1],
+       ['1711','14:00','22:47',0,'quay lại công trình làm tiếp, 22:47 về khách sạn · không ghi giờ nghỉ','Thành',1]],
+  ghi:'Sau ca làm xuyên đêm 15/11 (về lúc 4:40 sáng 16/11), mọi người về ngủ tới trưa, 13:59 tới công trình làm xuyên suốt. 6:15 sáng 17/11 Thành mệt quá về khách sạn ngủ trước, 14:00 chiều cùng ngày quay lại làm tiếp tới 22:47. Nam, Ánh, Trưởng nghỉ 1 tiếng, làm liên tục từ 13:59 ngày 16/11 tới 22:00 ngày 17/11 — tổng cộng chỉ nghỉ 2 giờ để ăn uống, ngủ nghỉ.',
+  k:[['Dặm sơn toàn bộ hệ thống','co','Thành'],
+     ['Kéo và cấp điện cho silo','dk','Thành + Nam'],
+     ['Cấp khí nén cho silo','dk','Thành + Nam'],
+     ['Kết nối mạng cho silo','dk','Thành + Nam'],
+     ['Dựng ống hút silo biểu diễn','co','Ánh + Nam'],
+     ['Tháo lắp dàn giáo','co','Ánh + Nam'],
+     ['Cắt, dán ron','co','Ánh + Nam'],
+     ['Đấu điện phía tủ nguồn','dk','Nam'],
+     ['Đấu điện ở tủ silo','dk','Thành'],
+     ['Bật điện toàn bộ hệ thống, kiểm test lỗi thiết bị','tt','Thành'],
+     ['Đấu nối khí nén','dk','Thành'],
+     ['Thay cảm biến cho máy 30 kg để đồng bộ hồ sơ rang giữa máy 30 kg và máy 6 kg','dk','Thành'],
+     ['Chạy test thử máy','tt','Thành'],
+     ['Ráp và thả dây cáp, căn chỉnh sửa từng tý một','co','Ánh + Trưởng']]},
+ {d:'N8', ngay:['1811'], s:'Xong 100% đường ống · test 4 hệ hút · hướng dẫn sử dụng',
+  gio:[['1811','','23:17',0,'nhật ký chưa ghi giờ vào · 23:17 hoàn thành 100% công việc, về khách sạn','Thành · Nam · Ánh · Trưởng']],
+  ghi:'Mọi người tập trung vô gắn cho xong đường ống. 23:17 tối 18/11 cả đội hoàn thành 100% công việc và trở về khách sạn.',
+  k:[['Hoàn thiện 100% đường ống — cắt sửa, lau chùi, chỉnh lỗi','co','Ánh + Trưởng + Nam'],
+     ['Hướng dẫn sử dụng máy rang','tt','Thành'],
+     ['Test 4 hệ thống hút','tt','Thành'],
+     ['Canh chỉnh cân nặng 4 bồn','tt','Thành'],
+     ['Hút thử 4 bồn','tt','Thành'],
+     ['Hướng dẫn sử dụng hệ silo','tt','Thành'],
+     ['Gia cố hệ thống ống cho thẳng và đẹp','co','Trưởng + Ánh + Nam'],
+     ['Lau chùi, vệ sinh','co','Trưởng + Ánh + Nam'],
+     ['Soạn đồ về','dd','cả 4 người']]}
 ];
 
-/* KE HOACH 44 VIEC (chot 07/11). Phan tu thu 3 = ngay nhat ky co ghi viec nay ('' = chua thay) */
+/* KE HOACH 44 VIEC (chot 07/11). Phan tu thu 3 = ngay nhat ky co ghi viec nay ('' = chua thay;
+   '100%' = nhat ky khong ghi rieng, xong theo chot "hoan thanh 100% cong viec" 23:17 ngay 18/11) */
 var PLAN = [
  {d:'T2', s:'Dựng khung · đặt máy', k:[
   ['Tháo kiện','co','N1–N2'],
@@ -992,42 +1052,43 @@ var PLAN = [
   ['Ráp tiếp 4 silo bồn','co','N5'],
   ['Ráp van nạp','co','N6'],
   ['Ráp van xả','co','N6'],
-  ['Ráp khung phễu hút liệu','co',''],
-  ['Gắn ống mềm giữa các silo','co',''],
+  ['Ráp khung phễu hút liệu','co','100%'],
+  ['Gắn ống mềm giữa các silo','co','100%'],
   ['Ráp tủ điện silo','dk','N6'],
   ['Kết nối tách đá vào máy rang','co','N4'],
-  ['Ráp phễu nạp liệu máy rang','co',''],
+  ['Ráp phễu nạp liệu máy rang','co','100%'],
   ['Ráp điện máy rang','dk','N3'],
   ['Ráp khí nén máy rang','dk','N4']]},
  {d:'T4', s:'Đường ống · lên điện thử', k:[
   ['Gắn pad treo đường ống','co','N6'],
-  ['Căn chỉnh pad treo và đường ống','co',''],
-  ['Ráp toàn bộ đường ống vào silo','co',''],
-  ['Căn chỉnh silo máy rang và đường ống','co',''],
+  ['Căn chỉnh pad treo và đường ống','co','N7–N8'],
+  ['Ráp toàn bộ đường ống vào silo','co','N8'],
+  ['Căn chỉnh silo máy rang và đường ống','co','N8'],
   ['Gắn đường ống khói','co','N1–N3'],
   ['Cân chỉnh afterburner và đường ống khói','co','N1–N3'],
   ['Lên điện thử máy rang','tt','N2–N3'],
   ['Lên điện thử máy tách đá','tt','N6'],
-  ['Lên điện thử đốt khói (afterburner)','tt',''],
+  ['Lên điện thử đốt khói (afterburner)','tt','N7'],
   ['Lên điện thử dàn silo','tt','N6']]},
  {d:'T5', s:'Gas · test chức năng', k:[
   ['Gắn đường ống gas máy rang','dk','N3'],
-  ['Gắn đường ống gas đốt khói','dk',''],
+  ['Gắn đường ống gas đốt khói','dk','100%'],
   ['Test chức năng máy rang','tt','N5'],
-  ['Test chức năng đốt khói','tt',''],
+  ['Test chức năng đốt khói','tt','100%'],
   ['Kết nối máy rang với dàn silo','dk','N6'],
-  ['Test dàn silo','tt',''],
-  ['Fix lỗi hở gió','tt','']]},
+  ['Test dàn silo','tt','N8'],
+  ['Fix lỗi hở gió','tt','N7']]},
  {d:'T6', s:'Rang test · hướng dẫn', k:[
-  ['Rang test','tt',''],
-  ['Thử dàn silo','tt',''],
-  ['Hướng dẫn vận hành','tt','']]},
+  ['Rang test','tt','N7–N8'],
+  ['Thử dàn silo','tt','N8'],
+  ['Hướng dẫn vận hành','tt','N8']]},
  {d:'T7', s:'Rang test · nghiệm thu', k:[
-  ['Rang test','tt',''],
-  ['Thử dàn silo','tt',''],
-  ['Hướng dẫn vận hành (nghiệm thu)','tt','']]}
+  ['Rang test','tt','N8'],
+  ['Thử dàn silo','tt','N8'],
+  ['Hướng dẫn vận hành (nghiệm thu)','tt','N8']]}
 ];
-var GNAME = {co:'Cơ khí · lắp ráp', dk:'Điện · khí · gas', tt:'Chạy thử · nghiệm thu', m6:'Máy 6 kg'};
+var GNAME = {co:'Cơ khí · lắp ráp', dk:'Điện · khí · gas', tt:'Chạy thử · nghiệm thu', m6:'Máy 6 kg',
+  dd:'Thu dọn'};
 var TH  = ['CN','T2','T3','T4','T5','T6','T7'];
 var THL = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
 
@@ -1135,17 +1196,32 @@ function gp(a){return a[1]?Math.round(a[0]/a[1]*100):0}
 
 /* ============================== NGAY & GIO ============================== */
 function hm(s){var p=s.split(':');return (+p[0])*60+(+p[1])}
-function ca(c){                       /* ra <= vao nghia la qua nua dem */
-  var a=hm(c[1]),b=hm(c[2]); if(b<=a) b+=1440;
-  return {ngay:c[0],vao:a,ra:b,nghi:c[3],lam:b-a-c[3],ghi:c[4]||''};
+function ddmm(s){return s.slice(0,2)+'/'+s.slice(2)}
+function dateOf(s){return new Date(YEAR,+s.slice(2)-1,+s.slice(0,2))}
+function ca(c){            /* ra <= vao: qua nua dem · ra 'DDMM HH:MM': keo sang ngay do */
+  var r=c[2],them=0;
+  if(r.indexOf(' ')>0){var p=r.split(' ');
+    them=Math.round((dateOf(p[0])-dateOf(c[0]))/864e5)*1440; r=p[1]}
+  var b=hm(r)+them,o={ngay:c[0],ra:b,nghi:c[3],ghi:c[4]||'',ai:c[5]||'',rieng:!!c[6]};
+  if(!c[1]){o.vao=null;o.thieu=true;o.lam=0;return o}
+  o.vao=hm(c[1]); if(!them&&b<=o.vao) o.ra=b+=1440;
+  o.lam=b-o.vao-c[3]; return o;
 }
 function hhmm(m){m=m%1440;return Math.floor(m/60)+':'+('0'+m%60).slice(-2)}
 function dur(m){return Math.floor(m/60)+'h'+('0'+m%60).slice(-2)}
+function congNgay(s,n){var x=dateOf(s);x.setDate(x.getDate()+n);
+  return ('0'+x.getDate()).slice(-2)+'/'+('0'+(x.getMonth()+1)).slice(-2)}
+function raText(c){                   /* gio ra kem ngay neu khong cung ngay vao */
+  var n=Math.floor(c.ra/1440);
+  if(!n) return hhmm(c.ra);
+  if(n===1&&c.ra%1440<720) return hhmm(c.ra)+' sáng hôm sau';
+  return hhmm(c.ra)+' ngày '+congNgay(c.ngay,n);
+}
 function caList(){var r=[];DAYS.forEach(function(d){d.gio.forEach(function(c){r.push(ca(c))})});return r}
-function lamNgay(d){return d.gio.reduce(function(n,c){return n+ca(c).lam},0)}
-function tongLam(){return caList().reduce(function(n,c){return n+c.lam},0)}
-function ddmm(s){return s.slice(0,2)+'/'+s.slice(2)}
-function dateOf(s){return new Date(YEAR,+s.slice(2)-1,+s.slice(0,2))}
+function caDoi(){return caList().filter(function(c){return !c.rieng})}          /* ca cua ca doi */
+function caGio(){return caDoi().filter(function(c){return !c.thieu})}          /* ca da du gio */
+function lamNgay(d){return d.gio.reduce(function(n,c){c=ca(c);return n+(c.rieng?0:c.lam)},0)}
+function tongLam(){return caGio().reduce(function(n,c){return n+c.lam},0)}
 function ngayText(d){
   if(d.ngay.length===1) return ddmm(d.ngay[0]);
   var a=d.ngay[0],b=d.ngay[d.ngay.length-1];
@@ -1167,7 +1243,8 @@ function nAnhDay(d){return d.ngay.reduce(function(n,s){return n+anh(s).length},0
 function nAnh(){return DAYS.reduce(function(n,d){return n+nAnhDay(d)},0)}
 function nLog(){return DAYS.reduce(function(n,d){return n+d.k.length},0)}
 function caText(c,motNgay){
-  return (motNgay?'':ddmm(c.ngay)+' ')+hhmm(c.vao)+' → '+hhmm(c.ra)+(c.ra>=1440?' sáng hôm sau':'');
+  return (c.ai?c.ai+' ':'')+(motNgay?'':ddmm(c.ngay)+' ')+
+    (c.thieu?'vào chưa ghi':hhmm(c.vao))+' → '+raText(c);
 }
 
 /* ============================== RENDER ============================== */
@@ -1182,7 +1259,8 @@ function buildStrip(){
     b.innerHTML='<div class="dt">'+d.d+'</div>'+
       '<div class="dsub">'+thuText(d)+' · <span class="mono">'+ngayText(d)+'</span></div>'+
       '<div class="dd">'+d.s+'</div>'+
-      '<div class="dp"><span class="mono">'+(L?'làm '+dur(L):'chưa ghi giờ')+'</span>'+
+      '<div class="dp"><span class="mono">'+(L?'làm '+dur(L):
+        (d.gio.length?'xong '+hhmm(ca(d.gio[0]).ra):'chưa ghi giờ'))+'</span>'+
       '<span class="mono">'+nAnhDay(d)+' ảnh</span></div>'+
       '<div class="pbar"><i></i></div>'+
       '<span class="stamp">ĐÃ GHI</span>';
@@ -1225,7 +1303,7 @@ function buildLog(){
     var li=document.createElement('li');
     li.className='task log'+(RM?'':' enter'); li.style.animationDelay=(ki*32)+'ms';
     li.innerHTML=TICK+'</span><span class="no mono">'+('0'+(ki+1)).slice(-2)+'</span>'+
-      '<span class="tx">'+k[0]+'<span class="tg">'+GNAME[k[1]]+'</span></span>';
+      '<span class="tx">'+k[0]+'<span class="tg">'+GNAME[k[1]]+(k[2]?' · '+k[2]:'')+'</span></span>';
     ul.appendChild(li);
   });
   var g=$('#ghi'); g.textContent=d.ghi||''; g.hidden=!d.ghi;
@@ -1245,7 +1323,8 @@ function buildGal(d){
     }
     list.forEach(function(wh,j){
       var no=('0'+(j+1)).slice(-2),idx=LB.length;
-      LB.push({src:'anh/'+s+'/'+no+'.jpg',cap:d.d+' · '+ddmm(s)+' · ảnh '+(j+1)+'/'+list.length});
+      LB.push({src:'anh/'+s+'/'+no+'.jpg',cap:d.d+' · '+ddmm(s)+' · ảnh '+(j+1)+'/'+list.length+
+        (wh[2]?' · khung hình trích từ video':'')});
       var b=document.createElement('button');b.className='ph';
       b.setAttribute('aria-label','Mở ảnh '+(j+1)+' ngày '+ddmm(s));
       var im=document.createElement('img');im.alt='';im.decoding='async';im.loading='lazy';
@@ -1304,49 +1383,58 @@ function stepLb(k){if(!LB.length) return; lbi=(lbi+k+LB.length)%LB.length; showL
 })();
 
 /* ============================== FX-63 BIEU DO GIO LAM ============================== */
-var GS=8*60, GE=29*60;                 /* truc 08:00 -> 05:00 sang hom sau */
+var GS=8*60, GE=29*60;    /* truc tu 08:00; toi thieu toi 05:00 sang hom sau, dai hon thi gian theo ca dai nhat */
 function gx(m){return (m-GS)/(GE-GS)*100}
 function buildGantt(){
-  var rows=caList(),h='',grid='',ax='',i;
-  [12,16,24,28].forEach(function(t){grid+='<span class="gl" style="left:'+gx(t*60)+'%"></span>'});
+  var rows=caList(),doi=caDoi(),du=caGio(),h='',grid='',ax='',t;
+  GE=Math.max(29*60,Math.ceil(Math.max.apply(null,rows.map(function(c){return c.ra}))/240)*240);
+  for(t=12;t*60<GE;t+=4) if(t!==20) grid+='<span class="gl'+(t%24?'':' nd')+'" style="left:'+gx(t*60)+'%"></span>';
   grid+='<span class="ref" style="left:'+gx(20*60)+'%"></span>';
   h+='<div class="g-row g-head" aria-hidden="true"><span></span><div class="g-tr">'+
     '<span class="ref" style="left:'+gx(20*60)+'%"></span>'+
     '<span class="g-ref" style="left:'+gx(20*60)+'%">20:00 theo kế hoạch</span></div><span></span></div>';
   rows.forEach(function(c,i){
-    h+='<div class="g-row" tabindex="0" data-i="'+i+'">'+
+    var bar=c.thieu?
+      '<i class="g-end" style="left:'+gx(c.ra).toFixed(2)+'%"></i>'+
+      '<span class="g-ai" style="right:'+(100-gx(c.ra)).toFixed(2)+'%">'+(c.ai?c.ai+' · ':'')+'chưa ghi giờ vào</span>':
+      '<i class="g-bar'+(c.rieng?' rieng':'')+'" style="left:'+gx(c.vao).toFixed(2)+'%;width:'+
+        (gx(c.ra)-gx(c.vao)).toFixed(2)+'%;transition-delay:'+(i*90)+'ms"></i>'+
+      (c.ai?'<span class="g-ai" style="left:'+gx(c.vao).toFixed(2)+'%">'+c.ai+'</span>':'');
+    h+='<div class="g-row'+(c.ai?' has-ai':'')+'" tabindex="0" data-i="'+i+'">'+
       '<span class="g-lb">'+TH[dateOf(c.ngay).getDay()]+'<b class="mono">'+ddmm(c.ngay)+'</b></span>'+
-      '<div class="g-tr">'+grid+'<i class="g-bar" style="left:'+gx(c.vao).toFixed(2)+'%;width:'+
-        (gx(c.ra)-gx(c.vao)).toFixed(2)+'%;transition-delay:'+(i*90)+'ms"></i></div>'+
-      '<span class="g-v mono">'+dur(c.lam)+'</span></div>';
+      '<div class="g-tr">'+grid+bar+'</div>'+
+      '<span class="g-v mono">'+(c.thieu?'—':dur(c.lam))+'</span></div>';
   });
-  [[8,'08'],[12,'12'],[16,'16'],[20,'20'],[24,'00'],[28,'04']].forEach(function(t){
-    ax+='<span class="mono" style="left:'+gx(t[0]*60)+'%">'+t[1]+'</span>';
-  });
+  for(t=8;t*60<=GE;t+=4) ax+='<span class="mono" style="left:'+gx(t*60)+'%">'+('0'+t%24).slice(-2)+'</span>';
   h+='<div class="g-axis" aria-hidden="true"><span></span><div class="ax">'+ax+'</div><span class="g-lb">giờ</span></div>';
   $('#gantt').innerHTML=h;
 
-  var tot=tongLam(),tb='';
+  var tot=tongLam(),tb='',tb0=Math.round(tot/du.length),thieu=doi.length-du.length;
   rows.forEach(function(c){
-    tb+='<tr><td>'+TH[dateOf(c.ngay).getDay()]+' '+ddmm(c.ngay)+'</td><td class="mono">'+hhmm(c.vao)+
-      '</td><td class="mono">'+hhmm(c.ra)+(c.ra>=1440?' (+1)':'')+'</td><td class="r mono">'+
-      (c.nghi?dur(c.nghi):'—')+'</td><td class="r mono">'+dur(c.lam)+'</td></tr>';
+    tb+='<tr'+(c.rieng?' class="rieng"':'')+'><td>'+TH[dateOf(c.ngay).getDay()]+' '+ddmm(c.ngay)+
+      (c.ai?'<br><small>'+c.ai+(c.rieng?' · ca riêng':'')+'</small>':'')+'</td><td class="mono">'+
+      (c.thieu?'—':hhmm(c.vao))+'</td><td class="mono">'+hhmm(c.ra)+
+      (c.ra>=1440?' (+'+Math.floor(c.ra/1440)+')':'')+'</td><td class="r mono">'+
+      (c.nghi?dur(c.nghi):'—')+'</td><td class="r mono">'+(c.thieu?'—':dur(c.lam))+'</td></tr>';
   });
   $('#gTb').innerHTML=tb;
-  $('#gTf').innerHTML='<tr><td colspan="4">Tổng '+rows.length+' ca</td><td class="r mono">'+dur(tot)+'</td></tr>';
-  $('#gSum').innerHTML='<span>Tổng '+rows.length+' ca · <b style="font-weight:400">'+dur(tot)+'</b> làm thực</span>'+
-    '<span>Trung bình '+dur(Math.round(tot/rows.length))+' / ca · ca dài nhất '+
-    dur(Math.max.apply(null,rows.map(function(c){return c.lam})))+'</span>';
+  $('#gTf').innerHTML='<tr><td colspan="4">Tổng '+doi.length+' ca của đội'+
+    (thieu?' (chưa tính '+thieu+' ca chưa ghi giờ vào)':'')+'</td><td class="r mono">'+dur(tot)+'</td></tr>';
+  $('#gSum').innerHTML='<span>Tổng '+doi.length+' ca · <b style="font-weight:400">'+dur(tot)+'</b> làm thực'+
+    (thieu?' · chưa tính ca 18/11':'')+'</span>'+
+    '<span>Trung bình '+dur(tb0)+' / ca · ca dài nhất '+
+    dur(Math.max.apply(null,du.map(function(c){return c.lam})))+'</span>';
   $('#lTot').textContent=dur(tot).replace('h',' giờ ')+' phút làm thực';
-  $('#lAvg').textContent='Đã trừ giờ nghỉ trưa, nghỉ tối. Trung bình '+
-    dur(Math.round(tot/rows.length)).replace('h',' giờ ')+' phút mỗi ca.';
+  $('#lAvg').textContent='Đã trừ giờ nghỉ. Trung bình '+dur(tb0).replace('h',' giờ ')+' phút mỗi ca'+
+    (thieu?'. Chưa tính ca 18/11 vì nhật ký chưa ghi giờ vào.':'.');
 
   /* tooltip theo hang — vung bam = ca hang, lon hon thanh */
   var tip=$('#gtip'),hide=0;
   function txt(c){
-    return '<b>'+THL[dateOf(c.ngay).getDay()]+' '+ddmm(c.ngay)+'</b><br>'+
-      hhmm(c.vao)+' → '+hhmm(c.ra)+(c.ra>=1440?' sáng hôm sau':'')+'<br>'+
-      'Nghỉ '+(c.nghi?dur(c.nghi):'—')+' · làm <b>'+dur(c.lam)+'</b>'+(c.ghi?'<br>'+c.ghi:'');
+    return '<b>'+THL[dateOf(c.ngay).getDay()]+' '+ddmm(c.ngay)+'</b>'+(c.ai?' · '+c.ai:'')+'<br>'+
+      (c.thieu?'Vào: chưa ghi':hhmm(c.vao))+' → '+raText(c)+
+      (c.thieu?'':'<br>Nghỉ '+(c.nghi?dur(c.nghi):'—')+' · làm <b>'+dur(c.lam)+'</b>')+
+      (c.rieng?'<br>Ca riêng, không cộng vào tổng giờ đội':'')+(c.ghi?'<br>'+c.ghi:'');
   }
   function put(x,y){
     var w=tip.offsetWidth,hh=tip.offsetHeight;
@@ -1385,7 +1473,7 @@ function buildPlan(){
       li.innerHTML=TICK+(lock?'':'<button class="hit" aria-label="Tick việc: '+k[0].replace(/"/g,'')+'"></button>')+
         '</span><span class="no mono">'+('0'+(ki+1)).slice(-2)+'</span>'+
         '<span class="tx"><s>'+k[0]+'</s><span class="tg">'+GNAME[k[1]]+
-        (lock?' · nhật ký '+k[2]:'')+'</span></span>';
+        (lock?(k[2]==='100%'?' · xong theo chốt 100% tối 18/11':' · nhật ký '+k[2]):'')+'</span></span>';
       if(!lock) $('.hit',li).addEventListener('click',function(e){
         ripple($('.box',li),e); toggle(di,ki,li);
       });
@@ -1429,8 +1517,9 @@ function go(i,scroll){
   moveInd(); buildLog();
   var d=DAYS[i],mot=d.gio.length===1;
   $('#pTitle').textContent=d.d+' · '+thuText(d)+' '+ngayText(d)+' — '+d.s;
+  var L=lamNgay(d);
   $('#pMeta').textContent=(d.gio.length?d.gio.map(function(c){return caText(ca(c),mot)}).join(' · ')+
-    ' · làm '+dur(lamNgay(d)):'Chưa ghi giờ')+' · '+d.k.length+' việc · '+nAnhDay(d)+' ảnh';
+    (L?' · đội làm '+dur(L):''):'Chưa ghi giờ')+' · '+d.k.length+' việc · '+nAnhDay(d)+' ảnh';
   var b=$('.tabs button.on'); if(b&&b.scrollIntoView) try{b.scrollIntoView({block:'nearest',inline:'center',behavior:RM?'auto':'smooth'})}catch(e){}
   if(scroll){
     var y=$('#congviec').getBoundingClientRect().top+scrollY-56;
@@ -1511,9 +1600,10 @@ function revealInit(){
 
 /* ============================== FX-10 ticker ============================== */
 (function(){
-  var items=['Nhật ký thật 09/11 → 16/11',caList().length+' ca · '+dur(tongLam())+' làm thực',
-    '4 bồn silo đã lên dàn','Máy rang 30 kg đã đốt thử · test từng tính năng',
-    'Máy 6 kg dời chỗ · nâng firmware · rang thử','Ca 15/11 làm tới 4:40 sáng',
+  var items=['Nhật ký thật 09/11 → 18/11','23:17 ngày 18/11 hoàn thành 100% công việc',
+    caDoi().length+' ca · '+dur(tongLam())+' làm thực',
+    'Ca 16/11 làm thông 32 tiếng tới 22:00 ngày 17/11','Test 4 hệ hút · hút thử 4 bồn',
+    'Hướng dẫn sử dụng máy rang & hệ silo','Máy 6 kg dời chỗ · nâng firmware · rang thử',
     nAnh()+' ảnh hiện trường','Máy rang 30 kg · hệ silo 4 bồn'];
   var one=items.map(function(x){return '<em>'+x+'<s>◦</s></em>'}).join('');
   $('#tk').innerHTML=one+one;
@@ -1654,7 +1744,7 @@ buildStrip(); buildTabs(); buildGantt(); buildPlan();
 var ti=todayIdx(); go(ti>=0?ti:DAYS.length-1,false);
 paint();
 revealInit();
-countTo($('#kCa'),caList().length,'',900);
+countTo($('#kCa'),caDoi().length,'',900);
 countTo($('#kLog'),nLog(),'',1000);
 countTo($('#kPhoto'),nAnh(),'',1100);
 $('#kHours').textContent=dur(tongLam());
