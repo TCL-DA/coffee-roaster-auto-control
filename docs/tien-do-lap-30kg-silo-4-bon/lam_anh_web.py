@@ -47,6 +47,11 @@ BO_QUA = {
     '3a8ca5a49b56cc81ac2a69fa9d836e66',  # ảnh camera an ninh của khách (09/11)
     '84e4798c437103424f4ef868f3211cd7',  # chữ tên quán trên trần
     '13736679949092f336b8421ceb01822a',  # chữ tên quán trên tường cong
+    'e20a12f410ba1ba038e8c54d4154b21e',  # mặt đường qua kính
+    # 3 ảnh trong lòng bồn chụp 19/11 (sau bàn giao), để trong thư mục 1811 nhưng không phải 18/11
+    '14d1ecd3a3aea99d57e8a6162ca1a2d5',
+    '02107eda75ceef9c136faa821b9309c3',
+    '57be1c7e35b07fbabde2cf09c10cf76d',
 }
 
 # ảnh nằm trong thư mục ngày khác với ngày chụp: mã cuối tên file -> DDMM
